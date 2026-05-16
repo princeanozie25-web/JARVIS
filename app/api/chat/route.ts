@@ -6,10 +6,10 @@ import {
   getDb,
   insertMessageIfMissing,
 } from "@/lib/db";
-import { models } from "@/lib/models";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
+import { routeMessages } from "@/lib/router";
 import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
 import type { Message } from "@/lib/types";
@@ -143,8 +143,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const providerId = parsed.data.provider ?? "openai";
-  const modelEntry = models.getDefaultForProvider(providerId);
+  const routerDecision = routeMessages(parsed.data.messages, {
+    requestedProvider: parsed.data.provider,
+  });
+  const providerId = routerDecision.selection.providerId;
+  const modelEntry = routerDecision.selection.model;
   const providerModel = modelEntry.modelName;
   const sessionId = parsed.data.sessionId ?? globalThis.crypto.randomUUID();
   const assistantMessageId =
@@ -195,6 +198,9 @@ export async function POST(req: Request) {
                 event_type: "model_call",
                 success: true,
                 model_id: final.modelId,
+                intent: routerDecision.intent.intent,
+                safety_tag: routerDecision.safety.safetyTag,
+                tier: routerDecision.capability.tier,
                 latency_ms: final.latencyMs,
                 time_to_first_token_ms: final.timeToFirstTokenMs,
                 input_tokens: final.inputTokens,
@@ -216,6 +222,9 @@ export async function POST(req: Request) {
                   event_type: "client_disconnect",
                   success: false,
                   model_id: providerModel,
+                  intent: routerDecision.intent.intent,
+                  safety_tag: routerDecision.safety.safetyTag,
+                  tier: routerDecision.capability.tier,
                   latency_ms: Date.now() - startedAt,
                   notes: event.message,
                 });
@@ -224,6 +233,9 @@ export async function POST(req: Request) {
                   event_type: "provider_error",
                   success: false,
                   model_id: providerModel,
+                  intent: routerDecision.intent.intent,
+                  safety_tag: routerDecision.safety.safetyTag,
+                  tier: routerDecision.capability.tier,
                   latency_ms: Date.now() - startedAt,
                   error_class: "StreamError",
                   notes: event.message,
@@ -238,6 +250,9 @@ export async function POST(req: Request) {
             event_type: "provider_error",
             success: false,
             model_id: providerModel,
+            intent: routerDecision.intent.intent,
+            safety_tag: routerDecision.safety.safetyTag,
+            tier: routerDecision.capability.tier,
             latency_ms: Date.now() - startedAt,
             error_class:
               error instanceof Error ? error.constructor.name : "UnknownError",
@@ -268,6 +283,9 @@ export async function POST(req: Request) {
       event_type: "provider_error",
       success: false,
       model_id: providerModel,
+      intent: routerDecision.intent.intent,
+      safety_tag: routerDecision.safety.safetyTag,
+      tier: routerDecision.capability.tier,
       latency_ms: Date.now() - startedAt,
       error_class:
         error instanceof Error ? error.constructor.name : "UnknownError",
