@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { config } from "@/src/lib/config";
-import { canExecuteRequest, usage } from "@/src/lib/cost";
-import { loadSystemPrompt } from "@/src/lib/prompts";
-import { registry } from "@/src/lib/providers";
-import { clientKeyFromRequest, rateLimiter } from "@/src/lib/rate-limit";
-import { recordEvent } from "@/src/lib/telemetry";
-import type { Message } from "@/src/lib/types";
+import { config } from "@/lib/config";
+import { canExecuteRequest, usage } from "@/lib/cost";
+import { loadSystemPrompt } from "@/lib/prompts";
+import { registry } from "@/lib/providers";
+import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
+import { recordEvent } from "@/lib/telemetry";
+import type { Message } from "@/lib/types";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Message } from "@/src/lib/types";
+import type { Message } from "@/lib/types";
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
