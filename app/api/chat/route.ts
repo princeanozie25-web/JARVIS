@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { config } from "@/src/lib/config";
 import { canExecuteRequest, usage } from "@/src/lib/cost";
+import { loadSystemPrompt } from "@/src/lib/prompts";
 import { registry } from "@/src/lib/providers";
+import type { Message } from "@/src/lib/types";
 
 const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
 
@@ -52,8 +54,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    const systemPrompt = loadSystemPrompt();
+    const messages: Message[] = [
+      { role: "system", content: systemPrompt.content },
+      ...parsed.data.messages,
+    ];
+
     const provider = registry.get("openai");
-    const result = await provider.generate(parsed.data.messages, {
+    const result = await provider.generate(messages, {
       model: config.openai.model,
     });
 
