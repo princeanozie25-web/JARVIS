@@ -5,6 +5,7 @@ import { canExecuteRequest, usage } from "@/src/lib/cost";
 import { loadSystemPrompt } from "@/src/lib/prompts";
 import { registry } from "@/src/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/src/lib/rate-limit";
+import { recordEvent } from "@/src/lib/telemetry";
 import type { Message } from "@/src/lib/types";
 
 const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
@@ -23,6 +24,12 @@ export async function POST(req: Request) {
   try {
     payload = await req.json();
   } catch {
+    recordEvent({
+      event_type: "validation_failure",
+      success: false,
+      error_class: "InvalidJSON",
+      notes: "request body was not valid JSON",
+    });
     return NextResponse.json(
       { message: "Invalid JSON body." },
       { status: 400 }
@@ -31,6 +38,14 @@ export async function POST(req: Request) {
 
   const parsed = ChatRequestSchema.safeParse(payload);
   if (!parsed.success) {
+    recordEvent({
+      event_type: "validation_failure",
+      success: false,
+      error_class: "ZodError",
+      notes: parsed.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; "),
+    });
     return NextResponse.json(
       {
         message: "Invalid request body.",
@@ -43,6 +58,11 @@ export async function POST(req: Request) {
   const clientKey = clientKeyFromRequest(req);
   const limit = rateLimiter.check(clientKey);
   if (!limit.ok) {
+    recordEvent({
+      event_type: "rate_limited",
+      success: false,
+      notes: `client=${clientKey} limit=${limit.limit}/${limit.windowMs}ms retryAfterMs=${limit.retryAfterMs}`,
+    });
     const retryAfterSec = Math.ceil(limit.retryAfterMs / 1000);
     return NextResponse.json(
       {
@@ -61,6 +81,11 @@ export async function POST(req: Request) {
 
   const guard = canExecuteRequest();
   if (!guard.ok) {
+    recordEvent({
+      event_type: "cost_denied",
+      success: false,
+      notes: `period=${guard.period} spent=${guard.spent} limit=${guard.limit}`,
+    });
     return NextResponse.json(
       {
         message: guard.message,
@@ -73,6 +98,7 @@ export async function POST(req: Request) {
     );
   }
 
+  const startedAt = Date.now();
   try {
     const systemPrompt = loadSystemPrompt();
     const messages: Message[] = [
@@ -87,11 +113,30 @@ export async function POST(req: Request) {
 
     usage.record(PLACEHOLDER_COST_PER_REQUEST_USD);
 
+    recordEvent({
+      event_type: "model_call",
+      success: true,
+      model_id: config.openai.model,
+      latency_ms: Date.now() - startedAt,
+      cost_usd: PLACEHOLDER_COST_PER_REQUEST_USD,
+      notes: `prompt_hash=${systemPrompt.hash}`,
+    });
+
     return NextResponse.json({
       message: result.content,
     });
   } catch (error) {
     console.error("CHAT API ERROR:", error);
+
+    recordEvent({
+      event_type: "provider_error",
+      success: false,
+      model_id: config.openai.model,
+      latency_ms: Date.now() - startedAt,
+      error_class:
+        error instanceof Error ? error.constructor.name : "UnknownError",
+      notes: error instanceof Error ? error.message : String(error),
+    });
 
     return NextResponse.json(
       {
