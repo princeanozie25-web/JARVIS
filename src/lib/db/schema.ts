@@ -41,6 +41,37 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
 
 CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp
   ON telemetry_events (timestamp);
+
+CREATE TABLE IF NOT EXISTS eval_runs (
+  id            TEXT PRIMARY KEY,
+  label         TEXT,
+  created_at    INTEGER NOT NULL,
+  completed_at  INTEGER,
+  case_count    INTEGER NOT NULL,
+  target_count  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS eval_results (
+  id                       TEXT PRIMARY KEY,
+  run_id                   TEXT NOT NULL REFERENCES eval_runs(id) ON DELETE CASCADE,
+  case_id                  TEXT NOT NULL,
+  case_label               TEXT,
+  provider_id              TEXT NOT NULL,
+  model_id                 TEXT NOT NULL,
+  model_name               TEXT NOT NULL,
+  output                   TEXT NOT NULL,
+  latency_ms               INTEGER NOT NULL,
+  time_to_first_token_ms   INTEGER,
+  input_tokens             INTEGER,
+  output_tokens            INTEGER,
+  cost_usd                 REAL NOT NULL,
+  success                  INTEGER NOT NULL,
+  error_message            TEXT,
+  created_at               INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_eval_results_run
+  ON eval_results (run_id);
 `;
 
 export function applyMigrations(db: DatabaseType.Database): void {
