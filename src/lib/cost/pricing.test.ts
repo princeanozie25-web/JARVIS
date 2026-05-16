@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { calculateOpenAICostUsd } from "./pricing";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("calculateOpenAICostUsd", () => {
   it("calculates token-based cost for gpt-4o-mini", () => {
@@ -13,9 +17,11 @@ describe("calculateOpenAICostUsd", () => {
     expect(calculateOpenAICostUsd("gpt-4o-mini", 1_000)).toBe(0.001);
   });
 
-  it("throws when usage is present but model pricing is unknown", () => {
-    expect(() => calculateOpenAICostUsd("unknown-model", 1, 1)).toThrow(
-      "Missing OpenAI pricing for model: unknown-model",
-    );
+  it("falls back to a safe cost and warns when model pricing is unknown", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(calculateOpenAICostUsd("unknown-model", 1, 1)).toBe(0.001);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("unknown-model");
   });
 });

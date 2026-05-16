@@ -23,7 +23,10 @@ export function calculateOpenAICostUsd(
 
   const pricing = OPENAI_TEXT_PRICING[model];
   if (!pricing) {
-    throw new Error(`Missing OpenAI pricing for model: ${model}`);
+    console.warn(
+      `[cost/pricing] missing OpenAI pricing for model "${model}"; using fallback $${FALLBACK_COST_USD}/call`,
+    );
+    return FALLBACK_COST_USD;
   }
 
   return (
