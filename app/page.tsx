@@ -11,6 +11,10 @@ type UiMessage = Message & {
   id: string;
 };
 
+type ApiMessage = Message & {
+  id: string;
+};
+
 function createMessage(role: Message["role"], content: string): UiMessage {
   return {
     id: globalThis.crypto.randomUUID(),
@@ -19,8 +23,9 @@ function createMessage(role: Message["role"], content: string): UiMessage {
   };
 }
 
-function toApiMessage(message: UiMessage): Message {
+function toApiMessage(message: UiMessage): ApiMessage {
   return {
+    id: message.id,
     role: message.role,
     content: message.content,
   };
@@ -37,6 +42,7 @@ export default function Home() {
   const [streamingStarted, setStreamingStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sessionIdRef = useRef<string>(globalThis.crypto.randomUUID());
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -72,6 +78,8 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          assistantMessageId,
           messages: newMessages.slice(-MAX_MESSAGES_TO_SEND).map(toApiMessage),
           provider,
         }),

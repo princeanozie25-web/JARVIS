@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { ChatRequestSchema } from "@/lib/chat/schema";
 import { canExecuteRequest, usage } from "@/lib/cost";
+import {
+  createSessionIfMissing,
+  getDb,
+  insertMessageIfMissing,
+} from "@/lib/db";
 import { models } from "@/lib/models";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
@@ -11,6 +16,56 @@ import type { Message } from "@/lib/types";
 
 function sseEncode(event: StreamEvent, encoder: TextEncoder): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+function persistIncomingMessages(
+  sessionId: string,
+  messages: Array<Message & { id?: string }>,
+): void {
+  try {
+    const db = getDb();
+    const now = Date.now();
+    createSessionIfMissing(db, sessionId, now);
+
+    for (const [index, message] of messages.entries()) {
+      insertMessageIfMissing(db, {
+        id: message.id ?? globalThis.crypto.randomUUID(),
+        session_id: sessionId,
+        role: message.role,
+        content: message.content,
+        created_at: now + index,
+      });
+    }
+  } catch (error) {
+    console.warn(
+      "[chat] failed to persist incoming messages",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+function persistAssistantMessage(
+  sessionId: string,
+  messageId: string,
+  content: string,
+): void {
+  try {
+    const db = getDb();
+    const now = Date.now();
+    createSessionIfMissing(db, sessionId, now);
+    insertMessageIfMissing(db, {
+      id: messageId,
+      session_id: sessionId,
+      role: "assistant",
+      content,
+      created_at: now,
+    });
+  } catch (error) {
+    console.warn(
+      "[chat] failed to persist assistant message",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
 
 export async function POST(req: Request) {
@@ -95,6 +150,11 @@ export async function POST(req: Request) {
   const providerId = parsed.data.provider ?? "openai";
   const modelEntry = models.getDefaultForProvider(providerId);
   const providerModel = modelEntry.modelName;
+  const sessionId = parsed.data.sessionId ?? globalThis.crypto.randomUUID();
+  const assistantMessageId =
+    parsed.data.assistantMessageId ?? globalThis.crypto.randomUUID();
+
+  persistIncomingMessages(sessionId, parsed.data.messages);
 
   const startedAt = Date.now();
   let systemPromptHash = "";
@@ -129,6 +189,11 @@ export async function POST(req: Request) {
 
             if (event.type === "done") {
               const final = event.result;
+              persistAssistantMessage(
+                sessionId,
+                assistantMessageId,
+                final.content,
+              );
               usage.record(final.costUsd);
               recordEvent({
                 event_type: "model_call",

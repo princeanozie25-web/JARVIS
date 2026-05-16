@@ -7,6 +7,7 @@ export const SUPPORTED_PROVIDERS = ["openai", "anthropic"] as const;
 export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
 export const MessageSchema = z.object({
+  id: z.string().min(1).optional(),
   role: z.enum(["user", "assistant", "system"]),
   content: z
     .string()
@@ -18,6 +19,8 @@ export const MessageSchema = z.object({
 });
 
 export const ChatRequestSchema = z.object({
+  sessionId: z.string().min(1).optional(),
+  assistantMessageId: z.string().min(1).optional(),
   messages: z
     .array(MessageSchema)
     .min(1, "messages must not be empty")
