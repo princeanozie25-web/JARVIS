@@ -1,13 +1,64 @@
 # JARVIS — Master Architecture & Delivery Roadmap
 
-**Version:** 3.1  
+**Version:** 3.2  
 **Owner:** Prince Anozie  
-**Last Updated:** 14 May 2026  
+**Last Updated:** 16 May 2026  
 **Companion doc:** PREMORTEM.md
 
 ---
 
-> **Executive Position:** v3.1 is the result of two successive audits (v2 → v3 Opus audit, v3 → Pre-Mortem audit). Every weakness found was fixed. No features were cut. The system gets stronger at each revision, not smaller.
+> **Executive Position:** v3.1 was the result of two successive audits (v2 → v3 Opus audit, v3 → Pre-Mortem audit). v3.2 reconciles the architecture with the runtime stack the code actually shipped on (formal "Path A" decision below). Principles, phase ordering, capability set, and quality bars are unchanged. The system gets stronger at each revision, not smaller.
+
+---
+
+## 0. Runtime Stack Decision — Path A (TypeScript-first)
+
+The May 2026 Phase 1.5 audit (`docs/JARVIS_Audit_2026-05-16.docx`) flagged that the v3.1 document described a Python/FastAPI runtime while the repository was shipping on Next.js/TypeScript. This section formally resolves that contradiction by adopting **Path A — TypeScript-first**.
+
+**Decision:**
+
+| Layer               | Choice                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| Runtime             | Node.js (≥20) via Next.js 16 App Router; React 19 frontend; TypeScript across the stack           |
+| Server modules      | Server-only modules under `src/lib/`; route handlers under `app/api/`; `server-only` enforced     |
+| Persistence         | SQLite via `better-sqlite3` (sync, native), file at `data/jarvis.db` (gitignored)                 |
+| Cloud providers     | Anthropic SDK + OpenAI SDK, both behind a shared `ChatProvider` interface                         |
+| Local model runtime | **Ollama accessed over HTTP** from the Node server (no in-process Python)                         |
+| Desktop / OS tools  | Initial sidecar over local HTTP; **Electron shell adopted in Phase 2** when desktop control lands |
+| Streaming wire      | SSE (`text/event-stream`) carrying a typed `StreamEvent` discriminated union                      |
+| Vector / embeddings | Deferred until memory phase; will pick a Node-native or HTTP-accessible store                     |
+| Voice (Phase 4)     | Web Audio + Web Speech / cloud TTS over HTTP; native CoreAudio bridging deferred to Electron      |
+| Tests               | Vitest                                                                                            |
+| Formatter / hooks   | Prettier + Husky + lint-staged                                                                    |
+
+**Why Path A:**
+
+- Working Phase 1A/1.5 code already exists in TypeScript. Rewriting in Python would discard the provider abstraction, the SSE streaming layer, the cost guard, the rate limiter, the telemetry write-through, and the model registry — all of which currently pass their tests and gates.
+- One language end-to-end keeps the route handler, the provider wrappers, the SQLite layer, and the React UI in a single mental model.
+- Anthropic and OpenAI both ship first-class TypeScript SDKs with `AbortSignal` support and typed streaming. Parity with their Python SDKs is achieved.
+- Ollama exposes a stable HTTP API. In-process Python embedding was never a load-bearing assumption — only an artefact of the original Python-first sketch.
+
+**What Path A explicitly defers (and how it's still reachable):**
+
+- **Native desktop control (Phase 2):** Browsers cannot open arbitrary folders or launch apps. The plan is a thin local Node sidecar (or Tauri/Electron shell) that the Next route calls over `localhost`. The `ChatProvider` interface and tool layer are framework-agnostic — they will move into the Electron main process unchanged when that shell lands.
+- **Voice CoreAudio / native STT (Phase 4):** Phase 4 will start with browser-native APIs and cloud TTS over HTTP; lower-latency native paths come with Electron.
+- **Vision local models (Phase 7):** ONNX Runtime Web exists; for performance-critical paths the Electron main process or a Python sidecar (called over HTTP) remains an option. The decision is deferred to Phase 7.
+- **Vector / embeddings (Phase 3):** Either a Node-native library (e.g. LanceDB Node bindings) or a local HTTP service (e.g. Qdrant in Docker). No commitment yet.
+
+**What was rejected and why:**
+
+- **Path B (Python core + Next dashboard).** Would have required reimplementing every Phase 1.5 win in Python and rewiring the route as a thin proxy. No technical reason to incur that cost; the Python SDKs offer no capability the TypeScript SDKs lack for the work in scope.
+
+**What does not change:**
+
+- All 14 architecture principles in §2 (model agnostic, local-first if quality holds, deterministic tools first, safety gates, observable routing, cost engineering, mock-first hardware, etc.).
+- The router stages in §4 (intent → safety → capability → cost).
+- The roadmap phase ordering in §11.
+- The quality bars in §4.5.
+- The non-goals in §19.
+- The telemetry schema in §17 (now realised in `data/jarvis.db`).
+
+> **Reading these docs:** mentions of `models/providers/*.py`, `apps/api/` (FastAPI), or Python-specific tooling reflect the v3.1 sketch and are superseded by Path A. Section §10 (Repository Structure) reflects the actual TypeScript layout.
 
 ---
 
@@ -189,7 +240,7 @@ models:
     enabled: true
 ```
 
-Provider wrappers in `models/providers/` implement a common interface. The registry is the only file that needs updating when a model changes.
+Provider wrappers (`src/lib/providers/openai.ts`, `src/lib/providers/anthropic.ts`, future `ollama.ts`) implement the `ChatProvider` interface in [src/lib/providers/types.ts](src/lib/providers/types.ts). Model entries are registered in [src/lib/models/entries.ts](src/lib/models/entries.ts) (YAML loader deferred until the registry needs hot-reloading).
 
 ---
 
@@ -246,102 +297,119 @@ When P95 drifts for a week, treat it as a bug.
 
 ## 9. State Management & Persistence
 
-| State Type                   | Store                                | Rationale                               |
-| ---------------------------- | ------------------------------------ | --------------------------------------- |
-| Session conversation history | SQLite (jarvis.db)                   | Structured, queryable, survives restart |
-| Telemetry events             | SQLite or local Parquet              | Append-heavy, queryable for self-audit  |
-| Logs (raw)                   | Rotating log files in logs/          | Easy to grep                            |
-| Hot session state            | In-memory dict, optional Redis later | Fast access, recreatable on restart     |
-| Memory summaries             | Obsidian markdown files              | Human-readable, vault-searchable        |
-| Vector embeddings            | Local Chroma or LanceDB              | Cheap, fast, no external dependency     |
-| Configuration                | .env + YAML files in config/         | Version-controllable                    |
-| Prompts                      | Files in prompts/ under git          | Versioned, diff-able, roll-back-able    |
+| State Type                   | Store                                                                   | Rationale                                                  | Status  |
+| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- | ------- |
+| Session conversation history | SQLite at `data/jarvis.db` (`messages` table)                           | Structured, queryable, survives restart                    | Built   |
+| Telemetry events             | SQLite at `data/jarvis.db` (`telemetry_events` table)                   | Append-heavy, queryable for self-audit                     | Built   |
+| Hot in-memory telemetry      | `src/lib/telemetry/memory.ts` ring buffer (last 1000)                   | Zero-latency reads for dashboards; write-through to SQLite | Built   |
+| Logs (raw)                   | `console.*` (captured by host runtime); rotating files later            | Easy to grep                                               | Partial |
+| Hot session state            | React state (frontend cache only); session id round-tripped per request | Recreatable on restart; client owns ephemeral state        | Built   |
+| Memory summaries             | Obsidian markdown files                                                 | Human-readable, vault-searchable                           | Planned |
+| Vector embeddings            | Node-native (LanceDB) or HTTP (Qdrant) — decision deferred to Phase 3   | Cheap, fast, no external dependency                        | Planned |
+| Configuration                | `.env.local` + `src/lib/config.ts` + `src/lib/models/entries.ts`        | Version-controllable; secrets out of git                   | Built   |
+| Prompts                      | Files in `prompts/` under git, loaded server-only with content hash     | Versioned, diff-able, roll-back-able                       | Built   |
 
 ---
 
 ## 10. Repository Structure
 
+The current TypeScript-first layout. Folders marked `(planned)` will be added when the corresponding phase begins.
+
 ```
 jarvis/
-  apps/
-    desktop/                 # Electron or local UI later
-    api/                     # FastAPI local server
-    dashboard/               # cost + telemetry dashboard
-    mobile/                  # cross-device trigger interface
-  core/
-    orchestrator/            # central coordinator
-    router/                  # intent, safety, capability, cost stages
-    safety/                  # permission policies and confirmation flows
-    memory/                  # session, project, preference, vector
-    telemetry/               # logs, costs, traces, metrics
-    streaming/               # LLM and TTS streaming helpers
-    diagnostics/             # self-diagnostic, failure replay, comparison
-    cost_guard/              # hard caps, budget enforcement
-    scheduler/               # cron-like scheduled routines
-  plugins/                   # runtime-loaded capability extensions
-    example_plugin/
-  tools/
-    os_tools/
-    document_tools/
-    project_tools/
-    room_tools/
-      mocks/                 # mock implementations of each hardware tool
-    vision_tools/
-      mocks/
-    browser_tools/
-  models/
-    providers/               # openai.py, anthropic.py, ollama.py, gemini.py
-    registry.yaml            # capability registry — source of truth
-    calibration/             # calibration suites per task class
-  prompts/                   # versioned, git-tracked
+  app/                                 # Next.js App Router
+    layout.tsx
+    page.tsx                           # chat UI
+    api/
+      chat/route.ts                    # POST /api/chat — SSE stream, all gates
+  src/
+    lib/
+      chat/
+        schema.ts                      # Zod request schema + provider enum
+      cost/
+        config.ts                      # daily/weekly/monthly USD caps
+        guard.ts                       # canExecuteRequest()
+        pricing.ts                     # unified calculateCostUsd() (reads from model registry)
+        usage.ts                       # InMemoryUsageStore singleton
+      db/
+        client.ts                      # better-sqlite3 singleton, lazy init, server-only
+        schema.ts                      # migrations (sessions, messages, telemetry_events)
+        sessions.ts                    # session CRUD
+        messages.ts                    # message CRUD (id-keyed, INSERT OR IGNORE)
+        telemetry.ts                   # telemetry persistence
+      models/
+        entries.ts                     # registered ModelEntry rows (registry source of truth)
+        registry.ts                    # ModelRegistry class + singleton
+      prompts/
+        loader.ts                      # reads prompts/*.md, computes content hash, server-only
+      providers/
+        types.ts                       # ChatProvider, GenerateOptions, StreamEvent, StreamResult
+        openai.ts                      # OpenAIProvider (SSE-mapped)
+        anthropic.ts                   # AnthropicProvider (SSE-mapped)
+        anthropic-messages.ts          # pure helper (system-prompt extraction)
+        registry.ts                    # provider singleton registry
+      rate-limit/
+        memory.ts                      # InMemoryRateLimiter (sliding window)
+      telemetry/
+        memory.ts                      # InMemoryTelemetryStore (ring buffer)
+        index.ts                       # recordEvent — write-through to SQLite
+      config.ts                        # env-required apiKeys (no model strings here)
+      types.ts                         # Message, Role shared types
+    components/                        # (planned — UI primitives)
+    styles/
+  prompts/                             # versioned, git-tracked
     jarvis_system.md
-    router_policy.md
-    safety_policy.md
-    audit_prompt.md
-  config/
-    dev.yaml
-    prod.yaml
-    routines.yaml
-  scripts/
-    run_calibration.py
-    cost_report.py
-    stuck_log_template.md
-  infra/                     # docker compose, deployment configs
-  obsidian/
-    templates/
-    build_log/
-  tests/
+  data/                                # gitignored — SQLite + WAL files
   docs/
-    ARCHITECTURE.md          # this file
-    PREMORTEM.md
-    decisions/               # ADRs
-    runbooks/
-    demos/
-  data/                      # gitignored
-  .env.example
-  docker-compose.yml
+    ARCHITECTURE.md                    # this file
+    JARVIS_Audit_2026-05-16.docx       # Phase 1.5 gate audit
+    PREMORTEM.md                       # (companion)
+  scripts/
+  .husky/pre-commit                    # lint-staged → lint → test
+  .prettierrc / .prettierignore
+  next.config.ts                       # serverExternalPackages: ["better-sqlite3"]
+  tsconfig.json                        # @/* → ./src/*
+  eslint.config.mjs
+  package.json                         # scripts: dev, build, lint, test, format, prepare
+  .env.local                           # OPENAI_API_KEY + ANTHROPIC_API_KEY (gitignored)
   README.md
+
+(planned, by phase)
+  src/lib/router/                      # Phase 1D — intent / safety / capability / cost stages
+  src/lib/safety/                      # Phase 1D / 2 — permission policies, confirmation flows
+  src/lib/tools/                       # Phase 2 — os, document, project, room (mocks), vision, browser
+  src/lib/memory/                      # Phase 3 — Obsidian, vector store
+  src/lib/voice/                       # Phase 4 — STT/TTS streaming pipeline
+  src/lib/diagnostics/                 # Phase 7/8 — self-diagnostic, failure replay, comparison
+  src/lib/scheduler/                   # Phase 8 — cron-like routines
+  plugins/                             # Phase 5 — runtime-loaded capability extensions
+  apps/desktop/                        # Phase 2 — Electron shell when desktop control lands
+  apps/dashboard/                      # Phase 3 — cost + telemetry dashboard (may be in-app)
+  obsidian/                            # Phase 3 — vault structure + build_log/
+  docker-compose.yml                   # added when local Ollama / vector store land
 ```
+
+`src/lib/` is the seam: every subsystem under it is server-only and framework-agnostic. The Phase 2 Electron shell will import the same modules from its main process; no rewrite required.
 
 ---
 
 ## 11. Build Roadmap
 
-| Phase    | Build Work                                                                                                                                                       | Exit Criteria                                       |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Phase 0  | Repo, Python env, cost cap module, logging skeleton, README, test framework, prompt versioning, calibration skeleton, Stuck Log template, Docker dev environment | Clean repo, tests run, cost caps enforce themselves |
-| Phase 1A | Typed input → Claude/OpenAI → TTS playback                                                                                                                       | First heartbeat of Jarvis                           |
-| Phase 1B | Provider wrappers (OpenAI, Anthropic, Ollama)                                                                                                                    | Same prompt routes through any provider via config  |
-| Phase 1C | registry.yaml schema, loader, capability lookup                                                                                                                  | Picking a model is a registry call, not a hardcode  |
-| Phase 1D | Router skeleton: intent, safety, capability, cost — each testable independently                                                                                  | Given 20 inputs, router picks correct tier on >90%  |
-| Phase 2  | Local desktop tools, Build Log Mode, Self-Diagnostic v1                                                                                                          | Useful daily assistant; self-diagnostic works       |
-| Phase 3  | Memory + Obsidian, Demo Mode v1, Cost Dashboard live                                                                                                             | Cross-session context; can demo on command          |
-| Phase 4  | Voice interface (streaming STT/TTS, interrupts), Cross-Device Trigger                                                                                            | Natural spoken interaction; triggerable from phone  |
-| Phase 5  | Project assistant, Plugin Architecture refactor                                                                                                                  | Jarvis helps build TripSplit, itself, others        |
-| Phase 6  | Smart room (Hue, FancyLED, Nanoleaf, Tapo, Aqara), mock-first per device                                                                                         | Bedroom is a responsive AI workspace                |
-| Phase 7  | Vision layer (YOLOv8n, MediaPipe, Tesseract), Failure Replay                                                                                                     | Jarvis can see desk and screen context              |
-| Phase 8  | Daily self-audit, Scheduled Routines, Comparison Mode                                                                                                            | Jarvis improves context, runs scheduled workflows   |
-| Phase 9  | Dashboard, HUD, room visualisation, Interview Mode                                                                                                               | Polished and demoable in any interview              |
+| Phase    | Build Work                                                                                                                                                                                                          | Exit Criteria                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Phase 0  | Repo, Node/TS env, cost cap module, logging skeleton, README, test framework (Vitest), prompt versioning + hash logging, calibration skeleton, Stuck Log template, Docker dev environment (added when Ollama lands) | Clean repo, tests run, cost caps enforce themselves |
+| Phase 1A | Typed input → Claude/OpenAI → TTS playback                                                                                                                                                                          | First heartbeat of Jarvis                           |
+| Phase 1B | Provider wrappers (OpenAI, Anthropic, Ollama)                                                                                                                                                                       | Same prompt routes through any provider via config  |
+| Phase 1C | registry.yaml schema, loader, capability lookup                                                                                                                                                                     | Picking a model is a registry call, not a hardcode  |
+| Phase 1D | Router skeleton: intent, safety, capability, cost — each testable independently                                                                                                                                     | Given 20 inputs, router picks correct tier on >90%  |
+| Phase 2  | Local desktop tools, Build Log Mode, Self-Diagnostic v1                                                                                                                                                             | Useful daily assistant; self-diagnostic works       |
+| Phase 3  | Memory + Obsidian, Demo Mode v1, Cost Dashboard live                                                                                                                                                                | Cross-session context; can demo on command          |
+| Phase 4  | Voice interface (streaming STT/TTS, interrupts), Cross-Device Trigger                                                                                                                                               | Natural spoken interaction; triggerable from phone  |
+| Phase 5  | Project assistant, Plugin Architecture refactor                                                                                                                                                                     | Jarvis helps build TripSplit, itself, others        |
+| Phase 6  | Smart room (Hue, FancyLED, Nanoleaf, Tapo, Aqara), mock-first per device                                                                                                                                            | Bedroom is a responsive AI workspace                |
+| Phase 7  | Vision layer (YOLOv8n, MediaPipe, Tesseract), Failure Replay                                                                                                                                                        | Jarvis can see desk and screen context              |
+| Phase 8  | Daily self-audit, Scheduled Routines, Comparison Mode                                                                                                                                                               | Jarvis improves context, runs scheduled workflows   |
+| Phase 9  | Dashboard, HUD, room visualisation, Interview Mode                                                                                                                                                                  | Polished and demoable in any interview              |
 
 ---
 
@@ -431,27 +499,33 @@ All vision tasks on sampled frames (1 fps default), never continuous video.
 
 ## 17. Telemetry Schema
 
+Implemented in [src/lib/db/schema.ts](src/lib/db/schema.ts) as `telemetry_events`. Identical to the v3.1 sketch with one addition (`time_to_first_token_ms`, surfaced by Phase 1.5 streaming work) and `timestamp` stored as INTEGER ms-since-epoch for cheap range queries.
+
 ```sql
-CREATE TABLE events (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts              TEXT    NOT NULL,
-  session_id      TEXT    NOT NULL,
-  event_type      TEXT    NOT NULL,
-  intent          TEXT,
-  safety_tag      TEXT,
-  tier            TEXT,
-  model_id        TEXT,
-  tool_name       TEXT,
-  input_tokens    INTEGER,
-  output_tokens   INTEGER,
-  cost_usd        REAL,
-  latency_ms      INTEGER,
-  success         INTEGER,
-  error_class     TEXT,
-  user_rating     INTEGER,
-  notes           TEXT
+CREATE TABLE telemetry_events (
+  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp                INTEGER NOT NULL,
+  session_id               TEXT,
+  event_type               TEXT NOT NULL,
+  success                  INTEGER NOT NULL,
+  intent                   TEXT,
+  safety_tag               TEXT,
+  tier                     TEXT,
+  model_id                 TEXT,
+  tool_name                TEXT,
+  input_tokens             INTEGER,
+  output_tokens            INTEGER,
+  latency_ms               INTEGER,
+  time_to_first_token_ms   INTEGER,
+  cost_usd                 REAL,
+  error_class              TEXT,
+  user_rating              INTEGER,
+  notes                    TEXT
 );
+CREATE INDEX idx_telemetry_timestamp ON telemetry_events (timestamp);
 ```
+
+Populated today by [src/lib/telemetry/index.ts](src/lib/telemetry/index.ts) for: `validation_failure`, `rate_limited`, `cost_denied`, `model_call`, `provider_error`, `client_disconnect`. The `intent` / `safety_tag` / `tier` / `tool_name` / `user_rating` columns are reserved for router and safety phases; nullable today.
 
 ### 17.1 Self-Diagnostic Mode
 
@@ -502,16 +576,16 @@ Every meaningful commit auto-generates an Obsidian journal entry. Weekly digests
 
 ## 20. Hardware Reality Check (16GB M4 MacBook Air)
 
-| Component               | Approx RAM |
-| ----------------------- | ---------- |
-| macOS baseline          | 3-4 GB     |
-| Chrome (10 tabs)        | 2-3 GB     |
-| VS Code + project       | 1.5-2 GB   |
-| Jarvis runtime (Python) | 0.5-1 GB   |
-| Local 3B model (Ollama) | 2-3 GB     |
-| Local 7B model          | 4-5 GB     |
+| Component                               | Approx RAM |
+| --------------------------------------- | ---------- |
+| macOS baseline                          | 3-4 GB     |
+| Chrome (10 tabs)                        | 2-3 GB     |
+| VS Code + project                       | 1.5-2 GB   |
+| Jarvis runtime (Node 20 / Next 16)      | 0.4-0.8 GB |
+| Local 3B model (Ollama, out-of-process) | 2-3 GB     |
+| Local 7B model                          | 4-5 GB     |
 
-**Conclusion:** 16GB handles Jarvis + 3B model comfortably. 7B workable with limited browser tabs. 13B impractical. Phases 1-3: 16GB is fine.
+**Conclusion:** 16GB handles Jarvis + 3B model comfortably. 7B workable with limited browser tabs. 13B impractical. Phases 1-3: 16GB is fine. Node runtime is lighter than the original Python sketch; Ollama remains the dominant consumer when local models are loaded.
 
 ---
 
@@ -581,4 +655,4 @@ Models update quarterly. The registry is the only file that changes.
 
 ---
 
-_JARVIS Architecture v3.1 — Prince Anozie — 14 May 2026_
+_JARVIS Architecture v3.2 — Prince Anozie — 16 May 2026 (Path A reconciliation)_
