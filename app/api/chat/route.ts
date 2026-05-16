@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ChatRequestSchema } from "@/lib/chat/schema";
-import { config } from "@/lib/config";
 import { canExecuteRequest, usage } from "@/lib/cost";
+import { models } from "@/lib/models";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
 import type { StreamEvent } from "@/lib/providers";
@@ -93,8 +93,8 @@ export async function POST(req: Request) {
   }
 
   const providerId = parsed.data.provider ?? "openai";
-  const providerModel =
-    providerId === "anthropic" ? config.anthropic.model : config.openai.model;
+  const modelEntry = models.getDefaultForProvider(providerId);
+  const providerModel = modelEntry.modelName;
 
   const startedAt = Date.now();
   let systemPromptHash = "";

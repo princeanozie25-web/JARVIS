@@ -11,12 +11,10 @@ function requiredEnv(name: string): string {
 export const config = {
   openai: {
     apiKey: requiredEnv("OPENAI_API_KEY"),
-    model: "gpt-4o-mini",
   },
 
   anthropic: {
     apiKey: requiredEnv("ANTHROPIC_API_KEY"),
-    model: "claude-haiku-4-5-20251001",
   },
 
   app: {
