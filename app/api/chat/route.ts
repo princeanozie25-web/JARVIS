@@ -4,6 +4,7 @@ import { config } from "@/src/lib/config";
 import { canExecuteRequest, usage } from "@/src/lib/cost";
 import { loadSystemPrompt } from "@/src/lib/prompts";
 import { registry } from "@/src/lib/providers";
+import { clientKeyFromRequest, rateLimiter } from "@/src/lib/rate-limit";
 import type { Message } from "@/src/lib/types";
 
 const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
@@ -36,6 +37,25 @@ export async function POST(req: Request) {
         issues: parsed.error.issues,
       },
       { status: 400 }
+    );
+  }
+
+  const clientKey = clientKeyFromRequest(req);
+  const limit = rateLimiter.check(clientKey);
+  if (!limit.ok) {
+    const retryAfterSec = Math.ceil(limit.retryAfterMs / 1000);
+    return NextResponse.json(
+      {
+        message: limit.message,
+        reason: "rate_limited",
+        limit: limit.limit,
+        windowMs: limit.windowMs,
+        retryAfterMs: limit.retryAfterMs,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSec) },
+      }
     );
   }
 
