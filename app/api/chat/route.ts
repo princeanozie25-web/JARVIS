@@ -9,14 +9,10 @@ import {
 import { models } from "@/lib/models";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
-import type { StreamEvent } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
+import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
 import type { Message } from "@/lib/types";
-
-function sseEncode(event: StreamEvent, encoder: TextEncoder): Uint8Array {
-  return encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
-}
 
 function persistIncomingMessages(
   sessionId: string,
@@ -185,7 +181,7 @@ export async function POST(req: Request) {
       async start(controller) {
         try {
           for await (const event of streamResult.events) {
-            controller.enqueue(sseEncode(event, encoder));
+            controller.enqueue(encoder.encode(encodeSseEvent(event)));
 
             if (event.type === "done") {
               const final = event.result;

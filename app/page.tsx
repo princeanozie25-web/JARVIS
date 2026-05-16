@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
-import type { StreamEvent } from "@/lib/providers";
+import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
 
 const MAX_MESSAGES_TO_SEND = 50;
@@ -111,22 +111,9 @@ export default function Home() {
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        let sepIdx: number;
-        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
-          const block = buffer.slice(0, sepIdx);
-          buffer = buffer.slice(sepIdx + 2);
-
-          const dataLine = block.split("\n").find((l) => l.startsWith("data:"));
-          if (!dataLine) continue;
-
-          const payload = dataLine.slice(5).trim();
-          let event: StreamEvent;
-          try {
-            event = JSON.parse(payload) as StreamEvent;
-          } catch {
-            continue;
-          }
-
+        const parsed = parseSseEvents(buffer);
+        buffer = parsed.remaining;
+        for (const event of parsed.events) {
           if (event.type === "text") {
             setStreamingStarted(true);
             assistantContent += event.value;

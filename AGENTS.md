@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-16 9:52pm GMT+1
+# [jarvis] recent context, 2026-05-16 10:05pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 26 obs (10,869t read) | 350,672t work | 97% savings
+Stats: 35 obs (13,952t read) | 501,049t work | 97% savings
 
 ### May 16, 2026
 
@@ -48,6 +48,15 @@ S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.m
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
 118 3:07p ⚖️ Safe Fallback for Unknown Model Pricing Instead of Hard Throw
 230 9:52p 🔵 Jarvis Codebase Scan — AGENTS.md Modified
+231 9:53p 🔵 Jarvis Full Project Structure and Tech Stack
+232 " 🔵 Eval Framework: Types, Cases, Runner, and Storage
+233 " 🔵 SQLite Schema: Five Tables Covering Sessions, Messages, Telemetry, and Evals
+234 " 🔵 All Quality Gates Pass: 30 Tests, Clean Lint, Zero TS Errors, Successful Build
+235 " ✅ AGENTS.md Memory Context Refreshed: Timestamp and Minor Cleanup
+236 9:54p 🔵 Provider Architecture: Typed StreamEvent Taxonomy with AbortSignal Support
+237 " 🔵 DB Client: Singleton WAL-Mode SQLite with server-only Guard
+238 " 🔵 Telemetry: Dual-Write to In-Memory Store and SQLite with Silent Fallback
+239 " 🔵 Config Module: server-only, Throws on Missing API Keys
 
-Access 351k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 501k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
