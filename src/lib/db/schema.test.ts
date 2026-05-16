@@ -88,6 +88,8 @@ describe("telemetry_events", () => {
       event_type: "model_call",
       success: true,
       model_id: "gpt-4o-mini",
+      input_tokens: 123,
+      output_tokens: 45,
       latency_ms: 250,
       time_to_first_token_ms: 80,
       cost_usd: 0.0001,
@@ -105,6 +107,8 @@ describe("telemetry_events", () => {
     expect(rows[0]?.success).toBe(0);
     expect(rows[1]?.event_type).toBe("model_call");
     expect(rows[1]?.success).toBe(1);
+    expect(rows[1]?.input_tokens).toBe(123);
+    expect(rows[1]?.output_tokens).toBe(45);
     expect(rows[1]?.cost_usd).toBeCloseTo(0.0001);
   });
 });

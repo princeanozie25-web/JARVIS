@@ -197,6 +197,8 @@ export async function POST(req: Request) {
                 model_id: final.modelId,
                 latency_ms: final.latencyMs,
                 time_to_first_token_ms: final.timeToFirstTokenMs,
+                input_tokens: final.inputTokens,
+                output_tokens: final.outputTokens,
                 cost_usd: final.costUsd,
                 notes: `prompt_hash=${systemPromptHash}${
                   final.inputTokens !== undefined
