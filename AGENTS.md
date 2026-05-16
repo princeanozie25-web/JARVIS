@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-16 10:05pm GMT+1
+# [jarvis] recent context, 2026-05-16 10:11pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 35 obs (13,952t read) | 501,049t work | 97% savings
+Stats: 41 obs (16,613t read) | 629,497t work | 97% savings
 
 ### May 16, 2026
 
@@ -57,6 +57,12 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 237 " 🔵 DB Client: Singleton WAL-Mode SQLite with server-only Guard
 238 " 🔵 Telemetry: Dual-Write to In-Memory Store and SQLite with Silent Fallback
 239 " 🔵 Config Module: server-only, Throws on Missing API Keys
+240 10:05p 🔵 Codebase Architecture and Audit Constraint Review Initiated
+241 10:06p 🔄 Runtime/Node Split for Config and DB — server-only Guard Decoupled from CLI
+242 10:08p ⚖️ Codebase Audit Prerequisite Established Before Development
+243 10:09p 🔵 Jarvis Project Architecture: Multi-Provider AI Chat with SSE Streaming
+244 " 🔄 SSE Encoding/Parsing Extracted to Shared src/lib/streaming/sse.ts Module
+245 " 🔵 Eval Suite Confirms Both Providers Operational — Cost Delta Notable
 
-Access 501k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 629k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
