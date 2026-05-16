@@ -17,7 +17,13 @@ export interface GenerateResult {
   latencyMs: number;
 }
 
+export interface StreamResult {
+  stream: AsyncIterable<string>;
+  done: Promise<GenerateResult>;
+}
+
 export interface ChatProvider {
   readonly id: ProviderId;
   generate(messages: Message[], opts: GenerateOptions): Promise<GenerateResult>;
+  stream(messages: Message[], opts: GenerateOptions): Promise<StreamResult>;
 }

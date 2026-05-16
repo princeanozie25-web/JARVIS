@@ -44,15 +44,29 @@ export default function Home() {
         return;
       }
 
-      const data = await res.json();
+      if (!res.body) {
+        setError("Empty response from server.");
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = "";
 
       setMessages([
         ...newMessages,
-        {
-          role: "assistant",
-          content: data.message,
-        },
+        { role: "assistant", content: "" },
       ]);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        assistantContent += decoder.decode(value, { stream: true });
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: assistantContent },
+        ]);
+      }
     } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {

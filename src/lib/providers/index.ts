@@ -4,4 +4,5 @@ export type {
   GenerateOptions,
   GenerateResult,
   ProviderId,
+  StreamResult,
 } from "./types";

@@ -97,39 +97,73 @@ export async function POST(req: Request) {
   }
 
   const startedAt = Date.now();
+  let systemPromptHash = "";
   try {
     const systemPrompt = loadSystemPrompt();
+    systemPromptHash = systemPrompt.hash;
     const messages: Message[] = [
       { role: "system", content: systemPrompt.content },
       ...parsed.data.messages,
     ];
 
     const provider = registry.get("openai");
-    const result = await provider.generate(messages, {
+    const streamResult = await provider.stream(messages, {
       model: config.openai.model,
     });
 
-    usage.record(result.costUsd);
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const chunk of streamResult.stream) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          const final = await streamResult.done;
 
-    recordEvent({
-      event_type: "model_call",
-      success: true,
-      model_id: result.modelId,
-      latency_ms: result.latencyMs,
-      cost_usd: result.costUsd,
-      notes: `prompt_hash=${systemPrompt.hash}${
-        result.inputTokens !== undefined
-          ? ` input_tokens=${result.inputTokens}`
-          : ""
-      }${
-        result.outputTokens !== undefined
-          ? ` output_tokens=${result.outputTokens}`
-          : ""
-      }`,
+          usage.record(final.costUsd);
+
+          recordEvent({
+            event_type: "model_call",
+            success: true,
+            model_id: final.modelId,
+            latency_ms: final.latencyMs,
+            cost_usd: final.costUsd,
+            notes: `prompt_hash=${systemPromptHash}${
+              final.inputTokens !== undefined
+                ? ` input_tokens=${final.inputTokens}`
+                : ""
+            }${
+              final.outputTokens !== undefined
+                ? ` output_tokens=${final.outputTokens}`
+                : ""
+            }`,
+          });
+
+          controller.close();
+        } catch (error) {
+          console.error("CHAT API STREAM ERROR:", error);
+          recordEvent({
+            event_type: "provider_error",
+            success: false,
+            model_id: config.openai.model,
+            latency_ms: Date.now() - startedAt,
+            error_class:
+              error instanceof Error
+                ? error.constructor.name
+                : "UnknownError",
+            notes: error instanceof Error ? error.message : String(error),
+          });
+          controller.error(error);
+        }
+      },
     });
 
-    return NextResponse.json({
-      message: result.content,
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Content-Type-Options": "nosniff",
+      },
     });
   } catch (error) {
     console.error("CHAT API ERROR:", error);
