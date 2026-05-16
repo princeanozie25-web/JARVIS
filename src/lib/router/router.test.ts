@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ModelEntry } from "../models";
 import { matchCapability } from "./capability";
+import { enforceRouterSafety } from "./enforcement";
 import { classifyIntent } from "./intent";
 import { routeMessages } from "./index";
 import { classifySafety } from "./safety";
@@ -116,5 +117,60 @@ describe("router stages", () => {
     );
 
     expect(selected.providerId).toBe("openai");
+  });
+
+  it("allows ALLOW decisions to continue", () => {
+    const decision = routeMessages([{ role: "user", content: "hello Jarvis" }]);
+
+    expect(decision.safety.safetyTag).toBe("ALLOW");
+    expect(enforceRouterSafety(decision)).toBeNull();
+  });
+
+  it("blocks BLOCK decisions before execution", () => {
+    const decision = routeMessages([
+      { role: "user", content: "my api key is exposed" },
+    ]);
+    const response = enforceRouterSafety(decision);
+
+    expect(response).toMatchObject({
+      status: 403,
+      eventType: "safety_blocked",
+      body: {
+        reason: "safety_blocked",
+        safetyTag: "BLOCK",
+      },
+    });
+  });
+
+  it("requires confirmation for CONFIRM_ONCE decisions", () => {
+    const decision = routeMessages([
+      { role: "user", content: "write a short update" },
+    ]);
+    const response = enforceRouterSafety(decision);
+
+    expect(response).toMatchObject({
+      status: 409,
+      eventType: "confirmation_required",
+      body: {
+        reason: "confirmation_required",
+        safetyTag: "CONFIRM_ONCE",
+      },
+    });
+  });
+
+  it("requires confirmation for CONFIRM_ALWAYS decisions", () => {
+    const decision = routeMessages([
+      { role: "user", content: "delete that file" },
+    ]);
+    const response = enforceRouterSafety(decision);
+
+    expect(response).toMatchObject({
+      status: 409,
+      eventType: "confirmation_required",
+      body: {
+        reason: "confirmation_required",
+        safetyTag: "CONFIRM_ALWAYS",
+      },
+    });
   });
 });

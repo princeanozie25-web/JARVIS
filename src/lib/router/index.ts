@@ -25,6 +25,7 @@ export function routeMessages(
 }
 
 export { matchCapability } from "./capability";
+export { enforceRouterSafety } from "./enforcement";
 export { classifyIntent } from "./intent";
 export { classifySafety } from "./safety";
 export { selectModel } from "./selection";

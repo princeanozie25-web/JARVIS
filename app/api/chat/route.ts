@@ -9,7 +9,7 @@ import {
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
-import { routeMessages } from "@/lib/router";
+import { enforceRouterSafety, routeMessages } from "@/lib/router";
 import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
 import type { Message } from "@/lib/types";
@@ -149,6 +149,22 @@ export async function POST(req: Request) {
   const providerId = routerDecision.selection.providerId;
   const modelEntry = routerDecision.selection.model;
   const providerModel = modelEntry.modelName;
+  const safetyResponse = enforceRouterSafety(routerDecision);
+  if (safetyResponse) {
+    recordEvent({
+      event_type: safetyResponse.eventType,
+      success: false,
+      model_id: providerModel,
+      intent: routerDecision.intent.intent,
+      safety_tag: routerDecision.safety.safetyTag,
+      tier: routerDecision.capability.tier,
+      notes: routerDecision.safety.reason,
+    });
+    return NextResponse.json(safetyResponse.body, {
+      status: safetyResponse.status,
+    });
+  }
+
   const sessionId = parsed.data.sessionId ?? globalThis.crypto.randomUUID();
   const assistantMessageId =
     parsed.data.assistantMessageId ?? globalThis.crypto.randomUUID();

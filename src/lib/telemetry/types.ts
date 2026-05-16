@@ -2,6 +2,8 @@ export type TelemetryEventType =
   | "validation_failure"
   | "rate_limited"
   | "cost_denied"
+  | "safety_blocked"
+  | "confirmation_required"
   | "model_call"
   | "provider_error"
   | "client_disconnect";
