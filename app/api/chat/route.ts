@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { ChatRequestSchema } from "@/lib/chat/schema";
 import { config } from "@/lib/config";
 import { canExecuteRequest, usage } from "@/lib/cost";
 import { loadSystemPrompt } from "@/lib/prompts";
@@ -12,24 +12,6 @@ import type { Message } from "@/lib/types";
 function sseEncode(event: StreamEvent, encoder: TextEncoder): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
 }
-
-const MAX_MESSAGES = 50;
-const MAX_MESSAGE_CHARS = 4000;
-
-const MessageSchema = z.object({
-  role: z.enum(["user", "assistant", "system"]),
-  content: z
-    .string()
-    .min(1, "content must be a non-empty string")
-    .max(MAX_MESSAGE_CHARS, `content must be ${MAX_MESSAGE_CHARS} characters or fewer`),
-});
-
-const ChatRequestSchema = z.object({
-  messages: z
-    .array(MessageSchema)
-    .min(1, "messages must not be empty")
-    .max(MAX_MESSAGES, `messages must contain ${MAX_MESSAGES} items or fewer`),
-});
 
 export async function POST(req: Request) {
   let payload: unknown;
