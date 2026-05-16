@@ -1,14 +1,42 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { config } from "@/src/lib/config";
 import { registry } from "@/src/lib/providers";
-import type { ChatRequest } from "@/src/lib/types";
+
+const MessageSchema = z.object({
+  role: z.enum(["user", "assistant", "system"]),
+  content: z.string().min(1, "content must be a non-empty string"),
+});
+
+const ChatRequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1, "messages must not be empty"),
+});
 
 export async function POST(req: Request) {
+  let payload: unknown;
   try {
-    const body: ChatRequest = await req.json();
+    payload = await req.json();
+  } catch {
+    return NextResponse.json(
+      { message: "Invalid JSON body." },
+      { status: 400 }
+    );
+  }
 
+  const parsed = ChatRequestSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        message: "Invalid request body.",
+        issues: parsed.error.issues,
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
     const provider = registry.get("openai");
-    const result = await provider.generate(body.messages, {
+    const result = await provider.generate(parsed.data.messages, {
       model: config.openai.model,
     });
 
