@@ -1,3 +1,4 @@
+import { AnthropicProvider } from "./anthropic";
 import { OpenAIProvider } from "./openai";
 import type { ChatProvider, ProviderId } from "./types";
 
@@ -28,3 +29,4 @@ class ProviderRegistry {
 export const registry = new ProviderRegistry();
 
 registry.register(new OpenAIProvider());
+registry.register(new AnthropicProvider());
