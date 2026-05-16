@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import type { StreamEvent } from "@/lib/providers";
 import type { Message } from "@/lib/types";
 
+const MAX_MESSAGES_TO_SEND = 50;
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -44,7 +46,7 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: newMessages,
+          messages: newMessages.slice(-MAX_MESSAGES_TO_SEND),
         }),
         signal: ac.signal,
       });

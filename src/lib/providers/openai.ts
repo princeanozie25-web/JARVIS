@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { config } from "../config";
+import { calculateOpenAICostUsd } from "../cost";
 import type { Message } from "../types";
 import type {
   ChatProvider,
@@ -9,8 +10,6 @@ import type {
   StreamEvent,
   StreamResult,
 } from "./types";
-
-const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
 
 export class OpenAIProvider implements ChatProvider {
   readonly id: ProviderId = "openai";
@@ -47,7 +46,11 @@ export class OpenAIProvider implements ChatProvider {
       modelId: response.model ?? opts.model,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
-      costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+      costUsd: calculateOpenAICostUsd(
+        opts.model,
+        response.usage?.prompt_tokens,
+        response.usage?.completion_tokens,
+      ),
       latencyMs,
     };
   }
@@ -108,7 +111,11 @@ export class OpenAIProvider implements ChatProvider {
             modelId,
             inputTokens,
             outputTokens,
-            costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+            costUsd: calculateOpenAICostUsd(
+              opts.model,
+              inputTokens,
+              outputTokens,
+            ),
             latencyMs: Date.now() - startedAt,
             timeToFirstTokenMs,
           },
