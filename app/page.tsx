@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type { StreamEvent } from "@/lib/providers";
 import type { Message } from "@/lib/types";
 
@@ -31,6 +32,7 @@ export default function Home() {
   ]);
 
   const [input, setInput] = useState("");
+  const [provider, setProvider] = useState<SupportedProvider>("openai");
   const [loading, setLoading] = useState(false);
   const [streamingStarted, setStreamingStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +72,8 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: newMessages
-            .slice(-MAX_MESSAGES_TO_SEND)
-            .map(toApiMessage),
+          messages: newMessages.slice(-MAX_MESSAGES_TO_SEND).map(toApiMessage),
+          provider,
         }),
         signal: ac.signal,
       });
@@ -107,9 +108,7 @@ export default function Home() {
           const block = buffer.slice(0, sepIdx);
           buffer = buffer.slice(sepIdx + 2);
 
-          const dataLine = block
-            .split("\n")
-            .find((l) => l.startsWith("data:"));
+          const dataLine = block.split("\n").find((l) => l.startsWith("data:"));
           if (!dataLine) continue;
 
           const payload = dataLine.slice(5).trim();
@@ -193,6 +192,20 @@ export default function Home() {
       </section>
 
       <section className="w-full max-w-3xl flex gap-3 mt-6">
+        <select
+          aria-label="Provider"
+          className="rounded-xl bg-gray-900 border border-gray-700 px-3 outline-none disabled:opacity-50"
+          value={provider}
+          onChange={(e) => setProvider(e.target.value as SupportedProvider)}
+          disabled={loading}
+        >
+          {SUPPORTED_PROVIDERS.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+
         <input
           className="flex-1 rounded-xl bg-gray-900 border border-gray-700 p-4 outline-none disabled:opacity-50"
           value={input}

@@ -15,15 +15,15 @@
 
 Jarvis is a personal AI operating environment for one bedroom workspace. It behaves like a practical operator, not a chatbot: it listens, speaks, opens files, controls apps, manages room states, inspects projects, summarises documents, retrieves memory, and escalates to stronger models only when the task justifies the cost.
 
-| Capability | Target Behaviour | Cost Principle |
-|---|---|---|
-| Room control | Lights, plugs, scenes, presence, focus and gaming modes | Local API-free where possible |
-| Desktop control | Open folders, apps, files, search local documents | Local deterministic tools |
-| Project assistant | Read repo, run tests, inspect errors, propose fixes | Local tools, cloud reasoning when needed |
-| Voice assistant | Push-to-talk first, realtime voice later | Avoid always-on cloud audio early |
-| Memory system | Session logs, compressed context, Obsidian vault | Local-first compression and retrieval |
-| Vision layer | Desk camera, screenshot OCR, object recognition | Local CV first, cloud vision when needed |
-| Self-audit | End-of-day logs, mistakes, improvements, next steps | Local summary or cheap model |
+| Capability        | Target Behaviour                                        | Cost Principle                           |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------- |
+| Room control      | Lights, plugs, scenes, presence, focus and gaming modes | Local API-free where possible            |
+| Desktop control   | Open folders, apps, files, search local documents       | Local deterministic tools                |
+| Project assistant | Read repo, run tests, inspect errors, propose fixes     | Local tools, cloud reasoning when needed |
+| Voice assistant   | Push-to-talk first, realtime voice later                | Avoid always-on cloud audio early        |
+| Memory system     | Session logs, compressed context, Obsidian vault        | Local-first compression and retrieval    |
+| Vision layer      | Desk camera, screenshot OCR, object recognition         | Local CV first, cloud vision when needed |
+| Self-audit        | End-of-day logs, mistakes, improvements, next steps     | Local summary or cheap model             |
 
 ---
 
@@ -66,15 +66,15 @@ Feedback Layer (voice, UI, lighting, logs, notifications)
 Memory + Self-Audit (session summaries, Obsidian, telemetry)
 ```
 
-| Layer | Components | Purpose |
-|---|---|---|
-| Input Gateway | Typed input, push-to-talk, wake word later, sensor events, scheduled events | Normalises all inbound work |
-| Intent Classifier | Local rules + small classifier model | Determines what the user wants |
-| Safety Classifier | Permission rules + risk scoring | Determines whether action is allowed |
-| Router | Capability matcher + cost optimiser + registry lookup | Selects cheapest capable engine that meets quality bar |
-| Execution Layer | OS, file, document, project, room, vision, browser tools | Performs actions through controlled tools |
-| Feedback Layer | Voice, UI, lighting, logs, notifications | Communicates outcome, requests approval |
-| Memory + Self-Audit | Session summaries, Obsidian, telemetry, lessons | Preserves context and improves routing |
+| Layer               | Components                                                                  | Purpose                                                |
+| ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Input Gateway       | Typed input, push-to-talk, wake word later, sensor events, scheduled events | Normalises all inbound work                            |
+| Intent Classifier   | Local rules + small classifier model                                        | Determines what the user wants                         |
+| Safety Classifier   | Permission rules + risk scoring                                             | Determines whether action is allowed                   |
+| Router              | Capability matcher + cost optimiser + registry lookup                       | Selects cheapest capable engine that meets quality bar |
+| Execution Layer     | OS, file, document, project, room, vision, browser tools                    | Performs actions through controlled tools              |
+| Feedback Layer      | Voice, UI, lighting, logs, notifications                                    | Communicates outcome, requests approval                |
+| Memory + Self-Audit | Session summaries, Obsidian, telemetry, lessons                             | Preserves context and improves routing                 |
 
 ---
 
@@ -108,13 +108,13 @@ Stage 2: independent from intent.
 
 Stage 3: given intent + safety, select capability tier:
 
-| Tier | Capability | Used For | Latency Target |
-|---|---|---|---|
-| T0 | No model, local tools only | Room commands, app launching, file ops | <300ms |
-| T1 | Local fast (~1-3B) | Classification, paraphrasing, lightweight extraction | <800ms |
-| T2 | Local smart (~7-13B) | Medium reasoning, summarisation, simple code explanation | <3s |
-| T3 | Cloud fast/mid | General reasoning, web summaries, structured outputs, voice replies | <2s streaming |
-| T4 | Cloud frontier | Architecture review, complex debugging, hard multimodal | <5s streaming |
+| Tier | Capability                 | Used For                                                            | Latency Target |
+| ---- | -------------------------- | ------------------------------------------------------------------- | -------------- |
+| T0   | No model, local tools only | Room commands, app launching, file ops                              | <300ms         |
+| T1   | Local fast (~1-3B)         | Classification, paraphrasing, lightweight extraction                | <800ms         |
+| T2   | Local smart (~7-13B)       | Medium reasoning, summarisation, simple code explanation            | <3s            |
+| T3   | Cloud fast/mid             | General reasoning, web summaries, structured outputs, voice replies | <2s streaming  |
+| T4   | Cloud frontier             | Architecture review, complex debugging, hard multimodal             | <5s streaming  |
 
 ### 4.4 Cost Optimisation
 
@@ -125,6 +125,7 @@ Stage 4: within a capability tier, pick the cheapest engine from the registry th
 > **Standing Rule:** The bar is set by Claude and ChatGPT-class output. If a local model cannot match that bar for a given task class, that class does not run locally. Cost is never an excuse for a worse answer.
 
 **How quality is measured:**
+
 - Confidence scoring: below threshold → escalate
 - Structured output validation: malformed → automatic escalation
 - User rating feedback: thumbs-down marks that task class for cloud routing
@@ -133,17 +134,17 @@ Stage 4: within a capability tier, pick the cheapest engine from the registry th
 
 **Per-task-class quality bars:**
 
-| Task Class | Acceptable Locally | Bar Definition |
-|---|---|---|
-| Intent classification | Yes | >95% agreement with frontier model on test set |
-| Keyword extraction | Yes | Structured output passes schema validation |
-| Short paraphrase (<50 words) | Yes | User rating ≥4/5 on rolling sample |
-| Memory compression summaries | Conditional | Information retention check |
-| Document summary (>1 page) | Conditional | A/B against frontier; if local loses >20%, escalate |
-| Code explanation | Conditional | Technical accuracy check |
-| Code generation | No (early phases) | Always frontier until proven safe |
-| Architecture/design reasoning | No | Always frontier |
-| Voice conversational reply | Conditional | Naturalness + accuracy; user rating drives routing |
+| Task Class                    | Acceptable Locally | Bar Definition                                      |
+| ----------------------------- | ------------------ | --------------------------------------------------- |
+| Intent classification         | Yes                | >95% agreement with frontier model on test set      |
+| Keyword extraction            | Yes                | Structured output passes schema validation          |
+| Short paraphrase (<50 words)  | Yes                | User rating ≥4/5 on rolling sample                  |
+| Memory compression summaries  | Conditional        | Information retention check                         |
+| Document summary (>1 page)    | Conditional        | A/B against frontier; if local loses >20%, escalate |
+| Code explanation              | Conditional        | Technical accuracy check                            |
+| Code generation               | No (early phases)  | Always frontier until proven safe                   |
+| Architecture/design reasoning | No                 | Always frontier                                     |
+| Voice conversational reply    | Conditional        | Naturalness + accuracy; user rating drives routing  |
 
 ---
 
@@ -156,7 +157,7 @@ The registry is a YAML file. Models are added or replaced without code changes.
 models:
   - id: local-fast
     provider: ollama
-    model_name: llama3.2:3b        # swap to qwen3:3b, gemma3n, etc. freely
+    model_name: llama3.2:3b # swap to qwen3:3b, gemma3n, etc. freely
     tier: T1
     capabilities: [classification, extraction, paraphrase]
     cost_per_1k_tokens: 0.0
@@ -194,13 +195,13 @@ Provider wrappers in `models/providers/` implement a common interface. The regis
 
 ## 6. Provider Roles
 
-| Provider / Engine | Best Role | Rule |
-|---|---|---|
-| Local deterministic runtime | Fast actions, room automation | Use when no reasoning is needed |
-| Ollama (local runtime) | Compression, classification, first-pass summaries | Use when quality acceptable and privacy/cost matter |
-| OpenAI | Realtime voice, multimodal, general builder tasks | Use when latency/voice/multimodal quality matters |
-| Anthropic Claude | Deep critique, code review, architecture audit | Use as reviewer or complex reasoning engine |
-| Gemini / NotebookLM | Large document ingestion, Google ecosystem | Add later if needed, not core runtime |
+| Provider / Engine           | Best Role                                         | Rule                                                |
+| --------------------------- | ------------------------------------------------- | --------------------------------------------------- |
+| Local deterministic runtime | Fast actions, room automation                     | Use when no reasoning is needed                     |
+| Ollama (local runtime)      | Compression, classification, first-pass summaries | Use when quality acceptable and privacy/cost matter |
+| OpenAI                      | Realtime voice, multimodal, general builder tasks | Use when latency/voice/multimodal quality matters   |
+| Anthropic Claude            | Deep critique, code review, architecture audit    | Use as reviewer or complex reasoning engine         |
+| Gemini / NotebookLM         | Large document ingestion, Google ecosystem        | Add later if needed, not core runtime               |
 
 > **Anti-Bias Rule:** Jarvis selects the cheapest capable route, not the developer's preferred model.
 
@@ -208,15 +209,15 @@ Provider wrappers in `models/providers/` implement a common interface. The regis
 
 ## 7. Latency & Performance Budgets
 
-| Operation | P50 Target | P95 Target | Hard Ceiling |
-|---|---|---|---|
-| T0 deterministic command | <200ms | <400ms | 1s |
-| T1 local classification | <600ms | <1.2s | 2s |
-| T2 local reasoning | <2s | <4s | 8s |
-| T3 cloud reply (streamed first token) | <800ms | <1.5s | 3s |
-| T4 frontier reply (streamed first token) | <1.5s | <3s | 6s |
-| Wake word → STT → first reply token | <1.5s | <2.5s | 5s |
-| Voice round-trip (full reply spoken) | <5s | <10s | 20s |
+| Operation                                | P50 Target | P95 Target | Hard Ceiling |
+| ---------------------------------------- | ---------- | ---------- | ------------ |
+| T0 deterministic command                 | <200ms     | <400ms     | 1s           |
+| T1 local classification                  | <600ms     | <1.2s      | 2s           |
+| T2 local reasoning                       | <2s        | <4s        | 8s           |
+| T3 cloud reply (streamed first token)    | <800ms     | <1.5s      | 3s           |
+| T4 frontier reply (streamed first token) | <1.5s      | <3s        | 6s           |
+| Wake word → STT → first reply token      | <1.5s      | <2.5s      | 5s           |
+| Voice round-trip (full reply spoken)     | <5s        | <10s       | 20s          |
 
 When P95 drifts for a week, treat it as a bug.
 
@@ -225,16 +226,19 @@ When P95 drifts for a week, treat it as a bug.
 ## 8. Streaming Architecture
 
 ### 8.1 LLM Streaming
+
 - All cloud LLM calls use streaming mode by default
 - Tokens buffered into sentence chunks (split on `.` `!` `?` followed by space)
 - Each completed sentence dispatched to TTS immediately
 
 ### 8.2 TTS Streaming
+
 - OpenAI streaming TTS endpoint for cloud voice
 - Audio chunks play through a queue: sentence N plays while N+1 is being generated
 - Interrupt handling: user speech or "stop" command flushes the queue immediately
 
 ### 8.3 STT Streaming
+
 - Whisper or faster-whisper for local STT; OpenAI Realtime for cloud
 - Partial transcripts used for VAD-based end-of-turn detection
 
@@ -242,16 +246,16 @@ When P95 drifts for a week, treat it as a bug.
 
 ## 9. State Management & Persistence
 
-| State Type | Store | Rationale |
-|---|---|---|
-| Session conversation history | SQLite (jarvis.db) | Structured, queryable, survives restart |
-| Telemetry events | SQLite or local Parquet | Append-heavy, queryable for self-audit |
-| Logs (raw) | Rotating log files in logs/ | Easy to grep |
-| Hot session state | In-memory dict, optional Redis later | Fast access, recreatable on restart |
-| Memory summaries | Obsidian markdown files | Human-readable, vault-searchable |
-| Vector embeddings | Local Chroma or LanceDB | Cheap, fast, no external dependency |
-| Configuration | .env + YAML files in config/ | Version-controllable |
-| Prompts | Files in prompts/ under git | Versioned, diff-able, roll-back-able |
+| State Type                   | Store                                | Rationale                               |
+| ---------------------------- | ------------------------------------ | --------------------------------------- |
+| Session conversation history | SQLite (jarvis.db)                   | Structured, queryable, survives restart |
+| Telemetry events             | SQLite or local Parquet              | Append-heavy, queryable for self-audit  |
+| Logs (raw)                   | Rotating log files in logs/          | Easy to grep                            |
+| Hot session state            | In-memory dict, optional Redis later | Fast access, recreatable on restart     |
+| Memory summaries             | Obsidian markdown files              | Human-readable, vault-searchable        |
+| Vector embeddings            | Local Chroma or LanceDB              | Cheap, fast, no external dependency     |
+| Configuration                | .env + YAML files in config/         | Version-controllable                    |
+| Prompts                      | Files in prompts/ under git          | Versioned, diff-able, roll-back-able    |
 
 ---
 
@@ -323,21 +327,21 @@ jarvis/
 
 ## 11. Build Roadmap
 
-| Phase | Build Work | Exit Criteria |
-|---|---|---|
-| Phase 0 | Repo, Python env, cost cap module, logging skeleton, README, test framework, prompt versioning, calibration skeleton, Stuck Log template, Docker dev environment | Clean repo, tests run, cost caps enforce themselves |
-| Phase 1A | Typed input → Claude/OpenAI → TTS playback | First heartbeat of Jarvis |
-| Phase 1B | Provider wrappers (OpenAI, Anthropic, Ollama) | Same prompt routes through any provider via config |
-| Phase 1C | registry.yaml schema, loader, capability lookup | Picking a model is a registry call, not a hardcode |
-| Phase 1D | Router skeleton: intent, safety, capability, cost — each testable independently | Given 20 inputs, router picks correct tier on >90% |
-| Phase 2 | Local desktop tools, Build Log Mode, Self-Diagnostic v1 | Useful daily assistant; self-diagnostic works |
-| Phase 3 | Memory + Obsidian, Demo Mode v1, Cost Dashboard live | Cross-session context; can demo on command |
-| Phase 4 | Voice interface (streaming STT/TTS, interrupts), Cross-Device Trigger | Natural spoken interaction; triggerable from phone |
-| Phase 5 | Project assistant, Plugin Architecture refactor | Jarvis helps build TripSplit, itself, others |
-| Phase 6 | Smart room (Hue, FancyLED, Nanoleaf, Tapo, Aqara), mock-first per device | Bedroom is a responsive AI workspace |
-| Phase 7 | Vision layer (YOLOv8n, MediaPipe, Tesseract), Failure Replay | Jarvis can see desk and screen context |
-| Phase 8 | Daily self-audit, Scheduled Routines, Comparison Mode | Jarvis improves context, runs scheduled workflows |
-| Phase 9 | Dashboard, HUD, room visualisation, Interview Mode | Polished and demoable in any interview |
+| Phase    | Build Work                                                                                                                                                       | Exit Criteria                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Phase 0  | Repo, Python env, cost cap module, logging skeleton, README, test framework, prompt versioning, calibration skeleton, Stuck Log template, Docker dev environment | Clean repo, tests run, cost caps enforce themselves |
+| Phase 1A | Typed input → Claude/OpenAI → TTS playback                                                                                                                       | First heartbeat of Jarvis                           |
+| Phase 1B | Provider wrappers (OpenAI, Anthropic, Ollama)                                                                                                                    | Same prompt routes through any provider via config  |
+| Phase 1C | registry.yaml schema, loader, capability lookup                                                                                                                  | Picking a model is a registry call, not a hardcode  |
+| Phase 1D | Router skeleton: intent, safety, capability, cost — each testable independently                                                                                  | Given 20 inputs, router picks correct tier on >90%  |
+| Phase 2  | Local desktop tools, Build Log Mode, Self-Diagnostic v1                                                                                                          | Useful daily assistant; self-diagnostic works       |
+| Phase 3  | Memory + Obsidian, Demo Mode v1, Cost Dashboard live                                                                                                             | Cross-session context; can demo on command          |
+| Phase 4  | Voice interface (streaming STT/TTS, interrupts), Cross-Device Trigger                                                                                            | Natural spoken interaction; triggerable from phone  |
+| Phase 5  | Project assistant, Plugin Architecture refactor                                                                                                                  | Jarvis helps build TripSplit, itself, others        |
+| Phase 6  | Smart room (Hue, FancyLED, Nanoleaf, Tapo, Aqara), mock-first per device                                                                                         | Bedroom is a responsive AI workspace                |
+| Phase 7  | Vision layer (YOLOv8n, MediaPipe, Tesseract), Failure Replay                                                                                                     | Jarvis can see desk and screen context              |
+| Phase 8  | Daily self-audit, Scheduled Routines, Comparison Mode                                                                                                            | Jarvis improves context, runs scheduled workflows   |
+| Phase 9  | Dashboard, HUD, room visualisation, Interview Mode                                                                                                               | Polished and demoable in any interview              |
 
 ---
 
@@ -345,24 +349,24 @@ jarvis/
 
 ### Room States
 
-| State | Lighting | Jarvis Behaviour |
-|---|---|---|
-| Focus mode | Cool white desk + dim ambient blue | Short replies, task-focused |
-| Gaming mode | FancyLED sync + low ambient Hue | Minimal interruptions |
-| Approval needed | Blue pulse | Ask yes/no |
-| No response reminder | Purple pulse after timeout | Repeat concise prompt |
-| Error / build failed | Red pulse | Explain error and next fix |
-| Night mode | Warm dim | Calm, low-energy replies |
+| State                | Lighting                           | Jarvis Behaviour            |
+| -------------------- | ---------------------------------- | --------------------------- |
+| Focus mode           | Cool white desk + dim ambient blue | Short replies, task-focused |
+| Gaming mode          | FancyLED sync + low ambient Hue    | Minimal interruptions       |
+| Approval needed      | Blue pulse                         | Ask yes/no                  |
+| No response reminder | Purple pulse after timeout         | Repeat concise prompt       |
+| Error / build failed | Red pulse                          | Explain error and next fix  |
+| Night mode           | Warm dim                           | Calm, low-energy replies    |
 
 ### Hardware Failure Modes
 
-| Failure | Detection | Response |
-|---|---|---|
-| Hue bridge offline | API timeout >2s | Fail soft, speak 'lights unreachable', continue |
-| Aqara false-positive | Repeated trigger with no follow-up within 60s | Confidence decay; require corroborating signal |
-| Aqara false-negative | User speaks but no presence event | Trust voice input over sensor |
-| Camera covered | Uniform frame or stream error | Disable vision tier, notify |
-| HomePod unreachable | Speaker discovery fails | Fall back to local laptop audio |
+| Failure              | Detection                                     | Response                                        |
+| -------------------- | --------------------------------------------- | ----------------------------------------------- |
+| Hue bridge offline   | API timeout >2s                               | Fail soft, speak 'lights unreachable', continue |
+| Aqara false-positive | Repeated trigger with no follow-up within 60s | Confidence decay; require corroborating signal  |
+| Aqara false-negative | User speaks but no presence event             | Trust voice input over sensor                   |
+| Camera covered       | Uniform frame or stream error                 | Disable vision tier, notify                     |
+| HomePod unreachable  | Speaker discovery fails                       | Fall back to local laptop audio                 |
 
 ### Mock-First Hardware
 
@@ -372,13 +376,13 @@ Every hardware tool has a mock in `tools/room_tools/mocks/`. Mock is default in 
 
 ## 13. Vision Layer
 
-| Task | Local Tool | Cloud Fallback | Trigger |
-|---|---|---|---|
-| Object detection | YOLOv8n | Claude/GPT vision | Local confidence <0.6 |
-| OCR (printed) | Tesseract or PaddleOCR | Cloud vision | Quality below threshold |
-| OCR (handwritten) | PaddleOCR or TrOCR | Cloud vision | Always fallback if quality matters |
-| Pose/gesture | MediaPipe | — | — |
-| Scene understanding | — | Cloud vision required | Always cloud |
+| Task                | Local Tool             | Cloud Fallback        | Trigger                            |
+| ------------------- | ---------------------- | --------------------- | ---------------------------------- |
+| Object detection    | YOLOv8n                | Claude/GPT vision     | Local confidence <0.6              |
+| OCR (printed)       | Tesseract or PaddleOCR | Cloud vision          | Quality below threshold            |
+| OCR (handwritten)   | PaddleOCR or TrOCR     | Cloud vision          | Always fallback if quality matters |
+| Pose/gesture        | MediaPipe              | —                     | —                                  |
+| Scene understanding | —                      | Cloud vision required | Always cloud                       |
 
 All vision tasks on sampled frames (1 fps default), never continuous video.
 
@@ -386,14 +390,14 @@ All vision tasks on sampled frames (1 fps default), never continuous video.
 
 ## 14. Safety & Permission Model
 
-| Action Type | Default Permission |
-|---|---|
-| Safe local actions | Allowed |
-| Reversible edits | Ask once per session/project |
-| Destructive actions | Always confirm |
-| External actions | Always confirm |
-| Terminal commands | Confirm unless whitelisted |
-| Cloud upload of sensitive data | Confirm |
+| Action Type                    | Default Permission           |
+| ------------------------------ | ---------------------------- |
+| Safe local actions             | Allowed                      |
+| Reversible edits               | Ask once per session/project |
+| Destructive actions            | Always confirm               |
+| External actions               | Always confirm               |
+| Terminal commands              | Confirm unless whitelisted   |
+| Cloud upload of sensitive data | Confirm                      |
 
 **Emergency stop:** "Jarvis stop now" interrupts active workflows immediately.
 
@@ -401,13 +405,13 @@ All vision tasks on sampled frames (1 fps default), never continuous video.
 
 ## 15. Memory System
 
-| Memory Type | Stored In | Purpose |
-|---|---|---|
-| Session logs | SQLite + Obsidian daily note | What happened today |
-| Project memory | Obsidian project pages | Repo state, decisions, roadmap |
-| Preference memory | Local YAML/SQLite | Style, tool choices, safety preferences |
-| Operational memory | Telemetry SQLite | Model performance, cost, latency, failures |
-| Vector memory | Local Chroma/LanceDB | Retrieve relevant past context |
+| Memory Type        | Stored In                    | Purpose                                    |
+| ------------------ | ---------------------------- | ------------------------------------------ |
+| Session logs       | SQLite + Obsidian daily note | What happened today                        |
+| Project memory     | Obsidian project pages       | Repo state, decisions, roadmap             |
+| Preference memory  | Local YAML/SQLite            | Style, tool choices, safety preferences    |
+| Operational memory | Telemetry SQLite             | Model performance, cost, latency, failures |
+| Vector memory      | Local Chroma/LanceDB         | Retrieve relevant past context             |
 
 ---
 
@@ -450,12 +454,15 @@ CREATE TABLE events (
 ```
 
 ### 17.1 Self-Diagnostic Mode
+
 Command: "Jarvis, audit yourself." Reports provider connectivity, registry validity, calibration scores, cost burn, telemetry health, sensor reachability, test suite status. Output to voice (summary) and Obsidian (full report).
 
 ### 17.2 Failure Replay
+
 Replay decision tree from telemetry: `input → intent → safety → routed model → output → error or success`.
 
 ### 17.3 Comparison Mode
+
 Same query through multiple models, side-by-side output, logged to telemetry. Powers calibration suite.
 
 ---
@@ -463,10 +470,13 @@ Same query through multiple models, side-by-side output, logged to telemetry. Po
 ## 18. Testing & Quality Gates
 
 ### 18.1 Prompt Versioning
+
 Prompts live in `prompts/` under git. Changes committed with `feat/prompt` or `fix/prompt`. Rollback = `git revert`. Every model call logs the prompt file hash.
 
 ### 18.2 Stuck Log Protocol
+
 When stuck >2 hours:
+
 1. Document what was tried, what failed, what was expected
 2. Ask Claude/ChatGPT with the log as context
 3. Time-box another 2 hours
@@ -474,6 +484,7 @@ When stuck >2 hours:
 5. Stuck logs → `docs/stuck_log/` → become interview material
 
 ### 18.3 Build Log Mode
+
 Every meaningful commit auto-generates an Obsidian journal entry. Weekly digests → public LinkedIn build log.
 
 ---
@@ -491,14 +502,14 @@ Every meaningful commit auto-generates an Obsidian journal entry. Weekly digests
 
 ## 20. Hardware Reality Check (16GB M4 MacBook Air)
 
-| Component | Approx RAM |
-|---|---|
-| macOS baseline | 3-4 GB |
-| Chrome (10 tabs) | 2-3 GB |
-| VS Code + project | 1.5-2 GB |
-| Jarvis runtime (Python) | 0.5-1 GB |
-| Local 3B model (Ollama) | 2-3 GB |
-| Local 7B model | 4-5 GB |
+| Component               | Approx RAM |
+| ----------------------- | ---------- |
+| macOS baseline          | 3-4 GB     |
+| Chrome (10 tabs)        | 2-3 GB     |
+| VS Code + project       | 1.5-2 GB   |
+| Jarvis runtime (Python) | 0.5-1 GB   |
+| Local 3B model (Ollama) | 2-3 GB     |
+| Local 7B model          | 4-5 GB     |
 
 **Conclusion:** 16GB handles Jarvis + 3B model comfortably. 7B workable with limited browser tabs. 13B impractical. Phases 1-3: 16GB is fine.
 
@@ -508,12 +519,12 @@ Every meaningful commit auto-generates an Obsidian journal entry. Weekly digests
 
 Resolved via `registry.yaml` — not hardcoded.
 
-| Task Class | Recommended Model | Runtime |
-|---|---|---|
-| Intent classification / extraction | Gemma 3n E4B or Qwen3 3B | Ollama |
-| General reasoning (7B tier) | Mistral Medium 3.5 or Qwen3 7B | Ollama |
-| Code assistance (local) | Qwen3 Coder or Codestral | Ollama |
-| Lightweight / fast | Gemma 3n E4B or Jan-Nano | Ollama |
+| Task Class                         | Recommended Model              | Runtime |
+| ---------------------------------- | ------------------------------ | ------- |
+| Intent classification / extraction | Gemma 3n E4B or Qwen3 3B       | Ollama  |
+| General reasoning (7B tier)        | Mistral Medium 3.5 or Qwen3 7B | Ollama  |
+| Code assistance (local)            | Qwen3 Coder or Codestral       | Ollama  |
+| Lightweight / fast                 | Gemma 3n E4B or Jan-Nano       | Ollama  |
 
 Models update quarterly. The registry is the only file that changes.
 
@@ -534,40 +545,40 @@ Models update quarterly. The registry is the only file that changes.
 
 ## 23. Differentiating Capability Set
 
-| Capability | What It Is | Where It Lives | Phase |
-|---|---|---|---|
-| Cost Cap Module | Hard limits enforced by orchestrator | `core/cost_guard/` | Phase 0 |
-| Build Log Mode | Auto-journals commits to Obsidian; public build log | `obsidian/build_log/` | Phase 2 |
-| Self-Diagnostic | "Jarvis, audit yourself." Full system health report | `core/diagnostics/` | Phase 2 |
-| Cost Dashboard | Real-time web view of API spend | `apps/dashboard/` | Phase 3 |
-| Demo Mode | Scripted tour of capabilities, 30-60s segments | `docs/demos/` | Phase 3 |
-| Cross-Device Trigger | Mobile web interface for commands away from desk | `apps/mobile/` | Phase 4 |
-| Plugin Architecture | Runtime-loaded capabilities, zero core changes | `plugins/` | Phase 5 |
-| Failure Replay | Replay decision trees from telemetry | `core/diagnostics/` | Phase 7 |
-| Comparison Mode | Same query through multiple models, side-by-side | `core/diagnostics/` | Phase 8 |
-| Scheduled Routines | Cron-like autonomous workflows | `core/scheduler/` | Phase 8 |
-| Interview Mode | 3-5 min scripted demo flow for live interviews | `docs/demos/interview/` | Phase 9 |
+| Capability           | What It Is                                          | Where It Lives          | Phase   |
+| -------------------- | --------------------------------------------------- | ----------------------- | ------- |
+| Cost Cap Module      | Hard limits enforced by orchestrator                | `core/cost_guard/`      | Phase 0 |
+| Build Log Mode       | Auto-journals commits to Obsidian; public build log | `obsidian/build_log/`   | Phase 2 |
+| Self-Diagnostic      | "Jarvis, audit yourself." Full system health report | `core/diagnostics/`     | Phase 2 |
+| Cost Dashboard       | Real-time web view of API spend                     | `apps/dashboard/`       | Phase 3 |
+| Demo Mode            | Scripted tour of capabilities, 30-60s segments      | `docs/demos/`           | Phase 3 |
+| Cross-Device Trigger | Mobile web interface for commands away from desk    | `apps/mobile/`          | Phase 4 |
+| Plugin Architecture  | Runtime-loaded capabilities, zero core changes      | `plugins/`              | Phase 5 |
+| Failure Replay       | Replay decision trees from telemetry                | `core/diagnostics/`     | Phase 7 |
+| Comparison Mode      | Same query through multiple models, side-by-side    | `core/diagnostics/`     | Phase 8 |
+| Scheduled Routines   | Cron-like autonomous workflows                      | `core/scheduler/`       | Phase 8 |
+| Interview Mode       | 3-5 min scripted demo flow for live interviews      | `docs/demos/interview/` | Phase 9 |
 
 ---
 
 ## 24. Immediate Next Actions
 
-| Priority | Action | Owner |
-|---|---|---|
-| P0 | Move Jarvis folder out of OneDrive sync | Prince |
-| P0 | Implement cost cap module before Phase 1A closes | Prince + Claude |
-| P0 | Set up daily commit habit + weekly Obsidian note | Prince |
-| P1 | Phase 1B: provider wrappers | Prince + Claude |
-| P1 | Phase 1C: registry.yaml + calibration skeleton | Prince + Claude |
-| P1 | Phase 1D: router skeleton (4 stages) | Prince + Claude |
-| P1 | Test suite skeleton + pre-commit hook | Prince |
-| P1 | First build log video posted to LinkedIn | Prince |
-| P1 | Docker dev environment for Mac migration | Prince + Claude |
-| P2 | Obsidian vault structure + session summary template | Prince |
-| P2 | Three-tier backup discipline | Prince |
-| P3 | Benchmark local models on MacBook | Prince |
-| P3 | Telemetry table + first dashboard query | Prince + Claude |
+| Priority | Action                                              | Owner           |
+| -------- | --------------------------------------------------- | --------------- |
+| P0       | Move Jarvis folder out of OneDrive sync             | Prince          |
+| P0       | Implement cost cap module before Phase 1A closes    | Prince + Claude |
+| P0       | Set up daily commit habit + weekly Obsidian note    | Prince          |
+| P1       | Phase 1B: provider wrappers                         | Prince + Claude |
+| P1       | Phase 1C: registry.yaml + calibration skeleton      | Prince + Claude |
+| P1       | Phase 1D: router skeleton (4 stages)                | Prince + Claude |
+| P1       | Test suite skeleton + pre-commit hook               | Prince          |
+| P1       | First build log video posted to LinkedIn            | Prince          |
+| P1       | Docker dev environment for Mac migration            | Prince + Claude |
+| P2       | Obsidian vault structure + session summary template | Prince          |
+| P2       | Three-tier backup discipline                        | Prince          |
+| P3       | Benchmark local models on MacBook                   | Prince          |
+| P3       | Telemetry table + first dashboard query             | Prince + Claude |
 
 ---
 
-*JARVIS Architecture v3.1 — Prince Anozie — 14 May 2026*
+_JARVIS Architecture v3.1 — Prince Anozie — 14 May 2026_

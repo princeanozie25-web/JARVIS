@@ -3,6 +3,9 @@ import { z } from "zod";
 export const MAX_CHAT_MESSAGES = 50;
 export const MAX_CHAT_MESSAGE_CHARS = 4000;
 
+export const SUPPORTED_PROVIDERS = ["openai", "anthropic"] as const;
+export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
+
 export const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
   content: z
@@ -18,5 +21,9 @@ export const ChatRequestSchema = z.object({
   messages: z
     .array(MessageSchema)
     .min(1, "messages must not be empty")
-    .max(MAX_CHAT_MESSAGES, `messages must contain ${MAX_CHAT_MESSAGES} items or fewer`),
+    .max(
+      MAX_CHAT_MESSAGES,
+      `messages must contain ${MAX_CHAT_MESSAGES} items or fewer`,
+    ),
+  provider: z.enum(SUPPORTED_PROVIDERS).optional(),
 });

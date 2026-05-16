@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(
       { message: "Invalid JSON body." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
         message: "Invalid request body.",
         issues: parsed.error.issues,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       {
         status: 429,
         headers: { "Retry-After": String(retryAfterSec) },
-      }
+      },
     );
   }
 
@@ -88,9 +88,13 @@ export async function POST(req: Request) {
         spent: guard.spent,
         limit: guard.limit,
       },
-      { status: 429 }
+      { status: 429 },
     );
   }
+
+  const providerId = parsed.data.provider ?? "openai";
+  const providerModel =
+    providerId === "anthropic" ? config.anthropic.model : config.openai.model;
 
   const startedAt = Date.now();
   let systemPromptHash = "";
@@ -110,9 +114,9 @@ export async function POST(req: Request) {
       req.signal.addEventListener("abort", onClientAbort);
     }
 
-    const provider = registry.get("openai");
+    const provider = registry.get(providerId);
     const streamResult = await provider.stream(messages, {
-      model: config.openai.model,
+      model: providerModel,
       signal: ac.signal,
     });
 
@@ -148,7 +152,7 @@ export async function POST(req: Request) {
                 recordEvent({
                   event_type: "client_disconnect",
                   success: false,
-                  model_id: config.openai.model,
+                  model_id: providerModel,
                   latency_ms: Date.now() - startedAt,
                   notes: event.message,
                 });
@@ -156,7 +160,7 @@ export async function POST(req: Request) {
                 recordEvent({
                   event_type: "provider_error",
                   success: false,
-                  model_id: config.openai.model,
+                  model_id: providerModel,
                   latency_ms: Date.now() - startedAt,
                   error_class: "StreamError",
                   notes: event.message,
@@ -170,12 +174,10 @@ export async function POST(req: Request) {
           recordEvent({
             event_type: "provider_error",
             success: false,
-            model_id: config.openai.model,
+            model_id: providerModel,
             latency_ms: Date.now() - startedAt,
             error_class:
-              error instanceof Error
-                ? error.constructor.name
-                : "UnknownError",
+              error instanceof Error ? error.constructor.name : "UnknownError",
             notes: error instanceof Error ? error.message : String(error),
           });
           controller.error(error);
@@ -192,7 +194,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "X-Content-Type-Options": "nosniff",
       },
     });
@@ -202,7 +204,7 @@ export async function POST(req: Request) {
     recordEvent({
       event_type: "provider_error",
       success: false,
-      model_id: config.openai.model,
+      model_id: providerModel,
       latency_ms: Date.now() - startedAt,
       error_class:
         error instanceof Error ? error.constructor.name : "UnknownError",
@@ -215,7 +217,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

@@ -31,6 +31,7 @@ Building this is also how I'm proving to myself — and to recruiters — that I
 ## What runs today
 
 **Phase 1A — Typed Core Loop** ✓
+
 - `jarvis.py` accepts typed input from terminal
 - Sends to Claude (Sonnet 4.5) with a system prompt
 - Maintains conversation history within the session
@@ -55,34 +56,34 @@ The full architecture document is private during early development and will be o
 
 ## Roadmap
 
-| Phase | Capability | Status |
-|---|---|---|
-| 0 | Foundations, cost caps, test framework, Docker dev env | In progress |
-| 1A | Typed core loop (typed → Claude → TTS) | ✓ |
-| 1B | Provider wrappers (OpenAI, Anthropic, Ollama) | Next |
-| 1C | Model registry + calibration suite | Planned |
-| 1D | Router (intent, safety, capability, cost stages) | Planned |
-| 2 | Local desktop tools (files, apps, documents) | Planned |
-| 3 | Memory + Obsidian integration | Planned |
-| 4 | Voice interface (streaming STT, streaming TTS, interrupts) | Planned |
-| 5 | Project assistant (repo inspection, test runner, patches) | Planned |
-| 6 | Smart room (Hue, presence sensors, ambient feedback) | Planned |
-| 7 | Vision layer (YOLOv8n, MediaPipe, OCR) | Planned |
-| 8 | Daily self-audit + scheduled routines | Planned |
-| 9 | Dashboard, demo mode, interview mode | Planned |
+| Phase | Capability                                                 | Status      |
+| ----- | ---------------------------------------------------------- | ----------- |
+| 0     | Foundations, cost caps, test framework, Docker dev env     | In progress |
+| 1A    | Typed core loop (typed → Claude → TTS)                     | ✓           |
+| 1B    | Provider wrappers (OpenAI, Anthropic, Ollama)              | Next        |
+| 1C    | Model registry + calibration suite                         | Planned     |
+| 1D    | Router (intent, safety, capability, cost stages)           | Planned     |
+| 2     | Local desktop tools (files, apps, documents)               | Planned     |
+| 3     | Memory + Obsidian integration                              | Planned     |
+| 4     | Voice interface (streaming STT, streaming TTS, interrupts) | Planned     |
+| 5     | Project assistant (repo inspection, test runner, patches)  | Planned     |
+| 6     | Smart room (Hue, presence sensors, ambient feedback)       | Planned     |
+| 7     | Vision layer (YOLOv8n, MediaPipe, OCR)                     | Planned     |
+| 8     | Daily self-audit + scheduled routines                      | Planned     |
+| 9     | Dashboard, demo mode, interview mode                       | Planned     |
 
 ## Tech stack
 
-| Layer | Tools |
-|---|---|
-| Language | Python 3.11+ |
-| Cloud AI | Anthropic Claude Sonnet 4.5, OpenAI (GPT-4, Whisper, TTS) |
-| Local AI runtime | Ollama |
-| Local models (registry-resolved) | Qwen3, Mistral, Gemma, Hermes |
-| Storage | SQLite (telemetry, sessions), Chroma (vector), Obsidian (memory vault) |
-| Vision (future) | YOLOv8n, MediaPipe, Tesseract / PaddleOCR |
-| Hardware (future) | Philips Hue, Aqara FP2, Nanoleaf, Tapo, HomePod mini |
-| Dev / infra | Docker, pytest, pre-commit hooks |
+| Layer                            | Tools                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------- |
+| Language                         | Python 3.11+                                                           |
+| Cloud AI                         | Anthropic Claude Sonnet 4.5, OpenAI (GPT-4, Whisper, TTS)              |
+| Local AI runtime                 | Ollama                                                                 |
+| Local models (registry-resolved) | Qwen3, Mistral, Gemma, Hermes                                          |
+| Storage                          | SQLite (telemetry, sessions), Chroma (vector), Obsidian (memory vault) |
+| Vision (future)                  | YOLOv8n, MediaPipe, Tesseract / PaddleOCR                              |
+| Hardware (future)                | Philips Hue, Aqara FP2, Nanoleaf, Tapo, HomePod mini                   |
+| Dev / infra                      | Docker, pytest, pre-commit hooks                                       |
 
 ## Setup
 
@@ -115,4 +116,4 @@ Built by **Prince Anozie** — final-year Cyber Securityy student at Manchester 
 
 ---
 
-*This is a public build log. Demo videos and progress updates are posted monthly on LinkedIn. If you're a recruiter and want to see something specific running, [reach out](https://linkedin.com/in/princeanozie) — I can demo whatever phase is current.*
+_This is a public build log. Demo videos and progress updates are posted monthly on LinkedIn. If you're a recruiter and want to see something specific running, [reach out](https://linkedin.com/in/princeanozie) — I can demo whatever phase is current._

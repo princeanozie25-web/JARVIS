@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+build
+coverage
+.husky
+package-lock.json
+*.docx
+*.pdf
+.env*
