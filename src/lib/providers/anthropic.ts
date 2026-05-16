@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { config } from "../config";
 import { calculateCostUsd } from "../cost";
+import { config } from "../runtime/config";
 import type { Message } from "../types";
 import { splitSystemPrompt } from "./anthropic-messages";
 import type {

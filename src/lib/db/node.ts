@@ -1,7 +1,5 @@
-import "server-only";
-
 export { applyMigrations, SCHEMA_SQL } from "./schema";
-export { getDb, closeDb } from "./client";
+export { getDb, closeDb } from "./client-node";
 export {
   createSessionIfMissing,
   createSession,

@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-16 4:09pm GMT+1
+# [jarvis] recent context, 2026-05-16 9:52pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 25 obs (10,632t read) | 350,340t work | 97% savings
+Stats: 26 obs (10,869t read) | 350,672t work | 97% savings
 
 ### May 16, 2026
 
@@ -47,6 +47,7 @@ S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.m
 102 " 🔵 JARVIS Audit PDF Confirmed at 23KB; DOCX Also Exists in docs/
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
 118 3:07p ⚖️ Safe Fallback for Unknown Model Pricing Instead of Hard Throw
+230 9:52p 🔵 Jarvis Codebase Scan — AGENTS.md Modified
 
-Access 350k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 351k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

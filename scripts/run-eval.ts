@@ -9,7 +9,7 @@
  * local env file is honoured even when the shell has not exported the keys.
  */
 
-import { getDb } from "../src/lib/db";
+import { getDb } from "../src/lib/db/node";
 import { DEFAULT_EVAL_CASES, runEval } from "../src/lib/evals";
 import { models } from "../src/lib/models";
 
