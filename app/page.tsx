@@ -13,9 +13,10 @@ export default function Home() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function sendMessage() {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const newMessages: Message[] = [
       ...messages,
@@ -25,28 +26,38 @@ export default function Home() {
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    setError(null);
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messages: newMessages,
-      }),
-    });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: newMessages,
+        }),
+      });
 
-    const data = await res.json();
+      if (!res.ok) {
+        setError(`Request failed (${res.status}). Please try again.`);
+        return;
+      }
 
-    setMessages([
-      ...newMessages,
-      {
-        role: "assistant",
-        content: data.message,
-      },
-    ]);
+      const data = await res.json();
 
-    setLoading(false);
+      setMessages([
+        ...newMessages,
+        {
+          role: "assistant",
+          content: data.message,
+        },
+      ]);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -77,15 +88,26 @@ export default function Home() {
               JARVIS is thinking...
             </div>
           )}
+
+          {error && (
+            <div
+              role="alert"
+              className="border border-red-500 bg-red-950 text-red-200 mr-12 p-4 rounded-xl"
+            >
+              <p className="text-sm text-red-400 mb-1 uppercase">Error</p>
+              <p>{error}</p>
+            </div>
+          )}
         </div>
       </section>
 
       <section className="w-full max-w-3xl flex gap-3 mt-6">
         <input
-          className="flex-1 rounded-xl bg-gray-900 border border-gray-700 p-4 outline-none"
+          className="flex-1 rounded-xl bg-gray-900 border border-gray-700 p-4 outline-none disabled:opacity-50"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Message JARVIS..."
+          disabled={loading}
           onKeyDown={(e) => {
             if (e.key === "Enter") sendMessage();
           }}
@@ -93,7 +115,8 @@ export default function Home() {
 
         <button
           onClick={sendMessage}
-          className="rounded-xl bg-white text-black px-6 font-semibold"
+          disabled={loading || !input.trim()}
+          className="rounded-xl bg-white text-black px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send
         </button>
