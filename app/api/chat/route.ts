@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { config } from "@/src/lib/config";
+import { canExecuteRequest, usage } from "@/src/lib/cost";
 import { registry } from "@/src/lib/providers";
+
+const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
@@ -34,11 +37,27 @@ export async function POST(req: Request) {
     );
   }
 
+  const guard = canExecuteRequest();
+  if (!guard.ok) {
+    return NextResponse.json(
+      {
+        message: guard.message,
+        reason: guard.reason,
+        period: guard.period,
+        spent: guard.spent,
+        limit: guard.limit,
+      },
+      { status: 429 }
+    );
+  }
+
   try {
     const provider = registry.get("openai");
     const result = await provider.generate(parsed.data.messages, {
       model: config.openai.model,
     });
+
+    usage.record(PLACEHOLDER_COST_PER_REQUEST_USD);
 
     return NextResponse.json({
       message: result.content,
