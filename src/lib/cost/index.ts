@@ -1,5 +1,5 @@
 export { canExecuteRequest } from "./guard";
-export { calculateOpenAICostUsd } from "./pricing";
+export { calculateCostUsd } from "./pricing";
 export { usage } from "./usage";
 export type { UsageStore } from "./usage";
 export { budget } from "./config";

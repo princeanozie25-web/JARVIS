@@ -1,19 +1,9 @@
-interface TokenPricing {
-  inputPerMillionUsd: number;
-  outputPerMillionUsd: number;
-}
+import { models } from "../models";
 
 const FALLBACK_COST_USD = 0.001;
 
-const OPENAI_TEXT_PRICING: Record<string, TokenPricing> = {
-  "gpt-4o-mini": {
-    inputPerMillionUsd: 0.15,
-    outputPerMillionUsd: 0.6,
-  },
-};
-
-export function calculateOpenAICostUsd(
-  model: string,
+export function calculateCostUsd(
+  modelName: string,
   inputTokens?: number,
   outputTokens?: number,
 ): number {
@@ -21,16 +11,20 @@ export function calculateOpenAICostUsd(
     return FALLBACK_COST_USD;
   }
 
-  const pricing = OPENAI_TEXT_PRICING[model];
-  if (!pricing) {
+  const entry = models.getByModelName(modelName);
+  if (!entry) {
     console.warn(
-      `[cost/pricing] missing OpenAI pricing for model "${model}"; using fallback $${FALLBACK_COST_USD}/call`,
+      `[cost/pricing] unknown model "${modelName}"; using fallback $${FALLBACK_COST_USD}/call`,
     );
     return FALLBACK_COST_USD;
   }
 
+  if (!entry.pricing) {
+    return FALLBACK_COST_USD;
+  }
+
   return (
-    (inputTokens / 1_000_000) * pricing.inputPerMillionUsd +
-    (outputTokens / 1_000_000) * pricing.outputPerMillionUsd
+    (inputTokens / 1_000_000) * entry.pricing.inputPerMillionUsd +
+    (outputTokens / 1_000_000) * entry.pricing.outputPerMillionUsd
   );
 }

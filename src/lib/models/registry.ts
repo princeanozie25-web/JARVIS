@@ -25,6 +25,13 @@ export class ModelRegistry {
     return filter ? all.filter(filter) : all;
   }
 
+  getByModelName(modelName: string): ModelEntry | undefined {
+    for (const entry of this.entries.values()) {
+      if (entry.modelName === modelName) return entry;
+    }
+    return undefined;
+  }
+
   getDefaultForProvider(provider: ProviderId): ModelEntry {
     const candidate = this.list(
       (entry) => entry.provider === provider && entry.enabled,

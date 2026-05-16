@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { config } from "../config";
-import { calculateOpenAICostUsd } from "../cost";
+import { calculateCostUsd } from "../cost";
 import type { Message } from "../types";
 import type {
   ChatProvider,
@@ -46,7 +46,7 @@ export class OpenAIProvider implements ChatProvider {
       modelId: response.model ?? opts.model,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
-      costUsd: calculateOpenAICostUsd(
+      costUsd: calculateCostUsd(
         opts.model,
         response.usage?.prompt_tokens,
         response.usage?.completion_tokens,
@@ -111,11 +111,7 @@ export class OpenAIProvider implements ChatProvider {
             modelId,
             inputTokens,
             outputTokens,
-            costUsd: calculateOpenAICostUsd(
-              opts.model,
-              inputTokens,
-              outputTokens,
-            ),
+            costUsd: calculateCostUsd(opts.model, inputTokens, outputTokens),
             latencyMs: Date.now() - startedAt,
             timeToFirstTokenMs,
           },

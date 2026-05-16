@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config";
+import { calculateCostUsd } from "../cost";
 import type { Message } from "../types";
 import { splitSystemPrompt } from "./anthropic-messages";
 import type {
@@ -12,7 +13,6 @@ import type {
 } from "./types";
 
 const DEFAULT_MAX_TOKENS = 4096;
-const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
 
 export { splitSystemPrompt } from "./anthropic-messages";
 export type { AnthropicMessage } from "./anthropic-messages";
@@ -67,7 +67,7 @@ export class AnthropicProvider implements ChatProvider {
       modelId: response.model ?? opts.model,
       inputTokens,
       outputTokens,
-      costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+      costUsd: calculateCostUsd(opts.model, inputTokens, outputTokens),
       latencyMs,
     };
   }
@@ -136,7 +136,7 @@ export class AnthropicProvider implements ChatProvider {
             modelId,
             inputTokens,
             outputTokens,
-            costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+            costUsd: calculateCostUsd(opts.model, inputTokens, outputTokens),
             latencyMs: Date.now() - startedAt,
             timeToFirstTokenMs,
           },

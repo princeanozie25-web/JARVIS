@@ -1,26 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { calculateOpenAICostUsd } from "./pricing";
+import { calculateCostUsd } from "./pricing";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("calculateOpenAICostUsd", () => {
-  it("calculates token-based cost for gpt-4o-mini", () => {
-    expect(calculateOpenAICostUsd("gpt-4o-mini", 1_000, 2_000)).toBeCloseTo(
-      0.00135,
-    );
+describe("calculateCostUsd", () => {
+  it("calculates token-based cost for a registered model with pricing", () => {
+    expect(calculateCostUsd("gpt-4o-mini", 1_000, 2_000)).toBeCloseTo(0.00135);
   });
 
   it("uses a safe fallback when usage is missing", () => {
-    expect(calculateOpenAICostUsd("gpt-4o-mini")).toBe(0.001);
-    expect(calculateOpenAICostUsd("gpt-4o-mini", 1_000)).toBe(0.001);
+    expect(calculateCostUsd("gpt-4o-mini")).toBe(0.001);
+    expect(calculateCostUsd("gpt-4o-mini", 1_000)).toBe(0.001);
   });
 
-  it("falls back to a safe cost and warns when model pricing is unknown", () => {
+  it("falls back silently when the model is registered without pricing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(calculateCostUsd("claude-haiku-4-5-20251001", 1_000, 2_000)).toBe(
+      0.001,
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
 
-    expect(calculateOpenAICostUsd("unknown-model", 1, 1)).toBe(0.001);
+  it("falls back with a warning when the model is not registered at all", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(calculateCostUsd("unknown-model", 1, 1)).toBe(0.001);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0]?.[0]).toContain("unknown-model");
   });
