@@ -1,23 +1,45 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StreamEvent } from "@/lib/providers";
 import type { Message } from "@/lib/types";
 
 const MAX_MESSAGES_TO_SEND = 50;
 
+type UiMessage = Message & {
+  id: string;
+};
+
+function createMessage(role: Message["role"], content: string): UiMessage {
+  return {
+    id: globalThis.crypto.randomUUID(),
+    role,
+    content,
+  };
+}
+
+function toApiMessage(message: UiMessage): Message {
+  return {
+    role: message.role,
+    content: message.content,
+  };
+}
+
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "JARVIS online. How can I help?",
-    },
+  const [messages, setMessages] = useState<UiMessage[]>([
+    createMessage("assistant", "JARVIS online. How can I help?"),
   ]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingStarted, setStreamingStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    scrollAnchorRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, loading, error]);
 
   function stop() {
     abortRef.current?.abort();
@@ -26,14 +48,16 @@ export default function Home() {
   async function sendMessage() {
     if (!input.trim() || loading) return;
 
-    const newMessages: Message[] = [
+    const assistantMessageId = globalThis.crypto.randomUUID();
+    const newMessages: UiMessage[] = [
       ...messages,
-      { role: "user", content: input },
+      createMessage("user", input),
     ];
 
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    setStreamingStarted(false);
     setError(null);
 
     const ac = new AbortController();
@@ -46,7 +70,9 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: newMessages.slice(-MAX_MESSAGES_TO_SEND),
+          messages: newMessages
+            .slice(-MAX_MESSAGES_TO_SEND)
+            .map(toApiMessage),
         }),
         signal: ac.signal,
       });
@@ -68,7 +94,7 @@ export default function Home() {
 
       setMessages([
         ...newMessages,
-        { role: "assistant", content: "" },
+        { id: assistantMessageId, role: "assistant", content: "" },
       ]);
 
       while (true) {
@@ -95,11 +121,15 @@ export default function Home() {
           }
 
           if (event.type === "text") {
+            setStreamingStarted(true);
             assistantContent += event.value;
-            setMessages([
-              ...newMessages,
-              { role: "assistant", content: assistantContent },
-            ]);
+            setMessages((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? { ...message, content: assistantContent }
+                  : message,
+              ),
+            );
           } else if (event.type === "error") {
             if (!event.recoverable) {
               setError(event.message);
@@ -116,6 +146,7 @@ export default function Home() {
     } finally {
       abortRef.current = null;
       setLoading(false);
+      setStreamingStarted(false);
     }
   }
 
@@ -126,9 +157,9 @@ export default function Home() {
         <p className="text-gray-400 mb-8">Personal AI Operating Environment</p>
 
         <div className="space-y-4">
-          {messages.map((message, index) => (
+          {messages.map((message) => (
             <div
-              key={index}
+              key={message.id}
               className={`p-4 rounded-xl ${
                 message.role === "user"
                   ? "bg-blue-600 ml-12"
@@ -142,7 +173,7 @@ export default function Home() {
             </div>
           ))}
 
-          {loading && (
+          {loading && !streamingStarted && (
             <div className="bg-gray-900 mr-12 p-4 rounded-xl">
               JARVIS is thinking...
             </div>
@@ -157,6 +188,7 @@ export default function Home() {
               <p>{error}</p>
             </div>
           )}
+          <div ref={scrollAnchorRef} />
         </div>
       </section>
 
