@@ -6,6 +6,7 @@ import type {
   GenerateOptions,
   GenerateResult,
   ProviderId,
+  StreamEvent,
   StreamResult,
 } from "./types";
 
@@ -26,12 +27,15 @@ export class OpenAIProvider implements ChatProvider {
   ): Promise<GenerateResult> {
     const startedAt = Date.now();
 
-    const response = await this.client.chat.completions.create({
-      model: opts.model,
-      messages,
-      temperature: opts.temperature,
-      max_tokens: opts.maxTokens,
-    });
+    const response = await this.client.chat.completions.create(
+      {
+        model: opts.model,
+        messages,
+        temperature: opts.temperature,
+        max_tokens: opts.maxTokens,
+      },
+      { signal: opts.signal },
+    );
 
     const latencyMs = Date.now() - startedAt;
 
@@ -54,55 +58,75 @@ export class OpenAIProvider implements ChatProvider {
   ): Promise<StreamResult> {
     const startedAt = Date.now();
 
-    const sdkStream = await this.client.chat.completions.create({
-      model: opts.model,
-      messages,
-      temperature: opts.temperature,
-      max_tokens: opts.maxTokens,
-      stream: true,
-      stream_options: { include_usage: true },
-    });
+    const sdkStream = await this.client.chat.completions.create(
+      {
+        model: opts.model,
+        messages,
+        temperature: opts.temperature,
+        max_tokens: opts.maxTokens,
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      { signal: opts.signal },
+    );
 
-    let resolveDone!: (r: GenerateResult) => void;
-    let rejectDone!: (e: unknown) => void;
-    const done = new Promise<GenerateResult>((res, rej) => {
-      resolveDone = res;
-      rejectDone = rej;
-    });
+    async function* iterate(): AsyncIterable<StreamEvent> {
+      let content = "";
+      let modelId = opts.model;
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+      let timeToFirstTokenMs: number | undefined;
 
-    let content = "";
-    let modelId = opts.model;
-    let inputTokens: number | undefined;
-    let outputTokens: number | undefined;
-
-    async function* iterate(): AsyncIterable<string> {
       try {
         for await (const chunk of sdkStream) {
           if (chunk.model) modelId = chunk.model;
+
           if (chunk.usage) {
             inputTokens = chunk.usage.prompt_tokens;
             outputTokens = chunk.usage.completion_tokens;
+            yield {
+              type: "usage",
+              inputTokens,
+              outputTokens,
+            };
           }
+
           const delta = chunk.choices[0]?.delta?.content;
           if (delta) {
+            if (timeToFirstTokenMs === undefined) {
+              timeToFirstTokenMs = Date.now() - startedAt;
+            }
             content += delta;
-            yield delta;
+            yield { type: "text", value: delta };
           }
         }
-        resolveDone({
-          content,
-          modelId,
-          inputTokens,
-          outputTokens,
-          costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
-          latencyMs: Date.now() - startedAt,
-        });
+
+        yield {
+          type: "done",
+          result: {
+            content,
+            modelId,
+            inputTokens,
+            outputTokens,
+            costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+            latencyMs: Date.now() - startedAt,
+            timeToFirstTokenMs,
+          },
+        };
       } catch (err) {
-        rejectDone(err);
-        throw err;
+        const name = err instanceof Error ? err.name : "";
+        const aborted =
+          name === "AbortError" ||
+          name === "APIUserAbortError" ||
+          opts.signal?.aborted === true;
+        yield {
+          type: "error",
+          message: err instanceof Error ? err.message : String(err),
+          recoverable: aborted,
+        };
       }
     }
 
-    return { stream: iterate(), done };
+    return { events: iterate() };
   }
 }

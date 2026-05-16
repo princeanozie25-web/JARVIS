@@ -3,7 +3,8 @@ export type TelemetryEventType =
   | "rate_limited"
   | "cost_denied"
   | "model_call"
-  | "provider_error";
+  | "provider_error"
+  | "client_disconnect";
 
 export interface TelemetryEvent {
   timestamp: number;
@@ -11,6 +12,7 @@ export interface TelemetryEvent {
   success: boolean;
   model_id?: string;
   latency_ms?: number;
+  time_to_first_token_ms?: number;
   cost_usd?: number;
   error_class?: string;
   notes?: string;

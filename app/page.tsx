@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { StreamEvent } from "@/lib/providers";
 import type { Message } from "@/lib/types";
 
 export default function Home() {
@@ -14,6 +15,11 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  function stop() {
+    abortRef.current?.abort();
+  }
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
@@ -28,6 +34,9 @@ export default function Home() {
     setLoading(true);
     setError(null);
 
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -37,6 +46,7 @@ export default function Home() {
         body: JSON.stringify({
           messages: newMessages,
         }),
+        signal: ac.signal,
       });
 
       if (!res.ok) {
@@ -51,6 +61,7 @@ export default function Home() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
       let assistantContent = "";
 
       setMessages([
@@ -61,15 +72,47 @@ export default function Home() {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        assistantContent += decoder.decode(value, { stream: true });
-        setMessages([
-          ...newMessages,
-          { role: "assistant", content: assistantContent },
-        ]);
+        buffer += decoder.decode(value, { stream: true });
+
+        let sepIdx: number;
+        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+          const block = buffer.slice(0, sepIdx);
+          buffer = buffer.slice(sepIdx + 2);
+
+          const dataLine = block
+            .split("\n")
+            .find((l) => l.startsWith("data:"));
+          if (!dataLine) continue;
+
+          const payload = dataLine.slice(5).trim();
+          let event: StreamEvent;
+          try {
+            event = JSON.parse(payload) as StreamEvent;
+          } catch {
+            continue;
+          }
+
+          if (event.type === "text") {
+            assistantContent += event.value;
+            setMessages([
+              ...newMessages,
+              { role: "assistant", content: assistantContent },
+            ]);
+          } else if (event.type === "error") {
+            if (!event.recoverable) {
+              setError(event.message);
+            }
+            return;
+          }
+        }
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      }
       setError("Network error. Please check your connection and try again.");
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   }
@@ -127,13 +170,22 @@ export default function Home() {
           }}
         />
 
-        <button
-          onClick={sendMessage}
-          disabled={loading || !input.trim()}
-          className="rounded-xl bg-white text-black px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Send
-        </button>
+        {loading ? (
+          <button
+            onClick={stop}
+            className="rounded-xl bg-red-600 text-white px-6 font-semibold"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            className="rounded-xl bg-white text-black px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
+        )}
       </section>
     </main>
   );

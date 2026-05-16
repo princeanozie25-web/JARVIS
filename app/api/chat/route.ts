@@ -4,9 +4,14 @@ import { config } from "@/lib/config";
 import { canExecuteRequest, usage } from "@/lib/cost";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
+import type { StreamEvent } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
 import { recordEvent } from "@/lib/telemetry";
 import type { Message } from "@/lib/types";
+
+function sseEncode(event: StreamEvent, encoder: TextEncoder): Uint8Array {
+  return encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
+}
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
@@ -106,39 +111,68 @@ export async function POST(req: Request) {
       ...parsed.data.messages,
     ];
 
+    const ac = new AbortController();
+    const onClientAbort = () => ac.abort(req.signal.reason);
+    if (req.signal.aborted) {
+      ac.abort(req.signal.reason);
+    } else {
+      req.signal.addEventListener("abort", onClientAbort);
+    }
+
     const provider = registry.get("openai");
     const streamResult = await provider.stream(messages, {
       model: config.openai.model,
+      signal: ac.signal,
     });
 
     const encoder = new TextEncoder();
     const body = new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
-          for await (const chunk of streamResult.stream) {
-            controller.enqueue(encoder.encode(chunk));
+          for await (const event of streamResult.events) {
+            controller.enqueue(sseEncode(event, encoder));
+
+            if (event.type === "done") {
+              const final = event.result;
+              usage.record(final.costUsd);
+              recordEvent({
+                event_type: "model_call",
+                success: true,
+                model_id: final.modelId,
+                latency_ms: final.latencyMs,
+                time_to_first_token_ms: final.timeToFirstTokenMs,
+                cost_usd: final.costUsd,
+                notes: `prompt_hash=${systemPromptHash}${
+                  final.inputTokens !== undefined
+                    ? ` input_tokens=${final.inputTokens}`
+                    : ""
+                }${
+                  final.outputTokens !== undefined
+                    ? ` output_tokens=${final.outputTokens}`
+                    : ""
+                }`,
+              });
+            } else if (event.type === "error") {
+              if (ac.signal.aborted) {
+                recordEvent({
+                  event_type: "client_disconnect",
+                  success: false,
+                  model_id: config.openai.model,
+                  latency_ms: Date.now() - startedAt,
+                  notes: event.message,
+                });
+              } else {
+                recordEvent({
+                  event_type: "provider_error",
+                  success: false,
+                  model_id: config.openai.model,
+                  latency_ms: Date.now() - startedAt,
+                  error_class: "StreamError",
+                  notes: event.message,
+                });
+              }
+            }
           }
-          const final = await streamResult.done;
-
-          usage.record(final.costUsd);
-
-          recordEvent({
-            event_type: "model_call",
-            success: true,
-            model_id: final.modelId,
-            latency_ms: final.latencyMs,
-            cost_usd: final.costUsd,
-            notes: `prompt_hash=${systemPromptHash}${
-              final.inputTokens !== undefined
-                ? ` input_tokens=${final.inputTokens}`
-                : ""
-            }${
-              final.outputTokens !== undefined
-                ? ` output_tokens=${final.outputTokens}`
-                : ""
-            }`,
-          });
-
           controller.close();
         } catch (error) {
           console.error("CHAT API STREAM ERROR:", error);
@@ -154,14 +188,20 @@ export async function POST(req: Request) {
             notes: error instanceof Error ? error.message : String(error),
           });
           controller.error(error);
+        } finally {
+          req.signal.removeEventListener("abort", onClientAbort);
         }
+      },
+      cancel(reason) {
+        ac.abort(reason);
       },
     });
 
     return new Response(body, {
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
         "X-Content-Type-Options": "nosniff",
       },
     });
