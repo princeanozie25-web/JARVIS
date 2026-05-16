@@ -8,6 +8,8 @@ import type {
   ProviderId,
 } from "./types";
 
+const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
+
 export class OpenAIProvider implements ChatProvider {
   readonly id: ProviderId = "openai";
 
@@ -21,6 +23,8 @@ export class OpenAIProvider implements ChatProvider {
     messages: Message[],
     opts: GenerateOptions,
   ): Promise<GenerateResult> {
+    const startedAt = Date.now();
+
     const response = await this.client.chat.completions.create({
       model: opts.model,
       messages,
@@ -28,9 +32,18 @@ export class OpenAIProvider implements ChatProvider {
       max_tokens: opts.maxTokens,
     });
 
+    const latencyMs = Date.now() - startedAt;
+
     const content =
       response.choices[0]?.message?.content ?? "No response generated.";
 
-    return { content };
+    return {
+      content,
+      modelId: response.model ?? opts.model,
+      inputTokens: response.usage?.prompt_tokens,
+      outputTokens: response.usage?.completion_tokens,
+      costUsd: PLACEHOLDER_COST_PER_REQUEST_USD,
+      latencyMs,
+    };
   }
 }

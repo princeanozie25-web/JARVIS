@@ -8,8 +8,6 @@ import { clientKeyFromRequest, rateLimiter } from "@/src/lib/rate-limit";
 import { recordEvent } from "@/src/lib/telemetry";
 import type { Message } from "@/src/lib/types";
 
-const PLACEHOLDER_COST_PER_REQUEST_USD = 0.001;
-
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
   content: z.string().min(1, "content must be a non-empty string"),
@@ -111,15 +109,23 @@ export async function POST(req: Request) {
       model: config.openai.model,
     });
 
-    usage.record(PLACEHOLDER_COST_PER_REQUEST_USD);
+    usage.record(result.costUsd);
 
     recordEvent({
       event_type: "model_call",
       success: true,
-      model_id: config.openai.model,
-      latency_ms: Date.now() - startedAt,
-      cost_usd: PLACEHOLDER_COST_PER_REQUEST_USD,
-      notes: `prompt_hash=${systemPrompt.hash}`,
+      model_id: result.modelId,
+      latency_ms: result.latencyMs,
+      cost_usd: result.costUsd,
+      notes: `prompt_hash=${systemPrompt.hash}${
+        result.inputTokens !== undefined
+          ? ` input_tokens=${result.inputTokens}`
+          : ""
+      }${
+        result.outputTokens !== undefined
+          ? ` output_tokens=${result.outputTokens}`
+          : ""
+      }`,
     });
 
     return NextResponse.json({

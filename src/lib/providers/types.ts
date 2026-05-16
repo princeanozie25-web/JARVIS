@@ -10,6 +10,11 @@ export interface GenerateOptions {
 
 export interface GenerateResult {
   content: string;
+  modelId: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd: number;
+  latencyMs: number;
 }
 
 export interface ChatProvider {
