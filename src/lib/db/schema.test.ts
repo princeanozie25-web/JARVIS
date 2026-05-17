@@ -1,6 +1,12 @@
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  consumeApproval,
+  getActiveApproval,
+  recordApproval,
+} from "./approvals";
 import { appendMessage, listMessages } from "./messages";
+import { listRollbacks, recordRollback } from "./rollbacks";
 import { applyMigrations } from "./schema";
 import {
   createSession,
@@ -9,6 +15,7 @@ import {
   touchSession,
 } from "./sessions";
 import { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
+import { createToolCall, listToolCalls, updateToolCall } from "./tool-calls";
 
 let db: Database.Database;
 
@@ -20,6 +27,38 @@ beforeEach(() => {
 
 afterEach(() => {
   db.close();
+});
+
+function tableNames(): string[] {
+  return db
+    .prepare(
+      `SELECT name FROM sqlite_master
+       WHERE type = 'table'
+       ORDER BY name`,
+    )
+    .all()
+    .map((row) => (row as { name: string }).name);
+}
+
+function columnNames(tableName: string): string[] {
+  return db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all()
+    .map((row) => (row as { name: string }).name);
+}
+
+describe("schema", () => {
+  it("creates Phase 2 tool audit tables and telemetry execution ids", () => {
+    expect(tableNames()).toEqual(
+      expect.arrayContaining([
+        "approvals",
+        "rollbacks",
+        "telemetry_events",
+        "tool_calls",
+      ]),
+    );
+    expect(columnNames("telemetry_events")).toContain("execution_id");
+  });
 });
 
 describe("sessions", () => {
@@ -93,6 +132,7 @@ describe("telemetry_events", () => {
       latency_ms: 250,
       time_to_first_token_ms: 80,
       cost_usd: 0.0001,
+      execution_id: "exec-1",
       notes: "ok",
     });
     insertTelemetryEvent(db, {
@@ -110,5 +150,111 @@ describe("telemetry_events", () => {
     expect(rows[1]?.input_tokens).toBe(123);
     expect(rows[1]?.output_tokens).toBe(45);
     expect(rows[1]?.cost_usd).toBeCloseTo(0.0001);
+    expect(rows[1]?.execution_id).toBe("exec-1");
+  });
+});
+
+describe("tool_calls", () => {
+  it("creates, updates, and lists tool calls newest first", () => {
+    createToolCall(db, {
+      execution_id: "exec-old",
+      session_id: "s1",
+      tool_id: "mock.status",
+      tool_name: "Mock Status",
+      status: "PENDING",
+      safety_tag: "ALLOW",
+      required_safety_tag: "ALLOW",
+      scope_hash: "scope",
+      input_json: '{"echo":"old"}',
+      proposed_at: 1_000,
+      timeout_ms: 1_000,
+    });
+    createToolCall(db, {
+      execution_id: "exec-new",
+      session_id: "s1",
+      tool_id: "mock.status",
+      tool_name: "Mock Status",
+      status: "PENDING",
+      safety_tag: "ALLOW",
+      required_safety_tag: "ALLOW",
+      scope_hash: "scope",
+      input_json: '{"echo":"new"}',
+      proposed_at: 2_000,
+      timeout_ms: 1_000,
+    });
+
+    updateToolCall(db, "exec-new", {
+      status: "COMPLETED",
+      output_json: '{"ok":true}',
+      completed_at: 2_050,
+    });
+
+    const rows = listToolCalls(db, { sessionId: "s1" });
+    expect(rows.map((row) => row.execution_id)).toEqual([
+      "exec-new",
+      "exec-old",
+    ]);
+    expect(rows[0]?.status).toBe("COMPLETED");
+    expect(rows[0]?.output_json).toBe('{"ok":true}');
+    expect(rows[0]?.completed_at).toBe(2_050);
+  });
+});
+
+describe("approvals", () => {
+  it("records, looks up, and consumes approvals", () => {
+    recordApproval(db, {
+      id: "approval-1",
+      execution_id: "exec-1",
+      session_id: "s1",
+      tool_id: "mock.status",
+      scope_hash: "scope",
+      decision: "APPROVED_ONCE",
+      decided_at: 1_000,
+      expires_at: 2_000,
+    });
+
+    const active = getActiveApproval(db, {
+      sessionId: "s1",
+      toolId: "mock.status",
+      scopeHash: "scope",
+      at: 1_500,
+    });
+    expect(active?.id).toBe("approval-1");
+    expect(active?.execution_id).toBe("exec-1");
+
+    consumeApproval(db, "approval-1", 1_600);
+    expect(
+      getActiveApproval(db, {
+        sessionId: "s1",
+        toolId: "mock.status",
+        scopeHash: "scope",
+        at: 1_700,
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("rollbacks", () => {
+  it("records and lists rollbacks newest first", () => {
+    recordRollback(db, {
+      id: "rollback-old",
+      execution_id: "exec-old",
+      session_id: "s1",
+      kind: "fs_unlink_created",
+      payload_json: '{"path":"a.txt"}',
+      created_at: 1_000,
+    });
+    recordRollback(db, {
+      id: "rollback-new",
+      execution_id: "exec-new",
+      session_id: "s1",
+      kind: "fs_restore_content",
+      payload_json: '{"path":"b.txt"}',
+      created_at: 2_000,
+    });
+
+    const rows = listRollbacks(db, { sessionId: "s1" });
+    expect(rows.map((row) => row.id)).toEqual(["rollback-new", "rollback-old"]);
+    expect(rows[0]?.kind).toBe("fs_restore_content");
   });
 });

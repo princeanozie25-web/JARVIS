@@ -16,3 +16,26 @@ export {
 export type { MessageRole, MessageRow } from "./messages";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
+export { createToolCall, listToolCalls, updateToolCall } from "./tool-calls";
+export type {
+  CreateToolCallInput,
+  ToolCallRow,
+  ToolCallStatus,
+  UpdateToolCallInput,
+} from "./tool-calls";
+export {
+  consumeApproval,
+  getActiveApproval,
+  recordApproval,
+} from "./approvals";
+export type {
+  ApprovalDecision,
+  ApprovalRow,
+  RecordApprovalInput,
+} from "./approvals";
+export { listRollbacks, recordRollback } from "./rollbacks";
+export type {
+  RecordRollbackInput,
+  RollbackKind,
+  RollbackRow,
+} from "./rollbacks";

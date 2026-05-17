@@ -6,7 +6,12 @@ export type TelemetryEventType =
   | "confirmation_required"
   | "model_call"
   | "provider_error"
-  | "client_disconnect";
+  | "client_disconnect"
+  | "tool_executed"
+  | "tool_completed"
+  | "tool_timeout"
+  | "tool_cancelled"
+  | "tool_denied";
 
 export interface TelemetryEvent {
   timestamp: number;
@@ -18,6 +23,7 @@ export interface TelemetryEvent {
   tier?: string;
   model_id?: string;
   tool_name?: string;
+  execution_id?: string;
   input_tokens?: number;
   output_tokens?: number;
   latency_ms?: number;

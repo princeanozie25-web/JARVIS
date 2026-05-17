@@ -1,24 +1,28 @@
-import { describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { InProcessToolRuntime, tools } from ".";
+import { applyMigrations } from "../db/schema";
+import { listToolCalls } from "../db/tool-calls";
 import type { RouterDecision } from "../router";
+import type { TelemetryEvent } from "../telemetry";
 import { statusTool } from "./mock";
 import { ToolRegistry } from "./registry";
 import type { Tool } from "./types";
 
 const allowDecision: RouterDecision = {
-  intent: { intent: "CONVERSATIONAL" as const, reason: "test" },
-  safety: { safetyTag: "ALLOW" as const, reason: "test" },
+  intent: { intent: "CONVERSATIONAL", reason: "test" },
+  safety: { safetyTag: "ALLOW", reason: "test" },
   capability: {
     tier: "T3",
     requiredCapabilities: ["text", "stream"],
     reason: "test",
   },
   selection: {
-    providerId: "openai" as const,
+    providerId: "openai",
     model: {
       id: "openai/gpt-4o-mini",
-      provider: "openai" as const,
+      provider: "openai",
       modelName: "gpt-4o-mini",
       tier: "T3",
       capabilities: ["text", "stream"],
@@ -27,6 +31,33 @@ const allowDecision: RouterDecision = {
     reason: "test",
   },
 };
+
+let db: Database.Database;
+let telemetryEvents: Array<
+  Omit<TelemetryEvent, "timestamp"> & { timestamp?: number }
+>;
+
+function runtimeFor(registry: ToolRegistry = tools): InProcessToolRuntime {
+  return new InProcessToolRuntime(registry, {
+    db,
+    recordEvent(event) {
+      telemetryEvents.push(event);
+    },
+    newId() {
+      return "exec-generated";
+    },
+  });
+}
+
+beforeEach(() => {
+  db = new Database(":memory:");
+  applyMigrations(db);
+  telemetryEvents = [];
+});
+
+afterEach(() => {
+  db.close();
+});
 
 describe("ToolRegistry", () => {
   it("registers and retrieves tools by id", () => {
@@ -52,7 +83,7 @@ describe("ToolRegistry", () => {
   });
 
   it("executes the mock tool through the in-process runtime", async () => {
-    const runtime = new InProcessToolRuntime(tools);
+    const runtime = runtimeFor(tools);
 
     await expect(
       runtime.runTool({
@@ -64,6 +95,7 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toEqual({
       ok: true,
+      status: "COMPLETED",
       message: "Mock tool registry is online.",
       data: {
         echo: "hello",
@@ -71,10 +103,16 @@ describe("ToolRegistry", () => {
         sessionId: "session-1",
       },
     });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["COMPLETED"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_executed",
+      "tool_completed",
+    ]);
   });
 
   it("denies invalid tool input before execution", async () => {
-    const runtime = new InProcessToolRuntime(tools);
+    const runtime = runtimeFor(tools);
 
     await expect(
       runtime.runTool({
@@ -85,9 +123,15 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
+      status: "DENIED",
       message: "Tool input failed validation.",
       data: { reason: "invalid_tool_input" },
     });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["DENIED"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+    ]);
   });
 
   it("denies execution when router safety is insufficient", async () => {
@@ -108,7 +152,7 @@ describe("ToolRegistry", () => {
       },
     };
     registry.register(writeLikeTool);
-    const runtime = new InProcessToolRuntime(registry);
+    const runtime = runtimeFor(registry);
 
     await expect(
       runtime.runTool({
@@ -119,6 +163,7 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
+      status: "DENIED",
       message: "Tool denied by safety policy.",
       data: {
         reason: "insufficient_safety",
@@ -126,6 +171,11 @@ describe("ToolRegistry", () => {
         actualSafetyTag: "ALLOW",
       },
     });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["DENIED"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+    ]);
   });
 
   it("returns an abort result when the parent signal aborts", async () => {
@@ -150,7 +200,7 @@ describe("ToolRegistry", () => {
       },
     };
     registry.register(slowTool);
-    const runtime = new InProcessToolRuntime(registry);
+    const runtime = runtimeFor(registry);
     const controller = new AbortController();
     controller.abort();
 
@@ -164,9 +214,15 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
+      status: "CANCELLED",
       message: "Tool execution aborted.",
       data: { reason: "aborted" },
     });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["CANCELLED"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_cancelled",
+    ]);
   });
 
   it("returns a timeout result when execution exceeds the tool timeout", async () => {
@@ -191,7 +247,7 @@ describe("ToolRegistry", () => {
       },
     };
     registry.register(timeoutTool);
-    const runtime = new InProcessToolRuntime(registry);
+    const runtime = runtimeFor(registry);
 
     await expect(
       runtime.runTool({
@@ -202,8 +258,56 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
+      status: "TIMEOUT",
       message: "Tool execution timed out.",
       data: { reason: "timeout" },
     });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["TIMEOUT"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_executed",
+      "tool_timeout",
+    ]);
+  });
+
+  it("returns an error result when a tool throws", async () => {
+    const registry = new ToolRegistry();
+    const throwTool: Tool<Record<string, never>> = {
+      id: "mock.throw",
+      name: "Mock Throw Tool",
+      description: "Test-only throwing tool.",
+      requiredSafetyTag: "ALLOW",
+      inputSchema: z.object({}),
+      scopeOf() {
+        return "mock.throw";
+      },
+      reversibilityClass: "NO_SIDE_EFFECT",
+      timeoutMs: 1000,
+      async execute() {
+        throw new Error("boom");
+      },
+    };
+    registry.register(throwTool);
+    const runtime = runtimeFor(registry);
+
+    await expect(
+      runtime.runTool({
+        toolId: "mock.throw",
+        input: {},
+        sessionId: "session-1",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "ERROR",
+      message: "Tool execution failed.",
+      data: { reason: "error", error: "boom" },
+    });
+
+    expect(listToolCalls(db).map((row) => row.status)).toEqual(["ERROR"]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_executed",
+      "tool_completed",
+    ]);
   });
 });

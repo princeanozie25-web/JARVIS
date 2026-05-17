@@ -9,26 +9,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:27am GMT+1
+# [jarvis] recent context, 2026-05-17 7:36am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,074t read) | 1,782,978t work | 99% savings
+Stats: 50 obs (19,758t read) | 1,772,570t work | 99% savings
 
 ### May 16, 2026
 
-43 7:25a 🚨 JARVIS Audit: Critical — Both API Keys Exposed in Audit Context
-44 " 🔵 JARVIS Repo State vs v3.1 Architecture: Major Structural Gaps Found
-45 " 🟣 JARVIS Audit PDF Generated via ReportLab Python Script
-46 " ⚖️ Audit Recommends Phase 1.5 Gate Before Adding Anthropic Provider
 S9 User asked where the PDF was saved — Claude provided the full file path (May 16, 7:26 AM)
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
-89 10:36a 🔵 Audit Context File Has Pending Changes
-90 " 🔵 Jarvis Project Audit Scope: Streaming Architecture Review
-91 " 🔵 Jarvis Architecture v3.1: Comprehensive 574-Line Master Roadmap
-92 " 🔵 Current Jarvis Implementation Is Next.js, Not Python Backend
+91 10:36a 🔵 Jarvis Architecture v3.1: Comprehensive 574-Line Master Roadmap
 93 10:37a 🔵 Provider Abstraction: ChatProvider Interface Is Future-Compatible
 94 " 🔵 Route Streaming: ReadableStream/text-plain Works but Lacks SSE Structure
 95 " 🔵 Telemetry Is In-Memory Only — Lost on Every Server Restart
@@ -75,6 +68,13 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 276 " 🔵 Tool Registry and Eval Framework Scaffolded; Only Mock Tool Registered
 277 " 🔵 Master Architecture Roadmap v3.1 Audit Prescribes 14-Step Phase 2 Tool Execution Framework
 278 " 🔵 Uncommitted Changes: Router and AGENTS.md Updated in Working Tree
+279 " ⚖️ Phase 2 Work Plan Established: Safety Fix → Tool Runtime Scaffold → Tests → Gates
+280 7:28a 🔴 P0 Safety Enforcement Fix: CONFIRM_ONCE/CONFIRM_ALWAYS No Longer Block Chat
+281 " 🟣 Tool Runtime Scaffold Implemented: InProcessToolRuntime with Zod Validation, Safety Gates, AbortSignal, and Timeout
+282 " 🔴 Two TypeScript/Test Bugs Found and Fixed During Tool Runtime Integration
+283 7:32a 🔴 Tool Runtime Abort Signal Early-Exit Fixed
+284 " 🔄 Registry Tests Typed Against RouterDecision Interface
+285 " 🟣 Tool Runtime Scaffold Fully Validated — All Gates Green
 
-Access 1783k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1773k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

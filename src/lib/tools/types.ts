@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { ToolCallStatus } from "../db/tool-calls";
 import type { RouterDecision, SafetyTag } from "../router";
 
 export type ReversibilityClass =
@@ -17,6 +18,7 @@ export interface ToolContext {
 
 export interface ToolResult {
   ok: boolean;
+  status?: ToolCallStatus;
   message: string;
   data?: unknown;
 }

@@ -12,6 +12,7 @@ export interface TelemetryRow {
   tier: string | null;
   model_id: string | null;
   tool_name: string | null;
+  execution_id: string | null;
   input_tokens: number | null;
   output_tokens: number | null;
   latency_ms: number | null;
@@ -29,9 +30,9 @@ export function insertTelemetryEvent(
   db.prepare(
     `INSERT INTO telemetry_events (
        timestamp, session_id, event_type, success, intent, safety_tag, tier,
-       model_id, tool_name, input_tokens, output_tokens, latency_ms,
+       model_id, tool_name, execution_id, input_tokens, output_tokens, latency_ms,
        time_to_first_token_ms, cost_usd, error_class, user_rating, notes
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     event.timestamp,
     event.session_id ?? null,
@@ -42,6 +43,7 @@ export function insertTelemetryEvent(
     event.tier ?? null,
     event.model_id ?? null,
     event.tool_name ?? null,
+    event.execution_id ?? null,
     event.input_tokens ?? null,
     event.output_tokens ?? null,
     event.latency_ms ?? null,
