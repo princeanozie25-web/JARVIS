@@ -21,6 +21,7 @@ import { listToolCalls } from "../db/tool-calls";
 import type { RouterDecision } from "../router";
 import type { TelemetryEvent } from "../telemetry";
 import { InProcessToolRuntime, tools } from ".";
+import { executionPathSegment } from "./safe-filenames";
 
 const allowDecision: RouterDecision = {
   intent: { intent: "DETERMINISTIC_COMMAND", reason: "test" },
@@ -52,6 +53,18 @@ let now: number;
 let telemetryEvents: Array<
   Omit<TelemetryEvent, "timestamp"> & { timestamp?: number }
 >;
+
+const hostileExecutionIds = [
+  "../../escape",
+  "..\\..\\escape",
+  "abc/../../escape",
+  "abc\\..\\escape",
+  "id-with-null-byte\0tail",
+  "C:\\Windows\\System32",
+  "/etc/passwd",
+  "x".repeat(2_000),
+  "",
+] as const;
 
 function runtime(): InProcessToolRuntime {
   return new InProcessToolRuntime(tools, {
@@ -395,6 +408,119 @@ describe("fs.create_file", () => {
       ]),
     );
   });
+});
+
+describe("write tool execution id path hardening", () => {
+  it.each(hostileExecutionIds)(
+    "fs.create_file temp path cannot escape for hostile execution id %#",
+    async (executionId) => {
+      await requestCreate(executionId, "hostile-create.txt", "created");
+      now = 1_100;
+
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          ok: true,
+          result: { status: "COMPLETED" },
+        },
+      });
+
+      expect(
+        readFileSync(join(workspaceRoot, "hostile-create.txt"), "utf8"),
+      ).toBe("created");
+    },
+  );
+
+  it.each(hostileExecutionIds)(
+    "fs.write_file temp path cannot escape for hostile execution id %#",
+    async (executionId) => {
+      writeFileSync(join(workspaceRoot, "hostile-write.txt"), "old");
+      await requestWrite(executionId, "hostile-write.txt", "new");
+      now = 1_100;
+
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          ok: true,
+          result: { status: "COMPLETED" },
+        },
+      });
+
+      expect(
+        readFileSync(join(workspaceRoot, "hostile-write.txt"), "utf8"),
+      ).toBe("new");
+    },
+  );
+
+  it.each(hostileExecutionIds)(
+    "fs.write_file large backup stays in backups for hostile execution id %#",
+    async (executionId) => {
+      const previous = "a".repeat(64 * 1024 + 1);
+      writeFileSync(join(workspaceRoot, "hostile-large.txt"), previous);
+      await requestWrite(executionId, "hostile-large.txt", "new");
+      now = 1_100;
+
+      await resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId,
+        decision: "APPROVED_ONCE",
+        now,
+      });
+
+      const payload = JSON.parse(listRollbacks(db)[0].payload_json) as {
+        backupPath: string;
+      };
+      expect(payload.backupPath).toBe(
+        `.jarvis-trash/backups/${executionPathSegment(executionId)}`,
+      );
+      expect(payload.backupPath).toMatch(
+        /^\.jarvis-trash\/backups\/exec_[A-Za-z0-9_-]+$/,
+      );
+      expect(
+        readFileSync(join(workspaceRoot, payload.backupPath), "utf8"),
+      ).toBe(previous);
+    },
+  );
+
+  it.each(hostileExecutionIds)(
+    "fs.append_file rollback path ignores hostile execution id %#",
+    async (executionId) => {
+      writeFileSync(join(workspaceRoot, "hostile-append.txt"), "old");
+      await requestAppend(executionId, "hostile-append.txt", " new");
+      now = 1_100;
+
+      await resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId,
+        decision: "APPROVED_ONCE",
+        now,
+      });
+
+      expect(
+        readFileSync(join(workspaceRoot, "hostile-append.txt"), "utf8"),
+      ).toBe("old new");
+      expect(JSON.parse(listRollbacks(db)[0].payload_json)).toEqual({
+        path: "hostile-append.txt",
+        previousLength: 3,
+      });
+    },
+  );
 });
 
 describe("fs.mkdir", () => {
@@ -1014,7 +1140,7 @@ describe("fs.write_file", () => {
     };
     expect(payload).toEqual({
       path: "large.txt",
-      backupPath: ".jarvis-trash/backups/exec-large",
+      backupPath: `.jarvis-trash/backups/${executionPathSegment("exec-large")}`,
       previousLength: previous.length,
     });
     expect(payload.previousContent).toBeUndefined();

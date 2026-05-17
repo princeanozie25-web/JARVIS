@@ -26,6 +26,18 @@ import type { TelemetryEvent } from "../telemetry";
 import { InProcessToolRuntime, tools } from ".";
 import { ROLLBACK_TTL_MS } from "./fs-undo";
 
+const hostileExecutionIds = [
+  "../../escape",
+  "..\\..\\escape",
+  "abc/../../escape",
+  "abc\\..\\escape",
+  "id-with-null-byte\0tail",
+  "C:\\Windows\\System32",
+  "/etc/passwd",
+  "x".repeat(2_000),
+  "",
+] as const;
+
 const allowDecision: RouterDecision = {
   intent: { intent: "DETERMINISTIC_COMMAND", reason: "test" },
   safety: { safetyTag: "ALLOW", reason: "test" },
@@ -150,6 +162,7 @@ async function approve(executionId: string) {
 
 function addRollback(input: {
   id?: string;
+  executionId?: string;
   sessionId?: string;
   kind: RollbackKind;
   payload: unknown;
@@ -158,7 +171,7 @@ function addRollback(input: {
 }) {
   recordRollback(db, {
     id: input.id ?? "rollback-1",
-    execution_id: "original-exec",
+    execution_id: input.executionId ?? "original-exec",
     session_id: input.sessionId ?? "session-1",
     kind: input.kind,
     payload_json: JSON.stringify(input.payload),
@@ -280,6 +293,40 @@ describe("fs.undo", () => {
       previous,
     );
   });
+
+  it.each(hostileExecutionIds)(
+    "restore temp path cannot escape for hostile rollback execution id %#",
+    async (executionId) => {
+      writeFileSync(join(workspaceRoot, "target.txt"), "current");
+      addRollback({
+        executionId,
+        kind: "fs_restore_content",
+        payload: {
+          path: "target.txt",
+          previousContent: "previous",
+          previousLength: 8,
+        },
+      });
+
+      await expect(
+        runtime().runTool({
+          toolId: "fs.undo",
+          input: {},
+          sessionId: "session-1",
+          executionId: "exec-undo",
+          decision: allowDecision,
+        }),
+      ).resolves.toMatchObject({
+        ok: true,
+        status: "COMPLETED",
+      });
+
+      expect(readFileSync(join(workspaceRoot, "target.txt"), "utf8")).toBe(
+        "previous",
+      );
+      expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+    },
+  );
 
   it("expired rollback is refused", async () => {
     writeFileSync(join(workspaceRoot, "old.txt"), "new");

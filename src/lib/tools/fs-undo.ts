@@ -24,6 +24,7 @@ import {
   resolveSafePath,
   SafePathError,
 } from "./fs-safe-path";
+import { assertPathDirectChild, executionPathSegment } from "./safe-filenames";
 import type { Tool, ToolResult } from "./types";
 
 const UNDO_TIMEOUT_MS = 5_000;
@@ -157,7 +158,11 @@ async function writeViaTemp(input: {
 }): Promise<void> {
   const dir = dirname(input.targetPath);
   const leaf = basename(input.targetPath);
-  const tempPath = resolve(dir, `.${leaf}.${input.executionId}.rollback.tmp`);
+  const tempPath = resolve(
+    dir,
+    `.${leaf}.${executionPathSegment(input.executionId)}.rollback.tmp`,
+  );
+  assertPathDirectChild(dir, tempPath);
   try {
     await writeFile(tempPath, input.content, {
       encoding: "utf8",

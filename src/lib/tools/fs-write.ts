@@ -20,6 +20,7 @@ import {
   resolveSafePath,
   SafePathError,
 } from "./fs-safe-path";
+import { assertPathDirectChild, executionPathSegment } from "./safe-filenames";
 import type { Tool, ToolResult } from "./types";
 
 const WRITE_TIMEOUT_MS = 5_000;
@@ -140,8 +141,9 @@ export const fsCreateFileTool: Tool<CreateFileInput> = {
 
       const tempPath = resolve(
         parent.resolvedPath,
-        `.${leaf}.${context.executionId}.tmp`,
+        `.${leaf}.${executionPathSegment(context.executionId)}.tmp`,
       );
+      assertPathDirectChild(parent.resolvedPath, tempPath);
 
       try {
         await writeFile(tempPath, input.content, {
@@ -220,7 +222,11 @@ export const fsWriteFileTool: Tool<WriteFileInput> = {
 
       const dir = dirname(safePath.resolvedPath);
       const leaf = basename(safePath.resolvedPath);
-      const tempPath = resolve(dir, `.${leaf}.${context.executionId}.tmp`);
+      const tempPath = resolve(
+        dir,
+        `.${leaf}.${executionPathSegment(context.executionId)}.tmp`,
+      );
+      assertPathDirectChild(dir, tempPath);
       const relativePath =
         relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
       const rollback = await rollbackPayload({
@@ -424,8 +430,12 @@ async function rollbackPayload(input: {
     };
   }
 
-  const backupRelativePath = `.jarvis-trash/backups/${input.executionId}`;
+  const backupRelativePath = `.jarvis-trash/backups/${executionPathSegment(
+    input.executionId,
+  )}`;
   const backupPath = resolve(input.workspaceRoot, backupRelativePath);
+  const backupRoot = resolve(input.workspaceRoot, ".jarvis-trash/backups");
+  assertPathDirectChild(backupRoot, backupPath);
   await mkdir(dirname(backupPath), { recursive: true });
   await writeFile(backupPath, input.previousContent, {
     encoding: "utf8",
