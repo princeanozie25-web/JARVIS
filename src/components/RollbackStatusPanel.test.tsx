@@ -48,4 +48,19 @@ describe("RollbackStatusPanel", () => {
 
     expect(html).toContain("Undo last file append: notes.txt");
   });
+
+  it("shows directory create undo summaries", () => {
+    const html = renderToStaticMarkup(
+      <RollbackStatusPanel
+        latest={{
+          ...latest,
+          kind: "fs_rmdir_empty",
+          path_summary: "new-folder",
+        }}
+        onUndo={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Undo last directory create: new-folder");
+  });
 });

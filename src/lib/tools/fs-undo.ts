@@ -1,9 +1,12 @@
 import { constants } from "node:fs";
 import {
   access,
+  readdir,
   readFile,
   rename,
   rm,
+  rmdir,
+  stat,
   truncate,
   writeFile,
 } from "node:fs/promises";
@@ -46,10 +49,24 @@ interface TruncatePayload {
   previousLength?: unknown;
 }
 
+interface RmdirEmptyPayload {
+  path?: unknown;
+}
+
 interface SafeTarget {
   workspaceRoot: string;
   targetPath: string;
   exists: boolean;
+}
+
+class RollbackDeniedError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+  ) {
+    super(message);
+    this.name = "RollbackDeniedError";
+  }
 }
 
 function denied(message: string, reason: string): ToolResult {
@@ -72,6 +89,9 @@ async function exists(path: string): Promise<boolean> {
 
 function safeError(error: unknown): ToolResult {
   if (error instanceof SafePathError) {
+    return denied(error.message, error.reason);
+  }
+  if (error instanceof RollbackDeniedError) {
     return denied(error.message, error.reason);
   }
   return denied(
@@ -214,6 +234,35 @@ async function truncateToLength(
   return { path: payload.path, kind: row.kind };
 }
 
+async function rmdirEmpty(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<RmdirEmptyPayload>(row);
+  if (!payload || typeof payload.path !== "string") {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const target = await resolveExistingSafeTarget(payload.path);
+  const info = await stat(target.targetPath);
+  if (!info.isDirectory()) {
+    throw new RollbackDeniedError(
+      "Rollback target is not a directory.",
+      "not_directory",
+    );
+  }
+
+  if ((await readdir(target.targetPath)).length > 0) {
+    throw new RollbackDeniedError(
+      "Directory is not empty.",
+      "directory_not_empty",
+    );
+  }
+
+  await rmdir(target.targetPath);
+
+  return { path: payload.path, kind: row.kind };
+}
+
 export async function executeRollback(input: {
   row: RollbackRow;
   now: number;
@@ -233,7 +282,9 @@ export async function executeRollback(input: {
           ? await unlinkCreated(input.row)
           : input.row.kind === "fs_truncate_to_length"
             ? await truncateToLength(input.row)
-            : null;
+            : input.row.kind === "fs_rmdir_empty"
+              ? await rmdirEmpty(input.row)
+              : null;
 
     if (!result) {
       return denied("Rollback kind is not supported.", "unsupported_rollback");

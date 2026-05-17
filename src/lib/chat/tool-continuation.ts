@@ -28,6 +28,7 @@ export const WRITE_PROVIDER_TOOL_IDS = new Set([
   "fs.create_file",
   "fs.write_file",
   "fs.append_file",
+  "fs.mkdir",
   "fs.undo",
 ]);
 

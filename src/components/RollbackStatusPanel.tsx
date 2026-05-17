@@ -10,6 +10,7 @@ function actionLabel(kind: RollbackSummary["kind"]): string {
   if (kind === "fs_unlink_created") return "Undo last file create";
   if (kind === "fs_restore_content") return "Undo last file overwrite";
   if (kind === "fs_truncate_to_length") return "Undo last file append";
+  if (kind === "fs_rmdir_empty") return "Undo last directory create";
   return "Undo last file change";
 }
 

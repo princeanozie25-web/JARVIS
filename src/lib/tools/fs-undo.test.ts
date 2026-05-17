@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -188,6 +189,59 @@ describe("fs.undo", () => {
 
     expect(existsSync(join(workspaceRoot, "created.txt"))).toBe(false);
     expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("undo for fs_rmdir_empty removes an empty directory", async () => {
+    mkdirSync(join(workspaceRoot, "created-dir"));
+    addRollback({
+      kind: "fs_rmdir_empty",
+      payload: { path: "created-dir" },
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: { kind: "fs_rmdir_empty", path: "created-dir" },
+    });
+
+    expect(existsSync(join(workspaceRoot, "created-dir"))).toBe(false);
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("fs_rmdir_empty refuses non-empty directories", async () => {
+    mkdirSync(join(workspaceRoot, "created-dir"));
+    writeFileSync(join(workspaceRoot, "created-dir", "child.txt"), "child");
+    addRollback({
+      kind: "fs_rmdir_empty",
+      payload: { path: "created-dir" },
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "directory_not_empty" },
+    });
+
+    expect(existsSync(join(workspaceRoot, "created-dir", "child.txt"))).toBe(
+      true,
+    );
+    expect(listRollbacks(db)[0].applied_at).toBeNull();
   });
 
   it("undo after fs.write_file restores previous content", async () => {

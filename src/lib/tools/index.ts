@@ -23,12 +23,14 @@ export type { FsPathInput } from "./fs-readonly";
 export {
   fsAppendFileTool,
   fsCreateFileTool,
+  fsMkdirTool,
   fsWriteFileTool,
   writeFsTools,
 } from "./fs-write";
 export type {
   AppendFileInput,
   CreateFileInput,
+  MkdirInput,
   WriteFileInput,
 } from "./fs-write";
 export { executeRollback, fsUndoTool } from "./fs-undo";

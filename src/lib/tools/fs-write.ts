@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import {
-  access,
   appendFile,
   copyFile,
+  lstat,
   mkdir,
   readFile,
   rename,
@@ -43,9 +43,14 @@ const AppendFileInputSchema = z.object({
   content: z.string().max(MAX_APPEND_FILE_BYTES),
 });
 
+const MkdirInputSchema = z.object({
+  path: z.string().min(1),
+});
+
 export type CreateFileInput = z.infer<typeof CreateFileInputSchema>;
 export type WriteFileInput = z.infer<typeof WriteFileInputSchema>;
 export type AppendFileInput = z.infer<typeof AppendFileInputSchema>;
+export type MkdirInput = z.infer<typeof MkdirInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -58,7 +63,7 @@ function isInside(root: string, candidate: string): boolean {
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await access(path, constants.F_OK);
+    await lstat(path);
     return true;
   } catch {
     return false;
@@ -94,6 +99,10 @@ function writeScopeOf(input: WriteFileInput): string {
 
 function appendScopeOf(input: AppendFileInput): string {
   return `append:${input.path}`;
+}
+
+function mkdirScopeOf(input: MkdirInput): string {
+  return `mkdir:${input.path}`;
 }
 
 export const fsCreateFileTool: Tool<CreateFileInput> = {
@@ -335,6 +344,71 @@ export const fsAppendFileTool: Tool<AppendFileInput> = {
   },
 };
 
+export const fsMkdirTool: Tool<MkdirInput> = {
+  id: "fs.mkdir",
+  name: "Make Directory",
+  description:
+    "Create a new directory inside the configured workspace when its parent already exists.",
+  requiredSafetyTag: "CONFIRM_ONCE",
+  inputSchema: MkdirInputSchema,
+  scopeOf: mkdirScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: WRITE_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+
+    const leaf = basename(input.path);
+    if (!leaf || leaf === "." || leaf === "..") {
+      return denied("Invalid directory path.", "invalid_path");
+    }
+
+    try {
+      const parent = await resolveSafePath(dirname(input.path) || ".");
+      const targetPath = resolve(parent.resolvedPath, leaf);
+      if (!isInside(parent.workspaceRoot, targetPath)) {
+        return denied("Path escapes the workspace root.", "path_escape");
+      }
+      if (isProtectedPath(targetPath)) {
+        return denied("Path is protected.", "protected_path");
+      }
+      if (await exists(targetPath)) {
+        return denied("Path already exists.", "path_exists");
+      }
+
+      if (context.signal.aborted) {
+        return denied("Tool execution aborted.", "aborted");
+      }
+
+      await mkdir(targetPath, { recursive: false });
+
+      const relativePath = relative(parent.workspaceRoot, targetPath) || ".";
+      if (context.db) {
+        recordRollback(context.db, {
+          id: randomUUID(),
+          execution_id: context.executionId,
+          session_id: context.sessionId,
+          kind: "fs_rmdir_empty",
+          payload_json: JSON.stringify({ path: relativePath }),
+          created_at: Date.now(),
+        });
+      }
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "Directory created.",
+        data: {
+          path: relativePath,
+        },
+      };
+    } catch (error) {
+      return safeError(error);
+    }
+  },
+};
+
 async function rollbackPayload(input: {
   workspaceRoot: string;
   relativePath: string;
@@ -369,6 +443,7 @@ export const writeFsTools = [
   fsCreateFileTool,
   fsWriteFileTool,
   fsAppendFileTool,
+  fsMkdirTool,
 ];
 
 export {

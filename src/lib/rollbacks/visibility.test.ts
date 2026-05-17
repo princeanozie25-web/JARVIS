@@ -162,4 +162,25 @@ describe("rollback visibility", () => {
       available: true,
     });
   });
+
+  it("summarizes directory-create rollbacks", () => {
+    recordRollback(db, {
+      id: "mkdir",
+      execution_id: "exec-mkdir",
+      session_id: "session-1",
+      kind: "fs_rmdir_empty",
+      payload_json: JSON.stringify({ path: "new-folder" }),
+      created_at: now - 1_000,
+    });
+
+    expect(
+      summarizeRollback(listRollbacks(db, { sessionId: "session-1" })[0], now),
+    ).toMatchObject({
+      id: "mkdir",
+      kind: "fs_rmdir_empty",
+      path_summary: "new-folder",
+      source_tool_call_id: "exec-mkdir",
+      available: true,
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -165,6 +166,31 @@ async function requestAppend(
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
+      now,
+    });
+  }
+  return result;
+}
+
+async function requestMkdir(executionId: string, path: string) {
+  const result = await runtime().runTool({
+    toolId: "fs.mkdir",
+    input: { path },
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  if (result.status === "AWAITING_APPROVAL") {
+    ensurePendingToolApproval({
+      db,
+      executionId,
+      sessionId: "session-1",
+      toolId: "fs.mkdir",
+      toolName: "Make Directory",
+      scopeHash: `mkdir:${path}`,
+      requiredSafetyTag: "CONFIRM_ONCE",
+      safetyTag: "ALLOW",
+      toolInput: { path },
       now,
     });
   }
@@ -354,7 +380,12 @@ describe("fs.create_file", () => {
         .list()
         .filter((tool) => tool.reversibilityClass === "REVERSIBLE_WRITE")
         .map((tool) => tool.id),
-    ).toEqual(["fs.create_file", "fs.write_file", "fs.append_file"]);
+    ).toEqual([
+      "fs.create_file",
+      "fs.write_file",
+      "fs.append_file",
+      "fs.mkdir",
+    ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
         "fs.overwrite_file",
@@ -362,6 +393,250 @@ describe("fs.create_file", () => {
         "fs.delete",
         "terminal.run",
       ]),
+    );
+  });
+});
+
+describe("fs.mkdir", () => {
+  it("requires approval and does not create a directory before approval", async () => {
+    await expect(requestMkdir("exec-mkdir", "newdir")).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        toolId: "fs.mkdir",
+        scopeHash: "mkdir:newdir",
+      },
+    });
+
+    expect(existsSync(join(workspaceRoot, "newdir"))).toBe(false);
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "exec-mkdir",
+      tool_id: "fs.mkdir",
+      status: "AWAITING_APPROVAL",
+    });
+  });
+
+  it("approve once creates the directory and rollback record", async () => {
+    await requestMkdir("exec-mkdir", "newdir");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-mkdir",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          telemetryEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        result: { status: "COMPLETED", message: "Directory created." },
+      },
+    });
+
+    expect(existsSync(join(workspaceRoot, "newdir"))).toBe(true);
+    expect(listRollbacks(db)).toMatchObject([
+      {
+        execution_id: "exec-mkdir",
+        session_id: "session-1",
+        kind: "fs_rmdir_empty",
+        payload_json: JSON.stringify({ path: "newdir" }),
+      },
+    ]);
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+      "tool_approved",
+      "tool_executed",
+      "tool_completed",
+    ]);
+  });
+
+  it("denial does not create the directory", async () => {
+    await requestMkdir("exec-mkdir", "denied-dir");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-mkdir",
+      decision: "DENIED",
+      now,
+    });
+
+    expect(existsSync(join(workspaceRoot, "denied-dir"))).toBe(false);
+    expect(listToolCalls(db)[0].status).toBe("DENIED");
+  });
+
+  it("approve session works for the same session tool and scope", async () => {
+    await requestMkdir("exec-mkdir", "session-dir");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-mkdir",
+      decision: "APPROVED_SESSION",
+      now,
+      sessionTtlMs: 10_000,
+    });
+    rmSync(join(workspaceRoot, "session-dir"), { recursive: true });
+
+    await expect(
+      requestMkdir("exec-mkdir-2", "session-dir"),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+    });
+    expect(existsSync(join(workspaceRoot, "session-dir"))).toBe(true);
+  });
+
+  it("refuses existing paths and missing parents after approval", async () => {
+    mkdirSync(join(workspaceRoot, "exists-dir"));
+    await requestMkdir("exec-exists", "exists-dir");
+    await requestMkdir("exec-missing-parent", "missing-parent/newdir");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-exists",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "path_exists" },
+        },
+      },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-missing-parent",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "not_found" },
+        },
+      },
+    });
+  });
+
+  it("denies path traversal, protected paths, and symlink escapes", async () => {
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "mkdir-escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await requestMkdir("exec-traversal", "../escape-dir");
+    await requestMkdir("exec-protected", ".env.local");
+    await requestMkdir("exec-symlink", "mkdir-escape/newdir");
+    now = 1_100;
+
+    for (const [executionId, reason] of [
+      ["exec-traversal", "path_escape"],
+      ["exec-protected", "protected_path"],
+      ["exec-symlink", "path_escape"],
+    ] as const) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason },
+          },
+        },
+      });
+    }
+    expect(existsSync(join(outsideRoot, "newdir"))).toBe(false);
+  });
+
+  it("rollback undo removes the empty directory", async () => {
+    await requestMkdir("exec-mkdir", "undo-dir");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-mkdir",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    await runtime().runTool({
+      toolId: "fs.undo",
+      input: {},
+      sessionId: "session-1",
+      executionId: "exec-undo",
+      decision: allowDecision,
+    });
+
+    expect(existsSync(join(workspaceRoot, "undo-dir"))).toBe(false);
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("rollback refuses a non-empty directory", async () => {
+    await requestMkdir("exec-mkdir", "non-empty-dir");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-mkdir",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+    writeFileSync(join(workspaceRoot, "non-empty-dir", "child.txt"), "child");
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "directory_not_empty" },
+    });
+
+    expect(existsSync(join(workspaceRoot, "non-empty-dir", "child.txt"))).toBe(
+      true,
+    );
+    expect(listRollbacks(db)[0].applied_at).toBeNull();
+  });
+
+  it("does not register rename/delete/terminal tools", () => {
+    expect(tools.list().map((tool) => tool.id)).not.toEqual(
+      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
     );
   });
 });
