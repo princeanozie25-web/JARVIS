@@ -168,6 +168,26 @@ describe("provider tool metadata adapters", () => {
       objectSchemasMissingAdditionalProperties(openAiTool?.function.parameters),
     ).toEqual([]);
   });
+
+  it("exposes fs.delete_file through Anthropic tool metadata", () => {
+    const metadata = providerToolMetadata(tools, (toolId) =>
+      ["fs.delete_file"].includes(toolId),
+    );
+
+    const anthropicTool = toAnthropicTools(metadata.definitions)?.[0];
+
+    expect(anthropicTool).toMatchObject({
+      name: "fs_delete_file",
+      description: expect.stringContaining("Move an existing file"),
+      input_schema: {
+        type: "object",
+        properties: {
+          path: expect.objectContaining({ type: "string" }),
+        },
+        required: ["path"],
+      },
+    });
+  });
 });
 
 function objectSchemasMissingAdditionalProperties(

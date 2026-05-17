@@ -67,6 +67,17 @@ const hostileExecutionIds = [
   "",
 ] as const;
 
+const hostileDeleteExecutionIds = [
+  "../../escape",
+  "..\\..\\escape",
+  "abc/../../escape",
+  "abc\\..\\escape",
+  "C:\\Windows\\System32",
+  "/etc/passwd",
+  "id-with-null-byte\0tail",
+  "x".repeat(2_000),
+] as const;
+
 function runtime(): InProcessToolRuntime {
   return new InProcessToolRuntime(tools, {
     db,
@@ -942,6 +953,123 @@ describe("fs.delete_file", () => {
       "tool_executed",
       "tool_completed",
     ]);
+  });
+
+  it.each(hostileDeleteExecutionIds)(
+    "trash filename stays a direct child for hostile execution id %#",
+    async (executionId) => {
+      writeFileSync(join(workspaceRoot, "hostile-delete.txt"), "delete me");
+      await requestDelete(executionId, "hostile-delete.txt");
+      now = 1_100;
+
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          ok: true,
+          result: { status: "COMPLETED" },
+        },
+      });
+
+      const rollback = listRollbacks(db)[0];
+      const payload = JSON.parse(rollback.payload_json) as {
+        originalPath: string;
+        trashedPath: string;
+      };
+      const parts = payload.trashedPath.split("/");
+      expect(parts).toHaveLength(3);
+      expect(parts[0]).toBe(".jarvis-trash");
+      expect(parts[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(parts[2]).toBe(
+        `${executionPathSegment(executionId)}-hostile-delete.txt`,
+      );
+      expect(payload.trashedPath).toMatch(
+        /^\.jarvis-trash\/\d{4}-\d{2}-\d{2}\/exec_[A-Za-z0-9_-]+-hostile-delete\.txt$/,
+      );
+      expect(
+        readFileSync(join(workspaceRoot, payload.trashedPath), "utf8"),
+      ).toBe("delete me");
+    },
+  );
+
+  it("emits delete telemetry that correlates with tool_calls.rollback_id", async () => {
+    writeFileSync(
+      join(workspaceRoot, "telemetry-delete.txt"),
+      "sensitive delete content",
+    );
+    await requestDelete("exec-delete-telemetry", "telemetry-delete.txt");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete-telemetry",
+      decision: "APPROVED_ONCE",
+      now,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    });
+
+    const lifecycle = telemetryEvents
+      .filter((event) =>
+        [
+          "tool_denied",
+          "tool_approved",
+          "tool_executed",
+          "tool_completed",
+        ].includes(event.event_type),
+      )
+      .map((event) => ({
+        type: event.event_type,
+        executionId: event.execution_id,
+        toolName: event.tool_name,
+      }));
+    expect(lifecycle).toEqual([
+      {
+        type: "tool_denied",
+        executionId: "exec-delete-telemetry",
+        toolName: "fs.delete_file",
+      },
+      {
+        type: "tool_approved",
+        executionId: "exec-delete-telemetry",
+        toolName: "fs.delete_file",
+      },
+      {
+        type: "tool_executed",
+        executionId: "exec-delete-telemetry",
+        toolName: "fs.delete_file",
+      },
+      {
+        type: "tool_completed",
+        executionId: "exec-delete-telemetry",
+        toolName: "fs.delete_file",
+      },
+    ]);
+
+    const toolCall = listToolCalls(db).find(
+      (row) => row.execution_id === "exec-delete-telemetry",
+    );
+    expect(toolCall).toMatchObject({
+      execution_id: "exec-delete-telemetry",
+      tool_id: "fs.delete_file",
+      status: "COMPLETED",
+    });
+    expect(toolCall?.rollback_id).toBe(
+      listRollbacks(db).find(
+        (row) => row.execution_id === "exec-delete-telemetry",
+      )?.id,
+    );
+    expect(JSON.stringify(telemetryEvents)).not.toContain(
+      "sensitive delete content",
+    );
   });
 
   it("denial leaves the file untouched", async () => {

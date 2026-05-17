@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:03pm GMT+1
+# [jarvis] recent context, 2026-05-17 7:23pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23,140t read) | 2,177,664t work | 99% savings
+Stats: 50 obs (23,959t read) | 2,410,867t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,13 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-326 1:13p 🔴 TypeScript Type Narrowing Fix for ApprovalCard Status in page.tsx
-327 " 🔄 tool-approvals Test Decoupled from SQLite — Uses In-Memory Event Array
-330 1:17p 🟣 End-to-End Provider Tool-Result Continuation for Read-Only FS Tools
-331 1:18p 🟣 Provider Type System Extended for Tool-Result Continuation Messages
-332 " 🟣 OpenAI and Anthropic Provider Adapters Updated for ProviderMessage Input
-333 " 🟣 Tool Continuation Orchestrator Created at src/lib/chat/tool-continuation.ts
-334 " 🔄 Chat Route Simplified: Inline Tool Logic Replaced by streamWithReadOnlyToolContinuation
 335 1:19p 🟣 Tool Continuation Integration Tests Added with StubProvider Pattern
 336 1:20p 🟣 All Quality Gates Passed: Tool Continuation Feature Fully Shipped
 337 1:37p 🟣 Tool Lifecycle SSE Event Types Added to Streaming Layer
@@ -75,6 +68,13 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 375 " 🟣 Rollback Persistence Recovery: persistRollbackOrRecover Pattern in fs-write.ts
 376 " 🟣 fs.undo Hardened Selection via getLatestAvailableRollbackForSession
 377 " 🟣 Rollback Hardening Test Suite: Failure Injection + Linkage + Undo Skip Tests
+378 7:15p 🟣 fs.delete_file Tool Implemented with Reversible Trash System
+379 " 🟣 CONFIRM_ALWAYS Safety Tier Enforced — Session Approval Blocked for Delete
+380 " 🔵 Jarvis Tool Registry Architecture — Phase 2 Filesystem Tool Set
+381 " 🟣 Full Test Coverage Added for fs.delete_file Including Rollback, Undo, and Edge Cases
+382 7:19p ⚖️ Phase 2 Post-Delete Safety Audit Scope Defined
+383 7:20p 🔵 fs.delete_file Safety Architecture: Full Code-Path Audit Results
+384 " 🔵 Phase 2 CI Gates: All Pass — lint, tsc, build, test (255/255), eval (0 failures)
 
-Access 2178k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2411k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
