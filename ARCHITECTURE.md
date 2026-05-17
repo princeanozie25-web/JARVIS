@@ -25,6 +25,7 @@ The May 2026 Phase 1.5 audit (`docs/JARVIS_Audit_2026-05-16.docx`) flagged that 
 | Cloud providers     | Anthropic SDK + OpenAI SDK, both behind a shared `ChatProvider` interface                         |
 | Local model runtime | **Ollama accessed over HTTP** from the Node server (no in-process Python)                         |
 | Desktop / OS tools  | Initial sidecar over local HTTP; **Electron shell adopted in Phase 2** when desktop control lands |
+| Tool runtime guard  | `JARVIS_TOOLS_ENABLED=true` is allowed only on loopback/local binds (`localhost`, `127.x`, `::1`) |
 | Streaming wire      | SSE (`text/event-stream`) carrying a typed `StreamEvent` discriminated union                      |
 | Vector / embeddings | Deferred until memory phase; will pick a Node-native or HTTP-accessible store                     |
 | Voice (Phase 4)     | Web Audio + Web Speech / cloud TTS over HTTP; native CoreAudio bridging deferred to Electron      |

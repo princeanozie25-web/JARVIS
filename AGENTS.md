@@ -9,29 +9,18 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:36am GMT+1
+# [jarvis] recent context, 2026-05-17 7:47am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19,758t read) | 1,772,570t work | 99% savings
+Stats: 50 obs (19,984t read) | 1,985,091t work | 99% savings
 
 ### May 16, 2026
 
 S9 User asked where the PDF was saved — Claude provided the full file path (May 16, 7:26 AM)
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
-91 10:36a 🔵 Jarvis Architecture v3.1: Comprehensive 574-Line Master Roadmap
-93 10:37a 🔵 Provider Abstraction: ChatProvider Interface Is Future-Compatible
-94 " 🔵 Route Streaming: ReadableStream/text-plain Works but Lacks SSE Structure
-95 " 🔵 Telemetry Is In-Memory Only — Lost on Every Server Restart
-96 10:38a 🔵 Significant Implementation Progress Since Prior Audit — All P0 Items Addressed
-97 " 🔵 Cost Guard Is Implemented But Uses Placeholder USD — Caps Are Not Truly Enforced
-98 " 🔵 Prior Audit PDF Script Reveals v3.1 Gap Analysis: Most P0 Items Now Resolved
-99 " 🔵 .gitignore Confirmed: .env\* Pattern Covers All Env Files
-100 10:46a ✅ JARVIS Audit PDF Generator Updated to Streaming Checkpoint Version
-101 " 🟣 JARVIS Streaming Checkpoint Audit PDF Generated Successfully
-102 " 🔵 JARVIS Audit PDF Confirmed at 23KB; DOCX Also Exists in docs/
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
 118 3:07p ⚖️ Safe Fallback for Unknown Model Pricing Instead of Hard Throw
 230 9:52p 🔵 Jarvis Codebase Scan — AGENTS.md Modified
@@ -75,6 +64,17 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 283 7:32a 🔴 Tool Runtime Abort Signal Early-Exit Fixed
 284 " 🔄 Registry Tests Typed Against RouterDecision Interface
 285 " 🟣 Tool Runtime Scaffold Fully Validated — All Gates Green
+286 7:37a 🟣 Phase 2 Tool Audit Tables — Step 1.3 + execution_id Telemetry
+287 7:38a 🔵 Pre-existing Jarvis DB Schema Structure at Phase 2 Start
+288 " 🟣 Phase 2 Tool Audit Tables + execution_id Telemetry — Fully Implemented
+289 " 🔴 idx_telemetry_execution_id Index Ordering Bug — ALTER TABLE Must Precede Index Creation
+290 " 🟣 Phase 2 CRUD Tests Added to schema.test.ts — 64 Tests All Pass
+291 7:44a 🟣 ToolContext Abort/Timeout Enforcement Implementation Planned
+292 7:45a 🟣 InProcessToolRuntime Rebuilt with Full Persistence, Telemetry, and Abort/Timeout Enforcement
+293 " 🔴 Fixed `server-only` Import Crash in Tool Runtime Tests
+294 " 🟣 Tool Runtime Test Suite Expanded with DB and Telemetry Assertions
+295 " 🟣 Five Tool Telemetry Event Types Added to TelemetryEventType Union
+296 " 🔵 All Gate Checks Pass After ToolContext Abort/Timeout Implementation
 
-Access 1773k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1985k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

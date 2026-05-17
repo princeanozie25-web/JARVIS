@@ -8,6 +8,10 @@ import {
 } from "../db/node";
 import type { SafetyTag } from "../router";
 import type { TelemetryEvent } from "../telemetry/types";
+import {
+  assertToolsRuntimeGuard,
+  toolsRuntimeOptionsFromEnv,
+} from "./local-guard";
 import { ToolRegistry, tools } from "./registry";
 import type { RunToolOptions, ToolResult, ToolRuntime } from "./types";
 
@@ -22,6 +26,8 @@ export interface InProcessToolRuntimeDeps {
   db?: DatabaseType.Database;
   now?: () => number;
   newId?: () => string;
+  toolsEnabled?: boolean;
+  bindHost?: string;
   recordEvent?: (
     event: Omit<TelemetryEvent, "timestamp"> & { timestamp?: number },
   ) => void;
@@ -57,9 +63,12 @@ export class InProcessToolRuntime implements ToolRuntime {
   constructor(
     private readonly registry: ToolRegistry = tools,
     private readonly deps: InProcessToolRuntimeDeps = {},
-  ) {}
+  ) {
+    this.assertLocalOnly();
+  }
 
   async runTool(options: RunToolOptions): Promise<ToolResult> {
+    this.assertLocalOnly();
     const tool = this.registry.get(options.toolId);
     const executionId = options.executionId ?? this.newId();
     const proposedAt = this.now();
@@ -402,6 +411,14 @@ export class InProcessToolRuntime implements ToolRuntime {
 
   private newId(): string {
     return this.deps.newId?.() ?? globalThis.crypto.randomUUID();
+  }
+
+  private assertLocalOnly(): void {
+    const envOptions = toolsRuntimeOptionsFromEnv();
+    assertToolsRuntimeGuard({
+      toolsEnabled: this.deps.toolsEnabled ?? envOptions.toolsEnabled,
+      bindHost: this.deps.bindHost ?? envOptions.bindHost,
+    });
   }
 }
 

@@ -115,6 +115,13 @@ npm install
 #   OPENAI_API_KEY=sk-...
 #   ANTHROPIC_API_KEY=sk-ant-...
 # Both keys are required at server boot.
+#
+# Optional Phase 2 tool scaffold settings:
+#   JARVIS_TOOLS_ENABLED=false
+#   JARVIS_WORKSPACE_ROOT=C:\Users\<you>\jarvis-workspace
+#   JARVIS_BIND_HOST=localhost
+# If JARVIS_TOOLS_ENABLED=true, the tool runtime refuses to start unless the
+# configured bind host is loopback/local-only (localhost, 127.x.x.x, or ::1).
 
 # Run the dev server
 npm run dev
