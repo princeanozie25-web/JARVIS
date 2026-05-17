@@ -24,7 +24,10 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "fs.stat",
 ]);
 
-export const WRITE_PROVIDER_TOOL_IDS = new Set(["fs.create_file"]);
+export const WRITE_PROVIDER_TOOL_IDS = new Set([
+  "fs.create_file",
+  "fs.write_file",
+]);
 
 export const PROVIDER_TOOL_IDS = new Set([
   ...READ_ONLY_PROVIDER_TOOL_IDS,

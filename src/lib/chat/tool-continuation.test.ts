@@ -349,6 +349,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.read_file",
       "fs.stat",
       "fs.create_file",
+      "fs.write_file",
     ]);
   });
 });

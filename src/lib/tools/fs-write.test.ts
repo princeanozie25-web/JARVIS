@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -44,6 +45,7 @@ const allowDecision: RouterDecision = {
 
 let db: Database.Database;
 let workspaceRoot: string;
+let outsideRoot: string;
 let previousWorkspaceRoot: string | undefined;
 let now: number;
 let telemetryEvents: Array<
@@ -64,6 +66,7 @@ beforeEach(() => {
   db = new Database(":memory:");
   applyMigrations(db);
   workspaceRoot = mkdtempSync(join(tmpdir(), "jarvis-create-file-"));
+  outsideRoot = mkdtempSync(join(tmpdir(), "jarvis-write-outside-"));
   previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
   process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
   now = 1_000;
@@ -73,6 +76,7 @@ beforeEach(() => {
 afterEach(() => {
   db.close();
   rmSync(workspaceRoot, { recursive: true, force: true });
+  rmSync(outsideRoot, { recursive: true, force: true });
   if (previousWorkspaceRoot === undefined) {
     delete process.env.JARVIS_WORKSPACE_ROOT;
   } else {
@@ -100,6 +104,35 @@ async function requestCreate(
       toolId: "fs.create_file",
       toolName: "Create File",
       scopeHash: `create:${path}`,
+      requiredSafetyTag: "CONFIRM_ONCE",
+      safetyTag: "ALLOW",
+      toolInput: { path, content },
+      now,
+    });
+  }
+  return result;
+}
+
+async function requestWrite(
+  executionId: string,
+  path: string,
+  content = "updated",
+) {
+  const result = await runtime().runTool({
+    toolId: "fs.write_file",
+    input: { path, content },
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  if (result.status === "AWAITING_APPROVAL") {
+    ensurePendingToolApproval({
+      db,
+      executionId,
+      sessionId: "session-1",
+      toolId: "fs.write_file",
+      toolName: "Write File",
+      scopeHash: `write:${path}`,
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
@@ -292,10 +325,255 @@ describe("fs.create_file", () => {
         .list()
         .filter((tool) => tool.reversibilityClass === "REVERSIBLE_WRITE")
         .map((tool) => tool.id),
-    ).toEqual(["fs.create_file"]);
+    ).toEqual(["fs.create_file", "fs.write_file"]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
         "fs.overwrite_file",
+        "fs.append_file",
+        "fs.rename",
+        "fs.delete",
+        "terminal.run",
+      ]),
+    );
+  });
+});
+
+describe("fs.write_file", () => {
+  it("requires approval and does not write before approval", async () => {
+    writeFileSync(join(workspaceRoot, "target.txt"), "original");
+
+    await expect(
+      requestWrite("exec-write", "target.txt", "updated"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        toolId: "fs.write_file",
+        scopeHash: "write:target.txt",
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "target.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "exec-write",
+      tool_id: "fs.write_file",
+      status: "AWAITING_APPROVAL",
+    });
+  });
+
+  it("approve once overwrites the file and creates inline rollback content", async () => {
+    writeFileSync(join(workspaceRoot, "target.txt"), "original");
+    await requestWrite("exec-write", "target.txt", "updated");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-write",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          telemetryEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        result: { status: "COMPLETED", message: "File overwritten." },
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "target.txt"), "utf8")).toBe(
+      "updated",
+    );
+    const rollback = listRollbacks(db)[0];
+    expect(rollback).toMatchObject({
+      execution_id: "exec-write",
+      session_id: "session-1",
+      kind: "fs_restore_content",
+    });
+    expect(JSON.parse(rollback.payload_json)).toEqual({
+      path: "target.txt",
+      previousContent: "original",
+      previousLength: 8,
+    });
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+      "tool_approved",
+      "tool_executed",
+      "tool_completed",
+    ]);
+  });
+
+  it("approve session works for the same session tool and scope", async () => {
+    writeFileSync(join(workspaceRoot, "session.txt"), "one");
+    await requestWrite("exec-write", "session.txt", "two");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-write",
+      decision: "APPROVED_SESSION",
+      now,
+      sessionTtlMs: 10_000,
+    });
+
+    await expect(
+      requestWrite("exec-write-2", "session.txt", "three"),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+    });
+    expect(readFileSync(join(workspaceRoot, "session.txt"), "utf8")).toBe(
+      "three",
+    );
+  });
+
+  it("denial does not modify the file", async () => {
+    writeFileSync(join(workspaceRoot, "denied.txt"), "original");
+    await requestWrite("exec-write", "denied.txt", "updated");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-write",
+      decision: "DENIED",
+      now,
+    });
+
+    expect(readFileSync(join(workspaceRoot, "denied.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listToolCalls(db)[0].status).toBe("DENIED");
+  });
+
+  it("large previous content uses backupPath rollback payload", async () => {
+    const previous = "a".repeat(64 * 1024 + 1);
+    writeFileSync(join(workspaceRoot, "large.txt"), previous);
+    await requestWrite("exec-large", "large.txt", "small");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-large",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    const payload = JSON.parse(listRollbacks(db)[0].payload_json) as {
+      path: string;
+      backupPath: string;
+      previousContent?: string;
+      previousLength: number;
+    };
+    expect(payload).toEqual({
+      path: "large.txt",
+      backupPath: ".jarvis-trash/backups/exec-large",
+      previousLength: previous.length,
+    });
+    expect(payload.previousContent).toBeUndefined();
+    expect(readFileSync(join(workspaceRoot, payload.backupPath), "utf8")).toBe(
+      previous,
+    );
+  });
+
+  it("refuses missing and binary targets after approval", async () => {
+    writeFileSync(join(workspaceRoot, "binary.bin"), Buffer.from([0, 1, 2]));
+    await requestWrite("exec-missing", "missing.txt", "updated");
+    await requestWrite("exec-binary", "binary.bin", "updated");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-missing",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "not_found" },
+        },
+      },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-binary",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "binary_file" },
+        },
+      },
+    });
+  });
+
+  it("denies path traversal, protected paths, and symlink escapes", async () => {
+    writeFileSync(join(outsideRoot, "outside.txt"), "outside");
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await requestWrite("exec-traversal", "../escape.txt", "updated");
+    await requestWrite("exec-protected", ".env.local", "updated");
+    await requestWrite("exec-symlink", "escape/outside.txt", "updated");
+    now = 1_100;
+
+    for (const [executionId, reason] of [
+      ["exec-traversal", "path_escape"],
+      ["exec-protected", "protected_path"],
+      ["exec-symlink", "path_escape"],
+    ] as const) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason },
+          },
+        },
+      });
+    }
+    expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
+      "outside",
+    );
+  });
+
+  it("does not register append/rename/delete/terminal tools", () => {
+    expect(tools.list().map((tool) => tool.id)).not.toEqual(
+      expect.arrayContaining([
         "fs.append_file",
         "fs.rename",
         "fs.delete",

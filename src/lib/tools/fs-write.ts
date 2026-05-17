@@ -1,7 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, copyFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  copyFile,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { TextDecoder } from "node:util";
 import { z } from "zod";
 import { recordRollback } from "../db/rollbacks";
 import {
@@ -13,13 +23,21 @@ import type { Tool, ToolResult } from "./types";
 
 const WRITE_TIMEOUT_MS = 5_000;
 const MAX_CREATE_FILE_BYTES = 1024 * 1024;
+const MAX_WRITE_FILE_BYTES = 1024 * 1024;
+const INLINE_ROLLBACK_CONTENT_BYTES = 64 * 1024;
 
 const CreateFileInputSchema = z.object({
   path: z.string().min(1),
   content: z.string().max(MAX_CREATE_FILE_BYTES),
 });
 
+const WriteFileInputSchema = z.object({
+  path: z.string().min(1),
+  content: z.string().max(MAX_WRITE_FILE_BYTES),
+});
+
 export type CreateFileInput = z.infer<typeof CreateFileInputSchema>;
+export type WriteFileInput = z.infer<typeof WriteFileInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -49,8 +67,21 @@ function safeError(error: unknown): ToolResult {
   );
 }
 
-function scopeOf(input: CreateFileInput): string {
+function decodeText(buffer: Buffer): string | null {
+  if (buffer.includes(0)) return null;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    return null;
+  }
+}
+
+function createScopeOf(input: CreateFileInput): string {
   return `create:${input.path}`;
+}
+
+function writeScopeOf(input: WriteFileInput): string {
+  return `write:${input.path}`;
 }
 
 export const fsCreateFileTool: Tool<CreateFileInput> = {
@@ -60,7 +91,7 @@ export const fsCreateFileTool: Tool<CreateFileInput> = {
     "Create a new UTF-8 text file inside the configured workspace without overwriting existing files.",
   requiredSafetyTag: "CONFIRM_ONCE",
   inputSchema: CreateFileInputSchema,
-  scopeOf,
+  scopeOf: createScopeOf,
   reversibilityClass: "REVERSIBLE_WRITE",
   timeoutMs: WRITE_TIMEOUT_MS,
   async execute(input, context) {
@@ -134,6 +165,126 @@ export const fsCreateFileTool: Tool<CreateFileInput> = {
   },
 };
 
-export const writeFsTools = [fsCreateFileTool];
+export const fsWriteFileTool: Tool<WriteFileInput> = {
+  id: "fs.write_file",
+  name: "Write File",
+  description:
+    "Overwrite an existing UTF-8 text file inside the configured workspace.",
+  requiredSafetyTag: "CONFIRM_ONCE",
+  inputSchema: WriteFileInputSchema,
+  scopeOf: writeScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: WRITE_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
 
-export { MAX_CREATE_FILE_BYTES };
+    if (Buffer.byteLength(input.content, "utf8") > MAX_WRITE_FILE_BYTES) {
+      return denied("Content exceeds 1 MB write limit.", "content_too_large");
+    }
+
+    try {
+      const safePath = await resolveSafePath(input.path);
+      const info = await stat(safePath.resolvedPath);
+      if (!info.isFile()) {
+        return denied("Path is not a file.", "not_file");
+      }
+
+      const previousBuffer = await readFile(safePath.resolvedPath);
+      const previousContent = decodeText(previousBuffer);
+      if (previousContent === null) {
+        return denied("Binary files are not supported.", "binary_file");
+      }
+
+      const dir = dirname(safePath.resolvedPath);
+      const leaf = basename(safePath.resolvedPath);
+      const tempPath = resolve(dir, `.${leaf}.${context.executionId}.tmp`);
+      const relativePath =
+        relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
+      const rollback = await rollbackPayload({
+        workspaceRoot: safePath.workspaceRoot,
+        relativePath,
+        previousContent,
+        previousLength: previousBuffer.byteLength,
+        executionId: context.executionId,
+      });
+
+      try {
+        await writeFile(tempPath, input.content, {
+          encoding: "utf8",
+          flag: "wx",
+        });
+        if (context.signal.aborted) {
+          await rm(tempPath, { force: true });
+          return denied("Tool execution aborted.", "aborted");
+        }
+        await rename(tempPath, safePath.resolvedPath);
+      } catch (error) {
+        await rm(tempPath, { force: true });
+        throw error;
+      }
+
+      if (context.db) {
+        recordRollback(context.db, {
+          id: randomUUID(),
+          execution_id: context.executionId,
+          session_id: context.sessionId,
+          kind: "fs_restore_content",
+          payload_json: JSON.stringify(rollback),
+          created_at: Date.now(),
+        });
+      }
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "File overwritten.",
+        data: {
+          path: relativePath,
+          bytes: Buffer.byteLength(input.content, "utf8"),
+        },
+      };
+    } catch (error) {
+      return safeError(error);
+    }
+  },
+};
+
+async function rollbackPayload(input: {
+  workspaceRoot: string;
+  relativePath: string;
+  previousContent: string;
+  previousLength: number;
+  executionId: string;
+}): Promise<Record<string, unknown>> {
+  if (input.previousLength <= INLINE_ROLLBACK_CONTENT_BYTES) {
+    return {
+      path: input.relativePath,
+      previousContent: input.previousContent,
+      previousLength: input.previousLength,
+    };
+  }
+
+  const backupRelativePath = `.jarvis-trash/backups/${input.executionId}`;
+  const backupPath = resolve(input.workspaceRoot, backupRelativePath);
+  await mkdir(dirname(backupPath), { recursive: true });
+  await writeFile(backupPath, input.previousContent, {
+    encoding: "utf8",
+    flag: "wx",
+  });
+
+  return {
+    path: input.relativePath,
+    backupPath: backupRelativePath,
+    previousLength: input.previousLength,
+  };
+}
+
+export const writeFsTools = [fsCreateFileTool, fsWriteFileTool];
+
+export {
+  INLINE_ROLLBACK_CONTENT_BYTES,
+  MAX_CREATE_FILE_BYTES,
+  MAX_WRITE_FILE_BYTES,
+};

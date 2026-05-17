@@ -85,6 +85,7 @@ describe("ToolRegistry", () => {
       "fs.read_file",
       "fs.stat",
       "fs.create_file",
+      "fs.write_file",
     ]);
   });
 
@@ -103,6 +104,7 @@ describe("ToolRegistry", () => {
       ["fs.read_file", "PURE_READ", "ALLOW"],
       ["fs.stat", "PURE_READ", "ALLOW"],
       ["fs.create_file", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
+      ["fs.write_file", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
     ]);
   });
 

@@ -18,8 +18,8 @@ export {
   readOnlyFsTools,
 } from "./fs-readonly";
 export type { FsPathInput } from "./fs-readonly";
-export { fsCreateFileTool, writeFsTools } from "./fs-write";
-export type { CreateFileInput } from "./fs-write";
+export { fsCreateFileTool, fsWriteFileTool, writeFsTools } from "./fs-write";
+export type { CreateFileInput, WriteFileInput } from "./fs-write";
 export {
   isProtectedPath,
   resolveSafePath,
