@@ -4,6 +4,7 @@ import {
   getDb,
   insertTelemetryEvent,
   updateToolCall,
+  verifyToolApproval,
   type ToolCallStatus,
 } from "../db/node";
 import type { SafetyTag } from "../router";
@@ -116,13 +117,27 @@ export class InProcessToolRuntime implements ToolRuntime {
 
     const scopeHash = tool.scopeOf(parsed.data);
 
-    if (!hasSufficientSafety(actualSafetyTag, tool.requiredSafetyTag)) {
+    const safetyIsSufficient = hasSufficientSafety(
+      actualSafetyTag,
+      tool.requiredSafetyTag,
+    );
+    const approval = safetyIsSufficient
+      ? { status: "granted" as const }
+      : this.verifyApproval({
+          sessionId: options.sessionId,
+          toolId: tool.id,
+          scopeHash,
+          at: proposedAt,
+        });
+
+    if (!safetyIsSufficient && approval.status !== "granted") {
+      const requiresApproval = approval.status === "required";
       this.createCall({
         executionId,
         sessionId: options.sessionId,
         toolId: tool.id,
         toolName: tool.name,
-        status: "DENIED",
+        status: requiresApproval ? "AWAITING_APPROVAL" : "DENIED",
         safetyTag: actualSafetyTag,
         requiredSafetyTag: tool.requiredSafetyTag,
         scopeHash,
@@ -130,20 +145,40 @@ export class InProcessToolRuntime implements ToolRuntime {
         proposedAt,
         completedAt: proposedAt,
         timeoutMs: tool.timeoutMs,
-        errorMessage: "Tool denied by safety policy.",
+        errorMessage: requiresApproval
+          ? "Tool approval required."
+          : "Tool denied by approval state.",
       });
       this.emit({
         ...baseTelemetry,
         event_type: "tool_denied",
         success: false,
-        error_class: "InsufficientSafety",
-        notes: `required=${tool.requiredSafetyTag} actual=${actualSafetyTag}`,
+        error_class: requiresApproval
+          ? "ApprovalRequired"
+          : "ApprovalNotGranted",
+        notes: `approval_status=${approval.status} required=${tool.requiredSafetyTag} actual=${actualSafetyTag}`,
       });
-      return result("DENIED", false, "Tool denied by safety policy.", {
-        reason: "insufficient_safety",
-        requiredSafetyTag: tool.requiredSafetyTag,
-        actualSafetyTag,
-      });
+      return result(
+        requiresApproval ? "AWAITING_APPROVAL" : "DENIED",
+        false,
+        requiresApproval
+          ? "Tool approval required."
+          : "Tool denied by approval state.",
+        {
+          reason: requiresApproval
+            ? "approval_required"
+            : `approval_${approval.status}`,
+          approvalStatus: approval.status,
+          approvalId: approval.row?.id,
+          executionId,
+          scopeHash,
+          toolId: tool.id,
+          sessionId: options.sessionId,
+          expiresAt: approval.row?.expires_at,
+          requiredSafetyTag: tool.requiredSafetyTag,
+          actualSafetyTag,
+        },
+      );
     }
 
     this.createCall({
@@ -411,6 +446,23 @@ export class InProcessToolRuntime implements ToolRuntime {
 
   private newId(): string {
     return this.deps.newId?.() ?? globalThis.crypto.randomUUID();
+  }
+
+  private verifyApproval(input: {
+    sessionId: string;
+    toolId: string;
+    scopeHash: string;
+    at: number;
+  }): ReturnType<typeof verifyToolApproval> {
+    const db = this.db();
+    if (!db) return { status: "required" };
+    return verifyToolApproval(db, {
+      sessionId: input.sessionId,
+      toolId: input.toolId,
+      scopeHash: input.scopeHash,
+      at: input.at,
+      consume: true,
+    });
   }
 
   private assertLocalOnly(): void {

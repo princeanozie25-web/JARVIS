@@ -134,7 +134,7 @@ describe("ToolRegistry", () => {
     ]);
   });
 
-  it("denies execution when router safety is insufficient", async () => {
+  it("detects approval required when router safety is insufficient", async () => {
     const registry = new ToolRegistry();
     const writeLikeTool: Tool<{ value: string }> = {
       id: "mock.write_like",
@@ -163,16 +163,19 @@ describe("ToolRegistry", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
-      status: "DENIED",
-      message: "Tool denied by safety policy.",
+      status: "AWAITING_APPROVAL",
+      message: "Tool approval required.",
       data: {
-        reason: "insufficient_safety",
+        reason: "approval_required",
+        approvalStatus: "required",
         requiredSafetyTag: "CONFIRM_ONCE",
         actualSafetyTag: "ALLOW",
       },
     });
 
-    expect(listToolCalls(db).map((row) => row.status)).toEqual(["DENIED"]);
+    expect(listToolCalls(db).map((row) => row.status)).toEqual([
+      "AWAITING_APPROVAL",
+    ]);
     expect(telemetryEvents.map((event) => event.event_type)).toEqual([
       "tool_denied",
     ]);

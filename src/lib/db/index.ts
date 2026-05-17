@@ -26,13 +26,24 @@ export type {
   UpdateToolCallInput,
 } from "./tool-calls";
 export {
+  approveApproval,
+  cancelApproval,
   consumeApproval,
+  createPendingApproval,
+  denyApproval,
   getActiveApproval,
+  hashApprovalToken,
   recordApproval,
+  verifyToolApproval,
 } from "./approvals";
 export type {
   ApprovalDecision,
+  ApprovalLifecycleState,
   ApprovalRow,
+  ApprovalVerificationResult,
+  ApprovalVerificationStatus,
+  CreatePendingApprovalInput,
+  PendingApproval,
   RecordApprovalInput,
 } from "./approvals";
 export { listRollbacks, recordRollback } from "./rollbacks";

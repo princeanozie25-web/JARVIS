@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS approvals (
   session_id    TEXT NOT NULL,
   tool_id       TEXT NOT NULL,
   scope_hash    TEXT NOT NULL,
+  state         TEXT NOT NULL DEFAULT 'pending',
+  token_hash    TEXT,
   decision      TEXT NOT NULL,
   decided_at    INTEGER NOT NULL,
   expires_at    INTEGER,
@@ -84,7 +86,7 @@ CREATE TABLE IF NOT EXISTS approvals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_approvals_lookup
-  ON approvals (session_id, tool_id, scope_hash, decision);
+  ON approvals (session_id, tool_id, scope_hash, state);
 
 CREATE TABLE IF NOT EXISTS rollbacks (
   id             TEXT PRIMARY KEY,
@@ -146,6 +148,14 @@ export function applyMigrations(db: DatabaseType.Database): void {
   db.exec(SCHEMA_SQL);
   if (!hasColumn(db, "telemetry_events", "execution_id")) {
     db.exec("ALTER TABLE telemetry_events ADD COLUMN execution_id TEXT");
+  }
+  if (!hasColumn(db, "approvals", "state")) {
+    db.exec(
+      "ALTER TABLE approvals ADD COLUMN state TEXT NOT NULL DEFAULT 'pending'",
+    );
+  }
+  if (!hasColumn(db, "approvals", "token_hash")) {
+    db.exec("ALTER TABLE approvals ADD COLUMN token_hash TEXT");
   }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id

@@ -9,29 +9,21 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:50am GMT+1
+# [jarvis] recent context, 2026-05-17 8:00am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,155t read) | 2,071,036t work | 99% savings
+Stats: 50 obs (19,917t read) | 2,044,146t work | 99% savings
 
 ### May 16, 2026
 
 S9 User asked where the PDF was saved — Claude provided the full file path (May 16, 7:26 AM)
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
-236 9:54p 🔵 Provider Architecture: Typed StreamEvent Taxonomy with AbortSignal Support
-237 " 🔵 DB Client: Singleton WAL-Mode SQLite with server-only Guard
-238 " 🔵 Telemetry: Dual-Write to In-Memory Store and SQLite with Silent Fallback
-239 " 🔵 Config Module: server-only, Throws on Missing API Keys
-240 10:05p 🔵 Codebase Architecture and Audit Constraint Review Initiated
-241 10:06p 🔄 Runtime/Node Split for Config and DB — server-only Guard Decoupled from CLI
-242 10:08p ⚖️ Codebase Audit Prerequisite Established Before Development
 243 10:09p 🔵 Jarvis Project Architecture: Multi-Provider AI Chat with SSE Streaming
 244 " 🔄 SSE Encoding/Parsing Extracted to Shared src/lib/streaming/sse.ts Module
-245 " 🔵 Eval Suite Confirms Both Providers Operational — Cost Delta Notable
 
 ### May 17, 2026
 
@@ -75,6 +67,14 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 301 " 🟣 local-guard.test.ts Added — 4 Guard Scenarios Covered
 302 " ✅ README and ARCHITECTURE Documented with Tool Runtime Guard
 303 " 🔵 All Gates Passed After Local-Guard Implementation
+304 7:50a 🔵 Provider Layer Already Had Tool-Call Stream Events Pre-wired
+305 " 🟣 StreamEvent Union Upgraded: tool_call_end → tool_call_complete + tool_call_error
+306 " 🟣 src/lib/providers/tools.ts — Provider Tool Format Adapters Created
+307 7:54a 🟣 Tool Call Streaming Implemented for OpenAI and Anthropic Providers
+308 " 🟣 Provider Tool Adapter Layer Added (`tools.ts`)
+309 " 🔴 SSE Test Updated: `tool_call_end` Replaced with `tool_call_complete` + `tool_call_error`
+310 " 🔵 Jarvis Build and Eval Pipeline Fully Green After Tool Streaming Work
+311 8:00a 🟣 Approval Lifecycle Scaffold Implementation
 
-Access 2071k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2044k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
