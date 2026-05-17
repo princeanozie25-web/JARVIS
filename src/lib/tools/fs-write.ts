@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import {
   access,
+  appendFile,
   copyFile,
   mkdir,
   readFile,
@@ -24,6 +25,7 @@ import type { Tool, ToolResult } from "./types";
 const WRITE_TIMEOUT_MS = 5_000;
 const MAX_CREATE_FILE_BYTES = 1024 * 1024;
 const MAX_WRITE_FILE_BYTES = 1024 * 1024;
+const MAX_APPEND_FILE_BYTES = 1024 * 1024;
 const INLINE_ROLLBACK_CONTENT_BYTES = 64 * 1024;
 
 const CreateFileInputSchema = z.object({
@@ -36,8 +38,14 @@ const WriteFileInputSchema = z.object({
   content: z.string().max(MAX_WRITE_FILE_BYTES),
 });
 
+const AppendFileInputSchema = z.object({
+  path: z.string().min(1),
+  content: z.string().max(MAX_APPEND_FILE_BYTES),
+});
+
 export type CreateFileInput = z.infer<typeof CreateFileInputSchema>;
 export type WriteFileInput = z.infer<typeof WriteFileInputSchema>;
+export type AppendFileInput = z.infer<typeof AppendFileInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -82,6 +90,10 @@ function createScopeOf(input: CreateFileInput): string {
 
 function writeScopeOf(input: WriteFileInput): string {
   return `write:${input.path}`;
+}
+
+function appendScopeOf(input: AppendFileInput): string {
+  return `append:${input.path}`;
 }
 
 export const fsCreateFileTool: Tool<CreateFileInput> = {
@@ -251,6 +263,78 @@ export const fsWriteFileTool: Tool<WriteFileInput> = {
   },
 };
 
+export const fsAppendFileTool: Tool<AppendFileInput> = {
+  id: "fs.append_file",
+  name: "Append File",
+  description:
+    "Append UTF-8 text to an existing text file inside the configured workspace.",
+  requiredSafetyTag: "CONFIRM_ONCE",
+  inputSchema: AppendFileInputSchema,
+  scopeOf: appendScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: WRITE_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+
+    const appendedBytes = Buffer.byteLength(input.content, "utf8");
+    if (appendedBytes > MAX_APPEND_FILE_BYTES) {
+      return denied("Content exceeds 1 MB append limit.", "content_too_large");
+    }
+
+    try {
+      const safePath = await resolveSafePath(input.path);
+      const info = await stat(safePath.resolvedPath);
+      if (!info.isFile()) {
+        return denied("Path is not a file.", "not_file");
+      }
+
+      const previousBuffer = await readFile(safePath.resolvedPath);
+      if (decodeText(previousBuffer) === null) {
+        return denied("Binary files are not supported.", "binary_file");
+      }
+
+      if (context.signal.aborted) {
+        return denied("Tool execution aborted.", "aborted");
+      }
+
+      await appendFile(safePath.resolvedPath, input.content, {
+        encoding: "utf8",
+      });
+
+      const relativePath =
+        relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
+      if (context.db) {
+        recordRollback(context.db, {
+          id: randomUUID(),
+          execution_id: context.executionId,
+          session_id: context.sessionId,
+          kind: "fs_truncate_to_length",
+          payload_json: JSON.stringify({
+            path: relativePath,
+            previousLength: previousBuffer.byteLength,
+          }),
+          created_at: Date.now(),
+        });
+      }
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "File appended.",
+        data: {
+          path: relativePath,
+          bytes: appendedBytes,
+          previousLength: previousBuffer.byteLength,
+        },
+      };
+    } catch (error) {
+      return safeError(error);
+    }
+  },
+};
+
 async function rollbackPayload(input: {
   workspaceRoot: string;
   relativePath: string;
@@ -281,10 +365,15 @@ async function rollbackPayload(input: {
   };
 }
 
-export const writeFsTools = [fsCreateFileTool, fsWriteFileTool];
+export const writeFsTools = [
+  fsCreateFileTool,
+  fsWriteFileTool,
+  fsAppendFileTool,
+];
 
 export {
   INLINE_ROLLBACK_CONTENT_BYTES,
+  MAX_APPEND_FILE_BYTES,
   MAX_CREATE_FILE_BYTES,
   MAX_WRITE_FILE_BYTES,
 };

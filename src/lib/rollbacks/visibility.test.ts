@@ -138,4 +138,28 @@ describe("rollback visibility", () => {
       ),
     ).toEqual(["[protected path]", "[unsafe path]"]);
   });
+
+  it("summarizes append rollbacks without exposing extra payload fields", () => {
+    recordRollback(db, {
+      id: "append",
+      execution_id: "exec-append",
+      session_id: "session-1",
+      kind: "fs_truncate_to_length",
+      payload_json: JSON.stringify({
+        path: "notes.txt",
+        previousLength: 12,
+      }),
+      created_at: now - 1_000,
+    });
+
+    expect(
+      summarizeRollback(listRollbacks(db, { sessionId: "session-1" })[0], now),
+    ).toMatchObject({
+      id: "append",
+      kind: "fs_truncate_to_length",
+      path_summary: "notes.txt",
+      source_tool_call_id: "exec-append",
+      available: true,
+    });
+  });
 });

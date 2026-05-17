@@ -142,6 +142,35 @@ async function requestWrite(
   return result;
 }
 
+async function requestAppend(
+  executionId: string,
+  path: string,
+  content = " appended",
+) {
+  const result = await runtime().runTool({
+    toolId: "fs.append_file",
+    input: { path, content },
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  if (result.status === "AWAITING_APPROVAL") {
+    ensurePendingToolApproval({
+      db,
+      executionId,
+      sessionId: "session-1",
+      toolId: "fs.append_file",
+      toolName: "Append File",
+      scopeHash: `append:${path}`,
+      requiredSafetyTag: "CONFIRM_ONCE",
+      safetyTag: "ALLOW",
+      toolInput: { path, content },
+      now,
+    });
+  }
+  return result;
+}
+
 describe("fs.create_file", () => {
   it("requires approval and does not write before approval", async () => {
     await expect(
@@ -325,15 +354,251 @@ describe("fs.create_file", () => {
         .list()
         .filter((tool) => tool.reversibilityClass === "REVERSIBLE_WRITE")
         .map((tool) => tool.id),
-    ).toEqual(["fs.create_file", "fs.write_file"]);
+    ).toEqual(["fs.create_file", "fs.write_file", "fs.append_file"]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
         "fs.overwrite_file",
-        "fs.append_file",
         "fs.rename",
         "fs.delete",
         "terminal.run",
       ]),
+    );
+  });
+});
+
+describe("fs.append_file", () => {
+  it("requires approval and does not append before approval", async () => {
+    writeFileSync(join(workspaceRoot, "append.txt"), "original");
+
+    await expect(
+      requestAppend("exec-append", "append.txt", " plus"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        toolId: "fs.append_file",
+        scopeHash: "append:append.txt",
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "append.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "exec-append",
+      tool_id: "fs.append_file",
+      status: "AWAITING_APPROVAL",
+    });
+  });
+
+  it("approve once appends content and records rollback length", async () => {
+    writeFileSync(join(workspaceRoot, "append.txt"), "original");
+    await requestAppend("exec-append", "append.txt", " plus");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-append",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          telemetryEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        result: { status: "COMPLETED", message: "File appended." },
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "append.txt"), "utf8")).toBe(
+      "original plus",
+    );
+    const rollback = listRollbacks(db)[0];
+    expect(rollback).toMatchObject({
+      execution_id: "exec-append",
+      session_id: "session-1",
+      kind: "fs_truncate_to_length",
+    });
+    expect(JSON.parse(rollback.payload_json)).toEqual({
+      path: "append.txt",
+      previousLength: 8,
+    });
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+      "tool_approved",
+      "tool_executed",
+      "tool_completed",
+    ]);
+  });
+
+  it("denial preserves original content", async () => {
+    writeFileSync(join(workspaceRoot, "denied-append.txt"), "original");
+    await requestAppend("exec-append", "denied-append.txt", " plus");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-append",
+      decision: "DENIED",
+      now,
+    });
+
+    expect(readFileSync(join(workspaceRoot, "denied-append.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listToolCalls(db)[0].status).toBe("DENIED");
+  });
+
+  it("approve session works for the same session tool and scope", async () => {
+    writeFileSync(join(workspaceRoot, "session-append.txt"), "one");
+    await requestAppend("exec-append", "session-append.txt", " two");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-append",
+      decision: "APPROVED_SESSION",
+      now,
+      sessionTtlMs: 10_000,
+    });
+
+    await expect(
+      requestAppend("exec-append-2", "session-append.txt", " three"),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+    });
+    expect(
+      readFileSync(join(workspaceRoot, "session-append.txt"), "utf8"),
+    ).toBe("one two three");
+  });
+
+  it("rollback undo restores previous length", async () => {
+    writeFileSync(join(workspaceRoot, "undo-append.txt"), "original");
+    await requestAppend("exec-append", "undo-append.txt", " plus");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-append",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    await runtime().runTool({
+      toolId: "fs.undo",
+      input: {},
+      sessionId: "session-1",
+      executionId: "exec-undo",
+      decision: allowDecision,
+    });
+
+    expect(readFileSync(join(workspaceRoot, "undo-append.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("refuses missing and binary targets after approval", async () => {
+    writeFileSync(
+      join(workspaceRoot, "append-binary.bin"),
+      Buffer.from([0, 1]),
+    );
+    await requestAppend("exec-missing", "missing-append.txt", " plus");
+    await requestAppend("exec-binary", "append-binary.bin", " plus");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-missing",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "not_found" },
+        },
+      },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-binary",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "binary_file" },
+        },
+      },
+    });
+  });
+
+  it("denies path traversal, protected paths, and symlink escapes", async () => {
+    writeFileSync(join(outsideRoot, "outside.txt"), "outside");
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "append-escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await requestAppend("exec-traversal", "../escape.txt", " plus");
+    await requestAppend("exec-protected", ".env.local", " plus");
+    await requestAppend("exec-symlink", "append-escape/outside.txt", " plus");
+    now = 1_100;
+
+    for (const [executionId, reason] of [
+      ["exec-traversal", "path_escape"],
+      ["exec-protected", "protected_path"],
+      ["exec-symlink", "path_escape"],
+    ] as const) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason },
+          },
+        },
+      });
+    }
+    expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
+      "outside",
+    );
+  });
+
+  it("does not register rename/delete/terminal tools", () => {
+    expect(tools.list().map((tool) => tool.id)).not.toEqual(
+      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
     );
   });
 });
@@ -571,14 +836,9 @@ describe("fs.write_file", () => {
     );
   });
 
-  it("does not register append/rename/delete/terminal tools", () => {
+  it("does not register rename/delete/terminal tools", () => {
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining([
-        "fs.append_file",
-        "fs.rename",
-        "fs.delete",
-        "terminal.run",
-      ]),
+      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
     );
   });
 });

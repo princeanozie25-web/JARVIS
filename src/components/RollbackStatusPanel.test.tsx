@@ -33,4 +33,19 @@ describe("RollbackStatusPanel", () => {
 
     expect(html).toBe("");
   });
+
+  it("shows append undo summaries", () => {
+    const html = renderToStaticMarkup(
+      <RollbackStatusPanel
+        latest={{
+          ...latest,
+          kind: "fs_truncate_to_length",
+          path_summary: "notes.txt",
+        }}
+        onUndo={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Undo last file append: notes.txt");
+  });
 });

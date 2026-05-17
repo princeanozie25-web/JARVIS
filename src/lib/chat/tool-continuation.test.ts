@@ -339,7 +339,7 @@ describe("approval-gated provider tool continuation", () => {
     ).rejects.toThrow();
   });
 
-  it("exposes only read tools and fs.create_file to providers", () => {
+  it("exposes only approved filesystem tools to providers", () => {
     const providerTools = providerToolMetadata(tools, (toolId) =>
       PROVIDER_TOOL_IDS.has(toolId),
     );
@@ -350,6 +350,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.stat",
       "fs.create_file",
       "fs.write_file",
+      "fs.append_file",
       "fs.undo",
     ]);
   });

@@ -2,6 +2,7 @@ import type DatabaseType from "better-sqlite3";
 
 export type RollbackKind =
   | "fs_restore_content"
+  | "fs_truncate_to_length"
   | "fs_unlink_created"
   | "fs_move_back"
   | "fs_untrash"

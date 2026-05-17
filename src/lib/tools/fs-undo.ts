@@ -1,5 +1,12 @@
 import { constants } from "node:fs";
-import { access, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  readFile,
+  rename,
+  rm,
+  truncate,
+  writeFile,
+} from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 import {
@@ -32,6 +39,11 @@ interface RestorePayload {
 
 interface UnlinkCreatedPayload {
   path?: unknown;
+}
+
+interface TruncatePayload {
+  path?: unknown;
+  previousLength?: unknown;
 }
 
 interface SafeTarget {
@@ -182,6 +194,26 @@ async function unlinkCreated(
   return { path: payload.path, kind: row.kind };
 }
 
+async function truncateToLength(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<TruncatePayload>(row);
+  if (
+    !payload ||
+    typeof payload.path !== "string" ||
+    typeof payload.previousLength !== "number" ||
+    !Number.isInteger(payload.previousLength) ||
+    payload.previousLength < 0
+  ) {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const target = await resolveExistingSafeTarget(payload.path);
+  await truncate(target.targetPath, payload.previousLength);
+
+  return { path: payload.path, kind: row.kind };
+}
+
 export async function executeRollback(input: {
   row: RollbackRow;
   now: number;
@@ -199,7 +231,9 @@ export async function executeRollback(input: {
         ? await restoreContent(input.row)
         : input.row.kind === "fs_unlink_created"
           ? await unlinkCreated(input.row)
-          : null;
+          : input.row.kind === "fs_truncate_to_length"
+            ? await truncateToLength(input.row)
+            : null;
 
     if (!result) {
       return denied("Rollback kind is not supported.", "unsupported_rollback");

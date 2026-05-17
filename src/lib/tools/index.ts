@@ -20,8 +20,17 @@ export {
   readOnlyFsTools,
 } from "./fs-readonly";
 export type { FsPathInput } from "./fs-readonly";
-export { fsCreateFileTool, fsWriteFileTool, writeFsTools } from "./fs-write";
-export type { CreateFileInput, WriteFileInput } from "./fs-write";
+export {
+  fsAppendFileTool,
+  fsCreateFileTool,
+  fsWriteFileTool,
+  writeFsTools,
+} from "./fs-write";
+export type {
+  AppendFileInput,
+  CreateFileInput,
+  WriteFileInput,
+} from "./fs-write";
 export { executeRollback, fsUndoTool } from "./fs-undo";
 export type { UndoInput } from "./fs-undo";
 export {
