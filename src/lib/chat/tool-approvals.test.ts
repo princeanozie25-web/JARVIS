@@ -36,6 +36,7 @@ let db: Database.Database;
 let calls: string[];
 let now: number;
 let runtime: InProcessToolRuntime;
+let approvalTokens: Map<string, string>;
 
 const confirmTool: Tool<{ value: string }> = {
   id: "mock.confirm",
@@ -63,6 +64,7 @@ beforeEach(() => {
   db = new Database(":memory:");
   applyMigrations(db);
   calls = [];
+  approvalTokens = new Map();
   now = 1_000;
   const registry = new ToolRegistry();
   registry.register(confirmTool);
@@ -86,7 +88,7 @@ async function requestApproval(executionId: string, value = "alpha") {
     decision: allowDecision,
   });
   expect(result.status).toBe("AWAITING_APPROVAL");
-  return ensurePendingToolApproval({
+  const pending = ensurePendingToolApproval({
     db,
     executionId,
     sessionId: "session-1",
@@ -99,6 +101,14 @@ async function requestApproval(executionId: string, value = "alpha") {
     now,
     ttlMs: 500,
   });
+  approvalTokens.set(executionId, pending.approvalToken);
+  return pending;
+}
+
+function tokenFor(executionId: string): string {
+  const token = approvalTokens.get(executionId);
+  if (!token) throw new Error(`Missing approval token for ${executionId}`);
+  return token;
 }
 
 describe("tool approval flow", () => {
@@ -115,6 +125,12 @@ describe("tool approval flow", () => {
       summary: "fields: value",
       approvalExpiresAt: 1_500,
     });
+    expect(pending.approvalToken).toEqual(expect.any(String));
+    expect(pending.approvalToken.length).toBeGreaterThan(20);
+    const storedApproval = db
+      .prepare("SELECT token_hash FROM approvals WHERE execution_id = ?")
+      .get("exec-1") as { token_hash: string };
+    expect(storedApproval.token_hash).not.toBe(pending.approvalToken);
     expect(listToolCalls(db)[0].status).toBe("AWAITING_APPROVAL");
   });
 
@@ -127,6 +143,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-1",
       decision: "APPROVED_ONCE",
+      approvalToken: tokenFor("exec-1"),
       now,
     });
 
@@ -162,6 +179,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-1",
       decision: "APPROVED_SESSION",
+      approvalToken: tokenFor("exec-1"),
       now,
       sessionTtlMs: 10_000,
     });
@@ -187,6 +205,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-1",
       decision: "APPROVED_ONCE",
+      approvalToken: tokenFor("exec-1"),
       now,
     });
 
@@ -205,6 +224,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-1",
       decision: "DENIED",
+      approvalToken: tokenFor("exec-1"),
       now,
     });
 
@@ -230,6 +250,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-1",
       decision: "APPROVED_ONCE",
+      approvalToken: tokenFor("exec-1"),
       now,
       recordEvent(event) {
         approvalEvents.push(event);
@@ -240,6 +261,7 @@ describe("tool approval flow", () => {
       runtime,
       executionId: "exec-2",
       decision: "DENIED",
+      approvalToken: tokenFor("exec-2"),
       now,
       recordEvent(event) {
         approvalEvents.push(event);
@@ -256,5 +278,101 @@ describe("tool approval flow", () => {
       { type: "tool_approved", session: "session-1", execution: "exec-1" },
       { type: "tool_denied", session: "session-1", execution: "exec-2" },
     ]);
+  });
+
+  it("rejects missing, invalid, reused, and cross-execution tokens", async () => {
+    await requestApproval("exec-1");
+    await requestApproval("exec-2", "beta");
+    now = 1_100;
+    const approvalEvents: Array<
+      Omit<TelemetryEvent, "timestamp"> & { timestamp?: number }
+    > = [];
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "exec-1",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          approvalEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 401,
+      body: { ok: false, reason: "approval_invalid_token" },
+    });
+    expect(calls).toEqual([]);
+    expect(
+      listToolCalls(db).find((row) => row.execution_id === "exec-1"),
+    ).toMatchObject({ status: "AWAITING_APPROVAL" });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "exec-1",
+        decision: "APPROVED_ONCE",
+        approvalToken: "not-the-token",
+        now,
+        recordEvent(event) {
+          approvalEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 401,
+      body: { ok: false, reason: "approval_invalid_token" },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "exec-1",
+        decision: "APPROVED_ONCE",
+        approvalToken: tokenFor("exec-2"),
+        now,
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 401,
+      body: { ok: false, reason: "approval_invalid_token" },
+    });
+    expect(calls).toEqual([]);
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "exec-1",
+        decision: "APPROVED_ONCE",
+        approvalToken: tokenFor("exec-1"),
+        now,
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 200,
+      body: { ok: true },
+    });
+    expect(calls).toEqual(["alpha"]);
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "exec-1",
+        decision: "APPROVED_ONCE",
+        approvalToken: tokenFor("exec-1"),
+        now,
+        recordEvent(event) {
+          approvalEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 409,
+      body: { ok: false, reason: "approval_replayed" },
+    });
+    expect(calls).toEqual(["alpha"]);
+    expect(JSON.stringify(approvalEvents)).not.toContain(tokenFor("exec-1"));
+    expect(JSON.stringify(approvalEvents)).not.toContain(tokenFor("exec-2"));
   });
 });

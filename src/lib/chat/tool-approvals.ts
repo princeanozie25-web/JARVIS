@@ -3,10 +3,10 @@ import {
   createPendingApproval,
   decideApprovalByExecution,
   expirePendingApprovals,
-  getApprovalByExecution,
   getToolCall,
   updateToolCall,
   type ApiApprovalDecision,
+  type ApprovalVerificationStatus,
   type ToolCallRow,
 } from "../db/node";
 import type { RouterDecision, SafetyTag } from "../router";
@@ -25,6 +25,7 @@ export interface ToolPendingPayload {
   safetyTag: SafetyTag;
   summary: string;
   approvalExpiresAt: number;
+  approvalToken: string;
 }
 
 export interface ResumeApprovalResult {
@@ -73,18 +74,14 @@ export function ensurePendingToolApproval(input: {
   ttlMs?: number;
 }): ToolPendingPayload {
   const now = input.now ?? Date.now();
-  const existing = getApprovalByExecution(input.db, input.executionId);
-  const pending =
-    existing?.state === "pending" && existing.expires_at !== null
-      ? { id: existing.id, expiresAt: existing.expires_at }
-      : createPendingApproval(input.db, {
-          execution_id: input.executionId,
-          session_id: input.sessionId,
-          tool_id: input.toolId,
-          scope_hash: input.scopeHash,
-          created_at: now,
-          ttl_ms: input.ttlMs ?? PENDING_APPROVAL_TTL_MS,
-        });
+  const pending = createPendingApproval(input.db, {
+    execution_id: input.executionId,
+    session_id: input.sessionId,
+    tool_id: input.toolId,
+    scope_hash: input.scopeHash,
+    created_at: now,
+    ttl_ms: input.ttlMs ?? PENDING_APPROVAL_TTL_MS,
+  });
 
   return {
     executionId: input.executionId,
@@ -95,6 +92,7 @@ export function ensurePendingToolApproval(input: {
     safetyTag: input.safetyTag,
     summary: safeToolInputSummary(input.toolInput),
     approvalExpiresAt: pending.expiresAt,
+    approvalToken: pending.token,
   };
 }
 
@@ -103,6 +101,7 @@ export async function resumeApproval(input: {
   runtime: ToolRuntime;
   executionId: string;
   decision: ApiApprovalDecision;
+  approvalToken?: string;
   now?: number;
   sessionTtlMs?: number;
   signal?: AbortSignal;
@@ -130,6 +129,7 @@ export async function resumeApproval(input: {
   const approval = decideApprovalByExecution(input.db, {
     executionId: input.executionId,
     decision: input.decision,
+    token: input.approvalToken,
     decidedAt: now,
     sessionTtlMs: input.sessionTtlMs ?? SESSION_APPROVAL_TTL_MS,
   });
@@ -162,13 +162,23 @@ export async function resumeApproval(input: {
   }
 
   if (approval.status !== "granted") {
-    updateToolCall(input.db, input.executionId, {
-      status: "DENIED",
-      error_message: `Tool approval ${approval.status}.`,
-      completed_at: now,
+    if (shouldFinalizeToolCallForApprovalFailure(approval.status)) {
+      updateToolCall(input.db, input.executionId, {
+        status: "DENIED",
+        error_message: `Tool approval ${approval.status}.`,
+        completed_at: now,
+      });
+    }
+    input.recordEvent?.({
+      ...telemetryFromRow(row),
+      timestamp: now,
+      event_type: "tool_denied",
+      success: false,
+      error_class: errorClassForApprovalStatus(approval.status),
+      notes: `approval_status=${approval.status} approval_decision=${input.decision}`,
     });
     return {
-      httpStatus: approval.status === "expired" ? 410 : 409,
+      httpStatus: httpStatusForApprovalStatus(approval.status),
       body: {
         ok: false,
         executionId: input.executionId,
@@ -205,6 +215,32 @@ export async function resumeApproval(input: {
       result,
     },
   };
+}
+
+function shouldFinalizeToolCallForApprovalFailure(
+  status: ApprovalVerificationStatus,
+): boolean {
+  return status === "expired" || status === "denied" || status === "cancelled";
+}
+
+function httpStatusForApprovalStatus(
+  status: ApprovalVerificationStatus,
+): number {
+  if (status === "expired") return 410;
+  if (status === "invalid_token") return 401;
+  if (status === "missing") return 404;
+  return 409;
+}
+
+function errorClassForApprovalStatus(
+  status: ApprovalVerificationStatus,
+): string {
+  if (status === "invalid_token") return "ApprovalInvalidToken";
+  if (status === "expired") return "ApprovalExpired";
+  if (status === "replayed") return "ApprovalReplayed";
+  if (status === "denied") return "ApprovalDenied";
+  if (status === "cancelled") return "ApprovalCancelled";
+  return "ApprovalNotGranted";
 }
 
 function syntheticDeniedResult(executionId: string): ToolResult {

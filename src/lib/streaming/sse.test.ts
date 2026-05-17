@@ -39,6 +39,7 @@ describe("SSE stream protocol", () => {
         safetyTag: "ALLOW",
         summary: "path: README.md",
         approvalExpiresAt: 1_000,
+        approvalToken: "approval-token",
       },
       { type: "tool_call_start", id: "tool-1", name: "lookup" },
       { type: "tool_call_delta", id: "tool-1", argsJsonChunk: '{"q"' },

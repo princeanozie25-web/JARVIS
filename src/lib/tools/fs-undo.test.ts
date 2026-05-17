@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ensurePendingToolApproval,
-  resumeApproval,
+  resumeApproval as resumeToolApproval,
 } from "../chat/tool-approvals";
 import {
   listRollbacks,
@@ -66,6 +66,7 @@ let previousWorkspaceRoot: string | undefined;
 let telemetryEvents: Array<
   Omit<TelemetryEvent, "timestamp"> & { timestamp?: number }
 >;
+let approvalTokens: Map<string, string>;
 
 function runtime(): InProcessToolRuntime {
   return new InProcessToolRuntime(tools, {
@@ -83,6 +84,7 @@ beforeEach(() => {
   previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
   process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
   telemetryEvents = [];
+  approvalTokens = new Map();
 });
 
 afterEach(() => {
@@ -108,7 +110,7 @@ async function requestCreate(
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -119,6 +121,7 @@ async function requestCreate(
       safetyTag: "ALLOW",
       toolInput: { path, content },
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
 }
@@ -136,7 +139,7 @@ async function requestWrite(
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -147,17 +150,25 @@ async function requestWrite(
       safetyTag: "ALLOW",
       toolInput: { path, content },
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
 }
 
 async function approve(executionId: string) {
-  return resumeApproval({
+  return resumeToolApproval({
     db,
     runtime: runtime(),
     executionId,
     decision: "APPROVED_ONCE",
+    approvalToken: approvalTokenFor(executionId),
   });
+}
+
+function approvalTokenFor(executionId: string): string {
+  const token = approvalTokens.get(executionId);
+  if (!token) throw new Error(`Missing approval token for ${executionId}`);
+  return token;
 }
 
 function addRollback(input: {

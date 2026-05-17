@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ensurePendingToolApproval,
-  resumeApproval,
+  resumeApproval as resumeToolApproval,
 } from "../chat/tool-approvals";
 import { listRollbacks } from "../db/rollbacks";
 import { applyMigrations } from "../db/schema";
@@ -53,6 +53,7 @@ let now: number;
 let telemetryEvents: Array<
   Omit<TelemetryEvent, "timestamp"> & { timestamp?: number }
 >;
+let approvalTokens: Map<string, string>;
 
 const hostileExecutionIds = [
   "../../escape",
@@ -85,6 +86,7 @@ beforeEach(() => {
   process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
   now = 1_000;
   telemetryEvents = [];
+  approvalTokens = new Map();
 });
 
 afterEach(() => {
@@ -111,7 +113,7 @@ async function requestCreate(
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -123,6 +125,7 @@ async function requestCreate(
       toolInput: { path, content },
       now,
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
 }
@@ -140,7 +143,7 @@ async function requestWrite(
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -152,6 +155,7 @@ async function requestWrite(
       toolInput: { path, content },
       now,
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
 }
@@ -169,7 +173,7 @@ async function requestAppend(
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -181,6 +185,7 @@ async function requestAppend(
       toolInput: { path, content },
       now,
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
 }
@@ -194,7 +199,7 @@ async function requestMkdir(executionId: string, path: string) {
     decision: allowDecision,
   });
   if (result.status === "AWAITING_APPROVAL") {
-    ensurePendingToolApproval({
+    const pending = ensurePendingToolApproval({
       db,
       executionId,
       sessionId: "session-1",
@@ -206,8 +211,24 @@ async function requestMkdir(executionId: string, path: string) {
       toolInput: { path },
       now,
     });
+    approvalTokens.set(executionId, pending.approvalToken);
   }
   return result;
+}
+
+function approvalTokenFor(executionId: string): string {
+  const token = approvalTokens.get(executionId);
+  if (!token) throw new Error(`Missing approval token for ${executionId}`);
+  return token;
+}
+
+function resumeApproval(
+  input: Parameters<typeof resumeToolApproval>[0],
+): ReturnType<typeof resumeToolApproval> {
+  return resumeToolApproval({
+    ...input,
+    approvalToken: input.approvalToken ?? approvalTokenFor(input.executionId),
+  });
 }
 
 describe("fs.create_file", () => {

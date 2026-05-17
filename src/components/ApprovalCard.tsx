@@ -10,6 +10,7 @@ export interface ApprovalCardDetails {
   safetyTag: SafetyTag;
   summary: string;
   approvalExpiresAt: number;
+  approvalToken: string;
   status: "pending" | "submitting" | "approved" | "denied" | "expired";
 }
 

@@ -270,12 +270,16 @@ export function decideApprovalByExecution(
   input: {
     executionId: string;
     decision: ApiApprovalDecision;
+    token?: string;
     decidedAt: number;
     sessionTtlMs: number;
   },
 ): ApprovalVerificationResult {
   const row = getApprovalByExecution(db, input.executionId);
   if (!row) return { status: "missing" };
+  if (!input.token || !tokensMatch(input.token, row.token_hash)) {
+    return { status: "invalid_token", row };
+  }
   if (row.expires_at !== null && row.expires_at <= input.decidedAt) {
     expireApproval(db, row.id, input.decidedAt);
     return { status: "expired", row: getApprovalById(db, row.id) };

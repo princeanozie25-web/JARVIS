@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 6:23pm GMT+1
+# [jarvis] recent context, 2026-05-17 6:30pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,868t read) | 1,496,137t work | 99% savings
+Stats: 50 obs (21,913t read) | 2,067,660t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,20 +25,9 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-298 7:49a 🔵 JARVIS Pre-existing Config and Tool Runtime Structure Mapped
-304 7:50a 🔵 Provider Layer Already Had Tool-Call Stream Events Pre-wired
-305 " 🟣 StreamEvent Union Upgraded: tool_call_end → tool_call_complete + tool_call_error
-306 " 🟣 src/lib/providers/tools.ts — Provider Tool Format Adapters Created
-307 7:54a 🟣 Tool Call Streaming Implemented for OpenAI and Anthropic Providers
-308 " 🟣 Provider Tool Adapter Layer Added (`tools.ts`)
-309 " 🔴 SSE Test Updated: `tool_call_end` Replaced with `tool_call_complete` + `tool_call_error`
-310 " 🔵 Jarvis Build and Eval Pipeline Fully Green After Tool Streaming Work
-311 8:00a 🟣 Approval Lifecycle Scaffold Implementation
 312 8:01a 🟣 Approval Lifecycle State Machine and Token Replay Protection
 313 " 🟣 Approvals Schema Migration: state and token_hash Columns
 314 " 🟣 Tool Runtime Now Distinguishes Approval Required vs Hard Denial
-315 " 🟣 Approval Lifecycle Test Suite — 5 Scenarios in approvals.test.ts
-316 " ✅ All Quality Gates Pass After Approval Lifecycle Scaffold
 317 8:09a 🟣 Anthropic claude-haiku-4-5 Pricing Added to Model Registry
 318 " 🟣 Schema Migration Tracking Table Added to SQLite DB
 319 " 🟣 SSE Heartbeat and Session ID Added to Chat Route
@@ -75,6 +64,17 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 350 " 🟣 fs-write.test.ts: Full Approval/Denial/Security Test Suite for fs.create_file
 351 " 🟣 All Acceptance Checks Pass After Phase 2 Implementation
 352 6:22p 🔵 Phase 2 Write-Tool System Architecture Under Audit
+353 6:23p 🔵 Phase 2 Audit: All Gates PASS — Safe to Proceed to fs.rename
+354 " 🔵 Approval Anti-Replay and Cross-Session Isolation Confirmed Correct
+355 " 🔵 Write Tool Rollback System: Every Write Creates a Rollback Record
+356 " 🔐 P1: executionId Used Unsanitized in Rollback Backup Path and Temp File Path
+357 " 🔵 Tool Surface Area: Exactly 8 Tools Registered, Prohibited Tools Absent
+358 " 🔵 Direct fs Reads Outside Tool Modules: All Legitimate Uses Confirmed
+359 " 🔵 InProcessToolRuntime: Approval Check Always Runs Before tool.execute()
+360 " 🔵 Telemetry and tool_calls Schema: Complete Enough for Full Action Debugging
+361 " ⚖️ Next Implementation Step: fs.rename with Atomic Move and fs_move_back Rollback
+362 6:25p 🔵 PROVIDER_TOOL_IDS Split Into Three Exported Sets for Selective AI Exposure
+363 6:28p 🚨 Path Traversal Security Fix: Sanitize executionId Before Filesystem Interpolation
 
-Access 1496k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2068k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

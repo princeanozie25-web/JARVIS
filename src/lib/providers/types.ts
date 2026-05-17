@@ -95,6 +95,7 @@ export type StreamEvent =
       safetyTag: SafetyTag;
       summary: string;
       approvalExpiresAt: number;
+      approvalToken: string;
     }
   | { type: "tool_call_start"; id: string; name: string }
   | { type: "tool_call_delta"; id: string; argsJsonChunk: string }

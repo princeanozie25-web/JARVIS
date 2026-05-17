@@ -180,6 +180,7 @@ export default function Home() {
                         safetyTag: event.safetyTag,
                         summary: event.summary,
                         approvalExpiresAt: event.approvalExpiresAt,
+                        approvalToken: event.approvalToken,
                         status: "pending",
                       },
                     }
@@ -214,6 +215,7 @@ export default function Home() {
   async function submitApproval(
     messageId: string,
     executionId: string,
+    approvalToken: string,
     decision: ApiApprovalDecision,
   ) {
     setMessages((currentMessages) =>
@@ -231,7 +233,7 @@ export default function Home() {
       const res = await fetch(`/api/chat/approvals/${executionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({ decision, approvalToken }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -322,6 +324,7 @@ export default function Home() {
                     submitApproval(
                       message.id,
                       message.approval!.executionId,
+                      message.approval!.approvalToken,
                       decision,
                     )
                   }

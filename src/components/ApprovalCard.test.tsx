@@ -11,6 +11,7 @@ const approval: ApprovalCardDetails = {
   safetyTag: "ALLOW",
   summary: "fields: value",
   approvalExpiresAt: 1_000,
+  approvalToken: "approval-token",
   status: "pending",
 };
 
@@ -25,5 +26,6 @@ describe("ApprovalCard", () => {
     expect(html).toContain("Approve Once");
     expect(html).toContain("Approve Session");
     expect(html).toContain("Deny");
+    expect(html).not.toContain("approval-token");
   });
 });

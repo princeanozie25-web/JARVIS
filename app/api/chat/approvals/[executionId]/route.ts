@@ -7,6 +7,7 @@ import { toolRuntime } from "@/lib/tools";
 
 const ApprovalRequestSchema = z.object({
   decision: z.enum(["APPROVED_ONCE", "APPROVED_SESSION", "DENIED"]),
+  approvalToken: z.string().min(1).optional(),
 });
 
 export async function POST(
@@ -40,6 +41,7 @@ export async function POST(
     runtime: toolRuntime,
     executionId,
     decision: parsed.data.decision,
+    approvalToken: parsed.data.approvalToken,
     signal: req.signal,
     recordEvent,
   });
