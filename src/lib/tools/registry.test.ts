@@ -78,16 +78,17 @@ describe("ToolRegistry", () => {
     );
   });
 
-  it("ships with mock status and read-only filesystem tools registered", () => {
+  it("ships with mock status and phase 2 filesystem tools registered", () => {
     expect(tools.list().map((tool) => tool.id)).toEqual([
       "mock.status",
       "fs.list_dir",
       "fs.read_file",
       "fs.stat",
+      "fs.create_file",
     ]);
   });
 
-  it("does not register write-capable tools", () => {
+  it("does not register unapproved write/delete/rename/terminal tools", () => {
     expect(
       tools
         .list()
@@ -101,6 +102,7 @@ describe("ToolRegistry", () => {
       ["fs.list_dir", "PURE_READ", "ALLOW"],
       ["fs.read_file", "PURE_READ", "ALLOW"],
       ["fs.stat", "PURE_READ", "ALLOW"],
+      ["fs.create_file", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
     ]);
   });
 

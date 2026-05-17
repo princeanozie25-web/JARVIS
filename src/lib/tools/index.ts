@@ -1,9 +1,13 @@
 import { readOnlyFsTools } from "./fs-readonly";
+import { writeFsTools } from "./fs-write";
 import { statusTool } from "./mock";
 import { tools } from "./registry";
 
 tools.register(statusTool);
 for (const tool of readOnlyFsTools) {
+  tools.register(tool);
+}
+for (const tool of writeFsTools) {
   tools.register(tool);
 }
 
@@ -14,6 +18,8 @@ export {
   readOnlyFsTools,
 } from "./fs-readonly";
 export type { FsPathInput } from "./fs-readonly";
+export { fsCreateFileTool, writeFsTools } from "./fs-write";
+export type { CreateFileInput } from "./fs-write";
 export {
   isProtectedPath,
   resolveSafePath,

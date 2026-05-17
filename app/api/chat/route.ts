@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ChatRequestSchema } from "@/lib/chat/schema";
 import {
-  READ_ONLY_PROVIDER_TOOL_IDS,
+  PROVIDER_TOOL_IDS,
   streamWithReadOnlyToolContinuation,
 } from "@/lib/chat/tool-continuation";
 import { canExecuteRequest, usage } from "@/lib/cost";
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
 
     const provider = registry.get(providerId);
     const providerTools = providerToolMetadata(tools, (toolId) =>
-      READ_ONLY_PROVIDER_TOOL_IDS.has(toolId),
+      PROVIDER_TOOL_IDS.has(toolId),
     );
 
     const encoder = new TextEncoder();
@@ -225,6 +225,7 @@ export async function POST(req: Request) {
             providerTools,
             runtime: toolRuntime,
             registry: tools,
+            db: getDb(),
             sessionId,
             assistantMessageId,
             decision: routerDecision,

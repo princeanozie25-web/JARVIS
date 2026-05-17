@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 1:39pm GMT+1
+# [jarvis] recent context, 2026-05-17 1:48pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,356t read) | 1,464,442t work | 99% savings
+Stats: 50 obs (20,065t read) | 1,340,185t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,12 +25,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-291 7:44a 🟣 ToolContext Abort/Timeout Enforcement Implementation Planned
 292 7:45a 🟣 InProcessToolRuntime Rebuilt with Full Persistence, Telemetry, and Abort/Timeout Enforcement
-293 " 🔴 Fixed `server-only` Import Crash in Tool Runtime Tests
-294 " 🟣 Tool Runtime Test Suite Expanded with DB and Telemetry Assertions
-295 " 🟣 Five Tool Telemetry Event Types Added to TelemetryEventType Union
-296 " 🔵 All Gate Checks Pass After ToolContext Abort/Timeout Implementation
 297 7:48a ⚖️ Local-Runtime Guard Added for JARVIS Tools Mode
 298 7:49a 🔵 JARVIS Pre-existing Config and Tool Runtime Structure Mapped
 299 " 🟣 src/lib/tools/local-guard.ts — Loopback Guard Module Created
@@ -75,6 +70,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 338 " 🔵 Full CI Gate Passed: 101 Tests, TypeScript, ESLint, and Production Build Clean
 339 " 🔵 Eval Suite Benchmarks GPT-4o-mini vs Claude Haiku 4.5 Across 4 Task Types
 340 " 🟣 Three New Untracked Files Indicate Tool Continuation Architecture
+341 1:40p 🔵 providerToolMetadata Translates Internal Tool IDs to Provider-Safe Names
+342 " 🟣 Tool Input Schemas Now Derived from Zod via z.toJSONSchema with io:"input" Mode
+343 " 🟣 OpenAI Strict Mode Schema Sanitizer Recursively Enforces additionalProperties:false
+344 " 🟣 tools.test.ts Extended with 4 New Schema Sanitizer and Integration Tests
+345 " 🔵 reason-calendar Eval Case Produces Non-Deterministic Haiku Answers Across Runs
 
-Access 1464k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1340k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

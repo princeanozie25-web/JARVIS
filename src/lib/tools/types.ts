@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type DatabaseType from "better-sqlite3";
 import type { ToolCallStatus } from "../db/tool-calls";
 import type { RouterDecision, SafetyTag } from "../router";
 
@@ -14,6 +15,7 @@ export interface ToolContext {
   signal: AbortSignal;
   timeoutMs: number;
   decision: RouterDecision;
+  db?: DatabaseType.Database;
 }
 
 export interface ToolResult {

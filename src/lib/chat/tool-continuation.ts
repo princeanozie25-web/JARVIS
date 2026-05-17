@@ -12,12 +12,23 @@ import {
 import type { RouterDecision } from "../router";
 import type { TelemetryEvent } from "../telemetry";
 import type { ToolRegistry, ToolResult, ToolRuntime } from "../tools";
-import { safeToolInputSummary } from "./tool-approvals";
+import {
+  ensurePendingToolApproval,
+  safeToolInputSummary,
+} from "./tool-approvals";
+import type DatabaseType from "better-sqlite3";
 
 export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "fs.list_dir",
   "fs.read_file",
   "fs.stat",
+]);
+
+export const WRITE_PROVIDER_TOOL_IDS = new Set(["fs.create_file"]);
+
+export const PROVIDER_TOOL_IDS = new Set([
+  ...READ_ONLY_PROVIDER_TOOL_IDS,
+  ...WRITE_PROVIDER_TOOL_IDS,
 ]);
 
 const MAX_TOOL_CONTINUATIONS = 3;
@@ -35,6 +46,7 @@ export interface StreamWithToolContinuationInput {
   providerTools: ProviderToolMetadataForContinuation;
   runtime: ToolRuntime;
   registry: ToolRegistry;
+  db?: DatabaseType.Database;
   sessionId: string;
   assistantMessageId: string;
   decision: RouterDecision;
@@ -93,10 +105,11 @@ export async function* streamWithReadOnlyToolContinuation(
 
     if (completedToolCalls.length === 0) return;
 
-    const execution = await executeReadOnlyToolCalls(input, completedToolCalls);
+    const execution = await executeProviderToolCalls(input, completedToolCalls);
     for (const event of execution.events) {
       yield event;
     }
+    if (execution.awaitingApproval) return;
 
     messages = [
       ...messages,
@@ -112,18 +125,23 @@ export async function* streamWithReadOnlyToolContinuation(
   };
 }
 
-async function executeReadOnlyToolCalls(
+async function executeProviderToolCalls(
   input: StreamWithToolContinuationInput,
   toolCalls: CompletedProviderToolCall[],
-): Promise<{ messages: ProviderMessage[]; events: StreamEvent[] }> {
+): Promise<{
+  messages: ProviderMessage[];
+  events: StreamEvent[];
+  awaitingApproval: boolean;
+}> {
   const messages: ProviderMessage[] = [];
   const events: StreamEvent[] = [];
+  let awaitingApproval = false;
 
   for (const toolCall of toolCalls) {
     const toolId = input.providerTools.nameToId.get(toolCall.name);
     const parsedInput = parseToolArgs(toolCall.argsJson);
 
-    if (!toolId || !READ_ONLY_PROVIDER_TOOL_IDS.has(toolId)) {
+    if (!toolId || !PROVIDER_TOOL_IDS.has(toolId)) {
       messages.push(
         toolResultMessage({
           toolCallId: toolCall.id,
@@ -184,12 +202,6 @@ async function executeReadOnlyToolCalls(
     };
     events.push(proposed);
     recordToolProposed(input, proposed);
-    events.push({
-      type: "tool_executed",
-      executionId: toolCall.id,
-      toolId,
-      toolName: tool.name,
-    });
 
     const result = await input.runtime.runTool({
       toolId,
@@ -199,6 +211,44 @@ async function executeReadOnlyToolCalls(
       messageId: input.assistantMessageId,
       decision: input.decision,
       signal: input.signal,
+    });
+
+    if (result.status === "AWAITING_APPROVAL") {
+      const data = result.data as
+        | {
+            executionId?: string;
+            sessionId?: string;
+            toolId?: string;
+            scopeHash?: string;
+            requiredSafetyTag?: RouterDecision["safety"]["safetyTag"];
+            actualSafetyTag?: RouterDecision["safety"]["safetyTag"];
+          }
+        | undefined;
+      const pending =
+        input.db &&
+        ensurePendingToolApproval({
+          db: input.db,
+          executionId: data?.executionId ?? toolCall.id,
+          sessionId: data?.sessionId ?? input.sessionId,
+          toolId,
+          toolName: tool.name,
+          scopeHash: data?.scopeHash ?? tool.scopeOf(parsedInput.value),
+          requiredSafetyTag: data?.requiredSafetyTag ?? tool.requiredSafetyTag,
+          safetyTag: data?.actualSafetyTag ?? input.decision.safety.safetyTag,
+          toolInput: parsedInput.value,
+        });
+      if (pending) {
+        events.push({ type: "tool_pending", ...pending });
+      }
+      awaitingApproval = true;
+      break;
+    }
+
+    events.push({
+      type: "tool_executed",
+      executionId: toolCall.id,
+      toolId,
+      toolName: tool.name,
     });
 
     messages.push(
@@ -220,7 +270,7 @@ async function executeReadOnlyToolCalls(
     });
   }
 
-  return { messages, events };
+  return { messages, events, awaitingApproval };
 }
 
 function recordToolProposed(

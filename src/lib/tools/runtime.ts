@@ -123,24 +123,57 @@ export class InProcessToolRuntime implements ToolRuntime {
 
     const scopeHash = tool.scopeOf(parsed.data);
 
+    if (actualSafetyTag === "BLOCK") {
+      this.createCall({
+        executionId,
+        sessionId: options.sessionId,
+        toolId: tool.id,
+        toolName: tool.name,
+        status: "DENIED",
+        safetyTag: actualSafetyTag,
+        requiredSafetyTag: tool.requiredSafetyTag,
+        scopeHash,
+        inputJson,
+        proposedAt,
+        completedAt: proposedAt,
+        timeoutMs: tool.timeoutMs,
+        errorMessage: "Tool denied by router safety.",
+      });
+      this.emit({
+        ...baseTelemetry,
+        event_type: "tool_denied",
+        success: false,
+        error_class: "SafetyBlocked",
+        notes: `required=${tool.requiredSafetyTag} actual=${actualSafetyTag}`,
+      });
+      return result("DENIED", false, "Tool denied by router safety.", {
+        reason: "safety_blocked",
+        requiredSafetyTag: tool.requiredSafetyTag,
+        actualSafetyTag,
+      });
+    }
+
     const safetyIsSufficient = hasSufficientSafety(
       actualSafetyTag,
       tool.requiredSafetyTag,
     );
-    const approval = safetyIsSufficient
-      ? { status: "granted" as const }
-      : this.verifyApproval({
-          sessionId: options.sessionId,
-          toolId: tool.id,
-          scopeHash,
-          at: proposedAt,
-        });
+    const requiresExplicitApproval = tool.requiredSafetyTag !== "ALLOW";
+    const approval =
+      safetyIsSufficient && !requiresExplicitApproval
+        ? { status: "granted" as const }
+        : this.verifyApproval({
+            sessionId: options.sessionId,
+            toolId: tool.id,
+            scopeHash,
+            at: proposedAt,
+          });
     const grantedApprovalId =
-      !safetyIsSufficient && approval.status === "granted"
-        ? approval.row?.id
-        : undefined;
+      approval.status === "granted" ? approval.row?.id : undefined;
 
-    if (!safetyIsSufficient && approval.status !== "granted") {
+    if (
+      (!safetyIsSufficient || requiresExplicitApproval) &&
+      approval.status !== "granted"
+    ) {
       const requiresApproval = approval.status === "required";
       this.createCall({
         executionId,
@@ -276,6 +309,7 @@ export class InProcessToolRuntime implements ToolRuntime {
         signal: controller.signal,
         timeoutMs: tool.timeoutMs,
         decision: options.decision,
+        db: this.db(),
       })
       .catch((error: unknown) =>
         result("ERROR", false, "Tool execution failed.", {

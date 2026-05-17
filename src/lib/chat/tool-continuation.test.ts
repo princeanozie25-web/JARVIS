@@ -17,6 +17,7 @@ import type { RouterDecision } from "../router";
 import type { TelemetryEvent } from "../telemetry";
 import { InProcessToolRuntime, providerToolMetadata, tools } from "../tools";
 import {
+  PROVIDER_TOOL_IDS,
   READ_ONLY_PROVIDER_TOOL_IDS,
   streamWithReadOnlyToolContinuation,
 } from "./tool-continuation";
@@ -142,6 +143,7 @@ async function collect(provider: ChatProvider): Promise<StreamEvent[]> {
     providerTools,
     runtime: runtime(),
     registry: tools,
+    db,
     sessionId: "session-1",
     assistantMessageId: "message-1",
     decision: allowDecision,
@@ -274,6 +276,79 @@ describe("read-only provider tool continuation", () => {
       "fs.list_dir",
       "fs.read_file",
       "fs.stat",
+    ]);
+  });
+});
+
+describe("approval-gated provider tool continuation", () => {
+  it("emits pending approval for fs.create_file without writing first", async () => {
+    const provider = new StubProvider(
+      "fs_create_file",
+      '{"path":"created.txt","content":"hello"}',
+      "unused",
+    );
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    const events: StreamEvent[] = [];
+    for await (const event of streamWithReadOnlyToolContinuation({
+      provider,
+      messages: [{ role: "user", content: "create a file" }],
+      model: "gpt-4o-mini",
+      signal: new AbortController().signal,
+      providerTools,
+      runtime: runtime(),
+      registry: tools,
+      db,
+      sessionId: "session-1",
+      assistantMessageId: "message-1",
+      decision: allowDecision,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "tool_call_start",
+      "tool_call_complete",
+      "tool_proposed",
+      "tool_pending",
+    ]);
+    expect(events.find((event) => event.type === "tool_pending")).toMatchObject(
+      {
+        type: "tool_pending",
+        executionId: "call-1",
+        toolId: "fs.create_file",
+        requiredSafetyTag: "CONFIRM_ONCE",
+        summary: "path: created.txt",
+      },
+    );
+    expect(provider.seenMessages).toHaveLength(1);
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "call-1",
+      tool_id: "fs.create_file",
+      status: "AWAITING_APPROVAL",
+    });
+    await expect(
+      import("node:fs/promises").then(({ access }) =>
+        access(join(workspace, "created.txt")),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("exposes only read tools and fs.create_file to providers", () => {
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    expect(providerTools.definitions.map((tool) => tool.id)).toEqual([
+      "fs.list_dir",
+      "fs.read_file",
+      "fs.stat",
+      "fs.create_file",
     ]);
   });
 });
