@@ -9,7 +9,18 @@ describe("SSE stream protocol", () => {
       { type: "usage", inputTokens: 10, outputTokens: 5 },
       { type: "tool_call_start", id: "tool-1", name: "lookup" },
       { type: "tool_call_delta", id: "tool-1", argsJsonChunk: '{"q"' },
-      { type: "tool_call_end", id: "tool-1" },
+      {
+        type: "tool_call_complete",
+        id: "tool-1",
+        name: "lookup",
+        argsJson: '{"q":"jarvis"}',
+      },
+      {
+        type: "tool_call_error",
+        id: "tool-2",
+        message: "bad args",
+        recoverable: true,
+      },
       { type: "error", message: "temporary", recoverable: true },
       {
         type: "done",

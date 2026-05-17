@@ -2,11 +2,27 @@ import type { Message } from "../types";
 
 export type ProviderId = "openai" | "anthropic" | "ollama";
 
+export interface ProviderToolInputSchema {
+  type: "object";
+  properties?: Record<string, unknown>;
+  required?: string[];
+  additionalProperties?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ProviderToolDefinition {
+  id: string;
+  name: string;
+  description: string;
+  inputSchema: ProviderToolInputSchema;
+}
+
 export interface GenerateOptions {
   model: string;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+  tools?: ProviderToolDefinition[];
 }
 
 export interface GenerateResult {
@@ -23,7 +39,13 @@ export type StreamEvent =
   | { type: "text"; value: string }
   | { type: "tool_call_start"; id: string; name: string }
   | { type: "tool_call_delta"; id: string; argsJsonChunk: string }
-  | { type: "tool_call_end"; id: string }
+  | { type: "tool_call_complete"; id: string; name: string; argsJson: string }
+  | {
+      type: "tool_call_error";
+      id?: string;
+      message: string;
+      recoverable: boolean;
+    }
   | { type: "usage"; inputTokens: number; outputTokens: number }
   | { type: "error"; message: string; recoverable: boolean }
   | { type: "done"; result: GenerateResult };

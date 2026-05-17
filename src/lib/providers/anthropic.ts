@@ -3,6 +3,7 @@ import { calculateCostUsd } from "../cost";
 import { config } from "../runtime/config";
 import type { Message } from "../types";
 import { splitSystemPrompt } from "./anthropic-messages";
+import { toAnthropicTools } from "./tools";
 import type {
   ChatProvider,
   GenerateOptions,
@@ -13,6 +14,12 @@ import type {
 } from "./types";
 
 const DEFAULT_MAX_TOKENS = 4096;
+
+interface AnthropicToolCallState {
+  id: string;
+  name: string;
+  argsJson: string;
+}
 
 export { splitSystemPrompt } from "./anthropic-messages";
 export type { AnthropicMessage } from "./anthropic-messages";
@@ -45,6 +52,7 @@ export class AnthropicProvider implements ChatProvider {
         temperature: opts.temperature,
         system,
         messages: rest,
+        tools: toAnthropicTools(opts.tools),
       },
       { signal: opts.signal },
     );
@@ -86,6 +94,7 @@ export class AnthropicProvider implements ChatProvider {
         temperature: opts.temperature,
         system,
         messages: rest,
+        tools: toAnthropicTools(opts.tools),
       },
       { signal: opts.signal },
     );
@@ -97,6 +106,7 @@ export class AnthropicProvider implements ChatProvider {
       let outputTokens: number | undefined;
       let timeToFirstTokenMs: number | undefined;
       let usageEmitted = false;
+      const toolCalls = new Map<number, AnthropicToolCallState>();
 
       try {
         for await (const event of sdkStream) {
@@ -115,6 +125,51 @@ export class AnthropicProvider implements ChatProvider {
               }
               content += text;
               yield { type: "text", value: text };
+            }
+          } else if (
+            event.type === "content_block_start" &&
+            event.content_block.type === "tool_use"
+          ) {
+            const toolCall = {
+              id: event.content_block.id,
+              name: event.content_block.name,
+              argsJson: "",
+            };
+            toolCalls.set(event.index, toolCall);
+            yield {
+              type: "tool_call_start",
+              id: toolCall.id,
+              name: toolCall.name,
+            };
+          } else if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "input_json_delta"
+          ) {
+            const toolCall = toolCalls.get(event.index);
+            if (toolCall) {
+              toolCall.argsJson += event.delta.partial_json;
+              yield {
+                type: "tool_call_delta",
+                id: toolCall.id,
+                argsJsonChunk: event.delta.partial_json,
+              };
+            } else {
+              yield {
+                type: "tool_call_error",
+                message: "Received tool input delta before tool start.",
+                recoverable: true,
+              };
+            }
+          } else if (event.type === "content_block_stop") {
+            const toolCall = toolCalls.get(event.index);
+            if (toolCall) {
+              yield {
+                type: "tool_call_complete",
+                id: toolCall.id,
+                name: toolCall.name,
+                argsJson: toolCall.argsJson,
+              };
+              toolCalls.delete(event.index);
             }
           } else if (event.type === "message_delta") {
             outputTokens = event.usage.output_tokens;

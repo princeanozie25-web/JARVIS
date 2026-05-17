@@ -9,26 +9,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:47am GMT+1
+# [jarvis] recent context, 2026-05-17 7:50am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19,984t read) | 1,985,091t work | 99% savings
+Stats: 50 obs (20,155t read) | 2,071,036t work | 99% savings
 
 ### May 16, 2026
 
 S9 User asked where the PDF was saved — Claude provided the full file path (May 16, 7:26 AM)
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
-118 3:07p ⚖️ Safe Fallback for Unknown Model Pricing Instead of Hard Throw
-230 9:52p 🔵 Jarvis Codebase Scan — AGENTS.md Modified
-231 9:53p 🔵 Jarvis Full Project Structure and Tech Stack
-232 " 🔵 Eval Framework: Types, Cases, Runner, and Storage
-233 " 🔵 SQLite Schema: Five Tables Covering Sessions, Messages, Telemetry, and Evals
-234 " 🔵 All Quality Gates Pass: 30 Tests, Clean Lint, Zero TS Errors, Successful Build
-235 " ✅ AGENTS.md Memory Context Refreshed: Timestamp and Minor Cleanup
 236 9:54p 🔵 Provider Architecture: Typed StreamEvent Taxonomy with AbortSignal Support
 237 " 🔵 DB Client: Singleton WAL-Mode SQLite with server-only Guard
 238 " 🔵 Telemetry: Dual-Write to In-Memory Store and SQLite with Silent Fallback
@@ -75,6 +68,13 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 294 " 🟣 Tool Runtime Test Suite Expanded with DB and Telemetry Assertions
 295 " 🟣 Five Tool Telemetry Event Types Added to TelemetryEventType Union
 296 " 🔵 All Gate Checks Pass After ToolContext Abort/Timeout Implementation
+297 7:48a ⚖️ Local-Runtime Guard Added for JARVIS Tools Mode
+298 7:49a 🔵 JARVIS Pre-existing Config and Tool Runtime Structure Mapped
+299 " 🟣 src/lib/tools/local-guard.ts — Loopback Guard Module Created
+300 " 🟣 Config Extended with tools Section; Runtime Integrated with Guard
+301 " 🟣 local-guard.test.ts Added — 4 Guard Scenarios Covered
+302 " ✅ README and ARCHITECTURE Documented with Tool Runtime Guard
+303 " 🔵 All Gates Passed After Local-Guard Implementation
 
-Access 1985k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2071k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
