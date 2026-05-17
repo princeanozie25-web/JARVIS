@@ -6,7 +6,7 @@ export interface RouterSafetyResponse {
   eventType: TelemetryEventType;
   body: {
     message: string;
-    reason: "safety_blocked" | "confirmation_required";
+    reason: "safety_blocked";
     intent: string;
     safetyTag: string;
     tier: string;
@@ -30,21 +30,6 @@ export function enforceRouterSafety(
         ...base,
         message: "Request blocked by safety policy.",
         reason: "safety_blocked",
-      },
-    };
-  }
-
-  if (
-    decision.safety.safetyTag === "CONFIRM_ONCE" ||
-    decision.safety.safetyTag === "CONFIRM_ALWAYS"
-  ) {
-    return {
-      status: 409,
-      eventType: "confirmation_required",
-      body: {
-        ...base,
-        message: "Confirmation is required before this request can continue.",
-        reason: "confirmation_required",
       },
     };
   }

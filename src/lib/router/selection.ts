@@ -34,6 +34,30 @@ export function selectModel(
       ),
     );
 
+  if (!selected && capability.requiredCapabilities.includes("tools")) {
+    const fallback =
+      allCandidates.find(
+        (entry) =>
+          entry.provider === (opts.requestedProvider ?? "openai") &&
+          entry.capabilities.includes("text") &&
+          entry.capabilities.includes("stream"),
+      ) ??
+      allCandidates.find(
+        (entry) =>
+          entry.provider === "openai" &&
+          entry.capabilities.includes("text") &&
+          entry.capabilities.includes("stream"),
+      );
+
+    if (fallback) {
+      return {
+        providerId: fallback.provider,
+        model: fallback,
+        reason: "No executable tool path exists yet; selected chat fallback.",
+      };
+    }
+  }
+
   if (!selected) {
     throw new Error(`No enabled model supports tier ${capability.tier}`);
   }

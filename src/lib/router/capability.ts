@@ -9,9 +9,9 @@ export function matchCapability(
   if (intent.intent === "DETERMINISTIC_COMMAND") {
     return {
       tier: "T0",
-      requiredCapabilities: ["text", "stream"],
+      requiredCapabilities: ["tools"],
       reason:
-        "Command detected, but no tools are wired yet; keep chat reply path.",
+        "Command detected; identify tool-like work without executing tools yet.",
     };
   }
 

@@ -9,22 +9,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-16 10:56pm GMT+1
+# [jarvis] recent context, 2026-05-17 7:27am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 41 obs (16,613t read) | 629,497t work | 97% savings
+Stats: 50 obs (20,074t read) | 1,782,978t work | 99% savings
 
 ### May 16, 2026
 
-37 7:11a 🔵 Jarvis Project: Next.js TypeScript Codebase at C:\Users\princ\Documents\jarvis
-38 7:17a 🔵 JARVIS v3.1 Architecture — Comprehensive Personal AI OS Design
-39 " 🔵 JARVIS Current Codebase State — Next.js App with OpenAI Integration at Phase 1A
-40 7:18a 🚨 Live API Keys Stored in .env.local — OpenAI and Anthropic Keys Exposed in Plaintext
-41 " 🔵 JARVIS Codebase Audit — Massive Gap Between v3.1 Architecture and Actual Implementation
-42 7:21a ✅ reportlab 4.5.1 Installed for PDF Audit Output
 43 7:25a 🚨 JARVIS Audit: Critical — Both API Keys Exposed in Audit Context
 44 " 🔵 JARVIS Repo State vs v3.1 Architecture: Major Structural Gaps Found
 45 " 🟣 JARVIS Audit PDF Generated via ReportLab Python Script
@@ -64,5 +58,23 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 244 " 🔄 SSE Encoding/Parsing Extracted to Shared src/lib/streaming/sse.ts Module
 245 " 🔵 Eval Suite Confirms Both Providers Operational — Cost Delta Notable
 
-Access 629k tokens of past work via get_observations([IDs]) or mem-search skill.
+### May 17, 2026
+
+264 7:17a 🔵 Codebase Architecture Review and Audit Compliance Initiated
+265 " 🔵 Jarvis Router Architecture: Intent Classification and Safety Pipeline
+266 " 🟣 Tool Registry Module Scaffolded with Mock Status Tool
+267 " 🔴 Fixed Two Test Failures: T0 No-Model Error and Registry Import Isolation
+268 " ✅ Router Types and Capability Updated for "tools" Capability Signal
+269 " 🔵 Jarvis Eval Harness Benchmarks Two Providers Across Four Task Types
+270 7:27a 🔵 JARVIS Project Current Phase: Between Phase 1.5 (complete) and Phase 1B (next)
+271 " 🔵 Provider Layer: OpenAI and Anthropic Both Fully Implemented Behind ChatProvider Interface
+272 " 🔵 Router Skeleton Shipped: 4-Stage Pipeline (Intent → Safety → Capability → Selection)
+273 " 🔵 SQLite Persistence Layer: sessions, messages, telemetry_events, eval_runs, eval_results Tables Live
+274 " 🔵 Cost Guard, Rate Limiter, and Model Registry All Operational
+275 " 🔵 API Route Gate Order and Frontend Streaming Architecture Confirmed Correct
+276 " 🔵 Tool Registry and Eval Framework Scaffolded; Only Mock Tool Registered
+277 " 🔵 Master Architecture Roadmap v3.1 Audit Prescribes 14-Step Phase 2 Tool Execution Framework
+278 " 🔵 Uncommitted Changes: Router and AGENTS.md Updated in Working Tree
+
+Access 1783k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

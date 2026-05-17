@@ -23,7 +23,7 @@ export interface SafetyResult {
 
 export interface CapabilityResult {
   tier: ModelTier;
-  requiredCapabilities: Array<"text" | "stream">;
+  requiredCapabilities: Array<"text" | "stream" | "tools">;
   reason: string;
 }
 

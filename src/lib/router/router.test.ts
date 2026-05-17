@@ -91,6 +91,7 @@ describe("router stages", () => {
 
     expect(decision.intent.intent).toBe("DETERMINISTIC_COMMAND");
     expect(decision.capability.tier).toBe("T0");
+    expect(decision.capability.requiredCapabilities).toEqual(["tools"]);
     expect(decision.selection.providerId).toBe("openai");
     expect(decision.selection.model.modelName).toBe("gpt-4o-mini");
   });
@@ -142,35 +143,23 @@ describe("router stages", () => {
     });
   });
 
-  it("requires confirmation for CONFIRM_ONCE decisions", () => {
+  it("carries CONFIRM_ONCE decisions without blocking chat", () => {
     const decision = routeMessages([
       { role: "user", content: "write a short update" },
     ]);
     const response = enforceRouterSafety(decision);
 
-    expect(response).toMatchObject({
-      status: 409,
-      eventType: "confirmation_required",
-      body: {
-        reason: "confirmation_required",
-        safetyTag: "CONFIRM_ONCE",
-      },
-    });
+    expect(decision.safety.safetyTag).toBe("CONFIRM_ONCE");
+    expect(response).toBeNull();
   });
 
-  it("requires confirmation for CONFIRM_ALWAYS decisions", () => {
+  it("carries CONFIRM_ALWAYS decisions without blocking chat", () => {
     const decision = routeMessages([
       { role: "user", content: "delete that file" },
     ]);
     const response = enforceRouterSafety(decision);
 
-    expect(response).toMatchObject({
-      status: 409,
-      eventType: "confirmation_required",
-      body: {
-        reason: "confirmation_required",
-        safetyTag: "CONFIRM_ALWAYS",
-      },
-    });
+    expect(decision.safety.safetyTag).toBe("CONFIRM_ALWAYS");
+    expect(response).toBeNull();
   });
 });
