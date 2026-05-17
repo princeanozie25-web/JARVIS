@@ -9,20 +9,25 @@ import {
   readdir,
   rename,
   rm,
+  rmdir,
   stat,
+  truncate,
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { TextDecoder } from "node:util";
 import { z } from "zod";
-import { recordRollback } from "../db/rollbacks";
+import {
+  recordRollbackForToolCall,
+  type RecordRollbackInput,
+} from "../db/rollbacks";
 import {
   isProtectedPath,
   resolveSafePath,
   SafePathError,
 } from "./fs-safe-path";
 import { assertPathDirectChild, executionPathSegment } from "./safe-filenames";
-import type { Tool, ToolResult } from "./types";
+import type { Tool, ToolContext, ToolResult } from "./types";
 
 const WRITE_TIMEOUT_MS = 5_000;
 const MAX_CREATE_FILE_BYTES = 1024 * 1024;
@@ -99,6 +104,72 @@ function safeError(error: unknown): ToolResult {
     error instanceof Error ? error.message : String(error),
     "filesystem_error",
   );
+}
+
+function rollbackPersistenceError(
+  recovery: "reverted" | "failed",
+  error: unknown,
+): ToolResult {
+  return {
+    ok: false,
+    status: "ERROR",
+    message:
+      recovery === "reverted"
+        ? "Filesystem mutation was reverted because rollback persistence failed."
+        : "Filesystem mutation completed, but rollback persistence and recovery failed.",
+    data: {
+      reason:
+        recovery === "reverted"
+          ? "rollback_persistence_failed"
+          : "rollback_recovery_failed",
+      error: error instanceof Error ? error.message : String(error),
+    },
+  };
+}
+
+async function persistRollbackOrRecover(
+  context: ToolContext,
+  rollback: RecordRollbackInput,
+  recover: () => Promise<void>,
+): Promise<ToolResult | null> {
+  try {
+    if (!context.db) {
+      throw new Error("Rollback database is unavailable.");
+    }
+    recordRollbackForToolCall(context.db, rollback);
+    return null;
+  } catch (error) {
+    try {
+      await recover();
+      return rollbackPersistenceError("reverted", error);
+    } catch (recoveryError) {
+      return rollbackPersistenceError("failed", recoveryError);
+    }
+  }
+}
+
+async function writeTextViaTemp(input: {
+  targetPath: string;
+  content: string;
+  executionId: string;
+}): Promise<void> {
+  const dir = dirname(input.targetPath);
+  const leaf = basename(input.targetPath);
+  const tempPath = resolve(
+    dir,
+    `.${leaf}.${executionPathSegment(input.executionId)}.recover.tmp`,
+  );
+  assertPathDirectChild(dir, tempPath);
+  try {
+    await writeFile(tempPath, input.content, {
+      encoding: "utf8",
+      flag: "wx",
+    });
+    await rename(tempPath, input.targetPath);
+  } catch (error) {
+    await rm(tempPath, { force: true });
+    throw error;
+  }
 }
 
 function decodeText(buffer: Buffer): string | null {
@@ -231,15 +302,22 @@ export const fsCreateFileTool: Tool<CreateFileInput> = {
       }
 
       const relativePath = relative(parent.workspaceRoot, targetPath) || ".";
-      if (context.db) {
-        recordRollback(context.db, {
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
           id: randomUUID(),
           execution_id: context.executionId,
           session_id: context.sessionId,
           kind: "fs_unlink_created",
           payload_json: JSON.stringify({ path: relativePath }),
           created_at: Date.now(),
-        });
+        },
+        async () => {
+          await rm(targetPath, { force: true });
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
       }
 
       return {
@@ -321,15 +399,34 @@ export const fsWriteFileTool: Tool<WriteFileInput> = {
         throw error;
       }
 
-      if (context.db) {
-        recordRollback(context.db, {
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
           id: randomUUID(),
           execution_id: context.executionId,
           session_id: context.sessionId,
           kind: "fs_restore_content",
           payload_json: JSON.stringify(rollback),
           created_at: Date.now(),
-        });
+        },
+        async () => {
+          await writeTextViaTemp({
+            targetPath: safePath.resolvedPath,
+            content: previousContent,
+            executionId: context.executionId,
+          });
+          if (
+            typeof rollback.backupPath === "string" &&
+            rollback.backupPath.length > 0
+          ) {
+            await rm(resolve(safePath.workspaceRoot, rollback.backupPath), {
+              force: true,
+            });
+          }
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
       }
 
       return {
@@ -389,8 +486,9 @@ export const fsAppendFileTool: Tool<AppendFileInput> = {
 
       const relativePath =
         relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
-      if (context.db) {
-        recordRollback(context.db, {
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
           id: randomUUID(),
           execution_id: context.executionId,
           session_id: context.sessionId,
@@ -400,7 +498,13 @@ export const fsAppendFileTool: Tool<AppendFileInput> = {
             previousLength: previousBuffer.byteLength,
           }),
           created_at: Date.now(),
-        });
+        },
+        async () => {
+          await truncate(safePath.resolvedPath, previousBuffer.byteLength);
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
       }
 
       return {
@@ -459,15 +563,22 @@ export const fsMkdirTool: Tool<MkdirInput> = {
       await mkdir(targetPath, { recursive: false });
 
       const relativePath = relative(parent.workspaceRoot, targetPath) || ".";
-      if (context.db) {
-        recordRollback(context.db, {
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
           id: randomUUID(),
           execution_id: context.executionId,
           session_id: context.sessionId,
           kind: "fs_rmdir_empty",
           payload_json: JSON.stringify({ path: relativePath }),
           created_at: Date.now(),
-        });
+        },
+        async () => {
+          await rmdir(targetPath);
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
       }
 
       return {
@@ -528,15 +639,22 @@ export const fsRenameTool: Tool<RenameInput> = {
         relative(source.workspaceRoot, source.resolvedPath) || ".";
       const toPath =
         relative(destination.workspaceRoot, destination.targetPath) || ".";
-      if (context.db) {
-        recordRollback(context.db, {
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
           id: randomUUID(),
           execution_id: context.executionId,
           session_id: context.sessionId,
           kind: "fs_move_back",
           payload_json: JSON.stringify({ fromPath, toPath }),
           created_at: Date.now(),
-        });
+        },
+        async () => {
+          await rename(destination.targetPath, source.resolvedPath);
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
       }
 
       return {

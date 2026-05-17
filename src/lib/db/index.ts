@@ -58,11 +58,13 @@ export type {
 } from "./approvals";
 export {
   getLatestRollbackForSession,
+  getLatestAvailableRollbackForSession,
   getLatestUnappliedRollbackForSession,
   getRollback,
   listRollbacks,
   markRollbackApplied,
   recordRollback,
+  recordRollbackForToolCall,
 } from "./rollbacks";
 export type {
   RecordRollbackInput,

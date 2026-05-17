@@ -1,4 +1,5 @@
 import type DatabaseType from "better-sqlite3";
+import { setToolCallRollbackId } from "./tool-calls";
 
 export type RollbackKind =
   | "fs_restore_content"
@@ -47,6 +48,30 @@ export function recordRollback(
   );
 }
 
+export function recordRollbackForToolCall(
+  db: DatabaseType.Database,
+  input: RecordRollbackInput,
+): void {
+  const insert = db.prepare(
+    `INSERT INTO rollbacks (
+       id, execution_id, session_id, kind, payload_json, created_at, applied_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const transaction = db.transaction(() => {
+    insert.run(
+      input.id,
+      input.execution_id,
+      input.session_id,
+      input.kind,
+      input.payload_json,
+      input.created_at,
+      input.applied_at ?? null,
+    );
+    setToolCallRollbackId(db, input.execution_id, input.id);
+  });
+  transaction();
+}
+
 export function getRollback(
   db: DatabaseType.Database,
   id: string,
@@ -85,6 +110,23 @@ export function getLatestUnappliedRollbackForSession(
        LIMIT 1`,
     )
     .get(sessionId) as RollbackRow | undefined;
+}
+
+export function getLatestAvailableRollbackForSession(
+  db: DatabaseType.Database,
+  input: { sessionId: string; now: number; ttlMs: number },
+): RollbackRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM rollbacks
+       WHERE session_id = ?
+         AND applied_at IS NULL
+         AND created_at >= ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .get(input.sessionId, input.now - input.ttlMs) as RollbackRow | undefined;
 }
 
 export function markRollbackApplied(

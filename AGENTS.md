@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 6:44pm GMT+1
+# [jarvis] recent context, 2026-05-17 7:01pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,186t read) | 2,049,131t work | 99% savings
+Stats: 50 obs (24,126t read) | 1,847,221t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,13 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-312 8:01a 🟣 Approval Lifecycle State Machine and Token Replay Protection
-317 8:09a 🟣 Anthropic claude-haiku-4-5 Pricing Added to Model Registry
-318 " 🟣 Schema Migration Tracking Table Added to SQLite DB
-319 " 🟣 SSE Heartbeat and Session ID Added to Chat Route
-320 " 🟣 Runner-Only Tool Execution Boundary Enforced by Lint Test
-321 " 🟣 SSE Parser Updated to Ignore Heartbeat Comment Frames
-322 " 🔵 Phase 2 Gates All Pass: 80 Tests, Lint, Build, and Eval Clean
 323 1:04p 🟣 Phase 2 Approval API/UI Implementation Requested
 324 " 🔵 JARVIS Project: Existing Approval Infrastructure Inventory
 325 1:07p 🟣 Phase 2 Backend Foundation: DB Helpers, Telemetry, SSE Type, Runtime Patch
@@ -75,6 +68,13 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 363 6:28p 🚨 Path Traversal Security Fix: Sanitize executionId Before Filesystem Interpolation
 364 6:35p 🟣 Approval Token Security: CSRF-Protection for Tool Approvals
 365 6:36p 🔵 Approval Token Feature Passes All Quality Gates
+366 6:44p 🟣 fs.rename Tool Implementation Planned for JARVIS Phase 2
+367 6:45p 🟣 fs.rename Tool Fully Implemented in JARVIS Phase 2
+368 6:46p 🔴 fs.rename Destination-Exists Error Classification Fixed via ToolDeniedError
+369 6:47p 🔵 fs.rename Phase 2 — All Acceptance Gates Pass, 237 Tests Green
+370 6:52p 🔵 Jarvis Project Current Build & Test State — All Green
+371 " 🔵 Jarvis Tool System Architecture — File Operations with Approval + Rollback
+372 " 🔵 Eval Harness Running Against Two Live Models
 
-Access 2049k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1847k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

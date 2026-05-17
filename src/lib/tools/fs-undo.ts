@@ -13,7 +13,7 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 import {
-  getLatestRollbackForSession,
+  getLatestAvailableRollbackForSession,
   getLatestUnappliedRollbackForSession,
   markRollbackApplied,
   type RollbackKind,
@@ -381,26 +381,24 @@ export const fsUndoTool: Tool<UndoInput> = {
       return denied("Rollback database is unavailable.", "db_unavailable");
     }
 
-    const latest = getLatestRollbackForSession(context.db, context.sessionId);
-    if (!latest) {
-      return denied("No rollback is available.", "rollback_missing");
-    }
-    if (latest.applied_at !== null) {
-      return denied(
-        "Rollback was already applied.",
-        "rollback_already_applied",
-      );
-    }
-
-    const rollback = getLatestUnappliedRollbackForSession(
-      context.db,
-      context.sessionId,
-    );
+    const now = Date.now();
+    const rollback = getLatestAvailableRollbackForSession(context.db, {
+      sessionId: context.sessionId,
+      now,
+      ttlMs: ROLLBACK_TTL_MS,
+    });
     if (!rollback) {
+      const unavailable = getLatestUnappliedRollbackForSession(
+        context.db,
+        context.sessionId,
+      );
+      if (unavailable) {
+        return executeRollback({ row: unavailable, now });
+      }
       return denied("No unapplied rollback is available.", "rollback_missing");
     }
 
-    const outcome = await executeRollback({ row: rollback, now: Date.now() });
+    const outcome = await executeRollback({ row: rollback, now });
     if (outcome.ok) {
       markRollbackApplied(context.db, rollback.id, Date.now());
     }

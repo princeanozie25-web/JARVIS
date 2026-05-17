@@ -108,6 +108,19 @@ export function updateToolCall(
   );
 }
 
+export function setToolCallRollbackId(
+  db: DatabaseType.Database,
+  executionId: string,
+  rollbackId: string,
+): void {
+  const result = db
+    .prepare("UPDATE tool_calls SET rollback_id = ? WHERE execution_id = ?")
+    .run(rollbackId, executionId);
+  if (result.changes !== 1) {
+    throw new Error("Matching tool call row was not found.");
+  }
+}
+
 export function getToolCall(
   db: DatabaseType.Database,
   executionId: string,

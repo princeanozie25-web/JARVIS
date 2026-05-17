@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -268,6 +269,39 @@ describe("fs.undo", () => {
     expect(listRollbacks(db)[0].applied_at).toBeNull();
   });
 
+  it("undo after an empty directory rename moves it back", async () => {
+    mkdirSync(join(workspaceRoot, "original-dir"));
+    renameSync(
+      join(workspaceRoot, "original-dir"),
+      join(workspaceRoot, "renamed-dir"),
+    );
+    addRollback({
+      kind: "fs_move_back",
+      payload: { fromPath: "original-dir", toPath: "renamed-dir" },
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        kind: "fs_move_back",
+        path: "renamed-dir->original-dir",
+      },
+    });
+
+    expect(existsSync(join(workspaceRoot, "original-dir"))).toBe(true);
+    expect(existsSync(join(workspaceRoot, "renamed-dir"))).toBe(false);
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
   it("undo after fs.write_file restores previous content", async () => {
     writeFileSync(join(workspaceRoot, "target.txt"), "original");
     await requestWrite("exec-write", "target.txt", "updated");
@@ -367,7 +401,43 @@ describe("fs.undo", () => {
     expect(readFileSync(join(workspaceRoot, "old.txt"), "utf8")).toBe("new");
   });
 
-  it("already applied rollback is refused", async () => {
+  it("skips an applied latest rollback and uses an older unapplied rollback", async () => {
+    const now = Date.now();
+    writeFileSync(join(workspaceRoot, "older-created.txt"), "created");
+    addRollback({
+      id: "rollback-older",
+      kind: "fs_unlink_created",
+      payload: { path: "older-created.txt" },
+      createdAt: now - 1_000,
+    });
+    addRollback({
+      id: "rollback-newer-applied",
+      kind: "fs_unlink_created",
+      payload: { path: "newer-created.txt" },
+      createdAt: now,
+      appliedAt: now,
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: { rollbackId: "rollback-older", path: "older-created.txt" },
+    });
+    expect(existsSync(join(workspaceRoot, "older-created.txt"))).toBe(false);
+    expect(
+      listRollbacks(db).find((row) => row.id === "rollback-older")?.applied_at,
+    ).not.toBeNull();
+  });
+
+  it("returns missing when only applied rollbacks are available", async () => {
     addRollback({
       kind: "fs_unlink_created",
       payload: { path: "created.txt" },
@@ -385,7 +455,7 @@ describe("fs.undo", () => {
     ).resolves.toMatchObject({
       ok: false,
       status: "DENIED",
-      data: { reason: "rollback_already_applied" },
+      data: { reason: "rollback_missing" },
     });
   });
 

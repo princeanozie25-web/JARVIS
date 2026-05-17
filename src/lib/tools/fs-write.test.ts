@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ensurePendingToolApproval,
   resumeApproval as resumeToolApproval,
@@ -259,6 +259,33 @@ function resumeApproval(
     ...input,
     approvalToken: input.approvalToken ?? approvalTokenFor(input.executionId),
   });
+}
+
+async function withRollbackInsertFailure<T>(fn: () => Promise<T>): Promise<T> {
+  const originalPrepare = db.prepare.bind(db);
+  const prepareSpy = vi.spyOn(db, "prepare");
+  prepareSpy.mockImplementation(((source: string) => {
+    if (source.includes("INSERT INTO rollbacks")) {
+      throw new Error("injected rollback insert failure");
+    }
+    return originalPrepare(source);
+  }) as Database.Database["prepare"]);
+  try {
+    return await fn();
+  } finally {
+    prepareSpy.mockRestore();
+  }
+}
+
+function expectToolCallLinkedToRollback(executionId: string) {
+  const rollback = listRollbacks(db).find(
+    (row) => row.execution_id === executionId,
+  );
+  const toolCall = listToolCalls(db).find(
+    (row) => row.execution_id === executionId,
+  );
+  expect(rollback?.id).toBeTruthy();
+  expect(toolCall?.rollback_id).toBe(rollback?.id);
 }
 
 describe("fs.create_file", () => {
@@ -572,6 +599,206 @@ describe("write tool execution id path hardening", () => {
       });
     },
   );
+});
+
+describe("write rollback hardening", () => {
+  it("links every write-capable tool call to its rollback row", async () => {
+    await requestCreate("exec-create-link", "created-link.txt", "created");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-create-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    writeFileSync(join(workspaceRoot, "write-link.txt"), "old");
+    await requestWrite("exec-write-link", "write-link.txt", "new");
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-write-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    writeFileSync(join(workspaceRoot, "append-link.txt"), "old");
+    await requestAppend("exec-append-link", "append-link.txt", " new");
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-append-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    await requestMkdir("exec-mkdir-link", "mkdir-link");
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-mkdir-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    writeFileSync(join(workspaceRoot, "rename-link-old.txt"), "old");
+    await requestRename(
+      "exec-rename-link",
+      "rename-link-old.txt",
+      "rename-link-new.txt",
+    );
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-rename-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    for (const executionId of [
+      "exec-create-link",
+      "exec-write-link",
+      "exec-append-link",
+      "exec-mkdir-link",
+      "exec-rename-link",
+    ]) {
+      expectToolCallLinkedToRollback(executionId);
+    }
+  });
+
+  it("reverts fs.create_file when rollback persistence fails", async () => {
+    await requestCreate("exec-create-fail", "create-fail.txt", "created");
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-create-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(existsSync(join(workspaceRoot, "create-fail.txt"))).toBe(false);
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
+
+  it("reverts fs.write_file when rollback persistence fails", async () => {
+    writeFileSync(join(workspaceRoot, "write-fail.txt"), "original");
+    await requestWrite("exec-write-fail", "write-fail.txt", "updated");
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-write-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(readFileSync(join(workspaceRoot, "write-fail.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
+
+  it("reverts fs.append_file when rollback persistence fails", async () => {
+    writeFileSync(join(workspaceRoot, "append-fail.txt"), "original");
+    await requestAppend("exec-append-fail", "append-fail.txt", " plus");
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-append-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(readFileSync(join(workspaceRoot, "append-fail.txt"), "utf8")).toBe(
+      "original",
+    );
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
+
+  it("reverts fs.mkdir when rollback persistence fails", async () => {
+    await requestMkdir("exec-mkdir-fail", "mkdir-fail");
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-mkdir-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(existsSync(join(workspaceRoot, "mkdir-fail"))).toBe(false);
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
+
+  it("reverts fs.rename when rollback persistence fails", async () => {
+    writeFileSync(join(workspaceRoot, "rename-fail-old.txt"), "old");
+    await requestRename(
+      "exec-rename-fail",
+      "rename-fail-old.txt",
+      "rename-fail-new.txt",
+    );
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-rename-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(
+      readFileSync(join(workspaceRoot, "rename-fail-old.txt"), "utf8"),
+    ).toBe("old");
+    expect(existsSync(join(workspaceRoot, "rename-fail-new.txt"))).toBe(false);
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
 });
 
 describe("fs.rename", () => {
