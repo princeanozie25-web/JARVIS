@@ -17,7 +17,12 @@ export {
 export type { MessageRole, MessageRow } from "./messages";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
-export { createToolCall, listToolCalls, updateToolCall } from "./tool-calls";
+export {
+  createToolCall,
+  getToolCall,
+  listToolCalls,
+  updateToolCall,
+} from "./tool-calls";
 export type {
   CreateToolCallInput,
   ToolCallRow,
@@ -29,7 +34,10 @@ export {
   cancelApproval,
   consumeApproval,
   createPendingApproval,
+  decideApprovalByExecution,
   denyApproval,
+  expirePendingApprovals,
+  getApprovalByExecution,
   getActiveApproval,
   hashApprovalToken,
   recordApproval,
@@ -41,6 +49,7 @@ export type {
   ApprovalRow,
   ApprovalVerificationResult,
   ApprovalVerificationStatus,
+  ApiApprovalDecision,
   CreatePendingApprovalInput,
   PendingApproval,
   RecordApprovalInput,

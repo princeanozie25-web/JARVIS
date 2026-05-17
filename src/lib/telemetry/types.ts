@@ -7,11 +7,13 @@ export type TelemetryEventType =
   | "model_call"
   | "provider_error"
   | "client_disconnect"
+  | "tool_proposed"
   | "tool_executed"
   | "tool_completed"
   | "tool_timeout"
   | "tool_cancelled"
-  | "tool_denied";
+  | "tool_denied"
+  | "tool_approved";
 
 export interface TelemetryEvent {
   timestamp: number;

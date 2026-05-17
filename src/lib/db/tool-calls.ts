@@ -108,6 +108,15 @@ export function updateToolCall(
   );
 }
 
+export function getToolCall(
+  db: DatabaseType.Database,
+  executionId: string,
+): ToolCallRow | undefined {
+  return db
+    .prepare("SELECT * FROM tool_calls WHERE execution_id = ?")
+    .get(executionId) as ToolCallRow | undefined;
+}
+
 export function listToolCalls(
   db: DatabaseType.Database,
   opts: { sessionId?: string; limit?: number } = {},

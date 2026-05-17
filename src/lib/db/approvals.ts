@@ -63,6 +63,11 @@ export interface PendingApproval {
   expiresAt: number;
 }
 
+export type ApiApprovalDecision =
+  | "APPROVED_ONCE"
+  | "APPROVED_SESSION"
+  | "DENIED";
+
 export type ApprovalVerificationStatus =
   | "granted"
   | "required"
@@ -116,7 +121,7 @@ function normalizeRow(row: ApprovalRow | undefined): ApprovalRow | undefined {
   };
 }
 
-function getApprovalById(
+export function getApprovalById(
   db: DatabaseType.Database,
   id: string,
 ): ApprovalRow | undefined {
@@ -124,6 +129,23 @@ function getApprovalById(
     db.prepare("SELECT * FROM approvals WHERE id = ?").get(id) as
       | ApprovalRow
       | undefined,
+  );
+}
+
+export function getApprovalByExecution(
+  db: DatabaseType.Database,
+  executionId: string,
+): ApprovalRow | undefined {
+  return normalizeRow(
+    db
+      .prepare(
+        `SELECT *
+         FROM approvals
+         WHERE execution_id = ?
+         ORDER BY decided_at DESC
+         LIMIT 1`,
+      )
+      .get(executionId) as ApprovalRow | undefined,
   );
 }
 
@@ -135,6 +157,22 @@ function expireApproval(
   db.prepare(
     "UPDATE approvals SET state = 'expired', decision = 'EXPIRED', decided_at = ? WHERE id = ?",
   ).run(at, id);
+}
+
+export function expirePendingApprovals(
+  db: DatabaseType.Database,
+  at: number = Date.now(),
+): number {
+  const result = db
+    .prepare(
+      `UPDATE approvals
+       SET state = 'expired', decision = 'EXPIRED', decided_at = ?
+       WHERE state = 'pending'
+         AND expires_at IS NOT NULL
+         AND expires_at <= ?`,
+    )
+    .run(at, at);
+  return result.changes;
 }
 
 export function recordApproval(
@@ -225,6 +263,52 @@ export function denyApproval(
      WHERE id = ?`,
   ).run(input.denied_at, row.id);
   return { status: "denied", row: getApprovalById(db, row.id) };
+}
+
+export function decideApprovalByExecution(
+  db: DatabaseType.Database,
+  input: {
+    executionId: string;
+    decision: ApiApprovalDecision;
+    decidedAt: number;
+    sessionTtlMs: number;
+  },
+): ApprovalVerificationResult {
+  const row = getApprovalByExecution(db, input.executionId);
+  if (!row) return { status: "missing" };
+  if (row.expires_at !== null && row.expires_at <= input.decidedAt) {
+    expireApproval(db, row.id, input.decidedAt);
+    return { status: "expired", row: getApprovalById(db, row.id) };
+  }
+  if (row.state === "denied") return { status: "denied", row };
+  if (row.state === "cancelled") return { status: "cancelled", row };
+  if (row.state === "expired") return { status: "expired", row };
+  if (row.state === "approved" || row.consumed_at !== null) {
+    return { status: "replayed", row };
+  }
+  if (row.state !== "pending") return { status: "missing", row };
+
+  if (input.decision === "DENIED") {
+    return denyApproval(db, { id: row.id, denied_at: input.decidedAt });
+  }
+
+  db.prepare(
+    `UPDATE approvals
+     SET state = 'approved',
+         decision = ?,
+         decided_at = ?,
+         expires_at = ?
+     WHERE id = ?`,
+  ).run(
+    input.decision,
+    input.decidedAt,
+    input.decision === "APPROVED_SESSION"
+      ? input.decidedAt + input.sessionTtlMs
+      : row.expires_at,
+    row.id,
+  );
+
+  return { status: "granted", row: getApprovalById(db, row.id) };
 }
 
 export function cancelApproval(

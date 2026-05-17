@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { ChatRequestSchema } from "@/lib/chat/schema";
+import {
+  READ_ONLY_PROVIDER_TOOL_IDS,
+  streamWithReadOnlyToolContinuation,
+} from "@/lib/chat/tool-continuation";
 import { canExecuteRequest, usage } from "@/lib/cost";
 import {
   createSessionIfMissing,
@@ -12,6 +16,7 @@ import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
 import { enforceRouterSafety, routeMessages } from "@/lib/router";
 import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
+import { providerToolMetadata, toolRuntime, tools } from "@/lib/tools";
 import type { Message } from "@/lib/types";
 
 const SSE_HEARTBEAT_MS = 15_000;
@@ -196,10 +201,9 @@ export async function POST(req: Request) {
     }
 
     const provider = registry.get(providerId);
-    const streamResult = await provider.stream(messages, {
-      model: providerModel,
-      signal: ac.signal,
-    });
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      READ_ONLY_PROVIDER_TOOL_IDS.has(toolId),
+    );
 
     const encoder = new TextEncoder();
     const body = new ReadableStream<Uint8Array>({
@@ -213,7 +217,19 @@ export async function POST(req: Request) {
         }, SSE_HEARTBEAT_MS);
 
         try {
-          for await (const event of streamResult.events) {
+          for await (const event of streamWithReadOnlyToolContinuation({
+            provider,
+            messages,
+            model: providerModel,
+            signal: ac.signal,
+            providerTools,
+            runtime: toolRuntime,
+            registry: tools,
+            sessionId,
+            assistantMessageId,
+            decision: routerDecision,
+            recordEvent,
+          })) {
             controller.enqueue(encoder.encode(encodeSseEvent(event)));
 
             if (event.type === "done") {

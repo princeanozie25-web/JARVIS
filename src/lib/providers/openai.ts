@@ -2,11 +2,16 @@ import OpenAI from "openai";
 import { calculateCostUsd } from "../cost";
 import { config } from "../runtime/config";
 import type { Message } from "../types";
+import {
+  isAssistantToolCallMessage,
+  isToolResultMessage,
+} from "./tool-messages";
 import { toOpenAITools } from "./tools";
 import type {
   ChatProvider,
   GenerateOptions,
   GenerateResult,
+  ProviderMessage,
   ProviderId,
   StreamEvent,
   StreamResult,
@@ -17,6 +22,40 @@ interface OpenAIToolCallState {
   name: string;
   argsJson: string;
   started: boolean;
+}
+
+type OpenAIMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+function toOpenAIMessages(messages: ProviderMessage[]): OpenAIMessageParam[] {
+  return messages.map((message) => {
+    if (isToolResultMessage(message)) {
+      return {
+        role: "tool",
+        tool_call_id: message.toolCallId,
+        content: message.content,
+      };
+    }
+
+    if (isAssistantToolCallMessage(message)) {
+      return {
+        role: "assistant",
+        content: message.content || null,
+        tool_calls: message.toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          type: "function" as const,
+          function: {
+            name: toolCall.name,
+            arguments: toolCall.argsJson || "{}",
+          },
+        })),
+      };
+    }
+
+    return {
+      role: message.role,
+      content: message.content,
+    } as OpenAIMessageParam;
+  });
 }
 
 export class OpenAIProvider implements ChatProvider {
@@ -37,7 +76,7 @@ export class OpenAIProvider implements ChatProvider {
     const response = await this.client.chat.completions.create(
       {
         model: opts.model,
-        messages,
+        messages: toOpenAIMessages(messages),
         temperature: opts.temperature,
         max_tokens: opts.maxTokens,
         tools: toOpenAITools(opts.tools),
@@ -65,7 +104,7 @@ export class OpenAIProvider implements ChatProvider {
   }
 
   async stream(
-    messages: Message[],
+    messages: ProviderMessage[],
     opts: GenerateOptions,
   ): Promise<StreamResult> {
     const startedAt = Date.now();
@@ -73,7 +112,7 @@ export class OpenAIProvider implements ChatProvider {
     const sdkStream = await this.client.chat.completions.create(
       {
         model: opts.model,
-        messages,
+        messages: toOpenAIMessages(messages),
         temperature: opts.temperature,
         max_tokens: opts.maxTokens,
         stream: true,

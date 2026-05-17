@@ -2,7 +2,9 @@ import type DatabaseType from "better-sqlite3";
 import {
   createToolCall,
   getDb,
+  getToolCall,
   insertTelemetryEvent,
+  consumeApproval,
   updateToolCall,
   verifyToolApproval,
   type ToolCallStatus,
@@ -76,6 +78,9 @@ export class InProcessToolRuntime implements ToolRuntime {
     const parsed = tool.inputSchema.safeParse(options.input);
     const inputJson = safeJson(options.input);
     const actualSafetyTag = options.decision.safety.safetyTag;
+    const baseNotes = options.messageId
+      ? `message_id=${options.messageId} tool_id=${tool.id}`
+      : undefined;
     const baseTelemetry = {
       execution_id: executionId,
       session_id: options.sessionId,
@@ -84,6 +89,7 @@ export class InProcessToolRuntime implements ToolRuntime {
       safety_tag: actualSafetyTag,
       tier: options.decision.capability.tier,
       model_id: options.decision.selection.model.modelName,
+      notes: baseNotes,
     };
 
     if (!parsed.success) {
@@ -129,6 +135,10 @@ export class InProcessToolRuntime implements ToolRuntime {
           scopeHash,
           at: proposedAt,
         });
+    const grantedApprovalId =
+      !safetyIsSufficient && approval.status === "granted"
+        ? approval.row?.id
+        : undefined;
 
     if (!safetyIsSufficient && approval.status !== "granted") {
       const requiresApproval = approval.status === "required";
@@ -331,7 +341,28 @@ export class InProcessToolRuntime implements ToolRuntime {
         });
       }
 
-      return this.finish({
+      if (outcome.status === "DENIED") {
+        return this.finish({
+          executionId,
+          status: "DENIED",
+          ok: false,
+          message: outcome.message,
+          data: outcome.data,
+          telemetry: {
+            ...baseTelemetry,
+            event_type: "tool_denied",
+            success: false,
+            latency_ms: this.now() - startedAt,
+            error_class: "ToolDenied",
+            notes:
+              typeof outcome.data === "object" && outcome.data !== null
+                ? safeJson(outcome.data)
+                : undefined,
+          },
+        });
+      }
+
+      const completed = this.finish({
         executionId,
         status: "COMPLETED",
         ok: outcome.ok,
@@ -344,6 +375,10 @@ export class InProcessToolRuntime implements ToolRuntime {
           latency_ms: this.now() - startedAt,
         },
       });
+      if (outcome.ok && grantedApprovalId) {
+        this.consumeApprovedOnce(grantedApprovalId);
+      }
+      return completed;
     } finally {
       clearTimeout(timeout);
       options.signal?.removeEventListener("abort", abortFromParent);
@@ -385,6 +420,17 @@ export class InProcessToolRuntime implements ToolRuntime {
   }): void {
     const db = this.db();
     if (!db) return;
+    const existing = getToolCall(db, input.executionId);
+    if (existing) {
+      updateToolCall(db, input.executionId, {
+        status: input.status,
+        output_json: null,
+        error_message: input.errorMessage ?? null,
+        started_at: null,
+        completed_at: input.completedAt ?? null,
+      });
+      return;
+    }
     createToolCall(db, {
       execution_id: input.executionId,
       session_id: input.sessionId,
@@ -461,8 +507,14 @@ export class InProcessToolRuntime implements ToolRuntime {
       toolId: input.toolId,
       scopeHash: input.scopeHash,
       at: input.at,
-      consume: true,
+      consume: false,
     });
+  }
+
+  private consumeApprovedOnce(approvalId: string): void {
+    const db = this.db();
+    if (!db) return;
+    consumeApproval(db, approvalId, this.now());
   }
 
   private assertLocalOnly(): void {

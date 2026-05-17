@@ -8,6 +8,7 @@ import type {
   ChatProvider,
   GenerateOptions,
   GenerateResult,
+  ProviderMessage,
   ProviderId,
   StreamEvent,
   StreamResult,
@@ -39,7 +40,7 @@ export class AnthropicProvider implements ChatProvider {
   }
 
   async generate(
-    messages: Message[],
+    messages: ProviderMessage[],
     opts: GenerateOptions,
   ): Promise<GenerateResult> {
     const startedAt = Date.now();

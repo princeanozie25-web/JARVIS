@@ -43,6 +43,7 @@ export interface RunToolOptions {
   sessionId: string;
   decision: RouterDecision;
   executionId?: string;
+  messageId?: string;
   signal?: AbortSignal;
 }
 

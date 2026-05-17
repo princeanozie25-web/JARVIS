@@ -78,8 +78,30 @@ describe("ToolRegistry", () => {
     );
   });
 
-  it("ships with only the mock status tool registered", () => {
-    expect(tools.list().map((tool) => tool.id)).toEqual(["mock.status"]);
+  it("ships with mock status and read-only filesystem tools registered", () => {
+    expect(tools.list().map((tool) => tool.id)).toEqual([
+      "mock.status",
+      "fs.list_dir",
+      "fs.read_file",
+      "fs.stat",
+    ]);
+  });
+
+  it("does not register write-capable tools", () => {
+    expect(
+      tools
+        .list()
+        .filter((tool) => tool.reversibilityClass !== "NO_SIDE_EFFECT")
+        .map((tool) => [
+          tool.id,
+          tool.reversibilityClass,
+          tool.requiredSafetyTag,
+        ]),
+    ).toEqual([
+      ["fs.list_dir", "PURE_READ", "ALLOW"],
+      ["fs.read_file", "PURE_READ", "ALLOW"],
+      ["fs.stat", "PURE_READ", "ALLOW"],
+    ]);
   });
 
   it("executes the mock tool through the in-process runtime", async () => {

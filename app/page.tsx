@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  ApprovalCard,
+  type ApprovalCardDetails,
+} from "@/components/ApprovalCard";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
+import type { ApiApprovalDecision } from "@/lib/db/node";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
 
@@ -9,6 +14,7 @@ const MAX_MESSAGES_TO_SEND = 50;
 
 type UiMessage = Message & {
   id: string;
+  approval?: ApprovalCardDetails;
 };
 
 type ApiMessage = Message & {
@@ -124,6 +130,29 @@ export default function Home() {
                   : message,
               ),
             );
+          } else if (event.type === "tool_pending") {
+            setStreamingStarted(true);
+            setMessages((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? {
+                      ...message,
+                      content: "Approval required before this tool can run.",
+                      approval: {
+                        executionId: event.executionId,
+                        toolId: event.toolId,
+                        toolName: event.toolName,
+                        scopeHash: event.scopeHash,
+                        requiredSafetyTag: event.requiredSafetyTag,
+                        safetyTag: event.safetyTag,
+                        summary: event.summary,
+                        approvalExpiresAt: event.approvalExpiresAt,
+                        status: "pending",
+                      },
+                    }
+                  : message,
+              ),
+            );
           } else if (event.type === "error") {
             if (!event.recoverable) {
               setError(event.message);
@@ -141,6 +170,90 @@ export default function Home() {
       abortRef.current = null;
       setLoading(false);
       setStreamingStarted(false);
+    }
+  }
+
+  async function submitApproval(
+    messageId: string,
+    executionId: string,
+    decision: ApiApprovalDecision,
+  ) {
+    setMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === messageId && message.approval
+          ? {
+              ...message,
+              approval: { ...message.approval, status: "submitting" },
+            }
+          : message,
+      ),
+    );
+
+    try {
+      const res = await fetch(`/api/chat/approvals/${executionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        result?: { message?: string; status?: string; ok?: boolean };
+      };
+
+      if (!res.ok) {
+        const expired = res.status === 410;
+        setMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === messageId && message.approval
+              ? {
+                  ...message,
+                  approval: {
+                    ...message.approval,
+                    status: expired ? "expired" : "denied",
+                  },
+                }
+              : message,
+          ),
+        );
+        setError(data.message ?? "Approval request failed.");
+        return;
+      }
+
+      const approved = decision !== "DENIED" && data.result?.ok === true;
+      const nextStatus: ApprovalCardDetails["status"] = approved
+        ? "approved"
+        : "denied";
+      setMessages((currentMessages) => [
+        ...currentMessages.map((message) =>
+          message.id === messageId && message.approval
+            ? {
+                ...message,
+                approval: {
+                  ...message.approval,
+                  status: nextStatus,
+                },
+              }
+            : message,
+        ),
+        createMessage(
+          "assistant",
+          data.result?.message ??
+            (approved ? "Tool completed." : "Tool execution denied."),
+        ),
+      ]);
+    } catch {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === messageId && message.approval
+            ? {
+                ...message,
+                approval: { ...message.approval, status: "pending" },
+              }
+            : message,
+        ),
+      );
+      setError("Approval request failed. Please try again.");
     }
   }
 
@@ -164,6 +277,18 @@ export default function Home() {
                 {message.role}
               </p>
               <p>{message.content}</p>
+              {message.approval && (
+                <ApprovalCard
+                  approval={message.approval}
+                  onDecision={(decision) =>
+                    submitApproval(
+                      message.id,
+                      message.approval!.executionId,
+                      decision,
+                    )
+                  }
+                />
+              )}
             </div>
           ))}
 

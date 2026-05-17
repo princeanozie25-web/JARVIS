@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 8:07am GMT+1
+# [jarvis] recent context, 2026-05-17 1:17pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19,984t read) | 2,121,279t work | 99% savings
+Stats: 50 obs (19,937t read) | 1,497,767t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,19 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-265 7:17a 🔵 Jarvis Router Architecture: Intent Classification and Safety Pipeline
-266 " 🟣 Tool Registry Module Scaffolded with Mock Status Tool
-267 " 🔴 Fixed Two Test Failures: T0 No-Model Error and Registry Import Isolation
-270 7:27a 🔵 JARVIS Project Current Phase: Between Phase 1.5 (complete) and Phase 1B (next)
-271 " 🔵 Provider Layer: OpenAI and Anthropic Both Fully Implemented Behind ChatProvider Interface
-272 " 🔵 Router Skeleton Shipped: 4-Stage Pipeline (Intent → Safety → Capability → Selection)
-273 " 🔵 SQLite Persistence Layer: sessions, messages, telemetry_events, eval_runs, eval_results Tables Live
-274 " 🔵 Cost Guard, Rate Limiter, and Model Registry All Operational
-275 " 🔵 API Route Gate Order and Frontend Streaming Architecture Confirmed Correct
-276 " 🔵 Tool Registry and Eval Framework Scaffolded; Only Mock Tool Registered
-277 " 🔵 Master Architecture Roadmap v3.1 Audit Prescribes 14-Step Phase 2 Tool Execution Framework
-278 " 🔵 Uncommitted Changes: Router and AGENTS.md Updated in Working Tree
-279 " ⚖️ Phase 2 Work Plan Established: Safety Fix → Tool Runtime Scaffold → Tests → Gates
 280 7:28a 🔴 P0 Safety Enforcement Fix: CONFIRM_ONCE/CONFIRM_ALWAYS No Longer Block Chat
 281 " 🟣 Tool Runtime Scaffold Implemented: InProcessToolRuntime with Zod Validation, Safety Gates, AbortSignal, and Timeout
 282 " 🔴 Two TypeScript/Test Bugs Found and Fixed During Tool Runtime Integration
@@ -75,6 +62,19 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 314 " 🟣 Tool Runtime Now Distinguishes Approval Required vs Hard Denial
 315 " 🟣 Approval Lifecycle Test Suite — 5 Scenarios in approvals.test.ts
 316 " ✅ All Quality Gates Pass After Approval Lifecycle Scaffold
+317 8:09a 🟣 Anthropic claude-haiku-4-5 Pricing Added to Model Registry
+318 " 🟣 Schema Migration Tracking Table Added to SQLite DB
+319 " 🟣 SSE Heartbeat and Session ID Added to Chat Route
+320 " 🟣 Runner-Only Tool Execution Boundary Enforced by Lint Test
+321 " 🟣 SSE Parser Updated to Ignore Heartbeat Comment Frames
+322 " 🔵 Phase 2 Gates All Pass: 80 Tests, Lint, Build, and Eval Clean
+323 1:04p 🟣 Phase 2 Approval API/UI Implementation Requested
+324 " 🔵 JARVIS Project: Existing Approval Infrastructure Inventory
+325 1:07p 🟣 Phase 2 Backend Foundation: DB Helpers, Telemetry, SSE Type, Runtime Patch
+326 1:13p 🔴 TypeScript Type Narrowing Fix for ApprovalCard Status in page.tsx
+327 " 🔄 tool-approvals Test Decoupled from SQLite — Uses In-Memory Event Array
+328 " 🟣 ApprovalCard Component Test Added
+329 " 🔵 Jarvis Phase Summary: Tool Approval System + Filesystem Tools Implemented, All Checks Green
 
-Access 2121k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1498k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
