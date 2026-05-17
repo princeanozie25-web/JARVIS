@@ -158,7 +158,7 @@ export class InProcessToolRuntime implements ToolRuntime {
       tool.requiredSafetyTag,
     );
     const requiresExplicitApproval = tool.requiredSafetyTag !== "ALLOW";
-    const approval =
+    let approval =
       safetyIsSufficient && !requiresExplicitApproval
         ? { status: "granted" as const }
         : this.verifyApproval({
@@ -167,6 +167,13 @@ export class InProcessToolRuntime implements ToolRuntime {
             scopeHash,
             at: proposedAt,
           });
+    if (
+      tool.requiredSafetyTag === "CONFIRM_ALWAYS" &&
+      approval.status === "granted" &&
+      approval.row?.decision === "APPROVED_SESSION"
+    ) {
+      approval = { status: "required" };
+    }
     const grantedApprovalId =
       approval.status === "granted" ? approval.row?.id : undefined;
 

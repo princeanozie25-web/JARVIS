@@ -21,6 +21,7 @@ export interface ApprovalCardProps {
 
 export function ApprovalCard({ approval, onDecision }: ApprovalCardProps) {
   const disabled = approval.status !== "pending";
+  const allowSessionApproval = approval.requiredSafetyTag !== "CONFIRM_ALWAYS";
 
   return (
     <div className="mt-3 border border-amber-500/50 bg-amber-950/40 p-4 rounded-lg">
@@ -44,14 +45,16 @@ export function ApprovalCard({ approval, onDecision }: ApprovalCardProps) {
         >
           Approve Once
         </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onDecision("APPROVED_SESSION")}
-          className="rounded-lg bg-amber-300 text-black px-3 py-2 text-sm font-semibold disabled:opacity-50"
-        >
-          Approve Session
-        </button>
+        {allowSessionApproval ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onDecision("APPROVED_SESSION")}
+            className="rounded-lg bg-amber-300 text-black px-3 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            Approve Session
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={disabled}

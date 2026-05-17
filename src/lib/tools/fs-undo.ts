@@ -59,6 +59,11 @@ interface MoveBackPayload {
   toPath?: unknown;
 }
 
+interface UntrashPayload {
+  trashedPath?: unknown;
+  originalPath?: unknown;
+}
+
 interface SafeTarget {
   workspaceRoot: string;
   targetPath: string;
@@ -316,6 +321,43 @@ async function moveBack(
   };
 }
 
+async function untrash(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<UntrashPayload>(row);
+  if (
+    !payload ||
+    typeof payload.trashedPath !== "string" ||
+    typeof payload.originalPath !== "string"
+  ) {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const trashed = await resolveExistingSafeTarget(payload.trashedPath);
+  const original = await resolveMaybeMissingSafeTarget(payload.originalPath);
+  if (trashed.workspaceRoot !== original.workspaceRoot) {
+    throw new SafePathError("Path escapes the workspace root.", "path_escape");
+  }
+  if (original.exists && (await exists(original.targetPath))) {
+    throw new RollbackDeniedError(
+      "Original path is occupied.",
+      "original_path_occupied",
+    );
+  }
+
+  const info = await stat(trashed.targetPath);
+  if (!info.isFile()) {
+    throw new RollbackDeniedError("Rollback target is not a file.", "not_file");
+  }
+
+  await rename(trashed.targetPath, original.targetPath);
+
+  return {
+    path: `${payload.trashedPath}->${payload.originalPath}`,
+    kind: row.kind,
+  };
+}
+
 export async function executeRollback(input: {
   row: RollbackRow;
   now: number;
@@ -339,7 +381,9 @@ export async function executeRollback(input: {
               ? await rmdirEmpty(input.row)
               : input.row.kind === "fs_move_back"
                 ? await moveBack(input.row)
-                : null;
+                : input.row.kind === "fs_untrash"
+                  ? await untrash(input.row)
+                  : null;
 
     if (!result) {
       return denied("Rollback kind is not supported.", "unsupported_rollback");

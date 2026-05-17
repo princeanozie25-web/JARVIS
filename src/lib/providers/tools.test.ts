@@ -147,6 +147,27 @@ describe("provider tool metadata adapters", () => {
       objectSchemasMissingAdditionalProperties(openAiTool?.function.parameters),
     ).toEqual([]);
   });
+
+  it("converts fs.delete_file to a strict OpenAI object schema", () => {
+    const metadata = providerToolMetadata(tools, (toolId) =>
+      ["fs.delete_file"].includes(toolId),
+    );
+
+    const openAiTool = toOpenAITools(metadata.definitions)?.[0];
+
+    expect(openAiTool?.function.name).toBe("fs_delete_file");
+    expect(openAiTool?.function.parameters).toMatchObject({
+      type: "object",
+      properties: {
+        path: expect.objectContaining({ type: "string" }),
+      },
+      required: ["path"],
+      additionalProperties: false,
+    });
+    expect(
+      objectSchemasMissingAdditionalProperties(openAiTool?.function.parameters),
+    ).toEqual([]);
+  });
 });
 
 function objectSchemasMissingAdditionalProperties(

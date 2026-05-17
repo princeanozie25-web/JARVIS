@@ -76,6 +76,7 @@ export type ApprovalVerificationStatus =
   | "cancelled"
   | "replayed"
   | "invalid_token"
+  | "session_not_allowed"
   | "missing";
 
 export interface ApprovalVerificationResult {
@@ -273,6 +274,7 @@ export function decideApprovalByExecution(
     token?: string;
     decidedAt: number;
     sessionTtlMs: number;
+    allowSession?: boolean;
   },
 ): ApprovalVerificationResult {
   const row = getApprovalByExecution(db, input.executionId);
@@ -294,6 +296,9 @@ export function decideApprovalByExecution(
 
   if (input.decision === "DENIED") {
     return denyApproval(db, { id: row.id, denied_at: input.decidedAt });
+  }
+  if (input.decision === "APPROVED_SESSION" && input.allowSession === false) {
+    return { status: "session_not_allowed", row };
   }
 
   db.prepare(

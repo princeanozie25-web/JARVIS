@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:01pm GMT+1
+# [jarvis] recent context, 2026-05-17 7:03pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (24,126t read) | 1,847,221t work | 99% savings
+Stats: 50 obs (23,140t read) | 2,177,664t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,13 +25,8 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-323 1:04p 🟣 Phase 2 Approval API/UI Implementation Requested
-324 " 🔵 JARVIS Project: Existing Approval Infrastructure Inventory
-325 1:07p 🟣 Phase 2 Backend Foundation: DB Helpers, Telemetry, SSE Type, Runtime Patch
 326 1:13p 🔴 TypeScript Type Narrowing Fix for ApprovalCard Status in page.tsx
 327 " 🔄 tool-approvals Test Decoupled from SQLite — Uses In-Memory Event Array
-328 " 🟣 ApprovalCard Component Test Added
-329 " 🔵 Jarvis Phase Summary: Tool Approval System + Filesystem Tools Implemented, All Checks Green
 330 1:17p 🟣 End-to-End Provider Tool-Result Continuation for Read-Only FS Tools
 331 1:18p 🟣 Provider Type System Extended for Tool-Result Continuation Messages
 332 " 🟣 OpenAI and Anthropic Provider Adapters Updated for ProviderMessage Input
@@ -75,6 +70,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 370 6:52p 🔵 Jarvis Project Current Build & Test State — All Green
 371 " 🔵 Jarvis Tool System Architecture — File Operations with Approval + Rollback
 372 " 🔵 Eval Harness Running Against Two Live Models
+373 7:02p ⚖️ Rollback Hardening Architecture for Filesystem Mutation Tools
+374 7:03p 🟣 Rollback Hardening: Atomic rollback_id Linkage via SQLite Transaction
+375 " 🟣 Rollback Persistence Recovery: persistRollbackOrRecover Pattern in fs-write.ts
+376 " 🟣 fs.undo Hardened Selection via getLatestAvailableRollbackForSession
+377 " 🟣 Rollback Hardening Test Suite: Failure Injection + Linkage + Undo Skip Tests
 
-Access 1847k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2178k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

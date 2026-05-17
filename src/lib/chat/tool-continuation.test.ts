@@ -353,6 +353,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.append_file",
       "fs.mkdir",
       "fs.rename",
+      "fs.delete_file",
       "fs.undo",
     ]);
   });

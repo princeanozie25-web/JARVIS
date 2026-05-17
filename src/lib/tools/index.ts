@@ -23,6 +23,7 @@ export type { FsPathInput } from "./fs-readonly";
 export {
   fsAppendFileTool,
   fsCreateFileTool,
+  fsDeleteFileTool,
   fsMkdirTool,
   fsRenameTool,
   fsWriteFileTool,
@@ -31,6 +32,7 @@ export {
 export type {
   AppendFileInput,
   CreateFileInput,
+  DeleteFileInput,
   MkdirInput,
   RenameInput,
   WriteFileInput,

@@ -59,11 +59,16 @@ const RenameInputSchema = z.object({
   toPath: z.string().min(1),
 });
 
+const DeleteFileInputSchema = z.object({
+  path: z.string().min(1),
+});
+
 export type CreateFileInput = z.infer<typeof CreateFileInputSchema>;
 export type WriteFileInput = z.infer<typeof WriteFileInputSchema>;
 export type AppendFileInput = z.infer<typeof AppendFileInputSchema>;
 export type MkdirInput = z.infer<typeof MkdirInputSchema>;
 export type RenameInput = z.infer<typeof RenameInputSchema>;
+export type DeleteFileInput = z.infer<typeof DeleteFileInputSchema>;
 
 class ToolDeniedError extends Error {
   constructor(
@@ -199,6 +204,43 @@ function mkdirScopeOf(input: MkdirInput): string {
 
 function renameScopeOf(input: RenameInput): string {
   return `rename:${input.fromPath}->${input.toPath}`;
+}
+
+function deleteScopeOf(input: DeleteFileInput): string {
+  return `delete:${input.path}`;
+}
+
+function trashDateSegment(now = Date.now()): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+function trashPathFor(input: {
+  workspaceRoot: string;
+  executionId: string;
+  sourcePath: string;
+  now?: number;
+}): {
+  trashDir: string;
+  trashPath: string;
+  trashedRelativePath: string;
+} {
+  const trashRoot = resolve(input.workspaceRoot, ".jarvis-trash");
+  const trashDir = resolve(trashRoot, trashDateSegment(input.now));
+  if (!isInside(input.workspaceRoot, trashDir)) {
+    throw new SafePathError("Path escapes the workspace root.", "path_escape");
+  }
+  const trashName = `${executionPathSegment(input.executionId)}-${basename(
+    input.sourcePath,
+  )}`;
+  const trashPath = resolve(trashDir, trashName);
+  assertPathDirectChild(trashDir, trashPath);
+  return {
+    trashDir,
+    trashPath,
+    trashedRelativePath: (
+      relative(input.workspaceRoot, trashPath) || "."
+    ).replace(/\\/g, "/"),
+  };
 }
 
 async function resolveMissingDestination(path: string): Promise<{
@@ -672,6 +714,85 @@ export const fsRenameTool: Tool<RenameInput> = {
   },
 };
 
+export const fsDeleteFileTool: Tool<DeleteFileInput> = {
+  id: "fs.delete_file",
+  name: "Delete File",
+  description:
+    "Move an existing file inside the configured workspace into the reversible Jarvis trash.",
+  requiredSafetyTag: "CONFIRM_ALWAYS",
+  inputSchema: DeleteFileInputSchema,
+  scopeOf: deleteScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: WRITE_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+
+    try {
+      const safePath = await resolveSafePath(input.path);
+      const info = await stat(safePath.resolvedPath);
+      if (!info.isFile()) {
+        return denied("Path is not a file.", "not_file");
+      }
+      if (isProtectedPath(safePath.resolvedPath)) {
+        return denied("Path is protected.", "protected_path");
+      }
+
+      const originalPath =
+        relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
+      const trash = trashPathFor({
+        workspaceRoot: safePath.workspaceRoot,
+        executionId: context.executionId,
+        sourcePath: safePath.resolvedPath,
+      });
+      if (await exists(trash.trashPath)) {
+        return denied("Trash destination already exists.", "trash_exists");
+      }
+
+      if (context.signal.aborted) {
+        return denied("Tool execution aborted.", "aborted");
+      }
+
+      await mkdir(trash.trashDir, { recursive: true });
+      await rename(safePath.resolvedPath, trash.trashPath);
+
+      const rollbackError = await persistRollbackOrRecover(
+        context,
+        {
+          id: randomUUID(),
+          execution_id: context.executionId,
+          session_id: context.sessionId,
+          kind: "fs_untrash",
+          payload_json: JSON.stringify({
+            trashedPath: trash.trashedRelativePath,
+            originalPath,
+          }),
+          created_at: Date.now(),
+        },
+        async () => {
+          await rename(trash.trashPath, safePath.resolvedPath);
+        },
+      );
+      if (rollbackError) {
+        return rollbackError;
+      }
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "File moved to trash.",
+        data: {
+          originalPath,
+          trashedPath: trash.trashedRelativePath,
+        },
+      };
+    } catch (error) {
+      return safeError(error);
+    }
+  },
+};
+
 async function rollbackPayload(input: {
   workspaceRoot: string;
   relativePath: string;
@@ -712,6 +833,7 @@ export const writeFsTools = [
   fsAppendFileTool,
   fsMkdirTool,
   fsRenameTool,
+  fsDeleteFileTool,
 ];
 
 export {

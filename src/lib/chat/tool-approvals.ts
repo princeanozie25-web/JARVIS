@@ -132,6 +132,7 @@ export async function resumeApproval(input: {
     token: input.approvalToken,
     decidedAt: now,
     sessionTtlMs: input.sessionTtlMs ?? SESSION_APPROVAL_TTL_MS,
+    allowSession: row.required_safety_tag !== "CONFIRM_ALWAYS",
   });
 
   if (input.decision === "DENIED") {
@@ -238,6 +239,7 @@ function errorClassForApprovalStatus(
   if (status === "invalid_token") return "ApprovalInvalidToken";
   if (status === "expired") return "ApprovalExpired";
   if (status === "replayed") return "ApprovalReplayed";
+  if (status === "session_not_allowed") return "ApprovalSessionNotAllowed";
   if (status === "denied") return "ApprovalDenied";
   if (status === "cancelled") return "ApprovalCancelled";
   return "ApprovalNotGranted";

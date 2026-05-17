@@ -246,6 +246,32 @@ async function requestRename(
   return result;
 }
 
+async function requestDelete(executionId: string, path: string) {
+  const result = await runtime().runTool({
+    toolId: "fs.delete_file",
+    input: { path },
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  if (result.status === "AWAITING_APPROVAL") {
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId,
+      sessionId: "session-1",
+      toolId: "fs.delete_file",
+      toolName: "Delete File",
+      scopeHash: `delete:${path}`,
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: { path },
+      now,
+    });
+    approvalTokens.set(executionId, pending.approvalToken);
+  }
+  return result;
+}
+
 function approvalTokenFor(executionId: string): string {
   const token = approvalTokens.get(executionId);
   if (!token) throw new Error(`Missing approval token for ${executionId}`);
@@ -465,7 +491,7 @@ describe("fs.create_file", () => {
     expect(existsSync(join(workspaceRoot, ".env.local"))).toBe(false);
   });
 
-  it("does not register other write/delete/terminal tools", () => {
+  it("does not register other write/directory-delete/terminal tools", () => {
     expect(
       tools
         .list()
@@ -477,6 +503,7 @@ describe("fs.create_file", () => {
       "fs.append_file",
       "fs.mkdir",
       "fs.rename",
+      "fs.delete_file",
     ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
@@ -669,6 +696,18 @@ describe("write rollback hardening", () => {
     ]) {
       expectToolCallLinkedToRollback(executionId);
     }
+
+    writeFileSync(join(workspaceRoot, "delete-link.txt"), "delete me");
+    await requestDelete("exec-delete-link", "delete-link.txt");
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete-link",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+    expectToolCallLinkedToRollback("exec-delete-link");
   });
 
   it("reverts fs.create_file when rollback persistence fails", async () => {
@@ -798,6 +837,302 @@ describe("write rollback hardening", () => {
     ).toBe("old");
     expect(existsSync(join(workspaceRoot, "rename-fail-new.txt"))).toBe(false);
     expect(listRollbacks(db)).toHaveLength(0);
+  });
+
+  it("reverts fs.delete_file when rollback persistence fails", async () => {
+    writeFileSync(join(workspaceRoot, "delete-fail.txt"), "delete me");
+    await requestDelete("exec-delete-fail", "delete-fail.txt");
+    now = 1_100;
+
+    const result = await withRollbackInsertFailure(() =>
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-delete-fail",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    );
+
+    expect(result.body.result).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      data: { reason: "rollback_persistence_failed" },
+    });
+    expect(readFileSync(join(workspaceRoot, "delete-fail.txt"), "utf8")).toBe(
+      "delete me",
+    );
+    expect(listRollbacks(db)).toHaveLength(0);
+  });
+});
+
+describe("fs.delete_file", () => {
+  it("requires CONFIRM_ALWAYS approval and does not move before approval", async () => {
+    writeFileSync(join(workspaceRoot, "delete.txt"), "delete me");
+
+    await expect(
+      requestDelete("exec-delete", "delete.txt"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        toolId: "fs.delete_file",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+        scopeHash: "delete:delete.txt",
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "delete.txt"), "utf8")).toBe(
+      "delete me",
+    );
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "exec-delete",
+      tool_id: "fs.delete_file",
+      status: "AWAITING_APPROVAL",
+      required_safety_tag: "CONFIRM_ALWAYS",
+    });
+  });
+
+  it("approve once moves the file to trash and records rollback linkage", async () => {
+    writeFileSync(join(workspaceRoot, "delete.txt"), "delete me");
+    await requestDelete("exec-delete", "delete.txt");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-delete",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          telemetryEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        result: { status: "COMPLETED", message: "File moved to trash." },
+      },
+    });
+
+    expect(existsSync(join(workspaceRoot, "delete.txt"))).toBe(false);
+    const rollback = listRollbacks(db)[0];
+    const payload = JSON.parse(rollback.payload_json) as {
+      originalPath: string;
+      trashedPath: string;
+    };
+    expect(rollback).toMatchObject({
+      execution_id: "exec-delete",
+      session_id: "session-1",
+      kind: "fs_untrash",
+    });
+    expect(payload.originalPath).toBe("delete.txt");
+    expect(payload.trashedPath).toMatch(
+      /^\.jarvis-trash\/\d{4}-\d{2}-\d{2}\/exec_[A-Za-z0-9_-]+-delete\.txt$/,
+    );
+    expect(readFileSync(join(workspaceRoot, payload.trashedPath), "utf8")).toBe(
+      "delete me",
+    );
+    expectToolCallLinkedToRollback("exec-delete");
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+      "tool_approved",
+      "tool_executed",
+      "tool_completed",
+    ]);
+  });
+
+  it("denial leaves the file untouched", async () => {
+    writeFileSync(join(workspaceRoot, "denied-delete.txt"), "delete me");
+    await requestDelete("exec-delete", "denied-delete.txt");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete",
+      decision: "DENIED",
+      now,
+    });
+
+    expect(readFileSync(join(workspaceRoot, "denied-delete.txt"), "utf8")).toBe(
+      "delete me",
+    );
+    expect(existsSync(join(workspaceRoot, ".jarvis-trash"))).toBe(false);
+    expect(listToolCalls(db)[0].status).toBe("DENIED");
+  });
+
+  it("refuses directories, missing files, protected paths, traversal, and symlink escapes", async () => {
+    mkdirSync(join(workspaceRoot, "delete-dir"));
+    writeFileSync(join(workspaceRoot, ".env.local"), "secret");
+    writeFileSync(join(outsideRoot, "outside.txt"), "outside");
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "delete-escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await requestDelete("exec-dir", "delete-dir");
+    await requestDelete("exec-missing", "missing.txt");
+    await requestDelete("exec-protected", ".env.local");
+    await requestDelete("exec-traversal", "../outside.txt");
+    await requestDelete("exec-symlink", "delete-escape/outside.txt");
+    now = 1_100;
+
+    for (const [executionId, reason] of [
+      ["exec-dir", "not_file"],
+      ["exec-missing", "not_found"],
+      ["exec-protected", "protected_path"],
+      ["exec-traversal", "path_escape"],
+      ["exec-symlink", "path_escape"],
+    ] as const) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason },
+          },
+        },
+      });
+    }
+
+    expect(readFileSync(join(workspaceRoot, ".env.local"), "utf8")).toBe(
+      "secret",
+    );
+    expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
+      "outside",
+    );
+  });
+
+  it("APPROVED_SESSION is refused for delete", async () => {
+    writeFileSync(join(workspaceRoot, "session-delete.txt"), "delete me");
+    await requestDelete("exec-delete", "session-delete.txt");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-delete",
+        decision: "APPROVED_SESSION",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      httpStatus: 409,
+      body: {
+        ok: false,
+        reason: "approval_session_not_allowed",
+      },
+    });
+
+    expect(
+      readFileSync(join(workspaceRoot, "session-delete.txt"), "utf8"),
+    ).toBe("delete me");
+  });
+
+  it("fs.undo restores the trashed file", async () => {
+    writeFileSync(join(workspaceRoot, "undo-delete.txt"), "delete me");
+    await requestDelete("exec-delete", "undo-delete.txt");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: { kind: "fs_untrash" },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "undo-delete.txt"), "utf8")).toBe(
+      "delete me",
+    );
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("fs.undo refuses if original path is occupied or trashed file is missing", async () => {
+    writeFileSync(join(workspaceRoot, "occupied-delete.txt"), "delete me");
+    await requestDelete("exec-delete-occupied", "occupied-delete.txt");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete-occupied",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+    writeFileSync(join(workspaceRoot, "occupied-delete.txt"), "occupied");
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo-occupied",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "original_path_occupied" },
+    });
+
+    db.prepare("DELETE FROM rollbacks").run();
+    writeFileSync(join(workspaceRoot, "missing-trash.txt"), "delete me");
+    await requestDelete("exec-delete-missing-trash", "missing-trash.txt");
+    now += 100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-delete-missing-trash",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+    const payload = JSON.parse(listRollbacks(db)[0].payload_json) as {
+      trashedPath: string;
+    };
+    rmSync(join(workspaceRoot, payload.trashedPath));
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo-missing-trash",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "not_found" },
+    });
   });
 });
 

@@ -28,4 +28,17 @@ describe("ApprovalCard", () => {
     expect(html).toContain("Deny");
     expect(html).not.toContain("approval-token");
   });
+
+  it("omits session approval for CONFIRM_ALWAYS tools", () => {
+    const html = renderToStaticMarkup(
+      <ApprovalCard
+        approval={{ ...approval, requiredSafetyTag: "CONFIRM_ALWAYS" }}
+        onDecision={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Approve Once");
+    expect(html).not.toContain("Approve Session");
+    expect(html).toContain("Deny");
+  });
 });

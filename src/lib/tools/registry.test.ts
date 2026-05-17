@@ -89,11 +89,12 @@ describe("ToolRegistry", () => {
       "fs.append_file",
       "fs.mkdir",
       "fs.rename",
+      "fs.delete_file",
       "fs.undo",
     ]);
   });
 
-  it("does not register unapproved write/delete/terminal tools", () => {
+  it("does not register unapproved write/directory-delete/terminal tools", () => {
     expect(
       tools
         .list()
@@ -112,6 +113,7 @@ describe("ToolRegistry", () => {
       ["fs.append_file", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["fs.mkdir", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["fs.rename", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
+      ["fs.delete_file", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["fs.undo", "PURE_READ", "ALLOW"],
     ]);
   });
