@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 1:17pm GMT+1
+# [jarvis] recent context, 2026-05-17 1:39pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19,937t read) | 1,497,767t work | 99% savings
+Stats: 50 obs (20,356t read) | 1,464,442t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,17 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-280 7:28a 🔴 P0 Safety Enforcement Fix: CONFIRM_ONCE/CONFIRM_ALWAYS No Longer Block Chat
-281 " 🟣 Tool Runtime Scaffold Implemented: InProcessToolRuntime with Zod Validation, Safety Gates, AbortSignal, and Timeout
-282 " 🔴 Two TypeScript/Test Bugs Found and Fixed During Tool Runtime Integration
-283 7:32a 🔴 Tool Runtime Abort Signal Early-Exit Fixed
-284 " 🔄 Registry Tests Typed Against RouterDecision Interface
-285 " 🟣 Tool Runtime Scaffold Fully Validated — All Gates Green
-286 7:37a 🟣 Phase 2 Tool Audit Tables — Step 1.3 + execution_id Telemetry
-287 7:38a 🔵 Pre-existing Jarvis DB Schema Structure at Phase 2 Start
-288 " 🟣 Phase 2 Tool Audit Tables + execution_id Telemetry — Fully Implemented
-289 " 🔴 idx_telemetry_execution_id Index Ordering Bug — ALTER TABLE Must Precede Index Creation
-290 " 🟣 Phase 2 CRUD Tests Added to schema.test.ts — 64 Tests All Pass
 291 7:44a 🟣 ToolContext Abort/Timeout Enforcement Implementation Planned
 292 7:45a 🟣 InProcessToolRuntime Rebuilt with Full Persistence, Telemetry, and Abort/Timeout Enforcement
 293 " 🔴 Fixed `server-only` Import Crash in Tool Runtime Tests
@@ -75,6 +64,17 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 327 " 🔄 tool-approvals Test Decoupled from SQLite — Uses In-Memory Event Array
 328 " 🟣 ApprovalCard Component Test Added
 329 " 🔵 Jarvis Phase Summary: Tool Approval System + Filesystem Tools Implemented, All Checks Green
+330 1:17p 🟣 End-to-End Provider Tool-Result Continuation for Read-Only FS Tools
+331 1:18p 🟣 Provider Type System Extended for Tool-Result Continuation Messages
+332 " 🟣 OpenAI and Anthropic Provider Adapters Updated for ProviderMessage Input
+333 " 🟣 Tool Continuation Orchestrator Created at src/lib/chat/tool-continuation.ts
+334 " 🔄 Chat Route Simplified: Inline Tool Logic Replaced by streamWithReadOnlyToolContinuation
+335 1:19p 🟣 Tool Continuation Integration Tests Added with StubProvider Pattern
+336 1:20p 🟣 All Quality Gates Passed: Tool Continuation Feature Fully Shipped
+337 1:37p 🟣 Tool Lifecycle SSE Event Types Added to Streaming Layer
+338 " 🔵 Full CI Gate Passed: 101 Tests, TypeScript, ESLint, and Production Build Clean
+339 " 🔵 Eval Suite Benchmarks GPT-4o-mini vs Claude Haiku 4.5 Across 4 Task Types
+340 " 🟣 Three New Untracked Files Indicate Tool Continuation Architecture
 
-Access 1498k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1464k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

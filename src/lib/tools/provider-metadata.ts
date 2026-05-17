@@ -1,4 +1,5 @@
 import type { ProviderToolDefinition } from "../providers";
+import { z } from "zod";
 import { ToolRegistry, tools } from "./registry";
 
 export interface ProviderToolMetadata {
@@ -8,6 +9,21 @@ export interface ProviderToolMetadata {
 
 export function providerToolName(toolId: string): string {
   return toolId.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function providerInputSchema(tool: ReturnType<ToolRegistry["list"]>[number]) {
+  try {
+    return z.toJSONSchema(tool.inputSchema, {
+      io: "input",
+    }) as ProviderToolDefinition["inputSchema"];
+  } catch {
+    return {
+      type: "object" as const,
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    };
+  }
 }
 
 export function providerToolMetadata(
@@ -25,10 +41,7 @@ export function providerToolMetadata(
         id: tool.id,
         name,
         description: tool.description,
-        inputSchema: {
-          type: "object" as const,
-          additionalProperties: true,
-        },
+        inputSchema: providerInputSchema(tool),
       };
     });
 
