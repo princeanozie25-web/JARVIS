@@ -5,8 +5,10 @@ import {
   ApprovalCard,
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
+import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type { ApiApprovalDecision } from "@/lib/db/node";
+import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
 
@@ -47,6 +49,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [streamingStarted, setStreamingStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [latestRollback, setLatestRollback] = useState<RollbackSummary | null>(
+    null,
+  );
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(globalThis.crypto.randomUUID());
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +59,34 @@ export default function Home() {
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ block: "end" });
   }, [messages, loading, error]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadLatestRollback() {
+      try {
+        const res = await fetch(
+          `/api/rollbacks/latest?sessionId=${encodeURIComponent(
+            sessionIdRef.current,
+          )}`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          latest: RollbackSummary | null;
+        };
+        if (!cancelled) {
+          setLatestRollback(data.latest);
+        }
+      } catch {
+        if (!cancelled) {
+          setLatestRollback(null);
+        }
+      }
+    }
+    void loadLatestRollback();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, loading]);
 
   function stop() {
     abortRef.current?.abort();
@@ -171,6 +204,11 @@ export default function Home() {
       setLoading(false);
       setStreamingStarted(false);
     }
+  }
+
+  function askUndo() {
+    if (loading) return;
+    setInput("Undo the last file change");
   }
 
   async function submitApproval(
@@ -312,6 +350,14 @@ export default function Home() {
       </section>
 
       <section className="w-full max-w-3xl flex gap-3 mt-6">
+        <RollbackStatusPanel
+          latest={latestRollback}
+          disabled={loading}
+          onUndo={askUndo}
+        />
+      </section>
+
+      <section className="w-full max-w-3xl flex gap-3 mt-3">
         <select
           aria-label="Provider"
           className="rounded-xl bg-gray-900 border border-gray-700 px-3 outline-none disabled:opacity-50"
