@@ -216,6 +216,36 @@ async function requestMkdir(executionId: string, path: string) {
   return result;
 }
 
+async function requestRename(
+  executionId: string,
+  fromPath: string,
+  toPath: string,
+) {
+  const result = await runtime().runTool({
+    toolId: "fs.rename",
+    input: { fromPath, toPath },
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  if (result.status === "AWAITING_APPROVAL") {
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId,
+      sessionId: "session-1",
+      toolId: "fs.rename",
+      toolName: "Rename Path",
+      scopeHash: `rename:${fromPath}->${toPath}`,
+      requiredSafetyTag: "CONFIRM_ONCE",
+      safetyTag: "ALLOW",
+      toolInput: { fromPath, toPath },
+      now,
+    });
+    approvalTokens.set(executionId, pending.approvalToken);
+  }
+  return result;
+}
+
 function approvalTokenFor(executionId: string): string {
   const token = approvalTokens.get(executionId);
   if (!token) throw new Error(`Missing approval token for ${executionId}`);
@@ -408,7 +438,7 @@ describe("fs.create_file", () => {
     expect(existsSync(join(workspaceRoot, ".env.local"))).toBe(false);
   });
 
-  it("does not register other write/delete/rename/terminal tools", () => {
+  it("does not register other write/delete/terminal tools", () => {
     expect(
       tools
         .list()
@@ -419,11 +449,11 @@ describe("fs.create_file", () => {
       "fs.write_file",
       "fs.append_file",
       "fs.mkdir",
+      "fs.rename",
     ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
         "fs.overwrite_file",
-        "fs.rename",
         "fs.delete",
         "terminal.run",
       ]),
@@ -542,6 +572,381 @@ describe("write tool execution id path hardening", () => {
       });
     },
   );
+});
+
+describe("fs.rename", () => {
+  it("requires approval and does not rename before approval", async () => {
+    writeFileSync(join(workspaceRoot, "old.txt"), "old");
+
+    await expect(
+      requestRename("exec-rename", "old.txt", "new.txt"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        toolId: "fs.rename",
+        scopeHash: "rename:old.txt->new.txt",
+      },
+    });
+
+    expect(readFileSync(join(workspaceRoot, "old.txt"), "utf8")).toBe("old");
+    expect(existsSync(join(workspaceRoot, "new.txt"))).toBe(false);
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "exec-rename",
+      tool_id: "fs.rename",
+      status: "AWAITING_APPROVAL",
+    });
+  });
+
+  it("approve once renames a file and creates rollback", async () => {
+    writeFileSync(join(workspaceRoot, "old.txt"), "old");
+    await requestRename("exec-rename", "old.txt", "new.txt");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-rename",
+        decision: "APPROVED_ONCE",
+        now,
+        recordEvent(event) {
+          telemetryEvents.push(event);
+        },
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        result: { status: "COMPLETED", message: "Path renamed." },
+      },
+    });
+
+    expect(existsSync(join(workspaceRoot, "old.txt"))).toBe(false);
+    expect(readFileSync(join(workspaceRoot, "new.txt"), "utf8")).toBe("old");
+    const rollback = listRollbacks(db)[0];
+    expect(rollback).toMatchObject({
+      execution_id: "exec-rename",
+      session_id: "session-1",
+      kind: "fs_move_back",
+    });
+    expect(JSON.parse(rollback.payload_json)).toEqual({
+      fromPath: "old.txt",
+      toPath: "new.txt",
+    });
+    expect(telemetryEvents.map((event) => event.event_type)).toEqual([
+      "tool_denied",
+      "tool_approved",
+      "tool_executed",
+      "tool_completed",
+    ]);
+  });
+
+  it("denial does not rename a file", async () => {
+    writeFileSync(join(workspaceRoot, "denied-old.txt"), "old");
+    await requestRename("exec-rename", "denied-old.txt", "denied-new.txt");
+    now = 1_100;
+
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-rename",
+      decision: "DENIED",
+      now,
+    });
+
+    expect(readFileSync(join(workspaceRoot, "denied-old.txt"), "utf8")).toBe(
+      "old",
+    );
+    expect(existsSync(join(workspaceRoot, "denied-new.txt"))).toBe(false);
+    expect(listToolCalls(db)[0].status).toBe("DENIED");
+  });
+
+  it("refuses missing source and existing destination", async () => {
+    writeFileSync(join(workspaceRoot, "source.txt"), "source");
+    writeFileSync(join(workspaceRoot, "exists.txt"), "exists");
+    await requestRename("exec-missing", "missing.txt", "new.txt");
+    await requestRename("exec-existing", "source.txt", "exists.txt");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-missing",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "not_found" },
+        },
+      },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-existing",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "destination_exists" },
+        },
+      },
+    });
+  });
+
+  it("denies traversal for source and destination", async () => {
+    writeFileSync(join(workspaceRoot, "source.txt"), "source");
+    await requestRename("exec-source-traversal", "../outside.txt", "new.txt");
+    await requestRename("exec-dest-traversal", "source.txt", "../outside.txt");
+    now = 1_100;
+
+    for (const executionId of [
+      "exec-source-traversal",
+      "exec-dest-traversal",
+    ]) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason: "path_escape" },
+          },
+        },
+      });
+    }
+    expect(readFileSync(join(workspaceRoot, "source.txt"), "utf8")).toBe(
+      "source",
+    );
+  });
+
+  it("denies protected source and destination", async () => {
+    writeFileSync(join(workspaceRoot, "source.txt"), "source");
+    writeFileSync(join(workspaceRoot, ".env.local"), "SECRET=x");
+    await requestRename("exec-source-protected", ".env.local", "new.txt");
+    await requestRename("exec-dest-protected", "source.txt", ".env.local");
+    now = 1_100;
+
+    for (const executionId of [
+      "exec-source-protected",
+      "exec-dest-protected",
+    ]) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason: "protected_path" },
+          },
+        },
+      });
+    }
+  });
+
+  it("denies symlink escapes for source and destination", async () => {
+    writeFileSync(join(outsideRoot, "outside.txt"), "outside");
+    writeFileSync(join(workspaceRoot, "source.txt"), "source");
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "rename-escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await requestRename(
+      "exec-source-symlink",
+      "rename-escape/outside.txt",
+      "new.txt",
+    );
+    await requestRename(
+      "exec-dest-symlink",
+      "source.txt",
+      "rename-escape/new.txt",
+    );
+    now = 1_100;
+
+    for (const executionId of ["exec-source-symlink", "exec-dest-symlink"]) {
+      await expect(
+        resumeApproval({
+          db,
+          runtime: runtime(),
+          executionId,
+          decision: "APPROVED_ONCE",
+          now,
+        }),
+      ).resolves.toMatchObject({
+        body: {
+          result: {
+            ok: false,
+            status: "DENIED",
+            data: { reason: "path_escape" },
+          },
+        },
+      });
+    }
+    expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
+      "outside",
+    );
+  });
+
+  it("refuses non-empty directories and allows empty directory rename", async () => {
+    mkdirSync(join(workspaceRoot, "non-empty"));
+    writeFileSync(join(workspaceRoot, "non-empty", "child.txt"), "child");
+    mkdirSync(join(workspaceRoot, "empty"));
+    await requestRename("exec-non-empty", "non-empty", "renamed-non-empty");
+    await requestRename("exec-empty", "empty", "renamed-empty");
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-non-empty",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: false,
+          status: "DENIED",
+          data: { reason: "directory_not_empty" },
+        },
+      },
+    });
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: runtime(),
+        executionId: "exec-empty",
+        decision: "APPROVED_ONCE",
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        result: {
+          ok: true,
+          status: "COMPLETED",
+        },
+      },
+    });
+    expect(existsSync(join(workspaceRoot, "empty"))).toBe(false);
+    expect(existsSync(join(workspaceRoot, "renamed-empty"))).toBe(true);
+  });
+
+  it("rollback undo moves a renamed file back", async () => {
+    writeFileSync(join(workspaceRoot, "undo-old.txt"), "old");
+    await requestRename("exec-rename", "undo-old.txt", "undo-new.txt");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-rename",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: { kind: "fs_move_back", path: "undo-new.txt->undo-old.txt" },
+    });
+    expect(readFileSync(join(workspaceRoot, "undo-old.txt"), "utf8")).toBe(
+      "old",
+    );
+    expect(existsSync(join(workspaceRoot, "undo-new.txt"))).toBe(false);
+    expect(listRollbacks(db)[0].applied_at).not.toBeNull();
+  });
+
+  it("rollback refuses occupied source path and missing destination", async () => {
+    writeFileSync(join(workspaceRoot, "old.txt"), "old");
+    await requestRename("exec-rename", "old.txt", "new.txt");
+    now = 1_100;
+    await resumeApproval({
+      db,
+      runtime: runtime(),
+      executionId: "exec-rename",
+      decision: "APPROVED_ONCE",
+      now,
+    });
+    writeFileSync(join(workspaceRoot, "old.txt"), "occupied");
+
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo-occupied",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "source_path_occupied" },
+    });
+    expect(listRollbacks(db)[0].applied_at).toBeNull();
+
+    rmSync(join(workspaceRoot, "old.txt"));
+    rmSync(join(workspaceRoot, "new.txt"));
+    await expect(
+      runtime().runTool({
+        toolId: "fs.undo",
+        input: {},
+        sessionId: "session-1",
+        executionId: "exec-undo-missing",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "not_found" },
+    });
+  });
+
+  it("does not register delete/terminal/network tools", () => {
+    expect(tools.list().map((tool) => tool.id)).not.toEqual(
+      expect.arrayContaining(["fs.delete", "terminal.run", "network.fetch"]),
+    );
+  });
 });
 
 describe("fs.mkdir", () => {
@@ -781,9 +1186,9 @@ describe("fs.mkdir", () => {
     expect(listRollbacks(db)[0].applied_at).toBeNull();
   });
 
-  it("does not register rename/delete/terminal tools", () => {
+  it("does not register delete/terminal tools", () => {
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
+      expect.arrayContaining(["fs.delete", "terminal.run"]),
     );
   });
 });
@@ -1018,9 +1423,9 @@ describe("fs.append_file", () => {
     );
   });
 
-  it("does not register rename/delete/terminal tools", () => {
+  it("does not register delete/terminal tools", () => {
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
+      expect.arrayContaining(["fs.delete", "terminal.run"]),
     );
   });
 });
@@ -1258,9 +1663,9 @@ describe("fs.write_file", () => {
     );
   });
 
-  it("does not register rename/delete/terminal tools", () => {
+  it("does not register delete/terminal tools", () => {
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
+      expect.arrayContaining(["fs.delete", "terminal.run"]),
     );
   });
 });

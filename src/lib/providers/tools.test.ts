@@ -125,6 +125,28 @@ describe("provider tool metadata adapters", () => {
     });
     expect(objectSchemasMissingAdditionalProperties(parameters)).toEqual([]);
   });
+
+  it("converts fs.rename to a strict OpenAI object schema", () => {
+    const metadata = providerToolMetadata(tools, (toolId) =>
+      ["fs.rename"].includes(toolId),
+    );
+
+    const openAiTool = toOpenAITools(metadata.definitions)?.[0];
+
+    expect(openAiTool?.function.name).toBe("fs_rename");
+    expect(openAiTool?.function.parameters).toMatchObject({
+      type: "object",
+      properties: {
+        fromPath: expect.objectContaining({ type: "string" }),
+        toPath: expect.objectContaining({ type: "string" }),
+      },
+      required: ["fromPath", "toPath"],
+      additionalProperties: false,
+    });
+    expect(
+      objectSchemasMissingAdditionalProperties(openAiTool?.function.parameters),
+    ).toEqual([]);
+  });
 });
 
 function objectSchemasMissingAdditionalProperties(

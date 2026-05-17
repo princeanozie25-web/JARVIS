@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 6:30pm GMT+1
+# [jarvis] recent context, 2026-05-17 6:44pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (21,913t read) | 2,067,660t work | 99% savings
+Stats: 50 obs (22,186t read) | 2,049,131t work | 99% savings
 
 ### May 16, 2026
 
@@ -26,8 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 17, 2026
 
 312 8:01a 🟣 Approval Lifecycle State Machine and Token Replay Protection
-313 " 🟣 Approvals Schema Migration: state and token_hash Columns
-314 " 🟣 Tool Runtime Now Distinguishes Approval Required vs Hard Denial
 317 8:09a 🟣 Anthropic claude-haiku-4-5 Pricing Added to Model Registry
 318 " 🟣 Schema Migration Tracking Table Added to SQLite DB
 319 " 🟣 SSE Heartbeat and Session ID Added to Chat Route
@@ -75,6 +73,8 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 361 " ⚖️ Next Implementation Step: fs.rename with Atomic Move and fs_move_back Rollback
 362 6:25p 🔵 PROVIDER_TOOL_IDS Split Into Three Exported Sets for Selective AI Exposure
 363 6:28p 🚨 Path Traversal Security Fix: Sanitize executionId Before Filesystem Interpolation
+364 6:35p 🟣 Approval Token Security: CSRF-Protection for Tool Approvals
+365 6:36p 🔵 Approval Token Feature Passes All Quality Gates
 
-Access 2068k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2049k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

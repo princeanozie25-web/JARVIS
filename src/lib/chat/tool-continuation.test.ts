@@ -352,6 +352,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.write_file",
       "fs.append_file",
       "fs.mkdir",
+      "fs.rename",
       "fs.undo",
     ]);
   });

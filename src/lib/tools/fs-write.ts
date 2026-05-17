@@ -6,6 +6,7 @@ import {
   lstat,
   mkdir,
   readFile,
+  readdir,
   rename,
   rm,
   stat,
@@ -48,10 +49,26 @@ const MkdirInputSchema = z.object({
   path: z.string().min(1),
 });
 
+const RenameInputSchema = z.object({
+  fromPath: z.string().min(1),
+  toPath: z.string().min(1),
+});
+
 export type CreateFileInput = z.infer<typeof CreateFileInputSchema>;
 export type WriteFileInput = z.infer<typeof WriteFileInputSchema>;
 export type AppendFileInput = z.infer<typeof AppendFileInputSchema>;
 export type MkdirInput = z.infer<typeof MkdirInputSchema>;
+export type RenameInput = z.infer<typeof RenameInputSchema>;
+
+class ToolDeniedError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+  ) {
+    super(message);
+    this.name = "ToolDeniedError";
+  }
+}
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -73,6 +90,9 @@ async function exists(path: string): Promise<boolean> {
 
 function safeError(error: unknown): ToolResult {
   if (error instanceof SafePathError) {
+    return denied(error.message, error.reason);
+  }
+  if (error instanceof ToolDeniedError) {
     return denied(error.message, error.reason);
   }
   return denied(
@@ -104,6 +124,55 @@ function appendScopeOf(input: AppendFileInput): string {
 
 function mkdirScopeOf(input: MkdirInput): string {
   return `mkdir:${input.path}`;
+}
+
+function renameScopeOf(input: RenameInput): string {
+  return `rename:${input.fromPath}->${input.toPath}`;
+}
+
+async function resolveMissingDestination(path: string): Promise<{
+  workspaceRoot: string;
+  targetPath: string;
+}> {
+  try {
+    await resolveSafePath(path);
+    throw new ToolDeniedError(
+      "Destination already exists.",
+      "destination_exists",
+    );
+  } catch (error) {
+    if (error instanceof ToolDeniedError) {
+      throw error;
+    }
+    if (!(error instanceof SafePathError) || error.reason !== "not_found") {
+      throw error;
+    }
+  }
+
+  const leaf = basename(path);
+  if (!leaf || leaf === "." || leaf === "..") {
+    throw new SafePathError("Invalid destination path.", "path_escape");
+  }
+
+  const parent = await resolveSafePath(dirname(path) || ".");
+  const targetPath = resolve(parent.resolvedPath, leaf);
+  if (!isInside(parent.workspaceRoot, targetPath)) {
+    throw new SafePathError("Path escapes the workspace root.", "path_escape");
+  }
+  if (isProtectedPath(targetPath)) {
+    throw new SafePathError("Path is protected.", "protected_path");
+  }
+  if (await exists(targetPath)) {
+    throw new ToolDeniedError(
+      "Destination already exists.",
+      "destination_exists",
+    );
+  }
+
+  return {
+    workspaceRoot: parent.workspaceRoot,
+    targetPath,
+  };
 }
 
 export const fsCreateFileTool: Tool<CreateFileInput> = {
@@ -415,6 +484,76 @@ export const fsMkdirTool: Tool<MkdirInput> = {
   },
 };
 
+export const fsRenameTool: Tool<RenameInput> = {
+  id: "fs.rename",
+  name: "Rename Path",
+  description:
+    "Rename or move a file or empty directory inside the configured workspace without overwriting.",
+  requiredSafetyTag: "CONFIRM_ONCE",
+  inputSchema: RenameInputSchema,
+  scopeOf: renameScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: WRITE_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+
+    try {
+      const source = await resolveSafePath(input.fromPath);
+      const destination = await resolveMissingDestination(input.toPath);
+      if (source.workspaceRoot !== destination.workspaceRoot) {
+        return denied("Path escapes the workspace root.", "path_escape");
+      }
+      if (isProtectedPath(source.resolvedPath)) {
+        return denied("Path is protected.", "protected_path");
+      }
+
+      const info = await stat(source.resolvedPath);
+      if (info.isDirectory()) {
+        if ((await readdir(source.resolvedPath)).length > 0) {
+          return denied("Directory is not empty.", "directory_not_empty");
+        }
+      } else if (!info.isFile()) {
+        return denied("Path type is not supported.", "unsupported_path_type");
+      }
+
+      if (context.signal.aborted) {
+        return denied("Tool execution aborted.", "aborted");
+      }
+
+      await rename(source.resolvedPath, destination.targetPath);
+
+      const fromPath =
+        relative(source.workspaceRoot, source.resolvedPath) || ".";
+      const toPath =
+        relative(destination.workspaceRoot, destination.targetPath) || ".";
+      if (context.db) {
+        recordRollback(context.db, {
+          id: randomUUID(),
+          execution_id: context.executionId,
+          session_id: context.sessionId,
+          kind: "fs_move_back",
+          payload_json: JSON.stringify({ fromPath, toPath }),
+          created_at: Date.now(),
+        });
+      }
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "Path renamed.",
+        data: {
+          fromPath,
+          toPath,
+        },
+      };
+    } catch (error) {
+      return safeError(error);
+    }
+  },
+};
+
 async function rollbackPayload(input: {
   workspaceRoot: string;
   relativePath: string;
@@ -454,6 +593,7 @@ export const writeFsTools = [
   fsWriteFileTool,
   fsAppendFileTool,
   fsMkdirTool,
+  fsRenameTool,
 ];
 
 export {

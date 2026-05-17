@@ -494,9 +494,9 @@ describe("fs.undo", () => {
     });
   });
 
-  it("does not register rename/delete/terminal tools", () => {
+  it("does not register delete/terminal tools", () => {
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining(["fs.rename", "fs.delete", "terminal.run"]),
+      expect.arrayContaining(["fs.delete", "terminal.run"]),
     );
   });
 });

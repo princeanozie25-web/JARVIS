@@ -54,6 +54,11 @@ interface RmdirEmptyPayload {
   path?: unknown;
 }
 
+interface MoveBackPayload {
+  fromPath?: unknown;
+  toPath?: unknown;
+}
+
 interface SafeTarget {
   workspaceRoot: string;
   targetPath: string;
@@ -268,6 +273,49 @@ async function rmdirEmpty(
   return { path: payload.path, kind: row.kind };
 }
 
+async function moveBack(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<MoveBackPayload>(row);
+  if (
+    !payload ||
+    typeof payload.fromPath !== "string" ||
+    typeof payload.toPath !== "string"
+  ) {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const destination = await resolveExistingSafeTarget(payload.toPath);
+  const source = await resolveMaybeMissingSafeTarget(payload.fromPath);
+  if (destination.workspaceRoot !== source.workspaceRoot) {
+    throw new SafePathError("Path escapes the workspace root.", "path_escape");
+  }
+  if (source.exists && (await exists(source.targetPath))) {
+    throw new RollbackDeniedError(
+      "Original source path is occupied.",
+      "source_path_occupied",
+    );
+  }
+
+  const info = await stat(destination.targetPath);
+  if (
+    info.isDirectory() &&
+    (await readdir(destination.targetPath)).length > 0
+  ) {
+    throw new RollbackDeniedError(
+      "Directory is not empty.",
+      "directory_not_empty",
+    );
+  }
+
+  await rename(destination.targetPath, source.targetPath);
+
+  return {
+    path: `${payload.toPath}->${payload.fromPath}`,
+    kind: row.kind,
+  };
+}
+
 export async function executeRollback(input: {
   row: RollbackRow;
   now: number;
@@ -289,7 +337,9 @@ export async function executeRollback(input: {
             ? await truncateToLength(input.row)
             : input.row.kind === "fs_rmdir_empty"
               ? await rmdirEmpty(input.row)
-              : null;
+              : input.row.kind === "fs_move_back"
+                ? await moveBack(input.row)
+                : null;
 
     if (!result) {
       return denied("Rollback kind is not supported.", "unsupported_rollback");

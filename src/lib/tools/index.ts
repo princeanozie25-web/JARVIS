@@ -24,6 +24,7 @@ export {
   fsAppendFileTool,
   fsCreateFileTool,
   fsMkdirTool,
+  fsRenameTool,
   fsWriteFileTool,
   writeFsTools,
 } from "./fs-write";
@@ -31,6 +32,7 @@ export type {
   AppendFileInput,
   CreateFileInput,
   MkdirInput,
+  RenameInput,
   WriteFileInput,
 } from "./fs-write";
 export { executeRollback, fsUndoTool } from "./fs-undo";
