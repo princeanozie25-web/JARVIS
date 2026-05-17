@@ -22,4 +22,8 @@ models.register({
   tier: "T3",
   capabilities: ["text", "stream"],
   enabled: true,
+  pricing: {
+    inputPerMillionUsd: 1.0,
+    outputPerMillionUsd: 5.0,
+  },
 });

@@ -59,4 +59,13 @@ describe("SSE stream protocol", () => {
       remaining: "",
     });
   });
+
+  it("ignores SSE heartbeat comment frames", () => {
+    const valid = { type: "text", value: "awake" } as const;
+
+    expect(parseSseEvents(`: ping\n\n${encodeSseEvent(valid)}`)).toEqual({
+      events: [valid],
+      remaining: "",
+    });
+  });
 });

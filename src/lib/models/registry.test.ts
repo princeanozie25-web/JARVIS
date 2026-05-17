@@ -45,8 +45,11 @@ describe("seeded models registry", () => {
   it("registers the OpenAI and Anthropic defaults", () => {
     expect(models.has(DEFAULT_MODEL_ID)).toBe(true);
     expect(models.getDefaultForProvider("openai").id).toBe(DEFAULT_MODEL_ID);
-    expect(models.getDefaultForProvider("anthropic").modelName).toBe(
-      "claude-haiku-4-5-20251001",
-    );
+    const anthropic = models.getDefaultForProvider("anthropic");
+    expect(anthropic.modelName).toBe("claude-haiku-4-5-20251001");
+    expect(anthropic.pricing).toEqual({
+      inputPerMillionUsd: 1,
+      outputPerMillionUsd: 5,
+    });
   });
 });

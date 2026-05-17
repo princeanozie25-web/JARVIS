@@ -32,6 +32,8 @@ export interface Tool<Input = unknown> {
   scopeOf(input: Input): string;
   reversibilityClass: ReversibilityClass;
   timeoutMs: number;
+  // Runner-only: callers must go through ToolRuntime.runTool so validation,
+  // approval checks, audit rows, telemetry, timeout, and cancellation run.
   execute(input: Input, context: ToolContext): Promise<ToolResult>;
 }
 

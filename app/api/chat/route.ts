@@ -14,6 +14,8 @@ import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
 import type { Message } from "@/lib/types";
 
+const SSE_HEARTBEAT_MS = 15_000;
+
 function persistIncomingMessages(
   sessionId: string,
   messages: Array<Message & { id?: string }>,
@@ -100,12 +102,15 @@ export async function POST(req: Request) {
     );
   }
 
+  const sessionId = parsed.data.sessionId ?? globalThis.crypto.randomUUID();
+
   const clientKey = clientKeyFromRequest(req);
   const limit = rateLimiter.check(clientKey);
   if (!limit.ok) {
     recordEvent({
       event_type: "rate_limited",
       success: false,
+      session_id: sessionId,
       notes: `client=${clientKey} limit=${limit.limit}/${limit.windowMs}ms retryAfterMs=${limit.retryAfterMs}`,
     });
     const retryAfterSec = Math.ceil(limit.retryAfterMs / 1000);
@@ -129,6 +134,7 @@ export async function POST(req: Request) {
     recordEvent({
       event_type: "cost_denied",
       success: false,
+      session_id: sessionId,
       notes: `period=${guard.period} spent=${guard.spent} limit=${guard.limit}`,
     });
     return NextResponse.json(
@@ -154,6 +160,7 @@ export async function POST(req: Request) {
     recordEvent({
       event_type: safetyResponse.eventType,
       success: false,
+      session_id: sessionId,
       model_id: providerModel,
       intent: routerDecision.intent.intent,
       safety_tag: routerDecision.safety.safetyTag,
@@ -165,7 +172,6 @@ export async function POST(req: Request) {
     });
   }
 
-  const sessionId = parsed.data.sessionId ?? globalThis.crypto.randomUUID();
   const assistantMessageId =
     parsed.data.assistantMessageId ?? globalThis.crypto.randomUUID();
 
@@ -198,6 +204,14 @@ export async function POST(req: Request) {
     const encoder = new TextEncoder();
     const body = new ReadableStream<Uint8Array>({
       async start(controller) {
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(": ping\n\n"));
+          } catch {
+            clearInterval(heartbeat);
+          }
+        }, SSE_HEARTBEAT_MS);
+
         try {
           for await (const event of streamResult.events) {
             controller.enqueue(encoder.encode(encodeSseEvent(event)));
@@ -213,6 +227,7 @@ export async function POST(req: Request) {
               recordEvent({
                 event_type: "model_call",
                 success: true,
+                session_id: sessionId,
                 model_id: final.modelId,
                 intent: routerDecision.intent.intent,
                 safety_tag: routerDecision.safety.safetyTag,
@@ -237,6 +252,7 @@ export async function POST(req: Request) {
                 recordEvent({
                   event_type: "client_disconnect",
                   success: false,
+                  session_id: sessionId,
                   model_id: providerModel,
                   intent: routerDecision.intent.intent,
                   safety_tag: routerDecision.safety.safetyTag,
@@ -248,6 +264,7 @@ export async function POST(req: Request) {
                 recordEvent({
                   event_type: "provider_error",
                   success: false,
+                  session_id: sessionId,
                   model_id: providerModel,
                   intent: routerDecision.intent.intent,
                   safety_tag: routerDecision.safety.safetyTag,
@@ -265,6 +282,7 @@ export async function POST(req: Request) {
           recordEvent({
             event_type: "provider_error",
             success: false,
+            session_id: sessionId,
             model_id: providerModel,
             intent: routerDecision.intent.intent,
             safety_tag: routerDecision.safety.safetyTag,
@@ -276,6 +294,7 @@ export async function POST(req: Request) {
           });
           controller.error(error);
         } finally {
+          clearInterval(heartbeat);
           req.signal.removeEventListener("abort", onClientAbort);
         }
       },
@@ -289,6 +308,7 @@ export async function POST(req: Request) {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
         "X-Content-Type-Options": "nosniff",
       },
     });
@@ -298,6 +318,7 @@ export async function POST(req: Request) {
     recordEvent({
       event_type: "provider_error",
       success: false,
+      session_id: sessionId,
       model_id: providerModel,
       intent: routerDecision.intent.intent,
       safety_tag: routerDecision.safety.safetyTag,

@@ -1,4 +1,5 @@
-export { applyMigrations, SCHEMA_SQL } from "./schema";
+export { applyMigrations, listSchemaMigrations, SCHEMA_SQL } from "./schema";
+export type { SchemaMigrationRow } from "./schema";
 export { getDb, closeDb } from "./client-node";
 export {
   createSessionIfMissing,

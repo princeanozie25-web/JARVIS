@@ -9,30 +9,25 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 8:00am GMT+1
+# [jarvis] recent context, 2026-05-17 8:07am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19,917t read) | 2,044,146t work | 99% savings
+Stats: 50 obs (19,984t read) | 2,121,279t work | 99% savings
 
 ### May 16, 2026
 
 S9 User asked where the PDF was saved — Claude provided the full file path (May 16, 7:26 AM)
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
-243 10:09p 🔵 Jarvis Project Architecture: Multi-Provider AI Chat with SSE Streaming
-244 " 🔄 SSE Encoding/Parsing Extracted to Shared src/lib/streaming/sse.ts Module
 
 ### May 17, 2026
 
-264 7:17a 🔵 Codebase Architecture Review and Audit Compliance Initiated
-265 " 🔵 Jarvis Router Architecture: Intent Classification and Safety Pipeline
+265 7:17a 🔵 Jarvis Router Architecture: Intent Classification and Safety Pipeline
 266 " 🟣 Tool Registry Module Scaffolded with Mock Status Tool
 267 " 🔴 Fixed Two Test Failures: T0 No-Model Error and Registry Import Isolation
-268 " ✅ Router Types and Capability Updated for "tools" Capability Signal
-269 " 🔵 Jarvis Eval Harness Benchmarks Two Providers Across Four Task Types
 270 7:27a 🔵 JARVIS Project Current Phase: Between Phase 1.5 (complete) and Phase 1B (next)
 271 " 🔵 Provider Layer: OpenAI and Anthropic Both Fully Implemented Behind ChatProvider Interface
 272 " 🔵 Router Skeleton Shipped: 4-Stage Pipeline (Intent → Safety → Capability → Selection)
@@ -75,6 +70,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 309 " 🔴 SSE Test Updated: `tool_call_end` Replaced with `tool_call_complete` + `tool_call_error`
 310 " 🔵 Jarvis Build and Eval Pipeline Fully Green After Tool Streaming Work
 311 8:00a 🟣 Approval Lifecycle Scaffold Implementation
+312 8:01a 🟣 Approval Lifecycle State Machine and Token Replay Protection
+313 " 🟣 Approvals Schema Migration: state and token_hash Columns
+314 " 🟣 Tool Runtime Now Distinguishes Approval Required vs Hard Denial
+315 " 🟣 Approval Lifecycle Test Suite — 5 Scenarios in approvals.test.ts
+316 " ✅ All Quality Gates Pass After Approval Lifecycle Scaffold
 
-Access 2044k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2121k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

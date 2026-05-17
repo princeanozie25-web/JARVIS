@@ -1,6 +1,17 @@
 import type DatabaseType from "better-sqlite3";
 
+const MIGRATION_IDS = [
+  "001_initial_schema",
+  "002_telemetry_execution_id",
+  "003_approval_lifecycle",
+] as const;
+
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS _schema_migrations (
+  id          TEXT PRIMARY KEY,
+  applied_at  INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   id          TEXT PRIMARY KEY,
   created_at  INTEGER NOT NULL,
@@ -146,19 +157,47 @@ function hasColumn(
 
 export function applyMigrations(db: DatabaseType.Database): void {
   db.exec(SCHEMA_SQL);
+  const appliedAt = Date.now();
+  for (const id of MIGRATION_IDS) {
+    db.prepare(
+      "INSERT OR IGNORE INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
+    ).run(id, appliedAt);
+  }
   if (!hasColumn(db, "telemetry_events", "execution_id")) {
     db.exec("ALTER TABLE telemetry_events ADD COLUMN execution_id TEXT");
+    db.prepare(
+      "INSERT OR IGNORE INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
+    ).run("002_telemetry_execution_id", Date.now());
   }
   if (!hasColumn(db, "approvals", "state")) {
     db.exec(
       "ALTER TABLE approvals ADD COLUMN state TEXT NOT NULL DEFAULT 'pending'",
     );
+    db.prepare(
+      "INSERT OR IGNORE INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
+    ).run("003_approval_lifecycle", Date.now());
   }
   if (!hasColumn(db, "approvals", "token_hash")) {
     db.exec("ALTER TABLE approvals ADD COLUMN token_hash TEXT");
+    db.prepare(
+      "INSERT OR IGNORE INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
+    ).run("003_approval_lifecycle", Date.now());
   }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id
       ON telemetry_events (execution_id);
   `);
+}
+
+export interface SchemaMigrationRow {
+  id: string;
+  applied_at: number;
+}
+
+export function listSchemaMigrations(
+  db: DatabaseType.Database,
+): SchemaMigrationRow[] {
+  return db
+    .prepare("SELECT id, applied_at FROM _schema_migrations ORDER BY id ASC")
+    .all() as SchemaMigrationRow[];
 }

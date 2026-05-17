@@ -7,7 +7,7 @@ import {
 } from "./approvals";
 import { appendMessage, listMessages } from "./messages";
 import { listRollbacks, recordRollback } from "./rollbacks";
-import { applyMigrations } from "./schema";
+import { applyMigrations, listSchemaMigrations } from "./schema";
 import {
   createSession,
   getSession,
@@ -52,12 +52,21 @@ describe("schema", () => {
     expect(tableNames()).toEqual(
       expect.arrayContaining([
         "approvals",
+        "_schema_migrations",
         "rollbacks",
         "telemetry_events",
         "tool_calls",
       ]),
     );
     expect(columnNames("telemetry_events")).toContain("execution_id");
+  });
+
+  it("tracks applied schema migrations", () => {
+    expect(listSchemaMigrations(db).map((row) => row.id)).toEqual([
+      "001_initial_schema",
+      "002_telemetry_execution_id",
+      "003_approval_lifecycle",
+    ]);
   });
 });
 

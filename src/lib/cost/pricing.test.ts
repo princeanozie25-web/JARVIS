@@ -15,10 +15,10 @@ describe("calculateCostUsd", () => {
     expect(calculateCostUsd("gpt-4o-mini", 1_000)).toBe(0.001);
   });
 
-  it("falls back silently when the model is registered without pricing", () => {
+  it("calculates token-based cost for registered Anthropic pricing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(calculateCostUsd("claude-haiku-4-5-20251001", 1_000, 2_000)).toBe(
-      0.001,
+      0.011,
     );
     expect(warn).not.toHaveBeenCalled();
   });
