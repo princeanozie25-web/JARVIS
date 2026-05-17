@@ -27,6 +27,7 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
 export const WRITE_PROVIDER_TOOL_IDS = new Set([
   "fs.create_file",
   "fs.write_file",
+  "fs.undo",
 ]);
 
 export const PROVIDER_TOOL_IDS = new Set([

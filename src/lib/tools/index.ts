@@ -1,4 +1,5 @@
 import { readOnlyFsTools } from "./fs-readonly";
+import { fsUndoTool } from "./fs-undo";
 import { writeFsTools } from "./fs-write";
 import { statusTool } from "./mock";
 import { tools } from "./registry";
@@ -10,6 +11,7 @@ for (const tool of readOnlyFsTools) {
 for (const tool of writeFsTools) {
   tools.register(tool);
 }
+tools.register(fsUndoTool);
 
 export {
   fsListDirTool,
@@ -20,6 +22,8 @@ export {
 export type { FsPathInput } from "./fs-readonly";
 export { fsCreateFileTool, fsWriteFileTool, writeFsTools } from "./fs-write";
 export type { CreateFileInput, WriteFileInput } from "./fs-write";
+export { executeRollback, fsUndoTool } from "./fs-undo";
+export type { UndoInput } from "./fs-undo";
 export {
   isProtectedPath,
   resolveSafePath,

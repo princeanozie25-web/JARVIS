@@ -46,6 +46,58 @@ export function recordRollback(
   );
 }
 
+export function getRollback(
+  db: DatabaseType.Database,
+  id: string,
+): RollbackRow | undefined {
+  return db.prepare("SELECT * FROM rollbacks WHERE id = ?").get(id) as
+    | RollbackRow
+    | undefined;
+}
+
+export function getLatestRollbackForSession(
+  db: DatabaseType.Database,
+  sessionId: string,
+): RollbackRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM rollbacks
+       WHERE session_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .get(sessionId) as RollbackRow | undefined;
+}
+
+export function getLatestUnappliedRollbackForSession(
+  db: DatabaseType.Database,
+  sessionId: string,
+): RollbackRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM rollbacks
+       WHERE session_id = ?
+         AND applied_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .get(sessionId) as RollbackRow | undefined;
+}
+
+export function markRollbackApplied(
+  db: DatabaseType.Database,
+  id: string,
+  appliedAt: number,
+): void {
+  db.prepare(
+    `UPDATE rollbacks
+     SET applied_at = ?
+     WHERE id = ? AND applied_at IS NULL`,
+  ).run(appliedAt, id);
+}
+
 export function listRollbacks(
   db: DatabaseType.Database,
   opts: { sessionId?: string; limit?: number } = {},

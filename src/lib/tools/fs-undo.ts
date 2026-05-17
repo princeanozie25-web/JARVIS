@@ -1,0 +1,271 @@
+import { constants } from "node:fs";
+import { access, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { z } from "zod";
+import {
+  getLatestRollbackForSession,
+  getLatestUnappliedRollbackForSession,
+  markRollbackApplied,
+  type RollbackKind,
+  type RollbackRow,
+} from "../db/rollbacks";
+import {
+  isProtectedPath,
+  resolveSafePath,
+  SafePathError,
+} from "./fs-safe-path";
+import type { Tool, ToolResult } from "./types";
+
+const UNDO_TIMEOUT_MS = 5_000;
+const ROLLBACK_TTL_MS = 24 * 60 * 60 * 1000;
+
+const UndoInputSchema = z.object({});
+
+export type UndoInput = z.infer<typeof UndoInputSchema>;
+
+interface RestorePayload {
+  path?: unknown;
+  previousContent?: unknown;
+  backupPath?: unknown;
+  previousLength?: unknown;
+}
+
+interface UnlinkCreatedPayload {
+  path?: unknown;
+}
+
+interface SafeTarget {
+  workspaceRoot: string;
+  targetPath: string;
+  exists: boolean;
+}
+
+function denied(message: string, reason: string): ToolResult {
+  return { ok: false, status: "DENIED", message, data: { reason } };
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeError(error: unknown): ToolResult {
+  if (error instanceof SafePathError) {
+    return denied(error.message, error.reason);
+  }
+  return denied(
+    error instanceof Error ? error.message : String(error),
+    "rollback_error",
+  );
+}
+
+function parsePayload<T>(row: RollbackRow): T | null {
+  try {
+    return JSON.parse(row.payload_json) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveExistingSafeTarget(path: string): Promise<SafeTarget> {
+  const safePath = await resolveSafePath(path);
+  return {
+    workspaceRoot: safePath.workspaceRoot,
+    targetPath: safePath.resolvedPath,
+    exists: true,
+  };
+}
+
+async function resolveMaybeMissingSafeTarget(
+  path: string,
+): Promise<SafeTarget> {
+  try {
+    return await resolveExistingSafeTarget(path);
+  } catch (error) {
+    if (!(error instanceof SafePathError) || error.reason !== "not_found") {
+      throw error;
+    }
+
+    const parent = await resolveSafePath(dirname(path) || ".");
+    const leaf = basename(path);
+    if (!leaf || leaf === "." || leaf === "..") {
+      throw new SafePathError("Invalid rollback path.", "path_escape");
+    }
+    const targetPath = resolve(parent.resolvedPath, leaf);
+    if (!isInside(parent.workspaceRoot, targetPath)) {
+      throw new SafePathError(
+        "Path escapes the workspace root.",
+        "path_escape",
+      );
+    }
+    if (isProtectedPath(targetPath)) {
+      throw new SafePathError("Path is protected.", "protected_path");
+    }
+    return {
+      workspaceRoot: parent.workspaceRoot,
+      targetPath,
+      exists: false,
+    };
+  }
+}
+
+async function writeViaTemp(input: {
+  targetPath: string;
+  content: string;
+  executionId: string;
+}): Promise<void> {
+  const dir = dirname(input.targetPath);
+  const leaf = basename(input.targetPath);
+  const tempPath = resolve(dir, `.${leaf}.${input.executionId}.rollback.tmp`);
+  try {
+    await writeFile(tempPath, input.content, {
+      encoding: "utf8",
+      flag: "wx",
+    });
+    await rename(tempPath, input.targetPath);
+  } catch (error) {
+    await rm(tempPath, { force: true });
+    throw error;
+  }
+}
+
+async function restoreContent(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<RestorePayload>(row);
+  if (!payload || typeof payload.path !== "string") {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const target = await resolveExistingSafeTarget(payload.path);
+  let content: string;
+  if (typeof payload.previousContent === "string") {
+    content = payload.previousContent;
+  } else if (typeof payload.backupPath === "string") {
+    const backup = await resolveExistingSafeTarget(payload.backupPath);
+    content = await readFile(backup.targetPath, "utf8");
+  } else {
+    throw new Error("Rollback payload has no restore content.");
+  }
+
+  await writeViaTemp({
+    targetPath: target.targetPath,
+    content,
+    executionId: row.execution_id,
+  });
+
+  return { path: payload.path, kind: row.kind };
+}
+
+async function unlinkCreated(
+  row: RollbackRow,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<UnlinkCreatedPayload>(row);
+  if (!payload || typeof payload.path !== "string") {
+    throw new Error("Rollback payload is invalid.");
+  }
+
+  const target = await resolveMaybeMissingSafeTarget(payload.path);
+  if (target.exists && (await exists(target.targetPath))) {
+    await rm(target.targetPath, { force: false });
+  }
+
+  return { path: payload.path, kind: row.kind };
+}
+
+export async function executeRollback(input: {
+  row: RollbackRow;
+  now: number;
+}): Promise<ToolResult> {
+  if (input.row.applied_at !== null) {
+    return denied("Rollback was already applied.", "rollback_already_applied");
+  }
+  if (input.now - input.row.created_at > ROLLBACK_TTL_MS) {
+    return denied("Rollback has expired.", "rollback_expired");
+  }
+
+  try {
+    const result =
+      input.row.kind === "fs_restore_content"
+        ? await restoreContent(input.row)
+        : input.row.kind === "fs_unlink_created"
+          ? await unlinkCreated(input.row)
+          : null;
+
+    if (!result) {
+      return denied("Rollback kind is not supported.", "unsupported_rollback");
+    }
+
+    return {
+      ok: true,
+      status: "COMPLETED",
+      message: "Rollback applied.",
+      data: {
+        rollbackId: input.row.id,
+        originalExecutionId: input.row.execution_id,
+        kind: result.kind,
+        path: result.path,
+      },
+    };
+  } catch (error) {
+    return safeError(error);
+  }
+}
+
+export const fsUndoTool: Tool<UndoInput> = {
+  id: "fs.undo",
+  name: "Undo Last File Change",
+  description:
+    "Undo the most recent unapplied filesystem rollback for this session.",
+  requiredSafetyTag: "ALLOW",
+  inputSchema: UndoInputSchema,
+  scopeOf() {
+    return "session:last_rollback";
+  },
+  reversibilityClass: "PURE_READ",
+  timeoutMs: UNDO_TIMEOUT_MS,
+  async execute(_input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied("Rollback database is unavailable.", "db_unavailable");
+    }
+
+    const latest = getLatestRollbackForSession(context.db, context.sessionId);
+    if (!latest) {
+      return denied("No rollback is available.", "rollback_missing");
+    }
+    if (latest.applied_at !== null) {
+      return denied(
+        "Rollback was already applied.",
+        "rollback_already_applied",
+      );
+    }
+
+    const rollback = getLatestUnappliedRollbackForSession(
+      context.db,
+      context.sessionId,
+    );
+    if (!rollback) {
+      return denied("No unapplied rollback is available.", "rollback_missing");
+    }
+
+    const outcome = await executeRollback({ row: rollback, now: Date.now() });
+    if (outcome.ok) {
+      markRollbackApplied(context.db, rollback.id, Date.now());
+    }
+    return outcome;
+  },
+};
+
+export { ROLLBACK_TTL_MS, UNDO_TIMEOUT_MS };

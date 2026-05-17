@@ -412,6 +412,18 @@ export class InProcessToolRuntime implements ToolRuntime {
       if (outcome.ok && grantedApprovalId) {
         this.consumeApprovedOnce(grantedApprovalId);
       }
+      if (outcome.ok && tool.id === "fs.undo") {
+        this.emit({
+          ...baseTelemetry,
+          event_type: "tool_rolled_back",
+          success: true,
+          latency_ms: this.now() - startedAt,
+          notes:
+            typeof outcome.data === "object" && outcome.data !== null
+              ? safeJson(outcome.data)
+              : baseNotes,
+        });
+      }
       return completed;
     } finally {
       clearTimeout(timeout);

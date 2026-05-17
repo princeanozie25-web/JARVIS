@@ -13,7 +13,8 @@ export type TelemetryEventType =
   | "tool_timeout"
   | "tool_cancelled"
   | "tool_denied"
-  | "tool_approved";
+  | "tool_approved"
+  | "tool_rolled_back";
 
 export interface TelemetryEvent {
   timestamp: number;

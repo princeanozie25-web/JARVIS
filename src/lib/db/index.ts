@@ -56,7 +56,14 @@ export type {
   PendingApproval,
   RecordApprovalInput,
 } from "./approvals";
-export { listRollbacks, recordRollback } from "./rollbacks";
+export {
+  getLatestRollbackForSession,
+  getLatestUnappliedRollbackForSession,
+  getRollback,
+  listRollbacks,
+  markRollbackApplied,
+  recordRollback,
+} from "./rollbacks";
 export type {
   RecordRollbackInput,
   RollbackKind,
