@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-18 11:45pm GMT+1
+# [jarvis] recent context, 2026-05-18 11:52pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,607t read) | 2,384,435t work | 99% savings
+Stats: 50 obs (22,886t read) | 2,395,237t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,9 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-370 6:52p 🔵 Jarvis Project Current Build & Test State — All Green
-371 " 🔵 Jarvis Tool System Architecture — File Operations with Approval + Rollback
-372 " 🔵 Eval Harness Running Against Two Live Models
 373 7:02p ⚖️ Rollback Hardening Architecture for Filesystem Mutation Tools
 374 7:03p 🟣 Rollback Hardening: Atomic rollback_id Linkage via SQLite Transaction
 375 " 🟣 Rollback Persistence Recovery: persistRollbackOrRecover Pattern in fs-write.ts
@@ -78,6 +75,9 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 452 8:02p 🟣 JARVIS Phase 3B.3: Vector Store Integration Initiated
 453 " 🟣 JARVIS Phase 3B.3: Vector Store Layer Implemented and All Checks Passing
 454 " 🔴 Vector Sync Test: Non-Deterministic SQLite Insert Order Fixed
+455 11:45p 🟣 JARVIS Phase 3C.1: Session Summary Schema and Storage Foundation
+456 11:46p 🟣 JARVIS Phase 3C.1 Implemented: session_summaries Table, CRUD Helpers, and Telemetry
+457 " ⚖️ session_summaries Self-Referential FK Requires Column Order Discipline in SQLite DDL
 
-Access 2384k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2395k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
