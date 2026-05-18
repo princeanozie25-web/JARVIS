@@ -56,6 +56,8 @@ describe("schema", () => {
         "long_term_memory",
         "long_term_memory_fts",
         "memory_embeddings",
+        "memory_candidates",
+        "project_state",
         "reflective_memory",
         "rollbacks",
         "semantic_memory",
@@ -80,6 +82,28 @@ describe("schema", () => {
       "hash",
       "status",
     ]);
+    expect(columnNames("project_state")).toEqual([
+      "project_id",
+      "project_name",
+      "last_session_id",
+      "last_action_summary",
+      "open_threads_json",
+      "next_intended_step",
+      "updated_at",
+    ]);
+    expect(columnNames("memory_candidates")).toEqual([
+      "id",
+      "session_id",
+      "source_message_ids_json",
+      "proposed_category",
+      "proposed_content",
+      "proposed_tags_json",
+      "proposed_sensitivity",
+      "rationale",
+      "status",
+      "created_at",
+      "reviewed_at",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -90,6 +114,8 @@ describe("schema", () => {
       "004_memory_foundation",
       "005_memory_fts",
       "006_session_summaries",
+      "007_project_state",
+      "008_memory_candidates",
     ]);
   });
 });

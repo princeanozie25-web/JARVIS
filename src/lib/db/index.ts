@@ -33,6 +33,24 @@ export type {
   SessionSummaryRow,
   UpdateSessionSummaryInput,
 } from "./session-summaries";
+export {
+  getProjectState,
+  listProjectStates,
+  upsertProjectState,
+} from "./project-state";
+export type { ProjectStateRow, UpsertProjectStateInput } from "./project-state";
+export {
+  createMemoryCandidate,
+  listMemoryCandidates,
+  MEMORY_CANDIDATE_STATUSES,
+  updateMemoryCandidateStatus,
+} from "./memory-candidates";
+export type {
+  CreateMemoryCandidateInput,
+  ListMemoryCandidatesInput,
+  MemoryCandidateRow,
+  MemoryCandidateStatus,
+} from "./memory-candidates";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {

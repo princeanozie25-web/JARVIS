@@ -7,6 +7,8 @@ const MIGRATION_IDS = [
   "004_memory_foundation",
   "005_memory_fts",
   "006_session_summaries",
+  "007_project_state",
+  "008_memory_candidates",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -161,6 +163,42 @@ CREATE INDEX IF NOT EXISTS idx_session_summaries_session
 
 CREATE INDEX IF NOT EXISTS idx_session_summaries_previous
   ON session_summaries (previous_summary_hash);
+
+CREATE TABLE IF NOT EXISTS project_state (
+  project_id            TEXT PRIMARY KEY,
+  project_name          TEXT NOT NULL,
+  last_session_id       TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  last_action_summary   TEXT NOT NULL,
+  open_threads_json     TEXT NOT NULL,
+  next_intended_step    TEXT,
+  updated_at            INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_state_updated_at
+  ON project_state (updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_project_state_name
+  ON project_state (project_name);
+
+CREATE TABLE IF NOT EXISTS memory_candidates (
+  id                       TEXT PRIMARY KEY,
+  session_id               TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  source_message_ids_json  TEXT NOT NULL,
+  proposed_category        TEXT NOT NULL CHECK (proposed_category IN ('fact', 'preference', 'event', 'decision')),
+  proposed_content         TEXT NOT NULL,
+  proposed_tags_json       TEXT NOT NULL,
+  proposed_sensitivity     TEXT NOT NULL CHECK (proposed_sensitivity IN ('public', 'personal', 'sensitive', 'restricted')),
+  rationale                TEXT NOT NULL,
+  status                   TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'accepted', 'rejected', 'edited')),
+  created_at               INTEGER NOT NULL,
+  reviewed_at              INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_candidates_session
+  ON memory_candidates (session_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_memory_candidates_status
+  ON memory_candidates (status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

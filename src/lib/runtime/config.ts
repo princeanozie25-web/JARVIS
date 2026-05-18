@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { embeddingConfigFromEnv } from "../memory/embedding-config";
 import { vectorStoreConfigFromEnv } from "../memory/vector-config";
 import { sessionSummaryConfigFromEnv } from "../session-summary/config";
+import { workingMemoryConfigFromEnv } from "../working-memory/config";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -48,4 +49,6 @@ export const config = {
   },
 
   sessionSummary: sessionSummaryConfigFromEnv(process.env),
+
+  workingMemory: workingMemoryConfigFromEnv(process.env),
 };

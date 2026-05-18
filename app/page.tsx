@@ -5,14 +5,20 @@ import {
   ApprovalCard,
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
+import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
+import { ProjectContinuityPanel } from "@/components/ProjectContinuityPanel";
 import {
   ResurfacedIdeasPanel,
   type SurfacedMemory,
 } from "@/components/ResurfacedIdeasPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
-import type { ApiApprovalDecision } from "@/lib/db/node";
+import type {
+  ApiApprovalDecision,
+  MemoryCandidateRow,
+  ProjectStateRow,
+} from "@/lib/db/node";
 import type {
   LongTermMemoryCategory,
   LongTermMemoryRow,
@@ -113,6 +119,12 @@ export default function Home() {
   const [latestRollback, setLatestRollback] = useState<RollbackSummary | null>(
     null,
   );
+  const [projectStates, setProjectStates] = useState<ProjectStateRow[]>([]);
+  const [projectStatesLoading, setProjectStatesLoading] = useState(false);
+  const [memoryCandidates, setMemoryCandidates] = useState<
+    MemoryCandidateRow[]
+  >([]);
+  const [memoryCandidatesLoading, setMemoryCandidatesLoading] = useState(false);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -208,6 +220,68 @@ export default function Home() {
     memorySensitivityCeiling,
     memoryMaxResults,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProjectStates() {
+      setProjectStatesLoading(true);
+      try {
+        const res = await fetch("/api/projects?limit=20");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          projects: ProjectStateRow[];
+        };
+        if (!cancelled) {
+          setProjectStates(data.projects);
+        }
+      } catch {
+        if (!cancelled) {
+          setProjectStates([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setProjectStatesLoading(false);
+        }
+      }
+    }
+    void loadProjectStates();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, loading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMemoryCandidates() {
+      setMemoryCandidatesLoading(true);
+      try {
+        const res = await fetch(
+          `/api/memory/candidates?sessionId=${encodeURIComponent(
+            sessionIdRef.current,
+          )}&limit=20`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          candidates: MemoryCandidateRow[];
+        };
+        if (!cancelled) {
+          setMemoryCandidates(data.candidates);
+        }
+      } catch {
+        if (!cancelled) {
+          setMemoryCandidates([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setMemoryCandidatesLoading(false);
+        }
+      }
+    }
+    void loadMemoryCandidates();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, loading]);
 
   function stop() {
     abortRef.current?.abort();
@@ -451,6 +525,36 @@ export default function Home() {
     }).catch(() => undefined);
   }
 
+  async function rejectMemoryCandidate(candidateId: string) {
+    setMemoryCandidates((current) =>
+      current.map((candidate) =>
+        candidate.id === candidateId
+          ? {
+              ...candidate,
+              status: "rejected",
+              reviewed_at: Date.now(),
+            }
+          : candidate,
+      ),
+    );
+    try {
+      const res = await fetch(`/api/memory/candidates/${candidateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { candidate: MemoryCandidateRow };
+      setMemoryCandidates((current) =>
+        current.map((candidate) =>
+          candidate.id === candidateId ? data.candidate : candidate,
+        ),
+      );
+    } catch {
+      return;
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -545,6 +649,17 @@ export default function Home() {
             Number.isFinite(value) ? Math.min(Math.max(value, 1), 20) : 8,
           )
         }
+      />
+
+      <ProjectContinuityPanel
+        projects={projectStates}
+        loading={projectStatesLoading}
+      />
+
+      <MemoryCandidateReviewPanel
+        candidates={memoryCandidates}
+        loading={memoryCandidatesLoading}
+        onReject={rejectMemoryCandidate}
       />
 
       <section className="w-full max-w-3xl flex gap-3 mt-3">

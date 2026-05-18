@@ -26,7 +26,15 @@ export type TelemetryEventType =
   | "session_summary_generated"
   | "session_summary_triggered"
   | "session_summary_skipped"
-  | "session_summary_failed";
+  | "session_summary_failed"
+  | "working_memory_assembled"
+  | "context_budget_breach"
+  | "project_state_saved"
+  | "project_state_read"
+  | "project_context_detected"
+  | "memory_candidate_generated"
+  | "memory_candidate_reviewed"
+  | "memory_candidate_rejected";
 
 export interface TelemetryEvent {
   timestamp: number;
