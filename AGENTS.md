@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-17 7:23pm GMT+1
+# [jarvis] recent context, 2026-05-18 6:26am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23,959t read) | 2,410,867t work | 99% savings
+Stats: 50 obs (24,115t read) | 2,462,578t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,12 +25,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-335 1:19p 🟣 Tool Continuation Integration Tests Added with StubProvider Pattern
-336 1:20p 🟣 All Quality Gates Passed: Tool Continuation Feature Fully Shipped
-337 1:37p 🟣 Tool Lifecycle SSE Event Types Added to Streaming Layer
-338 " 🔵 Full CI Gate Passed: 101 Tests, TypeScript, ESLint, and Production Build Clean
-339 " 🔵 Eval Suite Benchmarks GPT-4o-mini vs Claude Haiku 4.5 Across 4 Task Types
-340 " 🟣 Three New Untracked Files Indicate Tool Continuation Architecture
 341 1:40p 🔵 providerToolMetadata Translates Internal Tool IDs to Provider-Safe Names
 342 " 🟣 Tool Input Schemas Now Derived from Zod via z.toJSONSchema with io:"input" Mode
 343 " 🟣 OpenAI Strict Mode Schema Sanitizer Recursively Enforces additionalProperties:false
@@ -75,6 +69,12 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 382 7:19p ⚖️ Phase 2 Post-Delete Safety Audit Scope Defined
 383 7:20p 🔵 fs.delete_file Safety Architecture: Full Code-Path Audit Results
 384 " 🔵 Phase 2 CI Gates: All Pass — lint, tsc, build, test (255/255), eval (0 failures)
+385 7:24p 🟣 fs.delete_file Hostile Execution ID Tests Added
+386 " 🟣 fs.delete_file Telemetry Correlation and Anthropic Adapter Tests Added
+387 " 🔵 Jarvis Project Architecture and Current Build State
+388 7:25p 🔵 Complete Jarvis Tool Registry and Rollback System Architecture
+389 " 🔵 Rollback Visibility Layer and API Routes Architecture
+390 " 🔵 Planned But Unimplemented Tool IDs Referenced in Tests
 
-Access 2411k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2463k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

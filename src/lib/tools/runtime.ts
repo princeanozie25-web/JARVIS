@@ -15,6 +15,7 @@ import {
   assertToolsRuntimeGuard,
   toolsRuntimeOptionsFromEnv,
 } from "./local-guard";
+import { persistToolOutput } from "./persist-output";
 import { ToolRegistry, tools } from "./registry";
 import type { RunToolOptions, ToolResult, ToolRuntime } from "./types";
 
@@ -31,6 +32,7 @@ export interface InProcessToolRuntimeDeps {
   newId?: () => string;
   toolsEnabled?: boolean;
   bindHost?: string;
+  outputDataDir?: string;
   recordEvent?: (
     event: Omit<TelemetryEvent, "timestamp"> & { timestamp?: number },
   ) => void;
@@ -414,6 +416,7 @@ export class InProcessToolRuntime implements ToolRuntime {
           event_type: "tool_completed",
           success: outcome.ok,
           latency_ms: this.now() - startedAt,
+          notes: outcome.telemetry?.notes ?? baseTelemetry.notes,
         },
       });
       if (outcome.ok && grantedApprovalId) {
@@ -446,9 +449,12 @@ export class InProcessToolRuntime implements ToolRuntime {
     data?: unknown;
     telemetry: Omit<TelemetryEvent, "timestamp"> & { timestamp?: number };
   }): ToolResult {
+    const persisted = persistToolOutput(input.executionId, input.data ?? null, {
+      dataDir: this.deps.outputDataDir,
+    });
     this.updateCall(input.executionId, {
       status: input.status,
-      output_json: safeJson(input.data ?? null),
+      output_json: persisted.outputJson,
       error_message: input.ok ? null : input.message,
       completed_at: this.now(),
     });

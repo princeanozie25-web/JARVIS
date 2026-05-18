@@ -147,10 +147,11 @@ describe("tool approval flow", () => {
       now,
     });
 
-    expect(approved.body.result).toMatchObject({
+    expect(approved.body).toMatchObject({
       ok: true,
       status: "COMPLETED",
     });
+    expect(approved.body).not.toHaveProperty("result");
     expect(calls).toEqual(["alpha"]);
     expect(listToolCalls(db)[0].status).toBe("COMPLETED");
 
@@ -228,11 +229,12 @@ describe("tool approval flow", () => {
       now,
     });
 
-    expect(denied.body.result).toMatchObject({
+    expect(denied.body).toMatchObject({
       ok: false,
       status: "DENIED",
-      data: { reason: "approval_denied" },
+      message: "Tool execution denied by user.",
     });
+    expect(denied.body).not.toHaveProperty("result");
     expect(calls).toEqual([]);
     expect(listToolCalls(db)[0].status).toBe("DENIED");
   });
@@ -278,6 +280,92 @@ describe("tool approval flow", () => {
       { type: "tool_approved", session: "session-1", execution: "exec-1" },
       { type: "tool_denied", session: "session-1", execution: "exec-2" },
     ]);
+  });
+
+  it("does not return raw tool data text in the approval HTTP body", async () => {
+    const secretBody = "SUPER_SECRET_DOCUMENT_BODY_XYZ123";
+    const textReturningTool: Tool<{ value: string }> = {
+      id: "mock.text_return",
+      name: "Mock Text Return",
+      description: "Test-only CONFIRM_ONCE tool that returns text in data.",
+      requiredSafetyTag: "CONFIRM_ONCE",
+      inputSchema: z.object({ value: z.string() }),
+      scopeOf(input) {
+        return `value:${input.value}`;
+      },
+      reversibilityClass: "PURE_READ",
+      timeoutMs: 1000,
+      async execute(input) {
+        return {
+          ok: true,
+          status: "COMPLETED",
+          message: "Text returned",
+          data: { text: secretBody, echoed: input.value },
+        };
+      },
+    };
+    const localRegistry = new ToolRegistry();
+    localRegistry.register(textReturningTool);
+    const localRuntime = new InProcessToolRuntime(localRegistry, {
+      db,
+      now: () => now,
+      newId: () => "exec-text-return",
+    });
+
+    const requested = await localRuntime.runTool({
+      toolId: textReturningTool.id,
+      input: { value: "alpha" },
+      sessionId: "session-1",
+      executionId: "exec-text-return",
+      decision: allowDecision,
+    });
+    expect(requested.status).toBe("AWAITING_APPROVAL");
+
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-text-return",
+      sessionId: "session-1",
+      toolId: textReturningTool.id,
+      toolName: textReturningTool.name,
+      scopeHash: textReturningTool.scopeOf({ value: "alpha" }),
+      requiredSafetyTag: textReturningTool.requiredSafetyTag,
+      safetyTag: "ALLOW",
+      toolInput: { value: "alpha" },
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime: localRuntime,
+      executionId: "exec-text-return",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    // The body must NOT contain raw returned data.
+    const bodyJson = JSON.stringify(approved.body);
+    expect(bodyJson).not.toContain(secretBody);
+    expect(bodyJson).not.toContain("echoed");
+
+    // The shape must be exactly the safe metadata fields.
+    expect(approved.body).toMatchObject({
+      ok: true,
+      executionId: "exec-text-return",
+      decision: "APPROVED_ONCE",
+      status: "COMPLETED",
+    });
+    expect(approved.body).not.toHaveProperty("result");
+    expect(approved.body).not.toHaveProperty("data");
+
+    // The tool result is still recorded in tool_calls.output_json for audit.
+    const row = listToolCalls(db).find(
+      (r) => r.execution_id === "exec-text-return",
+    );
+    expect(row?.status).toBe("COMPLETED");
+    expect(row?.output_json).toContain(secretBody);
   });
 
   it("rejects missing, invalid, reused, and cross-execution tokens", async () => {

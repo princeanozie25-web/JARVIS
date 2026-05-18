@@ -276,6 +276,7 @@ describe("read-only provider tool continuation", () => {
       "fs.list_dir",
       "fs.read_file",
       "fs.stat",
+      "doc.read_txt",
     ]);
   });
 });
@@ -348,6 +349,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.list_dir",
       "fs.read_file",
       "fs.stat",
+      "doc.read_txt",
       "fs.create_file",
       "fs.write_file",
       "fs.append_file",

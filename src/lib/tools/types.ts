@@ -23,6 +23,9 @@ export interface ToolResult {
   status?: ToolCallStatus;
   message: string;
   data?: unknown;
+  telemetry?: {
+    notes?: string;
+  };
 }
 
 export interface Tool<Input = unknown> {

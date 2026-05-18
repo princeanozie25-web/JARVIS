@@ -11,7 +11,9 @@ import {
 } from "../db/node";
 import type { RouterDecision, SafetyTag } from "../router";
 import type { TelemetryEvent } from "../telemetry";
-import type { ToolResult, ToolRuntime } from "../tools/types";
+import { persistToolOutput } from "../tools/persist-output";
+import type { ToolCallStatus } from "../db/tool-calls";
+import type { ToolRuntime } from "../tools/types";
 
 export const PENDING_APPROVAL_TTL_MS = 5 * 60 * 1000;
 export const SESSION_APPROVAL_TTL_MS = 30 * 60 * 1000;
@@ -34,7 +36,7 @@ export interface ResumeApprovalResult {
     ok: boolean;
     executionId: string;
     decision: ApiApprovalDecision;
-    result?: ToolResult;
+    status?: ToolCallStatus;
     message?: string;
     reason?: string;
   };
@@ -136,11 +138,15 @@ export async function resumeApproval(input: {
   });
 
   if (input.decision === "DENIED") {
-    const result = syntheticDeniedResult(input.executionId);
+    const deniedMessage = "Tool execution denied by user.";
+    const persisted = persistToolOutput(
+      input.executionId,
+      syntheticDeniedData(input.executionId),
+    );
     updateToolCall(input.db, input.executionId, {
       status: "DENIED",
-      output_json: JSON.stringify(result.data ?? null),
-      error_message: result.message,
+      output_json: persisted.outputJson,
+      error_message: deniedMessage,
       completed_at: now,
     });
     input.recordEvent?.({
@@ -157,7 +163,8 @@ export async function resumeApproval(input: {
         ok: false,
         executionId: input.executionId,
         decision: input.decision,
-        result,
+        status: "DENIED",
+        message: deniedMessage,
       },
     };
   }
@@ -213,7 +220,8 @@ export async function resumeApproval(input: {
       ok: result.ok,
       executionId: input.executionId,
       decision: input.decision,
-      result,
+      status: result.status,
+      message: result.message,
     },
   };
 }
@@ -245,13 +253,11 @@ function errorClassForApprovalStatus(
   return "ApprovalNotGranted";
 }
 
-function syntheticDeniedResult(executionId: string): ToolResult {
-  return {
-    ok: false,
-    status: "DENIED",
-    message: "Tool execution denied by user.",
-    data: { reason: "approval_denied", executionId },
-  };
+function syntheticDeniedData(executionId: string): {
+  reason: string;
+  executionId: string;
+} {
+  return { reason: "approval_denied", executionId };
 }
 
 function decisionFromToolCall(row: ToolCallRow): RouterDecision {

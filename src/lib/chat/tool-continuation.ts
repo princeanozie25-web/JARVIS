@@ -22,6 +22,7 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "fs.list_dir",
   "fs.read_file",
   "fs.stat",
+  "doc.read_txt",
 ]);
 
 export const WRITE_PROVIDER_TOOL_IDS = new Set([

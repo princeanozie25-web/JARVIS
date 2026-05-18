@@ -1,3 +1,4 @@
+import { documentReaderTools } from "./doc-readers";
 import { readOnlyFsTools } from "./fs-readonly";
 import { fsUndoTool } from "./fs-undo";
 import { writeFsTools } from "./fs-write";
@@ -6,6 +7,9 @@ import { tools } from "./registry";
 
 tools.register(statusTool);
 for (const tool of readOnlyFsTools) {
+  tools.register(tool);
+}
+for (const tool of documentReaderTools) {
   tools.register(tool);
 }
 for (const tool of writeFsTools) {
@@ -20,6 +24,8 @@ export {
   readOnlyFsTools,
 } from "./fs-readonly";
 export type { FsPathInput } from "./fs-readonly";
+export { docReadTxtTool, documentReaderTools } from "./doc-readers";
+export type { ReadTxtInput } from "./doc-readers";
 export {
   fsAppendFileTool,
   fsCreateFileTool,

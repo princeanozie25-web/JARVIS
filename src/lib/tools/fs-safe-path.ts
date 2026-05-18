@@ -9,9 +9,28 @@ const PROTECTED_FILE_PATTERNS = [
   /\.crt$/i,
   /^secrets(?:\.|$)/i,
   /^id_rsa/i,
+  /^credentials\.json$/i,
+  /^service-account.*\.json$/i,
+  /-service-account\.json$/i,
+  /^firebase-adminsdk-.*\.json$/i,
+  /^gcloud-key\.json$/i,
+  /^application_default_credentials\.json$/i,
+  /^aws-credentials$/i,
+  /^\.npmrc$/i,
+  /^\.pypirc$/i,
+  /^\.netrc$/i,
+  /\.kdbx$/i,
+  /\.kdb$/i,
+  /\.gpg$/i,
+  /\.asc$/i,
 ] as const;
 
-const PROTECTED_DIR_NAMES = new Set([".ssh", ".gnupg"]);
+const PROTECTED_DIR_NAMES = new Set([".ssh", ".gnupg", ".aws"]);
+
+const PROTECTED_DIR_PATHS: ReadonlyArray<readonly string[]> = [
+  [".config", "gcloud"],
+  [".config", "op"],
+];
 
 export interface SafePathResult {
   workspaceRoot: string;
@@ -44,13 +63,36 @@ function isInside(root: string, candidate: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
+function pathSegments(path: string): string[] {
+  return path.split(/[\\/]+/).filter(Boolean);
+}
+
 function hasProtectedSegment(path: string): boolean {
-  const parts = path.split(/[\\/]+/).filter(Boolean);
+  const parts = pathSegments(path);
   return parts.some((part) => PROTECTED_DIR_NAMES.has(part.toLowerCase()));
+}
+
+function hasProtectedDirPath(path: string): boolean {
+  const parts = pathSegments(path).map((part) => part.toLowerCase());
+  return PROTECTED_DIR_PATHS.some((prefix) => {
+    if (prefix.length > parts.length) return false;
+    for (let i = 0; i <= parts.length - prefix.length; i += 1) {
+      let matched = true;
+      for (let j = 0; j < prefix.length; j += 1) {
+        if (parts[i + j] !== prefix[j]) {
+          matched = false;
+          break;
+        }
+      }
+      if (matched) return true;
+    }
+    return false;
+  });
 }
 
 export function isProtectedPath(path: string): boolean {
   if (hasProtectedSegment(path)) return true;
+  if (hasProtectedDirPath(path)) return true;
   const name = basename(path);
   return PROTECTED_FILE_PATTERNS.some((pattern) => pattern.test(name));
 }
@@ -59,6 +101,13 @@ export async function resolveSafePath(
   inputPath: string,
   workspaceRoot: string = workspaceRootFromEnv(),
 ): Promise<SafePathResult> {
+  if (typeof inputPath !== "string") {
+    throw new SafePathError("Path must be a string.", "path_escape");
+  }
+  if (inputPath.includes("\0")) {
+    throw new SafePathError("Path contains a NUL byte.", "path_escape");
+  }
+
   let realRoot: string;
   try {
     realRoot = await realpath(workspaceRoot);

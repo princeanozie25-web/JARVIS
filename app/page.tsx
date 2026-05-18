@@ -238,7 +238,7 @@ export default function Home() {
       const data = (await res.json()) as {
         ok?: boolean;
         message?: string;
-        result?: { message?: string; status?: string; ok?: boolean };
+        status?: string;
       };
 
       if (!res.ok) {
@@ -260,7 +260,7 @@ export default function Home() {
         return;
       }
 
-      const approved = decision !== "DENIED" && data.result?.ok === true;
+      const approved = decision !== "DENIED" && data.ok === true;
       const nextStatus: ApprovalCardDetails["status"] = approved
         ? "approved"
         : "denied";
@@ -278,7 +278,7 @@ export default function Home() {
         ),
         createMessage(
           "assistant",
-          data.result?.message ??
+          data.message ??
             (approved ? "Tool completed." : "Tool execution denied."),
         ),
       ]);

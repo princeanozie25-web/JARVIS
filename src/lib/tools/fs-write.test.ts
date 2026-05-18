@@ -363,10 +363,7 @@ describe("fs.create_file", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "File created." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "File created." },
     });
 
     expect(readFileSync(join(workspaceRoot, "new.txt"), "utf8")).toBe(
@@ -451,11 +448,11 @@ describe("fs.create_file", () => {
       now,
     });
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "DENIED",
-      data: { reason: "file_exists" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(readFileSync(join(workspaceRoot, "exists.txt"), "utf8")).toBe("old");
   });
 
@@ -473,13 +470,7 @@ describe("fs.create_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "path_escape" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -491,13 +482,7 @@ describe("fs.create_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "protected_path" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
     expect(existsSync(join(workspaceRoot, ".env.local"))).toBe(false);
   });
@@ -542,10 +527,7 @@ describe("write tool execution id path hardening", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          ok: true,
-          result: { status: "COMPLETED" },
-        },
+        body: { ok: true, status: "COMPLETED" },
       });
 
       expect(
@@ -570,10 +552,7 @@ describe("write tool execution id path hardening", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          ok: true,
-          result: { status: "COMPLETED" },
-        },
+        body: { ok: true, status: "COMPLETED" },
       });
 
       expect(
@@ -735,11 +714,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(existsSync(join(workspaceRoot, "create-fail.txt"))).toBe(false);
     expect(listRollbacks(db)).toHaveLength(0);
   });
@@ -759,11 +738,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(readFileSync(join(workspaceRoot, "write-fail.txt"), "utf8")).toBe(
       "original",
     );
@@ -785,11 +764,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(readFileSync(join(workspaceRoot, "append-fail.txt"), "utf8")).toBe(
       "original",
     );
@@ -810,11 +789,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(existsSync(join(workspaceRoot, "mkdir-fail"))).toBe(false);
     expect(listRollbacks(db)).toHaveLength(0);
   });
@@ -838,11 +817,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(
       readFileSync(join(workspaceRoot, "rename-fail-old.txt"), "utf8"),
     ).toBe("old");
@@ -865,11 +844,11 @@ describe("write rollback hardening", () => {
       }),
     );
 
-    expect(result.body.result).toMatchObject({
+    expect(result.body).toMatchObject({
       ok: false,
       status: "ERROR",
-      data: { reason: "rollback_persistence_failed" },
     });
+    expect(result.body).not.toHaveProperty("result");
     expect(readFileSync(join(workspaceRoot, "delete-fail.txt"), "utf8")).toBe(
       "delete me",
     );
@@ -922,10 +901,7 @@ describe("fs.delete_file", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "File moved to trash." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "File moved to trash." },
     });
 
     expect(existsSync(join(workspaceRoot, "delete.txt"))).toBe(false);
@@ -971,10 +947,7 @@ describe("fs.delete_file", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          ok: true,
-          result: { status: "COMPLETED" },
-        },
+        body: { ok: true, status: "COMPLETED" },
       });
 
       const rollback = listRollbacks(db)[0];
@@ -1113,12 +1086,12 @@ describe("fs.delete_file", () => {
     await requestDelete("exec-symlink", "delete-escape/outside.txt");
     now = 1_100;
 
-    for (const [executionId, reason] of [
-      ["exec-dir", "not_file"],
-      ["exec-missing", "not_found"],
-      ["exec-protected", "protected_path"],
-      ["exec-traversal", "path_escape"],
-      ["exec-symlink", "path_escape"],
+    for (const executionId of [
+      "exec-dir",
+      "exec-missing",
+      "exec-protected",
+      "exec-traversal",
+      "exec-symlink",
     ] as const) {
       await expect(
         resumeApproval({
@@ -1129,13 +1102,7 @@ describe("fs.delete_file", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
 
@@ -1306,10 +1273,7 @@ describe("fs.rename", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "Path renamed." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "Path renamed." },
     });
 
     expect(existsSync(join(workspaceRoot, "old.txt"))).toBe(false);
@@ -1368,13 +1332,7 @@ describe("fs.rename", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "not_found" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -1386,13 +1344,7 @@ describe("fs.rename", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "destination_exists" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
   });
 
@@ -1415,13 +1367,7 @@ describe("fs.rename", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason: "path_escape" },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
     expect(readFileSync(join(workspaceRoot, "source.txt"), "utf8")).toBe(
@@ -1449,13 +1395,7 @@ describe("fs.rename", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason: "protected_path" },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
   });
@@ -1495,13 +1435,7 @@ describe("fs.rename", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason: "path_escape" },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
     expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
@@ -1526,13 +1460,7 @@ describe("fs.rename", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "directory_not_empty" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -1544,12 +1472,7 @@ describe("fs.rename", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: true,
-          status: "COMPLETED",
-        },
-      },
+      body: { ok: true, status: "COMPLETED" },
     });
     expect(existsSync(join(workspaceRoot, "empty"))).toBe(false);
     expect(existsSync(join(workspaceRoot, "renamed-empty"))).toBe(true);
@@ -1675,10 +1598,7 @@ describe("fs.mkdir", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "Directory created." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "Directory created." },
     });
 
     expect(existsSync(join(workspaceRoot, "newdir"))).toBe(true);
@@ -1751,13 +1671,7 @@ describe("fs.mkdir", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "path_exists" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -1769,13 +1683,7 @@ describe("fs.mkdir", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "not_found" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
   });
 
@@ -1795,10 +1703,10 @@ describe("fs.mkdir", () => {
     await requestMkdir("exec-symlink", "mkdir-escape/newdir");
     now = 1_100;
 
-    for (const [executionId, reason] of [
-      ["exec-traversal", "path_escape"],
-      ["exec-protected", "protected_path"],
-      ["exec-symlink", "path_escape"],
+    for (const executionId of [
+      "exec-traversal",
+      "exec-protected",
+      "exec-symlink",
     ] as const) {
       await expect(
         resumeApproval({
@@ -1809,13 +1717,7 @@ describe("fs.mkdir", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
     expect(existsSync(join(outsideRoot, "newdir"))).toBe(false);
@@ -1926,10 +1828,7 @@ describe("fs.append_file", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "File appended." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "File appended." },
     });
 
     expect(readFileSync(join(workspaceRoot, "append.txt"), "utf8")).toBe(
@@ -2040,13 +1939,7 @@ describe("fs.append_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "not_found" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -2058,13 +1951,7 @@ describe("fs.append_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "binary_file" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
   });
 
@@ -2085,10 +1972,10 @@ describe("fs.append_file", () => {
     await requestAppend("exec-symlink", "append-escape/outside.txt", " plus");
     now = 1_100;
 
-    for (const [executionId, reason] of [
-      ["exec-traversal", "path_escape"],
-      ["exec-protected", "protected_path"],
-      ["exec-symlink", "path_escape"],
+    for (const executionId of [
+      "exec-traversal",
+      "exec-protected",
+      "exec-symlink",
     ] as const) {
       await expect(
         resumeApproval({
@@ -2099,13 +1986,7 @@ describe("fs.append_file", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
     expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
@@ -2163,10 +2044,7 @@ describe("fs.write_file", () => {
         },
       }),
     ).resolves.toMatchObject({
-      body: {
-        ok: true,
-        result: { status: "COMPLETED", message: "File overwritten." },
-      },
+      body: { ok: true, status: "COMPLETED", message: "File overwritten." },
     });
 
     expect(readFileSync(join(workspaceRoot, "target.txt"), "utf8")).toBe(
@@ -2280,13 +2158,7 @@ describe("fs.write_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "not_found" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
 
     await expect(
@@ -2298,13 +2170,7 @@ describe("fs.write_file", () => {
         now,
       }),
     ).resolves.toMatchObject({
-      body: {
-        result: {
-          ok: false,
-          status: "DENIED",
-          data: { reason: "binary_file" },
-        },
-      },
+      body: { ok: false, status: "DENIED" },
     });
   });
 
@@ -2325,10 +2191,10 @@ describe("fs.write_file", () => {
     await requestWrite("exec-symlink", "escape/outside.txt", "updated");
     now = 1_100;
 
-    for (const [executionId, reason] of [
-      ["exec-traversal", "path_escape"],
-      ["exec-protected", "protected_path"],
-      ["exec-symlink", "path_escape"],
+    for (const executionId of [
+      "exec-traversal",
+      "exec-protected",
+      "exec-symlink",
     ] as const) {
       await expect(
         resumeApproval({
@@ -2339,13 +2205,7 @@ describe("fs.write_file", () => {
           now,
         }),
       ).resolves.toMatchObject({
-        body: {
-          result: {
-            ok: false,
-            status: "DENIED",
-            data: { reason },
-          },
-        },
+        body: { ok: false, status: "DENIED" },
       });
     }
     expect(readFileSync(join(outsideRoot, "outside.txt"), "utf8")).toBe(
