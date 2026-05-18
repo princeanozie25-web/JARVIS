@@ -25,6 +25,7 @@ export {
   insertLongTermMemory,
   listMemoryEmbeddingsForVectorSync,
   listLongTermMemory,
+  listLongTermMemoryByIds,
   normalizeMemorySearchLimit,
   searchLongTermMemory,
   upsertMemoryEmbedding,

@@ -134,6 +134,7 @@ describe("memory.recall", () => {
       data: {
         count: 1,
         maxResults: 5,
+        retrievalMode: "keyword_only",
         sensitivityCeiling: "personal",
       },
     });
@@ -239,6 +240,7 @@ describe("memory.recall", () => {
       tool_name: "memory.recall",
     });
     expect(event?.notes).toContain("query_sha256=");
+    expect(event?.notes).toContain("mode=keyword_only");
     expect(event?.notes).toContain('result_ids=["mem-telemetry"]');
     expect(event?.notes).not.toContain("Telemetry recall");
   });

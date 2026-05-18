@@ -79,6 +79,13 @@ export function getLongTermMemory(
     | undefined;
 }
 
+export interface LongTermMemoryFilterInput {
+  category?: LongTermMemoryCategory;
+  project?: string;
+  tag?: string;
+  sensitivityCeiling?: SearchableMemorySensitivity;
+}
+
 export const MAX_MEMORY_SEARCH_RESULTS = 20;
 
 export interface SearchLongTermMemoryInput {
@@ -115,6 +122,38 @@ function normalizeTag(tag: string): string {
   return safe ? `#${safe}` : "";
 }
 
+function filteredMemoryWhere(
+  input: LongTermMemoryFilterInput,
+  tableAlias: string = "ltm",
+): { where: string[]; params: unknown[] } {
+  const sensitivities = sensitivitiesForCeiling(input.sensitivityCeiling);
+  const where: string[] = [
+    `${tableAlias}.status = 'active'`,
+    `${tableAlias}.sensitivity IN (${sensitivities.map(() => "?").join(", ")})`,
+  ];
+  const params: unknown[] = [...sensitivities];
+
+  if (input.category) {
+    where.push(`${tableAlias}.category = ?`);
+    params.push(input.category);
+  }
+  if (input.project?.trim()) {
+    where.push(`${tableAlias}.project = ?`);
+    params.push(input.project.trim());
+  }
+  if (input.tag?.trim()) {
+    const tag = normalizeTag(input.tag);
+    if (tag) {
+      where.push(
+        `EXISTS (SELECT 1 FROM json_each(${tableAlias}.tags_json) WHERE value = ?)`,
+      );
+      params.push(tag);
+    }
+  }
+
+  return { where, params };
+}
+
 function ftsQuery(query: string): string | null {
   const tokens = query.match(/[A-Za-z0-9_/-]+/g) ?? [];
   const safeTokens = tokens
@@ -130,33 +169,9 @@ export function searchLongTermMemory(
   input: SearchLongTermMemoryInput,
 ): LongTermMemorySearchRow[] {
   const limit = normalizeSearchLimit(input.maxResults);
-  const sensitivities = sensitivitiesForCeiling(input.sensitivityCeiling);
   const query = input.query?.trim() ? ftsQuery(input.query) : null;
   if (input.query?.trim() && !query) return [];
-
-  const where: string[] = [
-    "ltm.status = 'active'",
-    `ltm.sensitivity IN (${sensitivities.map(() => "?").join(", ")})`,
-  ];
-  const params: unknown[] = [...sensitivities];
-
-  if (input.category) {
-    where.push("ltm.category = ?");
-    params.push(input.category);
-  }
-  if (input.project?.trim()) {
-    where.push("ltm.project = ?");
-    params.push(input.project.trim());
-  }
-  if (input.tag?.trim()) {
-    const tag = normalizeTag(input.tag);
-    if (tag) {
-      where.push(
-        "EXISTS (SELECT 1 FROM json_each(ltm.tags_json) WHERE value = ?)",
-      );
-      params.push(tag);
-    }
-  }
+  const { where, params } = filteredMemoryWhere(input);
 
   if (query) {
     return db
@@ -185,6 +200,23 @@ export function searchLongTermMemory(
 
 export function normalizeMemorySearchLimit(maxResults?: number): number {
   return normalizeSearchLimit(maxResults);
+}
+
+export function listLongTermMemoryByIds(
+  db: DatabaseType.Database,
+  input: LongTermMemoryFilterInput & { ids: string[] },
+): LongTermMemoryRow[] {
+  if (input.ids.length === 0) return [];
+  const ids = Array.from(new Set(input.ids));
+  const { where, params } = filteredMemoryWhere(input);
+  return db
+    .prepare(
+      `SELECT ltm.*
+       FROM long_term_memory ltm
+       WHERE ltm.id IN (${ids.map(() => "?").join(", ")})
+         AND ${where.join(" AND ")}`,
+    )
+    .all(...ids, ...params) as LongTermMemoryRow[];
 }
 
 export interface MemoryEmbeddingRow {

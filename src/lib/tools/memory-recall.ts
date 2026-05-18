@@ -3,9 +3,11 @@ import { z } from "zod";
 import {
   MAX_MEMORY_SEARCH_RESULTS,
   normalizeMemorySearchLimit,
-  searchLongTermMemory,
 } from "../db/memory";
-import { insertTelemetryEvent } from "../db/telemetry";
+import {
+  MemoryRetriever,
+  memoryRetrievalResultToToolData,
+} from "../memory/retriever";
 import { LONG_TERM_MEMORY_CATEGORIES } from "../memory/types";
 import type { Tool, ToolResult } from "./types";
 
@@ -30,17 +32,6 @@ function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-function parseTags(tagsJson: string): string[] {
-  try {
-    const parsed = JSON.parse(tagsJson) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((tag): tag is string => typeof tag === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 export function memoryRecallScopeOf(input: MemoryRecallInput): string {
   return [
     "memory.recall",
@@ -57,7 +48,7 @@ export const memoryRecallTool: Tool<MemoryRecallInput> = {
   id: "memory.recall",
   name: "Recall Memory",
   description:
-    "Search approved public/personal long-term memory rows using local keyword search.",
+    "Search approved public/personal long-term memory rows using the local MemoryRetriever.",
   requiredSafetyTag: "ALLOW",
   inputSchema: MemoryRecallInputSchema,
   scopeOf: memoryRecallScopeOf,
@@ -71,55 +62,36 @@ export const memoryRecallTool: Tool<MemoryRecallInput> = {
       return denied("Memory database is unavailable.", "db_unavailable");
     }
 
-    const results = searchLongTermMemory(context.db, {
+    const retriever = new MemoryRetriever(context.db);
+    const retrieval = await retriever.retrieve({
       query: input.query,
       category: input.category,
       project: input.project,
       tag: input.tag,
       maxResults: input.maxResults,
       sensitivityCeiling: input.sensitivityCeiling,
-    });
-    const resultIds = results.map((row) => row.id);
-
-    insertTelemetryEvent(context.db, {
-      timestamp: Date.now(),
-      event_type: "memory_read",
-      success: true,
-      session_id: context.sessionId,
-      execution_id: context.executionId,
-      tool_name: "memory.recall",
+      sessionId: context.sessionId,
+      executionId: context.executionId,
+      signal: context.signal,
       intent: context.decision.intent.intent,
-      safety_tag: context.decision.safety.safetyTag,
+      safetyTag: context.decision.safety.safetyTag,
       tier: context.decision.capability.tier,
-      model_id: context.decision.selection.model.modelName,
-      notes: `query_sha256=${sha256(input.query)} category=${input.category ?? "any"} project=${input.project ? "set" : "any"} tag=${input.tag ? "set" : "any"} sensitivity_ceiling=${input.sensitivityCeiling} result_ids=${JSON.stringify(resultIds)}`,
+      modelId: context.decision.selection.model.modelName,
     });
 
     return {
       ok: true,
       status: "COMPLETED",
       message:
-        results.length === 0
+        retrieval.results.length === 0
           ? "No matching memories found."
           : "Matching memories found.",
       data: {
-        results: results.map((row) => ({
-          id: row.id,
-          category: row.category,
-          content: row.content,
-          source: row.source,
-          sourceId: row.source_id,
-          project: row.project,
-          tags: parseTags(row.tags_json),
-          sensitivity: row.sensitivity,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-          obsidianPath: row.obsidian_path,
-          rank: row.rank,
-        })),
-        count: results.length,
+        results: retrieval.results.map(memoryRetrievalResultToToolData),
+        count: retrieval.results.length,
         maxResults: normalizeMemorySearchLimit(input.maxResults),
         sensitivityCeiling: input.sensitivityCeiling,
+        retrievalMode: retrieval.mode,
       },
     };
   },

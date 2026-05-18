@@ -42,6 +42,19 @@ export {
   type SyncMemoryEmbeddingsToVectorStoreInput,
   type VectorSyncResult,
 } from "./vector-sync";
+export {
+  MemoryRetriever,
+  memoryRetrievalResultToToolData,
+  reciprocalRankFusionScore,
+  RRF_K,
+  type MemoryRetrievalMode,
+  type MemoryRetrievalResult,
+  type MemoryRetrievalScore,
+  type MemoryRetrievalSourceType,
+  type MemoryRetrieverDeps,
+  type MemoryRetrieverInput,
+  type MemoryRetrieverResult,
+} from "./retriever";
 export type {
   LongTermMemoryCategory,
   LongTermMemoryRow,

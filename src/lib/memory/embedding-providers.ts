@@ -113,10 +113,13 @@ type TransformerPipeline = (
 async function loadTransformersPipeline(): Promise<
   (task: string, model: string) => Promise<TransformerPipeline>
 > {
-  const specifier = "@xenova/transformers";
-  const imported = (await import(specifier)) as {
+  const dynamicImport = new Function(
+    "specifier",
+    "return import(specifier)",
+  ) as (specifier: string) => Promise<{
     pipeline?: (task: string, model: string) => Promise<TransformerPipeline>;
-  };
+  }>;
+  const imported = await dynamicImport("@xenova/transformers");
   if (typeof imported.pipeline !== "function") {
     throw new Error("transformers.js pipeline export is unavailable.");
   }
