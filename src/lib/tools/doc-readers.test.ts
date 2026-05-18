@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import JSZip from "jszip";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   READ_ONLY_PROVIDER_TOOL_IDS,
@@ -108,6 +109,68 @@ async function readPdf(input: {
     executionId: `exec-pdf-${input.path.replace(/[^a-z0-9]/gi, "_")}`,
     decision: allowDecision,
   });
+}
+
+async function readDocx(input: { path: string; maxChars?: number }) {
+  return runtime().runTool({
+    toolId: "doc.read_docx",
+    input,
+    sessionId: "session-1",
+    executionId: `exec-docx-${input.path.replace(/[^a-z0-9]/gi, "_")}`,
+    decision: allowDecision,
+  });
+}
+
+function xmlString(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+async function makeSimpleDocx(paragraphs: string[]): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+  );
+  zip.file(
+    "_rels/.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+  );
+  zip.file(
+    "word/document.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${paragraphs
+      .map(
+        (paragraph) =>
+          `<w:p><w:r><w:t>${xmlString(paragraph)}</w:t></w:r></w:p>`,
+      )
+      .join("")}
+  </w:body>
+</w:document>`,
+  );
+
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+function makeOleCompoundFixture(): Buffer {
+  return Buffer.concat([
+    Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+    Buffer.alloc(128, 0),
+  ]);
 }
 
 function pdfString(value: string): string {
@@ -339,12 +402,6 @@ describe("doc.read_txt", () => {
     expect(completed?.notes).toContain("truncated=false");
     expect(JSON.stringify(telemetryEvents)).not.toContain(
       "secret document body",
-    );
-  });
-
-  it("does not expose DOCX reader tools yet", () => {
-    expect(tools.list().map((tool) => tool.id)).not.toEqual(
-      expect.arrayContaining(["doc.read_docx"]),
     );
   });
 
@@ -819,9 +876,262 @@ describe("doc.read_pdf", () => {
       },
     });
   });
+});
 
-  it("does not expose doc.read_docx", () => {
-    expect(tools.list().map((tool) => tool.id)).not.toContain("doc.read_docx");
+describe("doc.read_docx", () => {
+  it("reads simple DOCX files", async () => {
+    writeFileSync(
+      join(workspaceRoot, "simple.docx"),
+      await makeSimpleDocx(["hello docx"]),
+    );
+
+    await expect(readDocx({ path: "simple.docx" })).resolves.toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        path: "simple.docx",
+        extension: ".docx",
+        truncated: false,
+        text: expect.stringContaining("hello docx"),
+      },
+    });
+  });
+
+  it("rejects legacy .doc files", async () => {
+    writeFileSync(join(workspaceRoot, "legacy.doc"), makeOleCompoundFixture());
+
+    await expect(readDocx({ path: "legacy.doc" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "legacy_doc" },
+    });
+  });
+
+  it("rejects non-DOCX extensions", async () => {
+    writeFileSync(
+      join(workspaceRoot, "not-docx.zip"),
+      await makeSimpleDocx(["hello"]),
+    );
+
+    await expect(readDocx({ path: "not-docx.zip" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "unsupported_file_type" },
+    });
+  });
+
+  it("rejects wrong magic bytes and invalid ZIPs", async () => {
+    writeFileSync(join(workspaceRoot, "wrong.docx"), "not really a zip");
+    writeFileSync(
+      join(workspaceRoot, "invalid.docx"),
+      Buffer.concat([Buffer.from("PK\x03\x04", "binary"), Buffer.from("bad")]),
+    );
+
+    await expect(readDocx({ path: "wrong.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "invalid_docx_zip" },
+    });
+    await expect(readDocx({ path: "invalid.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "docx_parse_error" },
+    });
+  });
+
+  it("rejects missing files", async () => {
+    await expect(readDocx({ path: "missing.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "not_found" },
+    });
+  });
+
+  it("rejects protected paths", async () => {
+    writeFileSync(
+      join(workspaceRoot, ".env.docx"),
+      await makeSimpleDocx(["secret"]),
+    );
+
+    await expect(readDocx({ path: ".env.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "protected_path" },
+    });
+  });
+
+  it("rejects traversal and symlink escapes", async () => {
+    writeFileSync(
+      join(outsideRoot, "outside.docx"),
+      await makeSimpleDocx(["outside"]),
+    );
+
+    await expect(readDocx({ path: "../outside.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "path_escape" },
+    });
+
+    try {
+      symlinkSync(
+        outsideRoot,
+        join(workspaceRoot, "docx-escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      return;
+    }
+
+    await expect(
+      readDocx({ path: "docx-escape/outside.docx" }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "path_escape" },
+    });
+  });
+
+  it("rejects oversized DOCX files", async () => {
+    const oversized = Buffer.alloc(5 * 1024 * 1024 + 1, "a");
+    oversized.write("PK\x03\x04", "binary");
+    writeFileSync(join(workspaceRoot, "large.docx"), oversized);
+
+    await expect(readDocx({ path: "large.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "file_too_large" },
+    });
+  });
+
+  it("handles malformed DOCX packages safely", async () => {
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", "<Types></Types>");
+    writeFileSync(
+      join(workspaceRoot, "malformed.docx"),
+      await zip.generateAsync({ type: "nodebuffer" }),
+    );
+
+    await expect(readDocx({ path: "malformed.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "invalid_docx_package" },
+    });
+  });
+
+  it("handles password-protected DOCX-like OLE packages safely", async () => {
+    writeFileSync(
+      join(workspaceRoot, "protected.docx"),
+      makeOleCompoundFixture(),
+    );
+
+    await expect(readDocx({ path: "protected.docx" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "docx_encrypted_or_password_required" },
+    });
+  });
+
+  it("truncates returned text at the requested character limit", async () => {
+    writeFileSync(
+      join(workspaceRoot, "long.docx"),
+      await makeSimpleDocx(["abcdef"]),
+    );
+
+    await expect(
+      readDocx({ path: "long.docx", maxChars: 3 }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: {
+        truncated: true,
+        text: "abc",
+      },
+    });
+  });
+
+  it("does not put raw DOCX text in telemetry notes", async () => {
+    writeFileSync(
+      join(workspaceRoot, "private.docx"),
+      await makeSimpleDocx(["secret docx body"]),
+    );
+
+    await readDocx({ path: "private.docx" });
+
+    const completed = telemetryEvents.find(
+      (event) => event.event_type === "tool_completed",
+    );
+    expect(completed).toMatchObject({
+      execution_id: "exec-docx-private_docx",
+      tool_name: "doc.read_docx",
+      notes: expect.stringContaining("path=private.docx"),
+    });
+    expect(JSON.stringify(telemetryEvents)).not.toContain("secret docx body");
+  });
+
+  it("caps tool_calls.output_json and externalises large doc.read_docx results", async () => {
+    const big = "a".repeat(100_000);
+    writeFileSync(join(workspaceRoot, "big.docx"), await makeSimpleDocx([big]));
+
+    const result = await readDocx({ path: "big.docx", maxChars: 100_000 });
+    expect(result.ok).toBe(true);
+
+    const row = getToolCall(db, "exec-docx-big_docx");
+    expect(row).toBeDefined();
+    const stored = JSON.parse(row!.output_json ?? "null") as {
+      truncated: boolean;
+      externalPath?: string;
+      byteSize?: number;
+    };
+    expect(stored.truncated).toBe(true);
+    expect(stored.externalPath).toMatch(/^exec_[A-Za-z0-9_-]+\.json$/);
+    expect(stored.byteSize).toBeGreaterThan(64 * 1024);
+
+    const fullPath = join(outputDir, stored.externalPath!);
+    const restored = JSON.parse(readFileSync(fullPath, "utf8")) as {
+      text: string;
+    };
+    expect(restored.text.length).toBe(big.length);
+    expect(row!.output_json).not.toContain("aaaa");
+  });
+
+  it("converts doc.read_docx to a strict OpenAI schema", () => {
+    const metadata = providerToolMetadata(tools, (toolId) =>
+      ["doc.read_docx"].includes(toolId),
+    );
+    const openAiTool = toOpenAITools(metadata.definitions)?.[0];
+
+    expect(openAiTool?.function.name).toBe("doc_read_docx");
+    expect(openAiTool?.function.parameters).toMatchObject({
+      type: "object",
+      properties: {
+        path: expect.objectContaining({ type: "string" }),
+        maxChars: expect.objectContaining({ type: "integer" }),
+      },
+      required: ["path"],
+      additionalProperties: false,
+    });
+    expect(
+      objectSchemasMissingAdditionalProperties(openAiTool?.function.parameters),
+    ).toEqual([]);
+  });
+
+  it("exposes doc.read_docx through Anthropic tool metadata", () => {
+    const metadata = providerToolMetadata(tools, (toolId) =>
+      ["doc.read_docx"].includes(toolId),
+    );
+    const anthropicTool = toAnthropicTools(metadata.definitions)?.[0];
+
+    expect(anthropicTool).toMatchObject({
+      name: "doc_read_docx",
+      description: expect.stringContaining("Extract text from a DOCX"),
+      input_schema: {
+        type: "object",
+        properties: {
+          path: expect.objectContaining({ type: "string" }),
+          maxChars: expect.objectContaining({ type: "integer" }),
+        },
+        required: ["path"],
+      },
+    });
   });
 });
 

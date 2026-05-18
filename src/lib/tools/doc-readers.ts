@@ -3,14 +3,18 @@ import { createRequire } from "node:module";
 import { dirname, extname, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { TextDecoder } from "node:util";
+import { XMLParser } from "fast-xml-parser";
+import JSZip from "jszip";
 import { z } from "zod";
 import { resolveSafePath, SafePathError } from "./fs-safe-path";
 import type { Tool, ToolContext, ToolResult } from "./types";
 
 const READ_TXT_TIMEOUT_MS = 5_000;
 const READ_PDF_TIMEOUT_MS = 5_000;
+const READ_DOCX_TIMEOUT_MS = 5_000;
 const MAX_TEXT_FILE_BYTES = 1024 * 1024;
 const MAX_PDF_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_DOCX_FILE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_MAX_PDF_PAGES = 20;
 const DEFAULT_MAX_RETURNED_CHARS = 20_000;
 const MAX_RETURNED_CHARS = 200_000;
@@ -56,6 +60,19 @@ const ReadPdfInputSchema = z.object({
 
 export type ReadPdfInput = z.infer<typeof ReadPdfInputSchema>;
 
+const ReadDocxInputSchema = z.object({
+  path: z.string().min(1),
+  maxChars: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_RETURNED_CHARS)
+    .optional()
+    .default(DEFAULT_MAX_RETURNED_CHARS),
+});
+
+export type ReadDocxInput = z.infer<typeof ReadDocxInputSchema>;
+
 type PdfTextItem = {
   str?: unknown;
   hasEOL?: unknown;
@@ -90,6 +107,20 @@ class PdfReadError extends Error {
   }
 }
 
+class DocxReadError extends Error {
+  constructor(
+    message: string,
+    readonly reason:
+      | "invalid_docx_zip"
+      | "invalid_docx_package"
+      | "docx_parse_error"
+      | "docx_encrypted_or_password_required",
+  ) {
+    super(message);
+    this.name = "DocxReadError";
+  }
+}
+
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
 }
@@ -121,6 +152,10 @@ function pdfScopeOf(input: ReadPdfInput): string {
   return `doc.read_pdf:${input.path}:${input.maxPages}:${input.maxChars}`;
 }
 
+function docxScopeOf(input: ReadDocxInput): string {
+  return `doc.read_docx:${input.path}:${input.maxChars}`;
+}
+
 function telemetryNotes(input: {
   path: string;
   extension: string;
@@ -138,6 +173,17 @@ function telemetryNotes(input: {
 
 function hasPdfMagicBytes(buffer: Buffer): boolean {
   return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+
+function hasZipMagicBytes(buffer: Buffer): boolean {
+  const signature = buffer.subarray(0, 4).toString("hex").toLowerCase();
+  return ["504b0304", "504b0506", "504b0708"].includes(signature);
+}
+
+function hasOleCompoundMagicBytes(buffer: Buffer): boolean {
+  return buffer
+    .subarray(0, 8)
+    .equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
 }
 
 function textItemString(item: unknown): string | null {
@@ -187,6 +233,122 @@ function classifyPdfError(error: unknown): PdfReadError {
 function standardFontDataUrl(): string {
   const pdfJsRoot = dirname(require.resolve("pdfjs-dist/package.json"));
   return pathToFileURL(join(pdfJsRoot, "standard_fonts") + "/").href;
+}
+
+function docxXmlParser(): XMLParser {
+  return new XMLParser({
+    preserveOrder: true,
+    ignoreAttributes: false,
+  });
+}
+
+function appendClamped(input: {
+  current: string;
+  next: string;
+  maxChars: number;
+}): { text: string; truncated: boolean } {
+  if (!input.next) return { text: input.current, truncated: false };
+  const remaining = input.maxChars - input.current.length;
+  if (remaining <= 0) return { text: input.current, truncated: true };
+  if (input.next.length > remaining) {
+    return {
+      text: input.current + input.next.slice(0, remaining),
+      truncated: true,
+    };
+  }
+  return { text: input.current + input.next, truncated: false };
+}
+
+function extractTextFromDocxXml(
+  value: unknown,
+  maxChars: number,
+): { text: string; truncated: boolean } {
+  let text = "";
+  let truncated = false;
+
+  function append(next: string): void {
+    if (truncated) return;
+    const appended = appendClamped({ current: text, next, maxChars });
+    text = appended.text;
+    truncated = appended.truncated;
+  }
+
+  function visit(node: unknown, parentKey?: string): void {
+    if (truncated) return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item, parentKey);
+      return;
+    }
+    if (node === null || typeof node !== "object") return;
+
+    for (const [key, child] of Object.entries(node)) {
+      if (key === "#text" && typeof child === "string" && parentKey === "w:t") {
+        append(child);
+        continue;
+      }
+      if (key === "w:tab") {
+        append("\t");
+        continue;
+      }
+      if (key === "w:br" || key === "w:cr") {
+        append("\n");
+        continue;
+      }
+      visit(child, key);
+      if (key === "w:p") append("\n");
+    }
+  }
+
+  visit(value);
+  return { text: text.replace(/\n+$/g, ""), truncated };
+}
+
+async function extractDocxText(input: {
+  buffer: Buffer;
+  maxChars: number;
+}): Promise<{ text: string; truncated: boolean }> {
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(input.buffer);
+  } catch {
+    throw new DocxReadError("DOCX could not be parsed.", "docx_parse_error");
+  }
+
+  const contentTypes = zip.file("[Content_Types].xml");
+  const documentXml = zip.file("word/document.xml");
+  if (!contentTypes || !documentXml) {
+    throw new DocxReadError(
+      "File is not a valid DOCX package.",
+      "invalid_docx_package",
+    );
+  }
+
+  let contentTypesXml: string;
+  let mainDocumentXml: string;
+  try {
+    contentTypesXml = await contentTypes.async("text");
+    mainDocumentXml = await documentXml.async("text");
+  } catch {
+    throw new DocxReadError("DOCX could not be parsed.", "docx_parse_error");
+  }
+
+  if (
+    !contentTypesXml.includes(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+    )
+  ) {
+    throw new DocxReadError(
+      "File is not a valid DOCX package.",
+      "invalid_docx_package",
+    );
+  }
+
+  try {
+    const parsed = docxXmlParser().parse(mainDocumentXml) as unknown;
+    return extractTextFromDocxXml(parsed, input.maxChars);
+  } catch {
+    throw new DocxReadError("DOCX could not be parsed.", "docx_parse_error");
+  }
 }
 
 async function extractPdfText(input: {
@@ -425,14 +587,107 @@ export const docReadPdfTool: Tool<ReadPdfInput> = {
   },
 };
 
-export const documentReaderTools = [docReadTxtTool, docReadPdfTool];
+export const docReadDocxTool: Tool<ReadDocxInput> = {
+  id: "doc.read_docx",
+  name: "Read DOCX Document",
+  description:
+    "Extract text from a DOCX document inside the configured workspace with strict size and character limits.",
+  requiredSafetyTag: "ALLOW",
+  inputSchema: ReadDocxInputSchema,
+  scopeOf: docxScopeOf,
+  reversibilityClass: "PURE_READ",
+  timeoutMs: READ_DOCX_TIMEOUT_MS,
+  async execute(input, context: ToolContext) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+
+    try {
+      const safePath = await resolveSafePath(input.path);
+      const extension = extname(safePath.resolvedPath).toLowerCase();
+      if (extension === ".doc") {
+        return denied("Legacy .doc files are not supported.", "legacy_doc");
+      }
+      if (extension !== ".docx") {
+        return denied(
+          "File extension is not supported.",
+          "unsupported_file_type",
+        );
+      }
+
+      const info = await stat(safePath.resolvedPath);
+      if (!info.isFile()) {
+        return denied("Path is not a file.", "not_file");
+      }
+      if (info.size > MAX_DOCX_FILE_BYTES) {
+        return denied("File exceeds 5 MB read limit.", "file_too_large");
+      }
+
+      const buffer = await readFile(safePath.resolvedPath);
+      const sizeBytes = buffer.byteLength;
+      if (hasOleCompoundMagicBytes(buffer)) {
+        return denied(
+          "DOCX is encrypted, password-protected, or legacy Office format.",
+          "docx_encrypted_or_password_required",
+        );
+      }
+      if (!hasZipMagicBytes(buffer)) {
+        return denied("File is not a valid DOCX ZIP.", "invalid_docx_zip");
+      }
+
+      const extracted = await extractDocxText({
+        buffer,
+        maxChars: input.maxChars,
+      });
+      const path =
+        relative(safePath.workspaceRoot, safePath.resolvedPath) || ".";
+
+      return {
+        ok: true,
+        status: "COMPLETED",
+        message: "DOCX document read.",
+        data: {
+          path,
+          extension,
+          sizeBytes,
+          truncated: extracted.truncated,
+          text: extracted.text,
+        },
+        telemetry: {
+          notes: telemetryNotes({
+            path,
+            extension,
+            sizeBytes,
+            truncated: extracted.truncated,
+          }),
+        },
+      };
+    } catch (error) {
+      if (error instanceof SafePathError) {
+        return safeError(error);
+      }
+      if (error instanceof DocxReadError) {
+        return denied(error.message, error.reason);
+      }
+      return denied("DOCX could not be parsed.", "docx_parse_error");
+    }
+  },
+};
+
+export const documentReaderTools = [
+  docReadTxtTool,
+  docReadPdfTool,
+  docReadDocxTool,
+];
 
 export {
   ALLOWED_TEXT_EXTENSIONS,
   DEFAULT_MAX_RETURNED_CHARS,
   DEFAULT_MAX_PDF_PAGES,
+  MAX_DOCX_FILE_BYTES,
   MAX_PDF_FILE_BYTES,
   MAX_TEXT_FILE_BYTES,
+  READ_DOCX_TIMEOUT_MS,
   READ_PDF_TIMEOUT_MS,
   READ_TXT_TIMEOUT_MS,
 };
