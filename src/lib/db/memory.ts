@@ -279,3 +279,36 @@ export function findCachedEmbeddingByContentHash(
     )
     .get(...params) as MemoryEmbeddingRow | undefined;
 }
+
+export function listMemoryEmbeddingsForVectorSync(
+  db: DatabaseType.Database,
+  input: { dimension?: number; model?: string; limit?: number } = {},
+): MemoryEmbeddingRow[] {
+  const where: string[] = [
+    "ltm.status = 'active'",
+    "ltm.sensitivity IN ('public', 'personal')",
+  ];
+  const params: unknown[] = [];
+
+  if (input.dimension) {
+    where.push("emb.dim = ?");
+    params.push(input.dimension);
+  }
+  if (input.model) {
+    where.push("emb.model = ?");
+    params.push(input.model);
+  }
+
+  params.push(Math.min(Math.max(Math.trunc(input.limit ?? 500), 1), 5_000));
+
+  return db
+    .prepare(
+      `SELECT emb.*
+       FROM memory_embeddings emb
+       JOIN long_term_memory ltm ON ltm.id = emb.memory_id
+       WHERE ${where.join(" AND ")}
+       ORDER BY emb.created_at ASC
+       LIMIT ?`,
+    )
+    .all(...params) as MemoryEmbeddingRow[];
+}

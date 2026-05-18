@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { embeddingConfigFromEnv } from "../memory/embedding-config";
+import { vectorStoreConfigFromEnv } from "../memory/vector-config";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -42,5 +43,6 @@ export const config = {
 
   memory: {
     embeddings: embeddingConfigFromEnv(process.env),
+    vectorStore: vectorStoreConfigFromEnv(process.env),
   },
 };

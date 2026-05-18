@@ -23,6 +23,7 @@ export {
   getLongTermMemory,
   getMemoryEmbedding,
   insertLongTermMemory,
+  listMemoryEmbeddingsForVectorSync,
   listLongTermMemory,
   normalizeMemorySearchLimit,
   searchLongTermMemory,

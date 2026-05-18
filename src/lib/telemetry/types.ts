@@ -18,6 +18,7 @@ export type TelemetryEventType =
   | "memory_write"
   | "memory_read"
   | "memory_embedding_created"
+  | "memory_vector_search"
   | "memory_surfaced"
   | "memory_forget"
   | "memory_distill_rejected";
