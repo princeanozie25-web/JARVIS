@@ -9,8 +9,9 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   READ_ONLY_PROVIDER_TOOL_IDS,
   WRITE_PROVIDER_TOOL_IDS,
@@ -76,6 +77,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   db.close();
   rmSync(workspaceRoot, { recursive: true, force: true });
   rmSync(outsideRoot, { recursive: true, force: true });
@@ -164,6 +166,26 @@ async function makeSimpleDocx(paragraphs: string[]): Promise<Buffer> {
   );
 
   return zip.generateAsync({ type: "nodebuffer" });
+}
+
+async function makeDocxWithDocumentXml(documentXml: string): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+  );
+  zip.file("word/document.xml", documentXml);
+
+  return zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 9 },
+  });
 }
 
 function makeOleCompoundFixture(): Buffer {
@@ -1001,6 +1023,42 @@ describe("doc.read_docx", () => {
       status: "DENIED",
       data: { reason: "file_too_large" },
     });
+  });
+
+  it("rejects compressed-small DOCX files with inflated document XML", async () => {
+    const hugeText = "a".repeat(1024 * 1024 + 1);
+    const documentXml = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${hugeText}</w:t></w:r></w:p></w:body></w:document>`;
+    const buffer = await makeDocxWithDocumentXml(documentXml);
+    expect(buffer.byteLength).toBeLessThan(32 * 1024);
+    writeFileSync(join(workspaceRoot, "zip-bomb-style.docx"), buffer);
+
+    await expect(
+      readDocx({ path: "zip-bomb-style.docx", maxChars: 10 }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "docx_xml_too_large" },
+    });
+  });
+
+  it("rejects huge document XML before XML parsing", async () => {
+    const parseSpy = vi.spyOn(XMLParser.prototype, "parse");
+    const hugeText = "b".repeat(1024 * 1024 + 1);
+    const documentXml = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${hugeText}</w:t></w:r></w:p></w:body></w:document>`;
+    writeFileSync(
+      join(workspaceRoot, "huge-document-xml.docx"),
+      await makeDocxWithDocumentXml(documentXml),
+    );
+
+    await expect(
+      readDocx({ path: "huge-document-xml.docx", maxChars: 10 }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "docx_xml_too_large" },
+    });
+    expect(parseSpy).not.toHaveBeenCalled();
+    parseSpy.mockRestore();
   });
 
   it("handles malformed DOCX packages safely", async () => {

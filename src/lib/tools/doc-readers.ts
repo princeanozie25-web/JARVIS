@@ -15,6 +15,12 @@ const READ_DOCX_TIMEOUT_MS = 5_000;
 const MAX_TEXT_FILE_BYTES = 1024 * 1024;
 const MAX_PDF_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_DOCX_FILE_BYTES = 5 * 1024 * 1024;
+const DEFAULT_MAX_DOCX_XML_ENTRY_BYTES = 1024 * 1024;
+const HARD_MAX_DOCX_XML_ENTRY_BYTES = 5 * 1024 * 1024;
+const MAX_DOCX_XML_ENTRY_BYTES = Math.min(
+  DEFAULT_MAX_DOCX_XML_ENTRY_BYTES,
+  HARD_MAX_DOCX_XML_ENTRY_BYTES,
+);
 const DEFAULT_MAX_PDF_PAGES = 20;
 const DEFAULT_MAX_RETURNED_CHARS = 20_000;
 const MAX_RETURNED_CHARS = 200_000;
@@ -114,12 +120,21 @@ class DocxReadError extends Error {
       | "invalid_docx_zip"
       | "invalid_docx_package"
       | "docx_parse_error"
+      | "docx_xml_size_unknown"
+      | "docx_xml_too_large"
       | "docx_encrypted_or_password_required",
   ) {
     super(message);
     this.name = "DocxReadError";
   }
 }
+
+type JSZipEntryWithMetadata = JSZip.JSZipObject & {
+  _data?: {
+    compressedSize?: unknown;
+    uncompressedSize?: unknown;
+  };
+};
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -242,6 +257,32 @@ function docxXmlParser(): XMLParser {
   });
 }
 
+function uncompressedZipEntrySize(entry: JSZip.JSZipObject): number | null {
+  const size = (entry as JSZipEntryWithMetadata)._data?.uncompressedSize;
+  return typeof size === "number" && Number.isSafeInteger(size) && size >= 0
+    ? size
+    : null;
+}
+
+function assertDocxXmlEntrySize(
+  entry: JSZip.JSZipObject,
+  entryName: string,
+): void {
+  const uncompressedSize = uncompressedZipEntrySize(entry);
+  if (uncompressedSize === null) {
+    throw new DocxReadError(
+      `DOCX XML entry size is unavailable: ${entryName}.`,
+      "docx_xml_size_unknown",
+    );
+  }
+  if (uncompressedSize > MAX_DOCX_XML_ENTRY_BYTES) {
+    throw new DocxReadError(
+      `DOCX XML entry exceeds ${MAX_DOCX_XML_ENTRY_BYTES} byte limit: ${entryName}.`,
+      "docx_xml_too_large",
+    );
+  }
+}
+
 function appendClamped(input: {
   current: string;
   next: string;
@@ -322,6 +363,9 @@ async function extractDocxText(input: {
       "invalid_docx_package",
     );
   }
+
+  assertDocxXmlEntrySize(contentTypes, "[Content_Types].xml");
+  assertDocxXmlEntrySize(documentXml, "word/document.xml");
 
   let contentTypesXml: string;
   let mainDocumentXml: string;
