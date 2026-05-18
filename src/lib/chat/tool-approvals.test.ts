@@ -171,6 +171,91 @@ describe("tool approval flow", () => {
     expect(calls).toEqual(["alpha"]);
   });
 
+  it("consumes approved-once when execution is attempted even if the tool fails", async () => {
+    const failingTool: Tool<{ value: string }> = {
+      id: "mock.fails_after_approval",
+      name: "Mock Fails After Approval",
+      description: "Test-only tool that fails after approval.",
+      requiredSafetyTag: "CONFIRM_ONCE",
+      inputSchema: z.object({ value: z.string() }),
+      scopeOf(input) {
+        return `value:${input.value}`;
+      },
+      reversibilityClass: "REVERSIBLE_WRITE",
+      timeoutMs: 1000,
+      async execute(input) {
+        calls.push(input.value);
+        return {
+          ok: false,
+          status: "DENIED",
+          message: "failed after approval",
+          data: { reason: "injected_failure" },
+        };
+      },
+    };
+    const localRegistry = new ToolRegistry();
+    localRegistry.register(failingTool);
+    const localRuntime = new InProcessToolRuntime(localRegistry, {
+      db,
+      now: () => now,
+    });
+
+    const requested = await localRuntime.runTool({
+      toolId: failingTool.id,
+      input: { value: "alpha" },
+      sessionId: "session-1",
+      executionId: "exec-fail",
+      decision: allowDecision,
+    });
+    expect(requested.status).toBe("AWAITING_APPROVAL");
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-fail",
+      sessionId: "session-1",
+      toolId: failingTool.id,
+      toolName: failingTool.name,
+      scopeHash: failingTool.scopeOf({ value: "alpha" }),
+      requiredSafetyTag: failingTool.requiredSafetyTag,
+      safetyTag: "ALLOW",
+      toolInput: { value: "alpha" },
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime: localRuntime,
+        executionId: "exec-fail",
+        decision: "APPROVED_ONCE",
+        approvalToken: pending.approvalToken,
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "failed after approval",
+      },
+    });
+
+    await expect(
+      localRuntime.runTool({
+        toolId: failingTool.id,
+        input: { value: "alpha" },
+        sessionId: "session-1",
+        executionId: "exec-replay",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "approval_replayed" },
+    });
+    expect(calls).toEqual(["alpha"]);
+  });
+
   it("allows session approval for the same session tool and scope", async () => {
     await requestApproval("exec-1");
     now = 1_100;
@@ -237,6 +322,10 @@ describe("tool approval flow", () => {
     expect(denied.body).not.toHaveProperty("result");
     expect(calls).toEqual([]);
     expect(listToolCalls(db)[0].status).toBe("DENIED");
+    const approval = db
+      .prepare("SELECT consumed_at FROM approvals WHERE execution_id = ?")
+      .get("exec-1") as { consumed_at: number | null };
+    expect(approval.consumed_at).toBeNull();
   });
 
   it("emits tool_approved and tool_denied telemetry with session and execution ids", async () => {

@@ -246,6 +246,9 @@ export class InProcessToolRuntime implements ToolRuntime {
       proposedAt,
       timeoutMs: tool.timeoutMs,
     });
+    if (grantedApprovalId) {
+      this.consumeApprovedOnce(grantedApprovalId);
+    }
 
     if (options.signal?.aborted) {
       return this.finish({
@@ -419,9 +422,6 @@ export class InProcessToolRuntime implements ToolRuntime {
           notes: outcome.telemetry?.notes ?? baseTelemetry.notes,
         },
       });
-      if (outcome.ok && grantedApprovalId) {
-        this.consumeApprovedOnce(grantedApprovalId);
-      }
       if (outcome.ok && tool.id === "fs.undo") {
         this.emit({
           ...baseTelemetry,

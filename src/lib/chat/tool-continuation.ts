@@ -34,7 +34,6 @@ export const WRITE_PROVIDER_TOOL_IDS = new Set([
   "fs.mkdir",
   "fs.rename",
   "fs.delete_file",
-  "fs.undo",
 ]);
 
 export const PROVIDER_TOOL_IDS = new Set([

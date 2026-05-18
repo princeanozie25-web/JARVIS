@@ -88,6 +88,10 @@ function runtime(): InProcessToolRuntime {
   });
 }
 
+function scopeFor(toolId: string, input: unknown): string {
+  return tools.get(toolId).scopeOf(input);
+}
+
 beforeEach(() => {
   db = new Database(":memory:");
   applyMigrations(db);
@@ -130,7 +134,7 @@ async function requestCreate(
       sessionId: "session-1",
       toolId: "fs.create_file",
       toolName: "Create File",
-      scopeHash: `create:${path}`,
+      scopeHash: scopeFor("fs.create_file", { path, content }),
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
@@ -160,7 +164,7 @@ async function requestWrite(
       sessionId: "session-1",
       toolId: "fs.write_file",
       toolName: "Write File",
-      scopeHash: `write:${path}`,
+      scopeHash: scopeFor("fs.write_file", { path, content }),
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
@@ -190,7 +194,7 @@ async function requestAppend(
       sessionId: "session-1",
       toolId: "fs.append_file",
       toolName: "Append File",
-      scopeHash: `append:${path}`,
+      scopeHash: scopeFor("fs.append_file", { path, content }),
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
@@ -335,7 +339,9 @@ describe("fs.create_file", () => {
       data: {
         reason: "approval_required",
         toolId: "fs.create_file",
-        scopeHash: "create:new.txt",
+        scopeHash: expect.stringMatching(
+          /^create:new\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
       },
     });
 
@@ -345,6 +351,29 @@ describe("fs.create_file", () => {
       tool_id: "fs.create_file",
       status: "AWAITING_APPROVAL",
     });
+  });
+
+  it("uses a content hash in approval scope without storing raw create content", async () => {
+    const secret = "SECRET_CREATE_CONTENT_SHOULD_NOT_BE_IN_SCOPE";
+
+    const result = await requestCreate(
+      "exec-create-secret",
+      "secret.txt",
+      secret,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        scopeHash: expect.stringMatching(
+          /^create:secret\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
+      },
+    });
+    const toolCall = listToolCalls(db)[0];
+    expect(toolCall.scope_hash).not.toContain(secret);
+    expect(toolCall.scope_hash).not.toContain("SECRET_CREATE_CONTENT");
   });
 
   it("approve once creates the file and rollback record", async () => {
@@ -386,7 +415,7 @@ describe("fs.create_file", () => {
 
     rmSync(join(workspaceRoot, "new.txt"));
     await expect(
-      requestCreate("exec-create-replay", "new.txt", "again"),
+      requestCreate("exec-create-replay", "new.txt", "created"),
     ).resolves.toMatchObject({
       ok: false,
       status: "DENIED",
@@ -409,14 +438,24 @@ describe("fs.create_file", () => {
     rmSync(join(workspaceRoot, "session.txt"));
 
     await expect(
-      requestCreate("exec-create-2", "session.txt", "second"),
+      requestCreate("exec-create-2", "session.txt", "first"),
     ).resolves.toMatchObject({
       ok: true,
       status: "COMPLETED",
     });
     expect(readFileSync(join(workspaceRoot, "session.txt"), "utf8")).toBe(
-      "second",
+      "first",
     );
+    rmSync(join(workspaceRoot, "session.txt"));
+
+    await expect(
+      requestCreate("exec-create-3", "session.txt", "second"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: { reason: "approval_required" },
+    });
+    expect(existsSync(join(workspaceRoot, "session.txt"))).toBe(false);
   });
 
   it("denial does not create the file", async () => {
@@ -454,6 +493,16 @@ describe("fs.create_file", () => {
     });
     expect(result.body).not.toHaveProperty("result");
     expect(readFileSync(join(workspaceRoot, "exists.txt"), "utf8")).toBe("old");
+    rmSync(join(workspaceRoot, "exists.txt"));
+
+    await expect(
+      requestCreate("exec-create-retry-after-failure", "exists.txt", "new"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "approval_replayed" },
+    });
+    expect(existsSync(join(workspaceRoot, "exists.txt"))).toBe(false);
   });
 
   it("denies path traversal and protected paths after approval", async () => {
@@ -500,6 +549,7 @@ describe("fs.create_file", () => {
       "fs.mkdir",
       "fs.rename",
       "fs.delete_file",
+      "fs.undo",
     ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
       expect.arrayContaining([
@@ -1797,7 +1847,9 @@ describe("fs.append_file", () => {
       data: {
         reason: "approval_required",
         toolId: "fs.append_file",
-        scopeHash: "append:append.txt",
+        scopeHash: expect.stringMatching(
+          /^append:append\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
       },
     });
 
@@ -1809,6 +1861,30 @@ describe("fs.append_file", () => {
       tool_id: "fs.append_file",
       status: "AWAITING_APPROVAL",
     });
+  });
+
+  it("uses a content hash in approval scope without storing raw append content", async () => {
+    const secret = "SECRET_APPEND_CONTENT_SHOULD_NOT_BE_IN_SCOPE";
+    writeFileSync(join(workspaceRoot, "append-secret.txt"), "base");
+
+    const result = await requestAppend(
+      "exec-append-secret",
+      "append-secret.txt",
+      secret,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        scopeHash: expect.stringMatching(
+          /^append:append-secret\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
+      },
+    });
+    const toolCall = listToolCalls(db)[0];
+    expect(toolCall.scope_hash).not.toContain(secret);
+    expect(toolCall.scope_hash).not.toContain("SECRET_APPEND_CONTENT");
   });
 
   it("approve once appends content and records rollback length", async () => {
@@ -1885,14 +1961,25 @@ describe("fs.append_file", () => {
     });
 
     await expect(
-      requestAppend("exec-append-2", "session-append.txt", " three"),
+      requestAppend("exec-append-2", "session-append.txt", " two"),
     ).resolves.toMatchObject({
       ok: true,
       status: "COMPLETED",
     });
     expect(
       readFileSync(join(workspaceRoot, "session-append.txt"), "utf8"),
-    ).toBe("one two three");
+    ).toBe("one two two");
+
+    await expect(
+      requestAppend("exec-append-3", "session-append.txt", " three"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: { reason: "approval_required" },
+    });
+    expect(
+      readFileSync(join(workspaceRoot, "session-append.txt"), "utf8"),
+    ).toBe("one two two");
   });
 
   it("rollback undo restores previous length", async () => {
@@ -2013,7 +2100,9 @@ describe("fs.write_file", () => {
       data: {
         reason: "approval_required",
         toolId: "fs.write_file",
-        scopeHash: "write:target.txt",
+        scopeHash: expect.stringMatching(
+          /^write:target\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
       },
     });
 
@@ -2025,6 +2114,30 @@ describe("fs.write_file", () => {
       tool_id: "fs.write_file",
       status: "AWAITING_APPROVAL",
     });
+  });
+
+  it("uses a content hash in approval scope without storing raw write content", async () => {
+    const secret = "SECRET_WRITE_CONTENT_SHOULD_NOT_BE_IN_SCOPE";
+    writeFileSync(join(workspaceRoot, "write-secret.txt"), "original");
+
+    const result = await requestWrite(
+      "exec-write-secret",
+      "write-secret.txt",
+      secret,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        scopeHash: expect.stringMatching(
+          /^write:write-secret\.txt:content_sha256:[a-f0-9]{64}$/,
+        ),
+      },
+    });
+    const toolCall = listToolCalls(db)[0];
+    expect(toolCall.scope_hash).not.toContain(secret);
+    expect(toolCall.scope_hash).not.toContain("SECRET_WRITE_CONTENT");
   });
 
   it("approve once overwrites the file and creates inline rollback content", async () => {
@@ -2083,13 +2196,24 @@ describe("fs.write_file", () => {
     });
 
     await expect(
-      requestWrite("exec-write-2", "session.txt", "three"),
+      requestWrite("exec-write-2", "session.txt", "two"),
     ).resolves.toMatchObject({
       ok: true,
       status: "COMPLETED",
     });
     expect(readFileSync(join(workspaceRoot, "session.txt"), "utf8")).toBe(
-      "three",
+      "two",
+    );
+
+    await expect(
+      requestWrite("exec-write-3", "session.txt", "three"),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: { reason: "approval_required" },
+    });
+    expect(readFileSync(join(workspaceRoot, "session.txt"), "utf8")).toBe(
+      "two",
     );
   });
 

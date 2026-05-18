@@ -78,6 +78,10 @@ function runtime(): InProcessToolRuntime {
   });
 }
 
+function scopeFor(toolId: string, input: unknown): string {
+  return tools.get(toolId).scopeOf(input);
+}
+
 beforeEach(() => {
   db = new Database(":memory:");
   applyMigrations(db);
@@ -117,7 +121,7 @@ async function requestCreate(
       sessionId: "session-1",
       toolId: "fs.create_file",
       toolName: "Create File",
-      scopeHash: `create:${path}`,
+      scopeHash: scopeFor("fs.create_file", { path, content }),
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },
@@ -146,7 +150,7 @@ async function requestWrite(
       sessionId: "session-1",
       toolId: "fs.write_file",
       toolName: "Write File",
-      scopeHash: `write:${path}`,
+      scopeHash: scopeFor("fs.write_file", { path, content }),
       requiredSafetyTag: "CONFIRM_ONCE",
       safetyTag: "ALLOW",
       toolInput: { path, content },

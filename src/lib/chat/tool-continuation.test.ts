@@ -360,8 +360,44 @@ describe("approval-gated provider tool continuation", () => {
       "fs.mkdir",
       "fs.rename",
       "fs.delete_file",
-      "fs.undo",
     ]);
+  });
+
+  it("does not let provider tool continuation invoke fs.undo", async () => {
+    const provider = new StubProvider("fs_undo", "{}", "unused");
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    const events: StreamEvent[] = [];
+    for await (const event of streamWithReadOnlyToolContinuation({
+      provider,
+      messages: [{ role: "user", content: "undo that" }],
+      model: "gpt-4o-mini",
+      signal: new AbortController().signal,
+      providerTools,
+      runtime: runtime(),
+      registry: tools,
+      db,
+      sessionId: "session-1",
+      assistantMessageId: "message-1",
+      decision: allowDecision,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "tool_completed",
+        toolId: "fs_undo",
+        ok: false,
+        status: "DENIED",
+      }),
+    );
+    expect(listToolCalls(db)).toEqual([]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import {
   appendFile,
@@ -187,15 +187,15 @@ function decodeText(buffer: Buffer): string | null {
 }
 
 function createScopeOf(input: CreateFileInput): string {
-  return `create:${input.path}`;
+  return `create:${input.path}:content_sha256:${contentHash(input.content)}`;
 }
 
 function writeScopeOf(input: WriteFileInput): string {
-  return `write:${input.path}`;
+  return `write:${input.path}:content_sha256:${contentHash(input.content)}`;
 }
 
 function appendScopeOf(input: AppendFileInput): string {
-  return `append:${input.path}`;
+  return `append:${input.path}:content_sha256:${contentHash(input.content)}`;
 }
 
 function mkdirScopeOf(input: MkdirInput): string {
@@ -208,6 +208,10 @@ function renameScopeOf(input: RenameInput): string {
 
 function deleteScopeOf(input: DeleteFileInput): string {
   return `delete:${input.path}`;
+}
+
+function contentHash(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
 }
 
 function trashDateSegment(now = Date.now()): string {

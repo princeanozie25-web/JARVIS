@@ -415,7 +415,7 @@ export const fsUndoTool: Tool<UndoInput> = {
   scopeOf() {
     return "session:last_rollback";
   },
-  reversibilityClass: "PURE_READ",
+  reversibilityClass: "REVERSIBLE_WRITE",
   timeoutMs: UNDO_TIMEOUT_MS,
   async execute(_input, context) {
     if (context.signal.aborted) {
