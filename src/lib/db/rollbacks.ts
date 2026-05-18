@@ -7,7 +7,8 @@ export type RollbackKind =
   | "fs_unlink_created"
   | "fs_move_back"
   | "fs_untrash"
-  | "fs_rmdir_empty";
+  | "fs_rmdir_empty"
+  | "memory_delete_created";
 
 export interface RollbackRow {
   id: string;

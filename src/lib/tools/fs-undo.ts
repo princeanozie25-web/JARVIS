@@ -11,7 +11,9 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
+import { deleteLongTermMemory } from "../db/memory";
 import {
   getLatestAvailableRollbackForSession,
   getLatestUnappliedRollbackForSession,
@@ -24,6 +26,7 @@ import {
   resolveSafePath,
   SafePathError,
 } from "./fs-safe-path";
+import { vaultRootFromEnv } from "../memory/vault";
 import { assertPathDirectChild, executionPathSegment } from "./safe-filenames";
 import type { Tool, ToolResult } from "./types";
 
@@ -62,6 +65,11 @@ interface MoveBackPayload {
 interface UntrashPayload {
   trashedPath?: unknown;
   originalPath?: unknown;
+}
+
+interface MemoryDeleteCreatedPayload {
+  memoryId?: unknown;
+  path?: unknown;
 }
 
 interface SafeTarget {
@@ -358,9 +366,41 @@ async function untrash(
   };
 }
 
+async function deleteCreatedMemory(
+  row: RollbackRow,
+  db?: DatabaseType.Database,
+): Promise<{ path: string; kind: RollbackKind }> {
+  const payload = parsePayload<MemoryDeleteCreatedPayload>(row);
+  if (
+    !payload ||
+    typeof payload.memoryId !== "string" ||
+    typeof payload.path !== "string"
+  ) {
+    throw new Error("Rollback payload is invalid.");
+  }
+  if (!db) {
+    throw new Error("Memory rollback requires database context.");
+  }
+
+  const vaultRoot = vaultRootFromEnv();
+  const targetPath = resolve(vaultRoot, payload.path);
+  const rel = relative(vaultRoot, targetPath);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new SafePathError("Path escapes the vault root.", "path_escape");
+  }
+
+  await rm(targetPath, { force: true });
+  deleteLongTermMemory(db, payload.memoryId);
+  return {
+    path: payload.path,
+    kind: row.kind,
+  };
+}
+
 export async function executeRollback(input: {
   row: RollbackRow;
   now: number;
+  db?: DatabaseType.Database;
 }): Promise<ToolResult> {
   if (input.row.applied_at !== null) {
     return denied("Rollback was already applied.", "rollback_already_applied");
@@ -383,7 +423,9 @@ export async function executeRollback(input: {
                 ? await moveBack(input.row)
                 : input.row.kind === "fs_untrash"
                   ? await untrash(input.row)
-                  : null;
+                  : input.row.kind === "memory_delete_created"
+                    ? await deleteCreatedMemory(input.row, input.db)
+                    : null;
 
     if (!result) {
       return denied("Rollback kind is not supported.", "unsupported_rollback");
@@ -437,12 +479,16 @@ export const fsUndoTool: Tool<UndoInput> = {
         context.sessionId,
       );
       if (unavailable) {
-        return executeRollback({ row: unavailable, now });
+        return executeRollback({ row: unavailable, now, db: context.db });
       }
       return denied("No unapplied rollback is available.", "rollback_missing");
     }
 
-    const outcome = await executeRollback({ row: rollback, now });
+    const outcome = await executeRollback({
+      row: rollback,
+      now,
+      db: context.db,
+    });
     if (outcome.ok) {
       markRollbackApplied(context.db, rollback.id, Date.now());
     }

@@ -1,0 +1,8 @@
+models:
+  - id: cloud-cheap-web
+    provider: kimi
+    model_name: moonshot-v1
+    tier: T2.5
+    capabilities: [web-search, bulk-research]
+    web_access: true
+    enabled: false  # activates Phase 5+

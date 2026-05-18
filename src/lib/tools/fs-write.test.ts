@@ -549,6 +549,7 @@ describe("fs.create_file", () => {
       "fs.mkdir",
       "fs.rename",
       "fs.delete_file",
+      "memory.note",
       "fs.undo",
     ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(

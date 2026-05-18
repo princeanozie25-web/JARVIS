@@ -53,12 +53,31 @@ describe("schema", () => {
       expect.arrayContaining([
         "approvals",
         "_schema_migrations",
+        "long_term_memory",
+        "memory_embeddings",
+        "reflective_memory",
         "rollbacks",
+        "semantic_memory",
         "telemetry_events",
         "tool_calls",
       ]),
     );
     expect(columnNames("telemetry_events")).toContain("execution_id");
+    expect(columnNames("long_term_memory")).toEqual([
+      "id",
+      "category",
+      "content",
+      "source",
+      "source_id",
+      "project",
+      "tags_json",
+      "sensitivity",
+      "created_at",
+      "updated_at",
+      "obsidian_path",
+      "hash",
+      "status",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -66,6 +85,7 @@ describe("schema", () => {
       "001_initial_schema",
       "002_telemetry_execution_id",
       "003_approval_lifecycle",
+      "004_memory_foundation",
     ]);
   });
 });

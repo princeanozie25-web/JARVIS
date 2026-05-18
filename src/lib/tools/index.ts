@@ -2,6 +2,7 @@ import { documentReaderTools } from "./doc-readers";
 import { readOnlyFsTools } from "./fs-readonly";
 import { fsUndoTool } from "./fs-undo";
 import { writeFsTools } from "./fs-write";
+import { memoryNoteTool } from "./memory-note";
 import { statusTool } from "./mock";
 import { tools } from "./registry";
 
@@ -15,6 +16,7 @@ for (const tool of documentReaderTools) {
 for (const tool of writeFsTools) {
   tools.register(tool);
 }
+tools.register(memoryNoteTool);
 tools.register(fsUndoTool);
 
 export {
@@ -50,6 +52,8 @@ export type {
 } from "./fs-write";
 export { executeRollback, fsUndoTool } from "./fs-undo";
 export type { UndoInput } from "./fs-undo";
+export { memoryNoteScopeOf, memoryNoteTool } from "./memory-note";
+export type { MemoryNoteInput } from "./memory-note";
 export {
   isProtectedPath,
   resolveSafePath,

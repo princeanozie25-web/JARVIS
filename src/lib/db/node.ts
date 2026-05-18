@@ -18,6 +18,12 @@ export type { MessageRole, MessageRow } from "./messages";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {
+  deleteLongTermMemory,
+  insertLongTermMemory,
+  listLongTermMemory,
+} from "./memory";
+export type { InsertLongTermMemoryInput } from "./memory";
+export {
   createToolCall,
   getToolCall,
   listToolCalls,

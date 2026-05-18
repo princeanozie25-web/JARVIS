@@ -5,9 +5,11 @@ import {
   ApprovalCard,
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
+import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type { ApiApprovalDecision } from "@/lib/db/node";
+import type { LongTermMemoryRow } from "@/lib/memory/types";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
@@ -52,6 +54,9 @@ export default function Home() {
   const [latestRollback, setLatestRollback] = useState<RollbackSummary | null>(
     null,
   );
+  const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
+  const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
+  const [memoryLoading, setMemoryLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(globalThis.crypto.randomUUID());
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -83,6 +88,37 @@ export default function Home() {
       }
     }
     void loadLatestRollback();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, loading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMemories() {
+      setMemoryLoading(true);
+      try {
+        const res = await fetch("/api/memory?limit=25");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          vaultRoot: string;
+          memories: LongTermMemoryRow[];
+        };
+        if (!cancelled) {
+          setMemoryVaultRoot(data.vaultRoot);
+          setMemories(data.memories);
+        }
+      } catch {
+        if (!cancelled) {
+          setMemories([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setMemoryLoading(false);
+        }
+      }
+    }
+    void loadMemories();
     return () => {
       cancelled = true;
     };
@@ -359,6 +395,12 @@ export default function Home() {
           onUndo={askUndo}
         />
       </section>
+
+      <MemoryInspectorPanel
+        memories={memories}
+        vaultRoot={memoryVaultRoot}
+        loading={memoryLoading}
+      />
 
       <section className="w-full max-w-3xl flex gap-3 mt-3">
         <select

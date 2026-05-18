@@ -342,7 +342,7 @@ describe("approval-gated provider tool continuation", () => {
     ).rejects.toThrow();
   });
 
-  it("exposes only approved filesystem tools to providers", () => {
+  it("exposes only approved filesystem and Phase 3A memory tools to providers", () => {
     const providerTools = providerToolMetadata(tools, (toolId) =>
       PROVIDER_TOOL_IDS.has(toolId),
     );
@@ -360,6 +360,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.mkdir",
       "fs.rename",
       "fs.delete_file",
+      "memory.note",
     ]);
   });
 

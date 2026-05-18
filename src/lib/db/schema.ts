@@ -4,6 +4,7 @@ const MIGRATION_IDS = [
   "001_initial_schema",
   "002_telemetry_execution_id",
   "003_approval_lifecycle",
+  "004_memory_foundation",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -142,6 +143,71 @@ CREATE TABLE IF NOT EXISTS eval_results (
 
 CREATE INDEX IF NOT EXISTS idx_eval_results_run
   ON eval_results (run_id);
+
+CREATE TABLE IF NOT EXISTS long_term_memory (
+  id             TEXT PRIMARY KEY,
+  category       TEXT NOT NULL CHECK (category IN ('fact', 'preference', 'event', 'decision')),
+  content        TEXT NOT NULL,
+  source         TEXT NOT NULL CHECK (source IN ('distilled', 'user', 'tool')),
+  source_id      TEXT,
+  project        TEXT,
+  tags_json      TEXT NOT NULL,
+  sensitivity    TEXT NOT NULL CHECK (sensitivity IN ('public', 'personal', 'sensitive', 'restricted')),
+  created_at     INTEGER NOT NULL,
+  updated_at     INTEGER NOT NULL,
+  obsidian_path  TEXT,
+  hash           TEXT NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'draft'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_long_term_memory_created_at
+  ON long_term_memory (created_at);
+
+CREATE INDEX IF NOT EXISTS idx_long_term_memory_sensitivity
+  ON long_term_memory (sensitivity);
+
+CREATE INDEX IF NOT EXISTS idx_long_term_memory_category
+  ON long_term_memory (category);
+
+CREATE TABLE IF NOT EXISTS semantic_memory (
+  id                TEXT PRIMARY KEY,
+  subject           TEXT NOT NULL,
+  predicate         TEXT NOT NULL,
+  object            TEXT NOT NULL,
+  confidence        REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  derived_from      TEXT NOT NULL,
+  first_seen_at     INTEGER NOT NULL,
+  last_seen_at      INTEGER NOT NULL,
+  occurrence_count  INTEGER NOT NULL DEFAULT 1 CHECK (occurrence_count >= 1)
+);
+
+CREATE INDEX IF NOT EXISTS idx_semantic_memory_subject
+  ON semantic_memory (subject);
+
+CREATE TABLE IF NOT EXISTS reflective_memory (
+  id                   TEXT PRIMARY KEY,
+  kind                 TEXT NOT NULL CHECK (kind IN ('pattern', 'lesson', 'tendency')),
+  content              TEXT NOT NULL,
+  window_start         INTEGER NOT NULL,
+  window_end           INTEGER NOT NULL,
+  evidence_ids         TEXT NOT NULL,
+  surfaced_count       INTEGER NOT NULL DEFAULT 0 CHECK (surfaced_count >= 0),
+  last_surfaced_at     INTEGER,
+  user_acknowledged    INTEGER NOT NULL DEFAULT 0 CHECK (user_acknowledged IN (0, 1)),
+  status               TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'dismissed'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_reflective_memory_status
+  ON reflective_memory (status);
+
+CREATE TABLE IF NOT EXISTS memory_embeddings (
+  memory_id   TEXT PRIMARY KEY,
+  category    TEXT NOT NULL,
+  embedding   BLOB NOT NULL,
+  model       TEXT NOT NULL,
+  dim         INTEGER NOT NULL CHECK (dim > 0),
+  created_at  INTEGER NOT NULL
+);
 `;
 
 function hasColumn(

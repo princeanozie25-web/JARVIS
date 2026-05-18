@@ -93,6 +93,7 @@ describe("ToolRegistry", () => {
       "fs.mkdir",
       "fs.rename",
       "fs.delete_file",
+      "memory.note",
       "fs.undo",
     ]);
   });
@@ -120,6 +121,7 @@ describe("ToolRegistry", () => {
       ["fs.mkdir", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["fs.rename", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["fs.delete_file", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
+      ["memory.note", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
     ]);
   });

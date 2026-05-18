@@ -63,4 +63,19 @@ describe("RollbackStatusPanel", () => {
 
     expect(html).toContain("Undo last directory create: new-folder");
   });
+
+  it("shows memory note undo summaries", () => {
+    const html = renderToStaticMarkup(
+      <RollbackStatusPanel
+        latest={{
+          ...latest,
+          kind: "memory_delete_created",
+          path_summary: "50-ideas/test.md",
+        }}
+        onUndo={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Undo last memory note: 50-ideas/test.md");
+  });
 });

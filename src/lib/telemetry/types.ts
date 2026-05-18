@@ -14,7 +14,12 @@ export type TelemetryEventType =
   | "tool_cancelled"
   | "tool_denied"
   | "tool_approved"
-  | "tool_rolled_back";
+  | "tool_rolled_back"
+  | "memory_write"
+  | "memory_read"
+  | "memory_surfaced"
+  | "memory_forget"
+  | "memory_distill_rejected";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -36,9 +36,12 @@ export const WRITE_PROVIDER_TOOL_IDS = new Set([
   "fs.delete_file",
 ]);
 
+export const MEMORY_PROVIDER_TOOL_IDS = new Set(["memory.note"]);
+
 export const PROVIDER_TOOL_IDS = new Set([
   ...READ_ONLY_PROVIDER_TOOL_IDS,
   ...WRITE_PROVIDER_TOOL_IDS,
+  ...MEMORY_PROVIDER_TOOL_IDS,
 ]);
 
 const MAX_TOOL_CONTINUATIONS = 3;
