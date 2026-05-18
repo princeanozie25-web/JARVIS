@@ -12,8 +12,10 @@ import {
 } from "@/lib/db";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
+import type { ProviderId } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
 import { enforceRouterSafety, routeMessages } from "@/lib/router";
+import { triggerRollingSessionSummary } from "@/lib/session-summary";
 import { encodeSseEvent } from "@/lib/streaming/sse";
 import { recordEvent } from "@/lib/telemetry";
 import { providerToolMetadata, toolRuntime, tools } from "@/lib/tools";
@@ -69,6 +71,21 @@ function persistAssistantMessage(
       error instanceof Error ? error.message : String(error),
     );
   }
+}
+
+function scheduleRollingSummary(sessionId: string, providerId?: ProviderId) {
+  setTimeout(() => {
+    void triggerRollingSessionSummary({
+      db: getDb(),
+      sessionId,
+      requestedProvider: providerId,
+    }).catch((error) => {
+      console.warn(
+        "[chat] rolling session summary trigger failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    });
+  }, 0);
 }
 
 export async function POST(req: Request) {
@@ -240,6 +257,7 @@ export async function POST(req: Request) {
                 assistantMessageId,
                 final.content,
               );
+              scheduleRollingSummary(sessionId, providerId);
               usage.record(final.costUsd);
               recordEvent({
                 event_type: "model_call",
