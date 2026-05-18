@@ -166,6 +166,31 @@ function makeSimplePdf(pages: string[]): Buffer {
   return Buffer.from(pdf, "binary");
 }
 
+function makeEncryptedPdfFixture(): Buffer {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /Resources << >> /MediaBox [0 0 612 792] >>",
+    "<< /Filter /Standard /V 1 /R 2 /O <0000000000000000000000000000000000000000000000000000000000000000> /U <0000000000000000000000000000000000000000000000000000000000000000> /P -4 >>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  for (let index = 0; index < objects.length; index += 1) {
+    offsets.push(Buffer.byteLength(pdf, "binary"));
+    pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+  const xrefOffset = Buffer.byteLength(pdf, "binary");
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${
+    objects.length + 1
+  } /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return Buffer.from(pdf, "binary");
+}
+
 describe("doc.read_txt", () => {
   it("reads .txt files", async () => {
     writeFileSync(join(workspaceRoot, "notes.txt"), "hello txt");
@@ -629,6 +654,44 @@ describe("doc.read_pdf", () => {
       status: "DENIED",
       data: { reason: "pdf_parse_error" },
     });
+  });
+
+  it("handles encrypted PDFs safely with a specific error", async () => {
+    writeFileSync(
+      join(workspaceRoot, "encrypted.pdf"),
+      makeEncryptedPdfFixture(),
+    );
+
+    await expect(readPdf({ path: "encrypted.pdf" })).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "pdf_encrypted_or_password_required" },
+    });
+  });
+
+  it("parses the real ReportLab audit PDF through the runtime path", async () => {
+    writeFileSync(
+      join(workspaceRoot, "audit.pdf"),
+      readFileSync(join(process.cwd(), "docs", "JARVIS_Audit_2026-05-16.pdf")),
+    );
+
+    const result = await readPdf({ path: "audit.pdf" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        path: "audit.pdf",
+        extension: ".pdf",
+        pagesRead: 9,
+        totalPages: 9,
+        truncated: false,
+      },
+    });
+    expect((result.data as { text?: string }).text?.length).toBeGreaterThan(
+      1000,
+    );
+    expect(JSON.stringify(result.data)).not.toContain("pdf_parse_error");
   });
 
   it("truncates returned text at the requested character limit", async () => {

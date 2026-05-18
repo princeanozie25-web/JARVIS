@@ -1,5 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
-import { extname, relative } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, extname, join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 import { TextDecoder } from "node:util";
 import { z } from "zod";
 import { resolveSafePath, SafePathError } from "./fs-safe-path";
@@ -19,6 +21,7 @@ const ALLOWED_TEXT_EXTENSIONS = new Set([
   ".json",
   ".log",
 ]);
+const require = createRequire(import.meta.url);
 
 const ReadTxtInputSchema = z.object({
   path: z.string().min(1),
@@ -72,6 +75,20 @@ type PdfDocument = {
 type PdfJsModule = {
   getDocument(input: unknown): { promise: Promise<PdfDocument> };
 };
+
+class PdfReadError extends Error {
+  constructor(
+    message: string,
+    readonly reason:
+      | "pdf_parse_error"
+      | "pdf_encrypted_or_password_required"
+      | "pdf_limit_exceeded"
+      | "pdf_timeout",
+  ) {
+    super(message);
+    this.name = "PdfReadError";
+  }
+}
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -138,6 +155,40 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   return (await import("pdfjs-dist/legacy/build/pdf.mjs")) as PdfJsModule;
 }
 
+function pdfJsData(buffer: Buffer): Uint8Array {
+  // PDF.js may transfer and detach the provided buffer. Give it an isolated
+  // copy so Node's read buffer remains usable for result metadata.
+  return Uint8Array.from(buffer);
+}
+
+function isPdfPasswordError(error: unknown): boolean {
+  if (error === null || typeof error !== "object") return false;
+  const record = error as { name?: unknown; message?: unknown };
+  const name = typeof record.name === "string" ? record.name.toLowerCase() : "";
+  const message =
+    typeof record.message === "string" ? record.message.toLowerCase() : "";
+  return (
+    name.includes("password") ||
+    message.includes("password") ||
+    message.includes("encrypted")
+  );
+}
+
+function classifyPdfError(error: unknown): PdfReadError {
+  if (isPdfPasswordError(error)) {
+    return new PdfReadError(
+      "PDF is encrypted or requires a password.",
+      "pdf_encrypted_or_password_required",
+    );
+  }
+  return new PdfReadError("PDF could not be parsed.", "pdf_parse_error");
+}
+
+function standardFontDataUrl(): string {
+  const pdfJsRoot = dirname(require.resolve("pdfjs-dist/package.json"));
+  return pathToFileURL(join(pdfJsRoot, "standard_fonts") + "/").href;
+}
+
 async function extractPdfText(input: {
   buffer: Buffer;
   maxPages: number;
@@ -151,12 +202,14 @@ async function extractPdfText(input: {
 }> {
   const pdfjs = await loadPdfJs();
   const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(input.buffer),
+    data: pdfJsData(input.buffer),
     disableWorker: true,
     isEvalSupported: false,
-    standardFontDataUrl: import.meta.resolve("pdfjs-dist/standard_fonts/"),
+    standardFontDataUrl: standardFontDataUrl(),
   });
-  const document = await loadingTask.promise;
+  const document = await loadingTask.promise.catch((error: unknown) => {
+    throw classifyPdfError(error);
+  });
   let text = "";
   let pagesRead = 0;
   let truncated = false;
@@ -172,9 +225,15 @@ async function extractPdfText(input: {
         break;
       }
 
-      const page = await document.getPage(pageNumber);
+      const page = await document
+        .getPage(pageNumber)
+        .catch((error: unknown) => {
+          throw classifyPdfError(error);
+        });
       try {
-        const content = await page.getTextContent();
+        const content = await page.getTextContent().catch((error: unknown) => {
+          throw classifyPdfError(error);
+        });
         pagesRead += 1;
         for (const item of content.items) {
           const chunk = textItemString(item);
@@ -316,6 +375,7 @@ export const docReadPdfTool: Tool<ReadPdfInput> = {
       }
 
       const buffer = await readFile(safePath.resolvedPath);
+      const sizeBytes = buffer.byteLength;
       if (!hasPdfMagicBytes(buffer)) {
         return denied("File is not a valid PDF.", "invalid_pdf_magic");
       }
@@ -336,7 +396,7 @@ export const docReadPdfTool: Tool<ReadPdfInput> = {
         data: {
           path,
           extension,
-          sizeBytes: buffer.byteLength,
+          sizeBytes,
           pagesRead: extracted.pagesRead,
           totalPages: extracted.totalPages,
           truncated: extracted.truncated,
@@ -346,7 +406,7 @@ export const docReadPdfTool: Tool<ReadPdfInput> = {
           notes: telemetryNotes({
             path,
             extension,
-            sizeBytes: buffer.byteLength,
+            sizeBytes,
             pagesRead: extracted.pagesRead,
             totalPages: extracted.totalPages,
             truncated: extracted.truncated,
@@ -356,6 +416,9 @@ export const docReadPdfTool: Tool<ReadPdfInput> = {
     } catch (error) {
       if (error instanceof SafePathError) {
         return safeError(error);
+      }
+      if (error instanceof PdfReadError) {
+        return denied(error.message, error.reason);
       }
       return denied("PDF could not be parsed.", "pdf_parse_error");
     }
