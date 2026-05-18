@@ -24,8 +24,12 @@ export {
   readOnlyFsTools,
 } from "./fs-readonly";
 export type { FsPathInput } from "./fs-readonly";
-export { docReadTxtTool, documentReaderTools } from "./doc-readers";
-export type { ReadTxtInput } from "./doc-readers";
+export {
+  docReadPdfTool,
+  docReadTxtTool,
+  documentReaderTools,
+} from "./doc-readers";
+export type { ReadPdfInput, ReadTxtInput } from "./doc-readers";
 export {
   fsAppendFileTool,
   fsCreateFileTool,
