@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { embeddingConfigFromEnv } from "../memory/embedding-config";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -37,5 +38,9 @@ export const config = {
       process.env.HOST ??
       process.env.HOSTNAME ??
       "localhost",
+  },
+
+  memory: {
+    embeddings: embeddingConfigFromEnv(process.env),
   },
 };

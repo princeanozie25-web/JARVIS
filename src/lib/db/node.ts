@@ -19,14 +19,20 @@ export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {
   deleteLongTermMemory,
+  findCachedEmbeddingByContentHash,
+  getLongTermMemory,
+  getMemoryEmbedding,
   insertLongTermMemory,
   listLongTermMemory,
   normalizeMemorySearchLimit,
   searchLongTermMemory,
+  upsertMemoryEmbedding,
 } from "./memory";
 export type {
   InsertLongTermMemoryInput,
+  MemoryEmbeddingRow,
   SearchLongTermMemoryInput,
+  UpsertMemoryEmbeddingInput,
 } from "./memory";
 export {
   createToolCall,

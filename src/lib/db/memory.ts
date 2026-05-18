@@ -3,6 +3,7 @@ import type {
   LongTermMemoryCategory,
   LongTermMemoryRow,
   LongTermMemorySearchRow,
+  MemorySensitivity,
   SearchableMemorySensitivity,
 } from "../memory/types";
 
@@ -67,6 +68,15 @@ export function listLongTermMemory(
        LIMIT ?`,
     )
     .all(limit) as LongTermMemoryRow[];
+}
+
+export function getLongTermMemory(
+  db: DatabaseType.Database,
+  id: string,
+): LongTermMemoryRow | undefined {
+  return db.prepare("SELECT * FROM long_term_memory WHERE id = ?").get(id) as
+    | LongTermMemoryRow
+    | undefined;
 }
 
 export const MAX_MEMORY_SEARCH_RESULTS = 20;
@@ -175,4 +185,97 @@ export function searchLongTermMemory(
 
 export function normalizeMemorySearchLimit(maxResults?: number): number {
   return normalizeSearchLimit(maxResults);
+}
+
+export interface MemoryEmbeddingRow {
+  memory_id: string;
+  category: string;
+  embedding: Buffer;
+  model: string;
+  dim: number;
+  created_at: number;
+}
+
+export interface UpsertMemoryEmbeddingInput {
+  memoryId: string;
+  category: string;
+  embedding: Buffer;
+  model: string;
+  dim: number;
+  createdAt: number;
+}
+
+export function upsertMemoryEmbedding(
+  db: DatabaseType.Database,
+  input: UpsertMemoryEmbeddingInput,
+): void {
+  db.prepare(
+    `INSERT INTO memory_embeddings (
+       memory_id, category, embedding, model, dim, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(memory_id) DO UPDATE SET
+       category = excluded.category,
+       embedding = excluded.embedding,
+       model = excluded.model,
+       dim = excluded.dim,
+       created_at = excluded.created_at`,
+  ).run(
+    input.memoryId,
+    input.category,
+    input.embedding,
+    input.model,
+    input.dim,
+    input.createdAt,
+  );
+}
+
+export function getMemoryEmbedding(
+  db: DatabaseType.Database,
+  input: { memoryId: string; model: string; dim: number },
+): MemoryEmbeddingRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM memory_embeddings
+       WHERE memory_id = ? AND model = ? AND dim = ?`,
+    )
+    .get(input.memoryId, input.model, input.dim) as
+    | MemoryEmbeddingRow
+    | undefined;
+}
+
+export function findCachedEmbeddingByContentHash(
+  db: DatabaseType.Database,
+  input: {
+    contentHash: string;
+    model: string;
+    dim: number;
+    excludeMemoryId?: string;
+    allowedSensitivities?: MemorySensitivity[];
+  },
+): MemoryEmbeddingRow | undefined {
+  const sensitivities = input.allowedSensitivities ?? ["public", "personal"];
+  const params: unknown[] = [
+    input.contentHash,
+    input.model,
+    input.dim,
+    ...sensitivities,
+  ];
+  const excludeClause = input.excludeMemoryId ? "AND ltm.id <> ?" : "";
+  if (input.excludeMemoryId) params.push(input.excludeMemoryId);
+
+  return db
+    .prepare(
+      `SELECT emb.*
+       FROM memory_embeddings emb
+       JOIN long_term_memory ltm ON ltm.id = emb.memory_id
+       WHERE ltm.hash = ?
+         AND emb.model = ?
+         AND emb.dim = ?
+         AND ltm.sensitivity IN (${sensitivities.map(() => "?").join(", ")})
+         ${excludeClause}
+       ORDER BY emb.created_at DESC
+       LIMIT 1`,
+    )
+    .get(...params) as MemoryEmbeddingRow | undefined;
 }

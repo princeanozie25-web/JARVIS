@@ -17,6 +17,7 @@ export type TelemetryEventType =
   | "tool_rolled_back"
   | "memory_write"
   | "memory_read"
+  | "memory_embedding_created"
   | "memory_surfaced"
   | "memory_forget"
   | "memory_distill_rejected";

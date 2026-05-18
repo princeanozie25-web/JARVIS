@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-18 7:25pm GMT+1
+# [jarvis] recent context, 2026-05-18 7:48pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (24,294t read) | 2,450,307t work | 99% savings
+Stats: 50 obs (24,016t read) | 2,337,765t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,18 +25,9 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-347 1:50p 🟣 fs.create_file Tool Implemented in src/lib/tools/fs-write.ts
-348 " 🟣 InProcessToolRuntime Patched for BLOCK Safety and Explicit Approval Enforcement
-352 6:22p 🔵 Phase 2 Write-Tool System Architecture Under Audit
 353 6:23p 🔵 Phase 2 Audit: All Gates PASS — Safe to Proceed to fs.rename
 354 " 🔵 Approval Anti-Replay and Cross-Session Isolation Confirmed Correct
 355 " 🔵 Write Tool Rollback System: Every Write Creates a Rollback Record
-356 " 🔐 P1: executionId Used Unsanitized in Rollback Backup Path and Temp File Path
-357 " 🔵 Tool Surface Area: Exactly 8 Tools Registered, Prohibited Tools Absent
-358 " 🔵 Direct fs Reads Outside Tool Modules: All Legitimate Uses Confirmed
-359 " 🔵 InProcessToolRuntime: Approval Check Always Runs Before tool.execute()
-360 " 🔵 Telemetry and tool_calls Schema: Complete Enough for Full Action Debugging
-361 " ⚖️ Next Implementation Step: fs.rename with Atomic Move and fs_move_back Rollback
 362 6:25p 🔵 PROVIDER_TOOL_IDS Split Into Three Exported Sets for Selective AI Exposure
 363 6:28p 🚨 Path Traversal Security Fix: Sanitize executionId Before Filesystem Interpolation
 364 6:35p 🟣 Approval Token Security: CSRF-Protection for Tool Approvals
@@ -78,6 +69,15 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 431 6:50p ✅ Phase 2 Close: Phase 5+ Placeholder Files Created
 433 7:09p ⚖️ JARVIS Phase 3A Scope Defined: Vault Foundation + Memory Schema
 434 7:22p 🟣 JARVIS Phase 3A: Vault Foundation + Memory Schema Initiated
+435 7:25p ⚖️ JARVIS Phase 3B.1 Scope: Manual Keyword Memory Retrieval Foundation
+436 7:47p ⚖️ JARVIS Phase 3A Scope Boundary Established
+437 " 🟣 JARVIS Phase 3A: Vault Scaffold + Memory Schema Plan
+438 7:48p 🟣 JARVIS memory.recall Tool Implemented with SQLite FTS5
+439 " 🟣 SQLite FTS5 Memory Index Added as Migration 005
+440 " 🟣 Memory Inspector Panel Upgraded with Filterable Search Controls
+441 " 🔴 Test Order Mismatch Fixed in registry.test.ts and tool-continuation.test.ts
+442 " 🟣 memory.recall Integration Tests Added
+443 " 🔵 JARVIS Phase 3A Already Fully Implemented Before This Session
 
-Access 2450k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2338k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
