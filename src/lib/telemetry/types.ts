@@ -21,7 +21,8 @@ export type TelemetryEventType =
   | "memory_vector_search"
   | "memory_surfaced"
   | "memory_forget"
-  | "memory_distill_rejected";
+  | "memory_distill_rejected"
+  | "session_summary_saved";
 
 export interface TelemetryEvent {
   timestamp: number;

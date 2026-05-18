@@ -15,6 +15,22 @@ export {
   listMessages,
 } from "./messages";
 export type { MessageRole, MessageRow } from "./messages";
+export {
+  computeSessionSummaryHash,
+  createSessionSummary,
+  deleteSessionSummary,
+  getLatestSessionSummary,
+  getSessionSummary,
+  listSessionSummaries,
+  saveSessionSummary,
+  updateSessionSummary,
+} from "./session-summaries";
+export type {
+  CreateSessionSummaryInput,
+  SaveSessionSummaryInput,
+  SessionSummaryRow,
+  UpdateSessionSummaryInput,
+} from "./session-summaries";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {

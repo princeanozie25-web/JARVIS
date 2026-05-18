@@ -6,6 +6,7 @@ const MIGRATION_IDS = [
   "003_approval_lifecycle",
   "004_memory_foundation",
   "005_memory_fts",
+  "006_session_summaries",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -144,6 +145,22 @@ CREATE TABLE IF NOT EXISTS eval_results (
 
 CREATE INDEX IF NOT EXISTS idx_eval_results_run
   ON eval_results (run_id);
+
+CREATE TABLE IF NOT EXISTS session_summaries (
+  session_id             TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  summary_text           TEXT NOT NULL,
+  previous_summary_hash  TEXT REFERENCES session_summaries(summary_hash) ON UPDATE CASCADE ON DELETE SET NULL,
+  summary_hash           TEXT PRIMARY KEY,
+  covered_message_count  INTEGER NOT NULL CHECK (covered_message_count >= 0),
+  created_at             INTEGER NOT NULL,
+  updated_at             INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_summaries_session
+  ON session_summaries (session_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_session_summaries_previous
+  ON session_summaries (previous_summary_hash);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

@@ -59,6 +59,7 @@ describe("schema", () => {
         "reflective_memory",
         "rollbacks",
         "semantic_memory",
+        "session_summaries",
         "telemetry_events",
         "tool_calls",
       ]),
@@ -88,6 +89,7 @@ describe("schema", () => {
       "003_approval_lifecycle",
       "004_memory_foundation",
       "005_memory_fts",
+      "006_session_summaries",
     ]);
   });
 });
