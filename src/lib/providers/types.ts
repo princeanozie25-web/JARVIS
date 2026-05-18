@@ -84,6 +84,7 @@ export type StreamEvent =
       ok: boolean;
       status?: string;
       message: string;
+      data?: unknown;
     }
   | {
       type: "tool_pending";

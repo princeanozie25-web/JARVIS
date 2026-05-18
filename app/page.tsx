@@ -6,6 +6,10 @@ import {
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
+import {
+  ResurfacedIdeasPanel,
+  type SurfacedMemory,
+} from "@/components/ResurfacedIdeasPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type { ApiApprovalDecision } from "@/lib/db/node";
@@ -23,6 +27,8 @@ const MAX_MESSAGES_TO_SEND = 50;
 type UiMessage = Message & {
   id: string;
   approval?: ApprovalCardDetails;
+  surfacedMemories?: SurfacedMemory[];
+  surfacedMemoryExecutionId?: string;
 };
 
 type ApiMessage = Message & {
@@ -43,6 +49,55 @@ function toApiMessage(message: UiMessage): ApiMessage {
     role: message.role,
     content: message.content,
   };
+}
+
+function surfacedMemoriesFromToolData(data: unknown): SurfacedMemory[] {
+  if (!data || typeof data !== "object") return [];
+  const payload = data as {
+    retrievalMode?: unknown;
+    results?: unknown;
+  };
+  const retrievalMode =
+    payload.retrievalMode === "vector_only" ||
+    payload.retrievalMode === "hybrid"
+      ? payload.retrievalMode
+      : "keyword_only";
+  if (!Array.isArray(payload.results)) return [];
+
+  return payload.results.flatMap((item): SurfacedMemory[] => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    if (
+      typeof row.id !== "string" ||
+      typeof row.content !== "string" ||
+      !["fact", "preference", "event", "decision"].includes(
+        String(row.category),
+      ) ||
+      !["public", "personal", "sensitive", "restricted"].includes(
+        String(row.sensitivity),
+      )
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        id: row.id,
+        category: row.category as SurfacedMemory["category"],
+        content: row.content,
+        project: typeof row.project === "string" ? row.project : null,
+        tags: Array.isArray(row.tags)
+          ? row.tags.filter((tag): tag is string => typeof tag === "string")
+          : [],
+        sensitivity: row.sensitivity as SurfacedMemory["sensitivity"],
+        retrievalMode,
+        score:
+          row.score && typeof row.score === "object"
+            ? (row.score as SurfacedMemory["score"])
+            : undefined,
+      },
+    ];
+  });
 }
 
 export default function Home() {
@@ -253,6 +308,22 @@ export default function Home() {
                   : message,
               ),
             );
+          } else if (
+            event.type === "tool_completed" &&
+            event.toolId === "memory.recall"
+          ) {
+            const surfacedMemories = surfacedMemoriesFromToolData(event.data);
+            setMessages((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? {
+                      ...message,
+                      surfacedMemories,
+                      surfacedMemoryExecutionId: event.executionId,
+                    }
+                  : message,
+              ),
+            );
           } else if (event.type === "error") {
             if (!event.recoverable) {
               setError(event.message);
@@ -363,6 +434,23 @@ export default function Home() {
     }
   }
 
+  function reportSurfacedMemories(
+    memories: SurfacedMemory[],
+    executionId?: string,
+  ) {
+    if (memories.length === 0) return;
+    void fetch("/api/memory/surfaced", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: sessionIdRef.current,
+        executionId,
+        retrievalMode: memories[0]?.retrievalMode ?? "keyword_only",
+        memoryIds: memories.map((memory) => memory.id),
+      }),
+    }).catch(() => undefined);
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -392,6 +480,17 @@ export default function Home() {
                       message.approval!.executionId,
                       message.approval!.approvalToken,
                       decision,
+                    )
+                  }
+                />
+              )}
+              {message.surfacedMemories && (
+                <ResurfacedIdeasPanel
+                  memories={message.surfacedMemories}
+                  onShown={(visibleMemories) =>
+                    reportSurfacedMemories(
+                      visibleMemories,
+                      message.surfacedMemoryExecutionId,
                     )
                   }
                 />

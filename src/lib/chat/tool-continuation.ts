@@ -284,6 +284,7 @@ async function executeProviderToolCalls(
       ok: result.ok,
       status: result.status,
       message: result.message,
+      data: toolId === "memory.recall" ? result.data : undefined,
     });
   }
 
