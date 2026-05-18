@@ -1,9 +1,26 @@
-import type { LongTermMemoryRow } from "@/lib/memory/types";
+import {
+  LONG_TERM_MEMORY_CATEGORIES,
+  type LongTermMemoryCategory,
+  type LongTermMemoryRow,
+  type SearchableMemorySensitivity,
+} from "../lib/memory/types";
 
 export interface MemoryInspectorPanelProps {
   memories: LongTermMemoryRow[];
   vaultRoot: string | null;
   loading?: boolean;
+  query: string;
+  category: LongTermMemoryCategory | "";
+  project: string;
+  tag: string;
+  sensitivityCeiling: SearchableMemorySensitivity;
+  maxResults: number;
+  onQueryChange: (value: string) => void;
+  onCategoryChange: (value: LongTermMemoryCategory | "") => void;
+  onProjectChange: (value: string) => void;
+  onTagChange: (value: string) => void;
+  onSensitivityCeilingChange: (value: SearchableMemorySensitivity) => void;
+  onMaxResultsChange: (value: number) => void;
 }
 
 function formatDate(timestamp: number): string {
@@ -25,6 +42,18 @@ export function MemoryInspectorPanel({
   memories,
   vaultRoot,
   loading = false,
+  query,
+  category,
+  project,
+  tag,
+  sensitivityCeiling,
+  maxResults,
+  onQueryChange,
+  onCategoryChange,
+  onProjectChange,
+  onTagChange,
+  onSensitivityCeilingChange,
+  onMaxResultsChange,
 }: MemoryInspectorPanelProps) {
   return (
     <section className="w-full max-w-3xl mt-4 border border-gray-800 bg-gray-950 text-gray-100 rounded-lg p-4">
@@ -40,6 +69,69 @@ export function MemoryInspectorPanel({
         <span className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-400">
           {loading ? "Loading" : `${memories.length} rows`}
         </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-6">
+        <input
+          aria-label="Search memories"
+          className="sm:col-span-2 rounded-md bg-black border border-gray-800 px-3 py-2 text-sm outline-none"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search memories"
+        />
+        <select
+          aria-label="Memory category"
+          className="rounded-md bg-black border border-gray-800 px-3 py-2 text-sm outline-none"
+          value={category}
+          onChange={(event) =>
+            onCategoryChange(event.target.value as LongTermMemoryCategory | "")
+          }
+        >
+          <option value="">All categories</option>
+          {LONG_TERM_MEMORY_CATEGORIES.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label="Project filter"
+          className="rounded-md bg-black border border-gray-800 px-3 py-2 text-sm outline-none"
+          value={project}
+          onChange={(event) => onProjectChange(event.target.value)}
+          placeholder="Project"
+        />
+        <input
+          aria-label="Tag filter"
+          className="rounded-md bg-black border border-gray-800 px-3 py-2 text-sm outline-none"
+          value={tag}
+          onChange={(event) => onTagChange(event.target.value)}
+          placeholder="Tag"
+        />
+        <div className="grid grid-cols-2 gap-2 sm:col-span-1">
+          <select
+            aria-label="Sensitivity ceiling"
+            className="rounded-md bg-black border border-gray-800 px-2 py-2 text-sm outline-none"
+            value={sensitivityCeiling}
+            onChange={(event) =>
+              onSensitivityCeilingChange(
+                event.target.value as SearchableMemorySensitivity,
+              )
+            }
+          >
+            <option value="personal">Personal</option>
+            <option value="public">Public</option>
+          </select>
+          <input
+            aria-label="Max results"
+            className="rounded-md bg-black border border-gray-800 px-2 py-2 text-sm outline-none"
+            type="number"
+            min={1}
+            max={20}
+            value={maxResults}
+            onChange={(event) => onMaxResultsChange(Number(event.target.value))}
+          />
+        </div>
       </div>
 
       {memories.length === 0 ? (

@@ -5,6 +5,7 @@ const MIGRATION_IDS = [
   "002_telemetry_execution_id",
   "003_approval_lifecycle",
   "004_memory_foundation",
+  "005_memory_fts",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -208,6 +209,56 @@ CREATE TABLE IF NOT EXISTS memory_embeddings (
   dim         INTEGER NOT NULL CHECK (dim > 0),
   created_at  INTEGER NOT NULL
 );
+
+CREATE VIRTUAL TABLE IF NOT EXISTS long_term_memory_fts
+  USING fts5(
+    memory_id UNINDEXED,
+    content,
+    tags,
+    category UNINDEXED,
+    project UNINDEXED,
+    sensitivity UNINDEXED,
+    tokenize = 'unicode61'
+  );
+
+CREATE TRIGGER IF NOT EXISTS long_term_memory_ai
+AFTER INSERT ON long_term_memory
+BEGIN
+  INSERT INTO long_term_memory_fts (
+    rowid, memory_id, content, tags, category, project, sensitivity
+  ) VALUES (
+    new.rowid,
+    new.id,
+    new.content,
+    new.tags_json,
+    new.category,
+    coalesce(new.project, ''),
+    new.sensitivity
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS long_term_memory_ad
+AFTER DELETE ON long_term_memory
+BEGIN
+  DELETE FROM long_term_memory_fts WHERE rowid = old.rowid;
+END;
+
+CREATE TRIGGER IF NOT EXISTS long_term_memory_au
+AFTER UPDATE ON long_term_memory
+BEGIN
+  DELETE FROM long_term_memory_fts WHERE rowid = old.rowid;
+  INSERT INTO long_term_memory_fts (
+    rowid, memory_id, content, tags, category, project, sensitivity
+  ) VALUES (
+    new.rowid,
+    new.id,
+    new.content,
+    new.tags_json,
+    new.category,
+    coalesce(new.project, ''),
+    new.sensitivity
+  );
+END;
 `;
 
 function hasColumn(
@@ -252,6 +303,15 @@ export function applyMigrations(db: DatabaseType.Database): void {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id
       ON telemetry_events (execution_id);
+  `);
+  db.exec(`
+    DELETE FROM long_term_memory_fts;
+    INSERT INTO long_term_memory_fts (
+      rowid, memory_id, content, tags, category, project, sensitivity
+    )
+    SELECT
+      rowid, id, content, tags_json, category, coalesce(project, ''), sensitivity
+    FROM long_term_memory;
   `);
 }
 

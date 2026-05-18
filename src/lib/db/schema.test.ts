@@ -54,6 +54,7 @@ describe("schema", () => {
         "approvals",
         "_schema_migrations",
         "long_term_memory",
+        "long_term_memory_fts",
         "memory_embeddings",
         "reflective_memory",
         "rollbacks",
@@ -86,6 +87,7 @@ describe("schema", () => {
       "002_telemetry_execution_id",
       "003_approval_lifecycle",
       "004_memory_foundation",
+      "005_memory_fts",
     ]);
   });
 });

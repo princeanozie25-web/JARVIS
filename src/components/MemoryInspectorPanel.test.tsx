@@ -22,18 +22,52 @@ const row: LongTermMemoryRow = {
 describe("MemoryInspectorPanel", () => {
   it("renders memory rows read-only", () => {
     const html = renderToStaticMarkup(
-      <MemoryInspectorPanel memories={[row]} vaultRoot="C:\\vault" />,
+      <MemoryInspectorPanel
+        memories={[row]}
+        vaultRoot="C:\\vault"
+        query="inspector"
+        category="fact"
+        project="jarvis"
+        tag="phase3"
+        sensitivityCeiling="personal"
+        maxResults={8}
+        onQueryChange={() => undefined}
+        onCategoryChange={() => undefined}
+        onProjectChange={() => undefined}
+        onTagChange={() => undefined}
+        onSensitivityCeilingChange={() => undefined}
+        onMaxResultsChange={() => undefined}
+      />,
     );
 
     expect(html).toContain("Memory Inspector");
+    expect(html).toContain("Search memories");
     expect(html).toContain("1 rows");
     expect(html).toContain("JARVIS Phase 3A has a read-only inspector.");
     expect(html).toContain("vault: 50-ideas/test.md");
+    expect(html).toContain('value="inspector"');
+    expect(html).toContain('value="jarvis"');
+    expect(html).toContain('value="phase3"');
   });
 
   it("shows an empty state", () => {
     const html = renderToStaticMarkup(
-      <MemoryInspectorPanel memories={[]} vaultRoot={null} />,
+      <MemoryInspectorPanel
+        memories={[]}
+        vaultRoot={null}
+        query=""
+        category=""
+        project=""
+        tag=""
+        sensitivityCeiling="personal"
+        maxResults={20}
+        onQueryChange={() => undefined}
+        onCategoryChange={() => undefined}
+        onProjectChange={() => undefined}
+        onTagChange={() => undefined}
+        onSensitivityCeilingChange={() => undefined}
+        onMaxResultsChange={() => undefined}
+      />,
     );
 
     expect(html).toContain("No memories stored yet.");

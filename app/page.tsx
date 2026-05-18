@@ -9,7 +9,11 @@ import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type { ApiApprovalDecision } from "@/lib/db/node";
-import type { LongTermMemoryRow } from "@/lib/memory/types";
+import type {
+  LongTermMemoryCategory,
+  LongTermMemoryRow,
+  SearchableMemorySensitivity,
+} from "@/lib/memory/types";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
@@ -57,6 +61,15 @@ export default function Home() {
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
+  const [memoryQuery, setMemoryQuery] = useState("");
+  const [memoryCategory, setMemoryCategory] = useState<
+    LongTermMemoryCategory | ""
+  >("");
+  const [memoryProject, setMemoryProject] = useState("");
+  const [memoryTag, setMemoryTag] = useState("");
+  const [memorySensitivityCeiling, setMemorySensitivityCeiling] =
+    useState<SearchableMemorySensitivity>("personal");
+  const [memoryMaxResults, setMemoryMaxResults] = useState(20);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(globalThis.crypto.randomUUID());
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -98,7 +111,15 @@ export default function Home() {
     async function loadMemories() {
       setMemoryLoading(true);
       try {
-        const res = await fetch("/api/memory?limit=25");
+        const params = new URLSearchParams({
+          limit: String(memoryMaxResults),
+          sensitivityCeiling: memorySensitivityCeiling,
+        });
+        if (memoryQuery.trim()) params.set("q", memoryQuery.trim());
+        if (memoryCategory) params.set("category", memoryCategory);
+        if (memoryProject.trim()) params.set("project", memoryProject.trim());
+        if (memoryTag.trim()) params.set("tag", memoryTag.trim());
+        const res = await fetch(`/api/memory?${params.toString()}`);
         if (!res.ok) return;
         const data = (await res.json()) as {
           vaultRoot: string;
@@ -122,7 +143,16 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [messages, loading]);
+  }, [
+    messages,
+    loading,
+    memoryQuery,
+    memoryCategory,
+    memoryProject,
+    memoryTag,
+    memorySensitivityCeiling,
+    memoryMaxResults,
+  ]);
 
   function stop() {
     abortRef.current?.abort();
@@ -400,6 +430,22 @@ export default function Home() {
         memories={memories}
         vaultRoot={memoryVaultRoot}
         loading={memoryLoading}
+        query={memoryQuery}
+        category={memoryCategory}
+        project={memoryProject}
+        tag={memoryTag}
+        sensitivityCeiling={memorySensitivityCeiling}
+        maxResults={memoryMaxResults}
+        onQueryChange={setMemoryQuery}
+        onCategoryChange={setMemoryCategory}
+        onProjectChange={setMemoryProject}
+        onTagChange={setMemoryTag}
+        onSensitivityCeilingChange={setMemorySensitivityCeiling}
+        onMaxResultsChange={(value) =>
+          setMemoryMaxResults(
+            Number.isFinite(value) ? Math.min(Math.max(value, 1), 20) : 8,
+          )
+        }
       />
 
       <section className="w-full max-w-3xl flex gap-3 mt-3">

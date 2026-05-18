@@ -21,8 +21,13 @@ export {
   deleteLongTermMemory,
   insertLongTermMemory,
   listLongTermMemory,
+  normalizeMemorySearchLimit,
+  searchLongTermMemory,
 } from "./memory";
-export type { InsertLongTermMemoryInput } from "./memory";
+export type {
+  InsertLongTermMemoryInput,
+  SearchLongTermMemoryInput,
+} from "./memory";
 export {
   createToolCall,
   getToolCall,

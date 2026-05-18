@@ -25,6 +25,7 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "doc.read_txt",
   "doc.read_pdf",
   "doc.read_docx",
+  "memory.recall",
 ]);
 
 export const WRITE_PROVIDER_TOOL_IDS = new Set([
@@ -36,7 +37,10 @@ export const WRITE_PROVIDER_TOOL_IDS = new Set([
   "fs.delete_file",
 ]);
 
-export const MEMORY_PROVIDER_TOOL_IDS = new Set(["memory.note"]);
+export const MEMORY_PROVIDER_TOOL_IDS = new Set([
+  "memory.note",
+  "memory.recall",
+]);
 
 export const PROVIDER_TOOL_IDS = new Set([
   ...READ_ONLY_PROVIDER_TOOL_IDS,

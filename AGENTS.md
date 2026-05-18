@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-18 7:09pm GMT+1
+# [jarvis] recent context, 2026-05-18 7:25pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (24,182t read) | 2,582,008t work | 99% savings
+Stats: 50 obs (24,294t read) | 2,450,307t work | 99% savings
 
 ### May 16, 2026
 
@@ -27,8 +27,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 347 1:50p 🟣 fs.create_file Tool Implemented in src/lib/tools/fs-write.ts
 348 " 🟣 InProcessToolRuntime Patched for BLOCK Safety and Explicit Approval Enforcement
-349 " 🟣 Tool Continuation Layer Extended to Handle Approval-Gated Write Tools
-350 " 🟣 fs-write.test.ts: Full Approval/Denial/Security Test Suite for fs.create_file
 352 6:22p 🔵 Phase 2 Write-Tool System Architecture Under Audit
 353 6:23p 🔵 Phase 2 Audit: All Gates PASS — Safe to Proceed to fs.rename
 354 " 🔵 Approval Anti-Replay and Cross-Session Isolation Confirmed Correct
@@ -78,6 +76,8 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 429 " 🔵 terminal.run / network.fetch / browser Tools Confirmed Non-Existent
 430 " 🔵 Scope Hash Privacy: File Content Never Stored Raw in scope_hash
 431 6:50p ✅ Phase 2 Close: Phase 5+ Placeholder Files Created
+433 7:09p ⚖️ JARVIS Phase 3A Scope Defined: Vault Foundation + Memory Schema
+434 7:22p 🟣 JARVIS Phase 3A: Vault Foundation + Memory Schema Initiated
 
-Access 2582k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2450k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

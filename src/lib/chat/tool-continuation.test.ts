@@ -279,6 +279,7 @@ describe("read-only provider tool continuation", () => {
       "doc.read_txt",
       "doc.read_pdf",
       "doc.read_docx",
+      "memory.recall",
     ]);
   });
 });
@@ -361,6 +362,7 @@ describe("approval-gated provider tool continuation", () => {
       "fs.rename",
       "fs.delete_file",
       "memory.note",
+      "memory.recall",
     ]);
   });
 

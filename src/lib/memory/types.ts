@@ -36,3 +36,9 @@ export interface LongTermMemoryRow {
   hash: string;
   status: "active" | "archived" | "draft";
 }
+
+export type SearchableMemorySensitivity = "public" | "personal";
+
+export interface LongTermMemorySearchRow extends LongTermMemoryRow {
+  rank: number | null;
+}
