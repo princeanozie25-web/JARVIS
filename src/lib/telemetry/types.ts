@@ -71,7 +71,10 @@ export type TelemetryEventType =
   | "consent_revocation_blocked_projection"
   | "runtime_write_denied"
   | "runtime_write_allowed"
-  | "runtime_write_boundary_violation";
+  | "runtime_write_boundary_violation"
+  | "runtime_command_registered"
+  | "runtime_command_registry_read"
+  | "runtime_command_validation_failed";
 
 export interface TelemetryEvent {
   timestamp: number;
