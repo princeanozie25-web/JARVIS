@@ -107,6 +107,7 @@ describe("RuntimeCommandPanel", () => {
     expect(html).toContain("Manual execution only");
     expect(html).toContain("No shell access");
     expect(html).toContain("Requires approval before execution");
+    expect(html).toContain("Workspace root:");
   });
 
   it("does not render arbitrary shell input", () => {
@@ -163,6 +164,7 @@ describe("RuntimeCommandPanel", () => {
     );
 
     expect(html).toContain("Execute Approved Command");
+    expect(html).toContain("relative cwd: none");
     expect(html).not.toContain("Cancel Command");
   });
 

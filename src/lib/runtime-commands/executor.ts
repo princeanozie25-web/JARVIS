@@ -17,6 +17,7 @@ import {
   type RuntimeCommandRegistry,
   type RuntimeCommandSpec,
 } from "./index";
+import { resolveRuntimeWorkingDirectory } from "./workspace";
 
 export const RUNTIME_COMMAND_OUTPUT_LIMIT_BYTES = 16_384;
 
@@ -37,6 +38,7 @@ export type RuntimeCommandSpawn = (
 export interface ExecuteRuntimeCommandInput {
   callId: string;
   repoRoot?: string;
+  workspaceRoot?: string;
   registry?: RuntimeCommandRegistry;
   controller?: RuntimeExecutionController;
   spawnCommand?: RuntimeCommandSpawn;
@@ -312,21 +314,6 @@ function isReadOnlyRuntimeCommand(spec: RuntimeCommandSpec): boolean {
   );
 }
 
-function resolveWorkingDirectory(
-  call: RuntimeCommandCallRow,
-  spec: RuntimeCommandSpec,
-  repoRoot: string,
-): string | undefined {
-  if (spec.workingDirectoryPolicy.type === "none") return undefined;
-  if (
-    call.working_directory !== "repo_root" &&
-    call.working_directory !== repoRoot
-  ) {
-    throw new Error("Runtime command working directory violates policy");
-  }
-  return repoRoot;
-}
-
 function buildEnvironment(spec: RuntimeCommandSpec): Record<string, string> {
   const env: Record<string, string> = {};
   for (const key of spec.environmentPolicy.allowedEnv) {
@@ -495,13 +482,22 @@ export class RuntimeCommandExecutor {
       );
 
       try {
-        const cwd = resolveWorkingDirectory(
-          call,
-          spec,
-          input.repoRoot ?? process.cwd(),
-        );
+        const resolvedCwd = resolveRuntimeWorkingDirectory({
+          requestedCwd:
+            spec.workingDirectoryPolicy.type === "none"
+              ? "."
+              : call.working_directory,
+          workspaceRoot: input.workspaceRoot ?? input.repoRoot,
+          db: this.db,
+          now: input.now,
+          commandId: call.command_id,
+          callId: call.id,
+        });
+        if (!resolvedCwd.ok) {
+          throw new Error(resolvedCwd.reason);
+        }
         child = spawnCommand(spec.command, argv, {
-          cwd,
+          cwd: resolvedCwd.resolvedCwd,
           env: buildEnvironment(spec) as NodeJS.ProcessEnv,
           shell: false,
           windowsHide: true,

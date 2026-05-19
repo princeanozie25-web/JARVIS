@@ -1,4 +1,7 @@
 import Database from "better-sqlite3";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getRuntimeCommandCall,
@@ -21,6 +24,8 @@ import {
 } from ".";
 
 let db: Database.Database;
+let workspaceRoot: string;
+let previousWorkspaceRoot: string | undefined;
 
 const baseSpec: RuntimeCommandSpec = {
   id: "test.safe",
@@ -38,9 +43,18 @@ const baseSpec: RuntimeCommandSpec = {
 beforeEach(() => {
   db = new Database(":memory:");
   applyMigrations(db);
+  workspaceRoot = mkdtempSync(join(tmpdir(), "jarvis-runtime-index-"));
+  previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
+  process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
 });
 
 afterEach(() => {
+  if (previousWorkspaceRoot === undefined) {
+    delete process.env.JARVIS_WORKSPACE_ROOT;
+  } else {
+    process.env.JARVIS_WORKSPACE_ROOT = previousWorkspaceRoot;
+  }
+  rmSync(workspaceRoot, { recursive: true, force: true });
   db.close();
 });
 
@@ -212,7 +226,7 @@ describe("RuntimeCommandRegistry", () => {
       runtimeCommandScopeHash({
         commandId: "git.status",
         argv: ["status", "--short"],
-        workingDirectory: "repo_root",
+        workingDirectory: ".",
       }),
     );
     expect(getRuntimeCommandCall(db, "runtime-call-1")?.status).toBe("pending");

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db";
 import {
   getRuntimeCommand,
+  getRuntimeWorkspaceConfig,
   listRuntimeCommands,
   proposeRuntimeCommandCall,
 } from "@/lib/runtime-commands";
@@ -24,6 +25,7 @@ export async function GET() {
   });
   return NextResponse.json({
     commands: listRuntimeCommands({ db }),
+    workspaceRoot: getRuntimeWorkspaceConfig().workspaceRoot,
   });
 }
 

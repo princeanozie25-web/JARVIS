@@ -9,6 +9,7 @@ import {
 import { insertTelemetryEvent } from "../db/telemetry";
 import type { SafetyTag } from "../router";
 import type { ReversibilityClass } from "../tools/types";
+import { resolveRuntimeWorkingDirectory } from "./workspace";
 export {
   RuntimeExecutionController,
   cancelAllRuntimeCommands,
@@ -29,6 +30,10 @@ export {
   executeRuntimeCommand,
   streamRuntimeCommandExecution,
 } from "./executor";
+export {
+  getRuntimeWorkspaceConfig,
+  resolveRuntimeWorkingDirectory,
+} from "./workspace";
 export type {
   ExecuteRuntimeCommandInput,
   RuntimeChildProcess,
@@ -39,6 +44,11 @@ export type {
   RuntimeStreamEvent,
   StreamRuntimeCommandExecutionInput,
 } from "./executor";
+export type {
+  ResolveRuntimeWorkingDirectoryInput,
+  ResolveRuntimeWorkingDirectoryResult,
+  RuntimeWorkspaceConfig,
+} from "./workspace";
 
 export type RuntimeCommandId =
   | "git.status"
@@ -95,6 +105,7 @@ export interface ProposeRuntimeCommandCallInput {
   workingDirectory: string;
   callId?: string;
   registry?: RuntimeCommandRegistry;
+  workspaceRoot?: string;
   now?: () => number;
   newId?: () => string;
 }
@@ -479,13 +490,26 @@ export function proposeRuntimeCommandCall(
     { db, now: input.now },
   );
   if (!validated.ok) return validated;
+  const resolvedCwd = resolveRuntimeWorkingDirectory({
+    requestedCwd:
+      validated.spec.workingDirectoryPolicy.type === "none"
+        ? "."
+        : input.workingDirectory,
+    workspaceRoot: input.workspaceRoot,
+    db,
+    now: input.now,
+    commandId: validated.spec.id,
+  });
+  if (!resolvedCwd.ok) {
+    return { ok: false, status: "invalid", reason: resolvedCwd.reason };
+  }
 
   const proposedAt = input.now?.() ?? Date.now();
   const callId = input.callId ?? input.newId?.() ?? newCallId();
   const scopeHash = runtimeCommandScopeHash({
     commandId: validated.spec.id,
     argv: validated.args,
-    workingDirectory: input.workingDirectory,
+    workingDirectory: resolvedCwd.relativeCwd,
   });
   const call = createRuntimeCommandCall(db, {
     id: callId,
@@ -493,7 +517,7 @@ export function proposeRuntimeCommandCall(
     commandId: validated.spec.id,
     command: validated.spec.command,
     argv: validated.args,
-    workingDirectory: input.workingDirectory,
+    workingDirectory: resolvedCwd.relativeCwd,
     requiredSafetyTag: validated.spec.requiredSafetyTag,
     reversibilityClass: validated.spec.reversibilityClass,
     status: "pending",

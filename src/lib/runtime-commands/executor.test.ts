@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +28,9 @@ import {
 
 let db: Database.Database;
 let controller: RuntimeExecutionController;
+let defaultWorkspaceRoot: string;
+let previousWorkspaceRoot: string | undefined;
+const tempRoots: string[] = [];
 
 class FakeRuntimeChild extends EventEmitter implements RuntimeChildProcess {
   stdout = new PassThrough();
@@ -102,13 +108,30 @@ beforeEach(() => {
   db.pragma("foreign_keys = ON");
   applyMigrations(db);
   controller = new RuntimeExecutionController();
+  defaultWorkspaceRoot = tempWorkspace();
+  previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
+  process.env.JARVIS_WORKSPACE_ROOT = defaultWorkspaceRoot;
 });
 
 afterEach(() => {
   controller.clear();
   vi.useRealTimers();
+  if (previousWorkspaceRoot === undefined) {
+    delete process.env.JARVIS_WORKSPACE_ROOT;
+  } else {
+    process.env.JARVIS_WORKSPACE_ROOT = previousWorkspaceRoot;
+  }
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
   db.close();
 });
+
+function tempWorkspace(): string {
+  const root = mkdtempSync(join(tmpdir(), "jarvis-runtime-"));
+  tempRoots.push(root);
+  return root;
+}
 
 describe("RuntimeCommandExecutor", () => {
   it("executes node.version safely with spawn shell false", async () => {
@@ -141,7 +164,7 @@ describe("RuntimeCommandExecutor", () => {
     expect(spawnCommand.calls[0]).toMatchObject([
       "node",
       ["--version"],
-      { shell: false, cwd: undefined },
+      { shell: false, cwd: defaultWorkspaceRoot },
     ]);
     expect(getRuntimeCommandCall(db, "runtime-call-1")).toMatchObject({
       status: "completed",
@@ -151,19 +174,30 @@ describe("RuntimeCommandExecutor", () => {
   });
 
   it("executes git.status in the configured repository root", async () => {
-    proposeAndApprove({
+    const workspaceRoot = tempWorkspace();
+    mkdirSync(join(workspaceRoot, "packages"), { recursive: true });
+    const proposed = proposeRuntimeCommandCall(db, {
+      sessionId: "session-1",
       callId: "runtime-call-1",
       commandId: "git.status",
       argv: ["status", "--short"],
-      workingDirectory: "repo_root",
+      workingDirectory: "packages",
+      workspaceRoot,
+      now: () => 1_000,
     });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const approved = approveRuntimeCommandCall(db, {
+      callId: "runtime-call-1",
+      approvedAt: 2_000,
+    });
+    if (!approved.ok) throw new Error(approved.reason);
     const spawnCommand = makeSpawn((child) => {
       queueMicrotask(() => child.close(0));
     });
 
     const result = await new RuntimeCommandExecutor(db).runApproved({
       callId: "runtime-call-1",
-      repoRoot: "C:\\repo",
+      workspaceRoot,
       controller,
       spawnCommand,
     });
@@ -172,7 +206,7 @@ describe("RuntimeCommandExecutor", () => {
     expect(spawnCommand.calls[0]).toMatchObject([
       "git",
       ["status", "--short"],
-      { shell: false, cwd: "C:\\repo" },
+      { shell: false, cwd: join(workspaceRoot, "packages") },
     ]);
   });
 
@@ -254,6 +288,40 @@ describe("RuntimeCommandExecutor", () => {
 
     expect(result).toMatchObject({ ok: false, status: "invalid" });
     expect(spawnCommand.calls).toHaveLength(0);
+  });
+
+  it("uses the workspace resolver before spawning", async () => {
+    createRuntimeCommandCall(db, {
+      id: "runtime-call-1",
+      sessionId: "session-1",
+      commandId: "git.status",
+      command: "git",
+      argv: ["status", "--short"],
+      workingDirectory: "..",
+      requiredSafetyTag: "ALLOW",
+      reversibilityClass: "PURE_READ",
+      status: "approved",
+      proposedAt: 1_000,
+      approvedAt: 2_000,
+    });
+    const spawnCommand = makeSpawn();
+
+    const result = await new RuntimeCommandExecutor(db).runApproved({
+      callId: "runtime-call-1",
+      controller,
+      spawnCommand,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "failed",
+      reason: "path_traversal_rejected",
+    });
+    expect(spawnCommand.calls).toHaveLength(0);
+    expect(getRuntimeCommandCall(db, "runtime-call-1")).toMatchObject({
+      status: "failed",
+      error_class: "RuntimeCommandSpawnFailed",
+    });
   });
 
   it("updates status on timeout without needing shell execution", async () => {

@@ -127,6 +127,9 @@ function RuntimeCommandCallCard({
             {call.id} - {statusLabel(call.status)}
           </p>
           <p className="mt-1 text-xs text-gray-500">argv: {formatArgs(argv)}</p>
+          <p className="mt-1 text-xs text-gray-500">
+            relative cwd: {call.working_directory}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {call.status === "pending" && (
@@ -183,6 +186,7 @@ export function RuntimeCommandPanel({
 }: RuntimeCommandPanelProps) {
   const [commands, setCommands] =
     useState<RuntimeCommandSpec[]>(initialCommands);
+  const [workspaceRoot, setWorkspaceRoot] = useState<string | null>(null);
   const [calls, setCalls] = useState<RuntimeCommandCallRow[]>(initialCalls);
   const [eventsByCallId, setEventsByCallId] =
     useState<Record<string, RuntimeStreamEvent[]>>(initialEvents);
@@ -206,9 +210,11 @@ export function RuntimeCommandPanel({
         if (!response.ok) return;
         const data = (await response.json()) as {
           commands: RuntimeCommandSpec[];
+          workspaceRoot?: string;
         };
         if (cancelled) return;
         setCommands(data.commands);
+        setWorkspaceRoot(data.workspaceRoot ?? null);
         setSelectedCommandId(
           (current) =>
             current || data.commands.find(isReadOnlyRuntimeCommand)?.id || "",
@@ -352,6 +358,9 @@ export function RuntimeCommandPanel({
           </h2>
           <p className="mt-1 text-xs text-gray-500">
             Manual read-only runtime command cards
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Workspace root: {workspaceRoot ?? "loading"}
           </p>
         </div>
         <span className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-400">

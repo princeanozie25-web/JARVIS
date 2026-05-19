@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +40,8 @@ vi.mock("node:child_process", () => ({
 }));
 
 let db: Database.Database;
+let workspaceRoot: string;
+let previousWorkspaceRoot: string | undefined;
 
 class FakeRuntimeChild extends EventEmitter {
   stdout = new PassThrough();
@@ -92,6 +97,9 @@ beforeEach(() => {
   db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   applyMigrations(db);
+  workspaceRoot = mkdtempSync(join(tmpdir(), "jarvis-runtime-api-"));
+  previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
+  process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
   mocks.getDb.mockReturnValue(db);
   mocks.spawn.mockReset();
   runtimeExecutionController.clear();
@@ -99,6 +107,12 @@ beforeEach(() => {
 
 afterEach(() => {
   runtimeExecutionController.clear();
+  if (previousWorkspaceRoot === undefined) {
+    delete process.env.JARVIS_WORKSPACE_ROOT;
+  } else {
+    process.env.JARVIS_WORKSPACE_ROOT = previousWorkspaceRoot;
+  }
+  rmSync(workspaceRoot, { recursive: true, force: true });
   db.close();
 });
 
@@ -172,6 +186,20 @@ describe("runtime command API", () => {
         sessionId: "session-1",
         commandId: "git.status",
         argv: ["status", "--short", ";"],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(listRuntimeCommandCalls(db)).toEqual([]);
+  });
+
+  it("rejects path traversal cwd before audit row creation", async () => {
+    const response = await proposeCommand(
+      jsonRequest({
+        sessionId: "session-1",
+        commandId: "git.status",
+        argv: ["status", "--short"],
+        workingDirectory: "..",
       }),
     );
 
