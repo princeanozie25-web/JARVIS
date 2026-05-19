@@ -22,6 +22,18 @@ export type {
   RuntimeExecutionContext,
   RuntimeGlobalCancellationInput,
 } from "./execution-controller";
+export {
+  RUNTIME_COMMAND_OUTPUT_LIMIT_BYTES,
+  RuntimeCommandExecutor,
+  executeRuntimeCommand,
+} from "./executor";
+export type {
+  ExecuteRuntimeCommandInput,
+  RuntimeChildProcess,
+  RuntimeCommandCapturedOutput,
+  RuntimeCommandExecutionResult,
+  RuntimeCommandSpawn,
+} from "./executor";
 
 export type RuntimeCommandId =
   | "git.status"

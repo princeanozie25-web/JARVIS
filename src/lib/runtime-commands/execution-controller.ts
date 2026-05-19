@@ -147,6 +147,13 @@ export class RuntimeExecutionController {
     return this.contexts.size;
   }
 
+  release(commandCallId: string): void {
+    const context = this.contexts.get(commandCallId);
+    if (!context) return;
+    clearTimeout(context.timeout);
+    this.contexts.delete(commandCallId);
+  }
+
   clear(): void {
     for (const context of this.contexts.values()) {
       clearTimeout(context.timeout);
