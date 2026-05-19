@@ -4,6 +4,7 @@ import {
   type ConsentFeatureId,
   type ConsentGateResult,
 } from "../consent";
+import { registerConsentRevocationInvalidator } from "../consent/revocation";
 import { insertTelemetryEvent } from "../db/telemetry";
 import {
   requirePersonalContextAccess,
@@ -54,6 +55,10 @@ export function createKeeperRegistry(): KeeperRegistry {
 }
 
 export const defaultKeeperRegistry = createKeeperRegistry();
+
+registerConsentRevocationInvalidator("keeper_interface", () => {
+  defaultKeeperRegistry.keepers.clear();
+});
 
 function normalizeString(value: string, label: string): string {
   const trimmed = value.trim();

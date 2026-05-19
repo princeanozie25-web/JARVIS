@@ -11,6 +11,10 @@ import {
   type ConsentManifest,
   type ConsentRecord,
 } from "./types";
+import {
+  processConsentRevocation,
+  recordConsentRevocationBlockedProjection,
+} from "./revocation";
 
 export interface ConsentManifestOptions {
   manifestPath?: string;
@@ -179,6 +183,9 @@ export function setConsentFromUserAction(
     success: true,
     featureId: input.featureId,
   });
+  if (!input.enabled) {
+    processConsentRevocation(input.db, input.featureId, { now: input.now });
+  }
   return record;
 }
 
@@ -195,6 +202,11 @@ export function requireConsent(
       success: false,
       featureId,
       notes: "reason=consent_disabled",
+    });
+    recordConsentRevocationBlockedProjection(input.db, featureId, {
+      now: input.now,
+      target: "require_consent",
+      reason: "consent_disabled",
     });
     return {
       ok: false,

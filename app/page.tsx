@@ -974,6 +974,10 @@ export default function Home() {
         manifest: ConsentManifest;
       };
       setConsentManifest(data.manifest);
+      if (!enabled && featureId === "reflection_prompts") {
+        setReflectionPrompt(null);
+        setReflectionPromptLoading(false);
+      }
     } catch {
       return;
     } finally {
