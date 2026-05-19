@@ -30,6 +30,15 @@ function accessContext(purpose = "test_goals") {
   };
 }
 
+function writeContext(operation = "test_goals_write") {
+  return {
+    origin: "user_ui" as const,
+    feature_id: "goals" as const,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function expectOk<T>(result: GoalResult<T> | GoalMutationResult): T {
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error("expected ok goal result");
@@ -62,7 +71,11 @@ afterEach(() => {
 describe("goal continuity store", () => {
   it("blocks reads and writes when goals consent is disabled", () => {
     expect(
-      createGoal(db, { manifestPath, title: "Ship Phase 3D" }),
+      createGoal(db, {
+        manifestPath,
+        title: "Ship Phase 3D",
+        writeContext: writeContext("create_goal"),
+      }),
     ).toMatchObject({
       ok: false,
       status: "blocked",
@@ -88,12 +101,18 @@ describe("goal continuity store", () => {
       updateGoalStatus(db, "goal-1", {
         manifestPath,
         status: "met",
+        writeContext: writeContext("update_goal_status"),
       }),
     ).toMatchObject({
       ok: false,
       status: "blocked",
     });
-    expect(touchGoal(db, "goal-1", { manifestPath })).toMatchObject({
+    expect(
+      touchGoal(db, "goal-1", {
+        manifestPath,
+        writeContext: writeContext("touch_goal"),
+      }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
     });
@@ -115,6 +134,7 @@ describe("goal continuity store", () => {
         id: "goal-1",
         title: "Finish Goal Continuity Store.",
         createdAt: 2_000,
+        writeContext: writeContext("create_goal"),
       }),
     );
 
@@ -150,6 +170,7 @@ describe("goal continuity store", () => {
       id: "parent",
       title: "Complete Phase 3D.",
       createdAt: 2_000,
+      writeContext: writeContext("create_goal"),
     });
 
     const child = expectOk<GoalRow>(
@@ -159,6 +180,7 @@ describe("goal continuity store", () => {
         title: "Implement goals.",
         parentId: "parent",
         createdAt: 3_000,
+        writeContext: writeContext("create_goal"),
       }),
     );
 
@@ -172,6 +194,7 @@ describe("goal continuity store", () => {
       id: "goal-1",
       title: "Write tests.",
       createdAt: 2_000,
+      writeContext: writeContext("create_goal"),
     });
 
     const met = expectOk<GoalRow>(
@@ -179,6 +202,7 @@ describe("goal continuity store", () => {
         manifestPath,
         status: "met",
         now: () => 3_000,
+        writeContext: writeContext("update_goal_status"),
       }),
     );
     expect(met.status).toBe("met");
@@ -190,6 +214,7 @@ describe("goal continuity store", () => {
         manifestPath,
         status: "active",
         now: () => 4_000,
+        writeContext: writeContext("update_goal_status"),
       }),
     );
     expect(active.status).toBe("active");
@@ -204,12 +229,14 @@ describe("goal continuity store", () => {
       id: "goal-1",
       title: "Keep current.",
       createdAt: 2_000,
+      writeContext: writeContext("create_goal"),
     });
 
     const touched = expectOk<GoalRow>(
       touchGoal(db, "goal-1", {
         manifestPath,
         now: () => 5_000,
+        writeContext: writeContext("touch_goal"),
       }),
     );
 
@@ -225,6 +252,7 @@ describe("goal continuity store", () => {
       id: "goal-1",
       title: "Emit telemetry.",
       createdAt: 2_000,
+      writeContext: writeContext("create_goal"),
     });
     listGoals(db, {
       manifestPath,
@@ -235,10 +263,12 @@ describe("goal continuity store", () => {
       manifestPath,
       status: "missed",
       now: () => 4_000,
+      writeContext: writeContext("update_goal_status"),
     });
     touchGoal(db, "goal-1", {
       manifestPath,
       now: () => 5_000,
+      writeContext: writeContext("touch_goal"),
     });
 
     expect(listTelemetryEvents(db).map((event) => event.event_type)).toEqual(

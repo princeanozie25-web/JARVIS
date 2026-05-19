@@ -37,6 +37,12 @@ export async function PATCH(
     value: parsed.data.value,
     category: parsed.data.category,
     effectiveFrom: parsed.data.effectiveFrom,
+    writeContext: {
+      origin: "user_ui",
+      feature_id: "preferences",
+      operation: "supersede_preference",
+      approved_manual_flow: true,
+    },
   });
 
   if (!result.ok) {

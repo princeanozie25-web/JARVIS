@@ -26,6 +26,15 @@ function accessContext(purpose = "test_reflection_prompt") {
   };
 }
 
+function preferenceWriteContext() {
+  return {
+    origin: "user_ui" as const,
+    feature_id: "preferences" as const,
+    operation: "add_preference",
+    approved_manual_flow: true,
+  };
+}
+
 function enable(featureId: "reflection_prompts" | "timeline" | "preferences") {
   setConsentFromUserAction({
     manifestPath,
@@ -194,6 +203,7 @@ describe("manual reflection prompts", () => {
       value: "Use compact summaries",
       category: "writing",
       createdAt: 2_000,
+      writeContext: preferenceWriteContext(),
     });
 
     expectOk(

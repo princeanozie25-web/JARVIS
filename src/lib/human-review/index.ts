@@ -14,6 +14,8 @@ import {
 import {
   requirePersonalContextAccess,
   type PersonalContextAccessContext,
+  requireRuntimeWriteAllowed,
+  type RuntimeWriteContext,
 } from "../personal-context";
 
 export const HUMAN_REVIEW_STATUSES = [
@@ -62,6 +64,7 @@ export interface HumanReviewOptions {
   env?: NodeJS.ProcessEnv;
   now?: () => number;
   accessContext?: PersonalContextAccessContext;
+  writeContext?: RuntimeWriteContext;
 }
 
 export interface ListReviewItemsInput extends HumanReviewOptions {
@@ -390,6 +393,13 @@ export function updateReviewItemStatus(
   db: DatabaseType.Database,
   input: UpdateReviewItemStatusInput,
 ): HumanReviewResult<HumanReviewQueueRow> {
+  requireRuntimeWriteAllowed(
+    db,
+    "human_review_queue",
+    input.writeContext,
+    input,
+  );
+
   const gate = requireHumanReviewConsent(db, input);
   if (!gate.ok) return gate;
   const row = upsertReviewStatus(db, input);
@@ -406,6 +416,13 @@ export function dismissReviewItem(
   db: DatabaseType.Database,
   input: DismissReviewItemInput,
 ): HumanReviewResult<HumanReviewQueueRow> {
+  requireRuntimeWriteAllowed(
+    db,
+    "human_review_queue",
+    input.writeContext,
+    input,
+  );
+
   const gate = requireHumanReviewConsent(db, input);
   if (!gate.ok) return gate;
   const row = upsertReviewStatus(db, {

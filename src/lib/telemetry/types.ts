@@ -68,7 +68,10 @@ export type TelemetryEventType =
   | "personal_context_access_denied"
   | "consent_revocation_processed"
   | "consent_revocation_cache_invalidated"
-  | "consent_revocation_blocked_projection";
+  | "consent_revocation_blocked_projection"
+  | "runtime_write_denied"
+  | "runtime_write_allowed"
+  | "runtime_write_boundary_violation";
 
 export interface TelemetryEvent {
   timestamp: number;

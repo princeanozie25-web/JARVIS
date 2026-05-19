@@ -39,6 +39,15 @@ function accessContext(purpose = "test_keeper_registry") {
   };
 }
 
+function writeContext(operation = "register_keeper") {
+  return {
+    origin: "user_ui" as const,
+    feature_id: "keeper_interface" as const,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function enableKeeperInterface() {
   setConsentFromUserAction({
     manifestPath,
@@ -69,6 +78,7 @@ describe("keeper interface skeleton", () => {
       manifestPath,
       registry,
       now: () => 2_000,
+      writeContext: writeContext(),
     });
 
     expect(result).toMatchObject({
@@ -85,11 +95,21 @@ describe("keeper interface skeleton", () => {
 
   it("refuses duplicate keeper ids", () => {
     enableKeeperInterface();
-    expect(registerKeeper(db, metadata, { manifestPath, registry }).ok).toBe(
-      true,
-    );
+    expect(
+      registerKeeper(db, metadata, {
+        manifestPath,
+        registry,
+        writeContext: writeContext(),
+      }).ok,
+    ).toBe(true);
 
-    expect(registerKeeper(db, metadata, { manifestPath, registry })).toEqual({
+    expect(
+      registerKeeper(db, metadata, {
+        manifestPath,
+        registry,
+        writeContext: writeContext(),
+      }),
+    ).toEqual({
       ok: false,
       status: "duplicate",
       id: "metadata-only",
@@ -98,7 +118,11 @@ describe("keeper interface skeleton", () => {
 
   it("lists and gets metadata without execution methods", () => {
     enableKeeperInterface();
-    registerKeeper(db, metadata, { manifestPath, registry });
+    registerKeeper(db, metadata, {
+      manifestPath,
+      registry,
+      writeContext: writeContext(),
+    });
 
     const listResult = listKeepers(db, {
       manifestPath,
@@ -142,6 +166,7 @@ describe("keeper interface skeleton", () => {
       manifestPath,
       registry,
       now: () => 3_000,
+      writeContext: writeContext(),
     });
     listKeepers(db, {
       manifestPath,

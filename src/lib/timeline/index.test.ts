@@ -28,6 +28,15 @@ function accessContext(purpose = "test_timeline") {
   };
 }
 
+function writeContext(featureId: "goals" | "preferences", operation: string) {
+  return {
+    origin: "user_ui" as const,
+    feature_id: featureId,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function enable(featureId: "timeline" | "goals" | "preferences") {
   setConsentFromUserAction({
     manifestPath,
@@ -138,6 +147,7 @@ describe("TimelineIndex", () => {
       id: "goal-1",
       title: "Keep scope narrow.",
       createdAt: 2_000,
+      writeContext: writeContext("goals", "create_goal"),
     });
     addPreference(db, {
       manifestPath,
@@ -146,6 +156,7 @@ describe("TimelineIndex", () => {
       value: "Concise.",
       category: "communication",
       createdAt: 3_000,
+      writeContext: writeContext("preferences", "add_preference"),
     });
     setConsentFromUserAction({
       manifestPath,

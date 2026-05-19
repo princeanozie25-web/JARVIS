@@ -29,6 +29,15 @@ function accessContext(purpose = "test_preferences") {
   };
 }
 
+function writeContext(operation = "test_preferences_write") {
+  return {
+    origin: "user_ui" as const,
+    feature_id: "preferences" as const,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function expectOk<T>(
   result: PreferenceResult<T> | SupersedePreferenceResult,
 ): T {
@@ -68,6 +77,7 @@ describe("preference ledger", () => {
         key: "tone",
         value: "Concise",
         category: "communication",
+        writeContext: writeContext("add_preference"),
       }),
     ).toMatchObject({
       ok: false,
@@ -94,6 +104,7 @@ describe("preference ledger", () => {
       supersedePreference(db, "pref-1", {
         manifestPath,
         value: "Detailed",
+        writeContext: writeContext("supersede_preference"),
       }),
     ).toMatchObject({
       ok: false,
@@ -119,6 +130,7 @@ describe("preference ledger", () => {
         value: "Prefer direct answers.",
         category: "communication",
         createdAt: 2_000,
+        writeContext: writeContext("add_preference"),
       }),
     );
 
@@ -149,6 +161,7 @@ describe("preference ledger", () => {
       category: "style",
       effectiveFrom: 2_000,
       createdAt: 2_000,
+      writeContext: writeContext("add_preference"),
     });
     addPreference(db, {
       manifestPath,
@@ -158,6 +171,7 @@ describe("preference ledger", () => {
       category: "style",
       effectiveFrom: 3_000,
       createdAt: 3_000,
+      writeContext: writeContext("add_preference"),
     });
 
     expect(
@@ -181,6 +195,7 @@ describe("preference ledger", () => {
         category: "communication",
         effectiveFrom: 2_000,
         createdAt: 2_000,
+        writeContext: writeContext("add_preference"),
       }),
     );
 
@@ -190,6 +205,7 @@ describe("preference ledger", () => {
         id: "pref-2",
         value: "Moderate detail.",
         createdAt: 3_000,
+        writeContext: writeContext("supersede_preference"),
       }),
     );
 
@@ -227,6 +243,7 @@ describe("preference ledger", () => {
       value: "Warm.",
       category: "communication",
       createdAt: 2_000,
+      writeContext: writeContext("add_preference"),
     });
     listPreferences(db, {
       manifestPath,
@@ -238,6 +255,7 @@ describe("preference ledger", () => {
       id: "pref-2",
       value: "Warm but concise.",
       createdAt: 4_000,
+      writeContext: writeContext("supersede_preference"),
     });
 
     expect(listTelemetryEvents(db).map((event) => event.event_type)).toEqual(

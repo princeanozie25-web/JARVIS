@@ -76,11 +76,23 @@ export async function PATCH(req: Request) {
       ? dismissReviewItem(db, {
           id: body.id,
           decisionReason: body.decisionReason,
+          writeContext: {
+            origin: "user_ui",
+            feature_id: "human_review_queue",
+            operation: "dismiss_review_item",
+            approved_manual_flow: true,
+          },
         })
       : updateReviewItemStatus(db, {
           id: body.id,
           status: body.status,
           decisionReason: body.decisionReason,
+          writeContext: {
+            origin: "user_ui",
+            feature_id: "human_review_queue",
+            operation: "update_review_item_status",
+            approved_manual_flow: true,
+          },
         });
 
   if (!result.ok) return blockedResponse(result);

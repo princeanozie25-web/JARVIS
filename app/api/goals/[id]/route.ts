@@ -74,10 +74,23 @@ export async function PATCH(
 
   const result =
     parsed.data.action === "touch"
-      ? touchGoal(getDb(), id)
+      ? touchGoal(getDb(), id, {
+          writeContext: {
+            origin: "user_ui",
+            feature_id: "goals",
+            operation: "touch_goal",
+            approved_manual_flow: true,
+          },
+        })
       : updateGoalStatus(getDb(), id, {
           status: parsed.data.status,
           completedAt: parsed.data.completedAt,
+          writeContext: {
+            origin: "user_ui",
+            feature_id: "goals",
+            operation: "update_goal_status",
+            approved_manual_flow: true,
+          },
         });
 
   if (!result.ok) {

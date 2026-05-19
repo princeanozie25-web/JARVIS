@@ -31,6 +31,15 @@ function accessContext(purpose = "test_review_queue") {
   };
 }
 
+function writeContext(operation = "test_review_queue_write") {
+  return {
+    origin: "user_ui" as const,
+    feature_id: "human_review_queue" as const,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function enable(featureId: "human_review_queue" | "conversation_curator") {
   setConsentFromUserAction({
     manifestPath,
@@ -90,6 +99,7 @@ describe("human review queue", () => {
         manifestPath,
         id: "memory_candidate:cand-1",
         status: "accepted",
+        writeContext: writeContext("update_review_item_status"),
       }),
     ).toMatchObject({
       ok: false,
@@ -99,6 +109,7 @@ describe("human review queue", () => {
       dismissReviewItem(db, {
         manifestPath,
         id: "memory_candidate:cand-1",
+        writeContext: writeContext("dismiss_review_item"),
       }),
     ).toMatchObject({
       ok: false,
@@ -186,6 +197,7 @@ describe("human review queue", () => {
         status: "accepted",
         decisionReason: "Reviewed manually.",
         now: () => 4_000,
+        writeContext: writeContext("update_review_item_status"),
       }),
     );
 
@@ -216,6 +228,7 @@ describe("human review queue", () => {
         id: "memory_candidate:cand-1",
         decisionReason: "Not needed in inbox.",
         now: () => 5_000,
+        writeContext: writeContext("dismiss_review_item"),
       }),
     );
     expect(row.status).toBe("dismissed");
@@ -268,6 +281,7 @@ describe("human review queue", () => {
         id: "memory_candidate:cand-1",
         status: "rejected",
         now: () => 7_000,
+        writeContext: writeContext("update_review_item_status"),
       }),
     );
     expectOk(
@@ -275,6 +289,7 @@ describe("human review queue", () => {
         manifestPath,
         id: "memory_candidate:cand-1",
         now: () => 8_000,
+        writeContext: writeContext("dismiss_review_item"),
       }),
     );
 

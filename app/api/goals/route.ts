@@ -67,6 +67,12 @@ export async function POST(req: Request) {
   const result = createGoal(getDb(), {
     title: parsed.data.title,
     parentId: parsed.data.parentId,
+    writeContext: {
+      origin: "user_ui",
+      feature_id: "goals",
+      operation: "create_goal",
+      approved_manual_flow: true,
+    },
   });
   if (!result.ok) return blockedResponse(result);
 

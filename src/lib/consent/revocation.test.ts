@@ -88,6 +88,18 @@ function accessContext(
   };
 }
 
+function writeContext(
+  featureId: "preferences" | "goals" | "keeper_interface",
+  operation: string,
+) {
+  return {
+    origin: "user_ui" as const,
+    feature_id: featureId,
+    operation,
+    approved_manual_flow: true,
+  };
+}
+
 function seedTimeline() {
   createSessionIfMissing(db, "session-1", 1_000);
   createSessionSummary(db, {
@@ -140,6 +152,7 @@ describe("consent revocation invalidation", () => {
       value: "Concise.",
       category: "writing",
       createdAt: 2_000,
+      writeContext: writeContext("preferences", "add_preference"),
     });
     expect(
       listPreferences(db, {
@@ -165,6 +178,7 @@ describe("consent revocation invalidation", () => {
       id: "goal-1",
       title: "No stale goal reads.",
       createdAt: 2_000,
+      writeContext: writeContext("goals", "create_goal"),
     });
     revoke("goals");
 
@@ -259,7 +273,12 @@ describe("consent revocation invalidation", () => {
       status: "registered",
     };
     enable("keeper_interface");
-    expect(registerKeeper(db, keeper, { manifestPath }).ok).toBe(true);
+    expect(
+      registerKeeper(db, keeper, {
+        manifestPath,
+        writeContext: writeContext("keeper_interface", "register_keeper"),
+      }).ok,
+    ).toBe(true);
     expect(defaultKeeperRegistry.keepers.size).toBe(1);
 
     revoke("keeper_interface");

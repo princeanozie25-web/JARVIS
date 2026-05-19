@@ -9,6 +9,8 @@ import { insertTelemetryEvent } from "../db/telemetry";
 import {
   requirePersonalContextAccess,
   type PersonalContextAccessContext,
+  requireRuntimeWriteAllowed,
+  type RuntimeWriteContext,
 } from "../personal-context";
 
 export const KEEPER_STATUSES = ["registered", "disabled"] as const;
@@ -35,6 +37,7 @@ export interface KeeperRegistryOptions {
   env?: NodeJS.ProcessEnv;
   now?: () => number;
   accessContext?: PersonalContextAccessContext;
+  writeContext?: RuntimeWriteContext;
 }
 
 export type KeeperRegistryBlockedResult = Extract<
@@ -106,6 +109,8 @@ export function registerKeeper(
   input: KeeperRegistryOptions = {},
 ): KeeperRegistrationResult {
   const at = input.now?.() ?? Date.now();
+  requireRuntimeWriteAllowed(db, "keeper_interface", input.writeContext, input);
+
   const gate = requireKeeperConsent(db, input);
   if (!gate.ok) {
     insertTelemetryEvent(db, {

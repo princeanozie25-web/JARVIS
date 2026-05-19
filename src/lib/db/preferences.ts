@@ -4,6 +4,8 @@ import { requireConsent, type ConsentGateResult } from "../consent";
 import {
   requirePersonalContextAccess,
   type PersonalContextAccessContext,
+  requireRuntimeWriteAllowed,
+  type RuntimeWriteContext,
 } from "../personal-context";
 import { insertTelemetryEvent } from "./telemetry";
 
@@ -23,6 +25,7 @@ export interface PreferenceConsentOptions {
   env?: NodeJS.ProcessEnv;
   now?: () => number;
   accessContext?: PersonalContextAccessContext;
+  writeContext?: RuntimeWriteContext;
 }
 
 export interface AddPreferenceInput extends PreferenceConsentOptions {
@@ -118,6 +121,8 @@ export function addPreference(
   db: DatabaseType.Database,
   input: AddPreferenceInput,
 ): PreferenceResult<PreferenceRow> {
+  requireRuntimeWriteAllowed(db, "preferences", input.writeContext, input);
+
   const gate = requirePreferenceConsent(db, input);
   if (!gate.ok) return consentBlockedResult(gate);
 
@@ -294,6 +299,8 @@ export function supersedePreference(
   supersededId: string,
   input: SupersedePreferenceInput,
 ): SupersedePreferenceResult {
+  requireRuntimeWriteAllowed(db, "preferences", input.writeContext, input);
+
   const gate = requirePreferenceConsent(db, input);
   if (!gate.ok) return consentBlockedResult(gate);
 

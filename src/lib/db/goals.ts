@@ -4,6 +4,8 @@ import { requireConsent, type ConsentGateResult } from "../consent";
 import {
   requirePersonalContextAccess,
   type PersonalContextAccessContext,
+  requireRuntimeWriteAllowed,
+  type RuntimeWriteContext,
 } from "../personal-context";
 import { insertTelemetryEvent } from "./telemetry";
 
@@ -27,6 +29,7 @@ export interface GoalConsentOptions {
   env?: NodeJS.ProcessEnv;
   now?: () => number;
   accessContext?: PersonalContextAccessContext;
+  writeContext?: RuntimeWriteContext;
 }
 
 export interface CreateGoalInput extends GoalConsentOptions {
@@ -116,6 +119,8 @@ export function createGoal(
   db: DatabaseType.Database,
   input: CreateGoalInput,
 ): GoalResult<GoalRow> {
+  requireRuntimeWriteAllowed(db, "goals", input.writeContext, input);
+
   const gate = requireGoalConsent(db, input);
   if (!gate.ok) return gate;
 
@@ -226,6 +231,8 @@ export function updateGoalStatus(
   id: string,
   input: UpdateGoalStatusInput,
 ): GoalMutationResult {
+  requireRuntimeWriteAllowed(db, "goals", input.writeContext, input);
+
   const gate = requireGoalConsent(db, input);
   if (!gate.ok) return gate;
 
@@ -264,6 +271,8 @@ export function touchGoal(
   id: string,
   input: GoalConsentOptions = {},
 ): GoalMutationResult {
+  requireRuntimeWriteAllowed(db, "goals", input.writeContext, input);
+
   const gate = requireGoalConsent(db, input);
   if (!gate.ok) return gate;
 

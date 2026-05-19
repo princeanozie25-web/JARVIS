@@ -78,6 +78,12 @@ export async function POST(req: Request) {
     value: parsed.data.value,
     category: parsed.data.category,
     effectiveFrom: parsed.data.effectiveFrom,
+    writeContext: {
+      origin: "user_ui",
+      feature_id: "preferences",
+      operation: "add_preference",
+      approved_manual_flow: true,
+    },
   });
 
   if (!created.ok) return blockedResponse(created);
