@@ -81,7 +81,10 @@ export type TelemetryEventType =
   | "runtime_command_proposed"
   | "runtime_command_approved"
   | "runtime_command_denied"
-  | "runtime_command_approval_expired";
+  | "runtime_command_approval_expired"
+  | "runtime_command_cancelled"
+  | "runtime_command_timeout"
+  | "runtime_command_abort_signal_created";
 
 export interface TelemetryEvent {
   timestamp: number;

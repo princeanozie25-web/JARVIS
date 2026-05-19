@@ -9,6 +9,19 @@ import {
 import { insertTelemetryEvent } from "../db/telemetry";
 import type { SafetyTag } from "../router";
 import type { ReversibilityClass } from "../tools/types";
+export {
+  RuntimeExecutionController,
+  cancelAllRuntimeCommands,
+  cancelRuntimeCommandCall,
+  runtimeExecutionController,
+} from "./execution-controller";
+export type {
+  CreateRuntimeExecutionContextInput,
+  RuntimeCancellationInput,
+  RuntimeCancellationSource,
+  RuntimeExecutionContext,
+  RuntimeGlobalCancellationInput,
+} from "./execution-controller";
 
 export type RuntimeCommandId =
   | "git.status"
