@@ -117,6 +117,22 @@ export type {
   UpdateToolCallInput,
 } from "./tool-calls";
 export {
+  attachRuntimeCommandOutputRefs,
+  createRuntimeCommandCall,
+  getRuntimeCommandCall,
+  listRuntimeCommandCalls,
+  RUNTIME_COMMAND_CALL_STATUSES,
+  updateRuntimeCommandCallStatus,
+} from "./runtime-command-calls";
+export type {
+  AttachRuntimeCommandOutputRefsInput,
+  CreateRuntimeCommandCallInput,
+  ListRuntimeCommandCallsInput,
+  RuntimeCommandCallRow,
+  RuntimeCommandCallStatus,
+  UpdateRuntimeCommandCallStatusInput,
+} from "./runtime-command-calls";
+export {
   approveApproval,
   cancelApproval,
   consumeApproval,

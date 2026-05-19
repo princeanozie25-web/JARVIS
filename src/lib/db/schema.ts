@@ -13,6 +13,7 @@ const MIGRATION_IDS = [
   "010_goals",
   "011_conversation_curator",
   "012_human_review_queue",
+  "013_runtime_command_calls",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -292,6 +293,36 @@ CREATE INDEX IF NOT EXISTS idx_human_review_queue_status
 
 CREATE INDEX IF NOT EXISTS idx_human_review_queue_source
   ON human_review_queue (source_type, source_id);
+
+CREATE TABLE IF NOT EXISTS runtime_command_calls (
+  id                    TEXT PRIMARY KEY,
+  session_id            TEXT NOT NULL,
+  command_id            TEXT NOT NULL,
+  command               TEXT NOT NULL,
+  argv_json             TEXT NOT NULL,
+  working_directory     TEXT NOT NULL,
+  required_safety_tag   TEXT NOT NULL,
+  reversibility_class   TEXT NOT NULL,
+  status                TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied', 'running', 'completed', 'failed', 'timeout', 'cancelled')),
+  proposed_at           INTEGER NOT NULL,
+  approved_at           INTEGER,
+  started_at            INTEGER,
+  completed_at          INTEGER,
+  stdout_ref            TEXT,
+  stderr_ref            TEXT,
+  exit_code             INTEGER,
+  error_class           TEXT,
+  error_message         TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_command_calls_session
+  ON runtime_command_calls (session_id, proposed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_command_calls_command
+  ON runtime_command_calls (command_id, proposed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_runtime_command_calls_status
+  ON runtime_command_calls (status, proposed_at DESC);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

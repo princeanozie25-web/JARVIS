@@ -74,7 +74,10 @@ export type TelemetryEventType =
   | "runtime_write_boundary_violation"
   | "runtime_command_registered"
   | "runtime_command_registry_read"
-  | "runtime_command_validation_failed";
+  | "runtime_command_validation_failed"
+  | "runtime_command_call_created"
+  | "runtime_command_call_updated"
+  | "runtime_command_output_ref_attached";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -69,6 +69,7 @@ describe("schema", () => {
         "session_summaries",
         "telemetry_events",
         "tool_calls",
+        "runtime_command_calls",
       ]),
     );
     expect(columnNames("telemetry_events")).toContain("execution_id");
@@ -162,6 +163,26 @@ describe("schema", () => {
       "created_at",
       "updated_at",
     ]);
+    expect(columnNames("runtime_command_calls")).toEqual([
+      "id",
+      "session_id",
+      "command_id",
+      "command",
+      "argv_json",
+      "working_directory",
+      "required_safety_tag",
+      "reversibility_class",
+      "status",
+      "proposed_at",
+      "approved_at",
+      "started_at",
+      "completed_at",
+      "stdout_ref",
+      "stderr_ref",
+      "exit_code",
+      "error_class",
+      "error_message",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -178,6 +199,7 @@ describe("schema", () => {
       "010_goals",
       "011_conversation_curator",
       "012_human_review_queue",
+      "013_runtime_command_calls",
     ]);
   });
 });
