@@ -45,7 +45,9 @@ export type TelemetryEventType =
   | "goal_created"
   | "goal_read"
   | "goal_status_changed"
-  | "goal_touched";
+  | "goal_touched"
+  | "timeline_read"
+  | "timeline_projected";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -16,6 +16,7 @@ import {
   type SurfacedMemory,
 } from "@/components/ResurfacedIdeasPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
+import { TimelineIndexPanel } from "@/components/TimelineIndexPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
   ApiApprovalDecision,
@@ -33,6 +34,7 @@ import type {
 import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
+import type { TimelineEntry, TimelineEntryType } from "@/lib/timeline";
 import type { Message } from "@/lib/types";
 
 const MAX_MESSAGES_TO_SEND = 50;
@@ -147,6 +149,9 @@ export default function Home() {
   const [goalsLoading, setGoalsLoading] = useState(false);
   const [goalCreating, setGoalCreating] = useState(false);
   const [goalUpdatingId, setGoalUpdatingId] = useState<string | null>(null);
+  const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineType, setTimelineType] = useState<TimelineEntryType | "">("");
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -168,6 +173,9 @@ export default function Home() {
     )?.enabled ?? false;
   const goalsConsentEnabled =
     consentManifest?.records.find((record) => record.feature_id === "goals")
+      ?.enabled ?? false;
+  const timelineConsentEnabled =
+    consentManifest?.records.find((record) => record.feature_id === "timeline")
       ?.enabled ?? false;
 
   useEffect(() => {
@@ -412,6 +420,42 @@ export default function Home() {
       cancelled = true;
     };
   }, [goalsConsentEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTimeline() {
+      if (!timelineConsentEnabled) {
+        setTimelineEntries([]);
+        setTimelineLoading(false);
+        return;
+      }
+      setTimelineLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (timelineType) params.set("type", timelineType);
+        const res = await fetch(`/api/timeline?${params.toString()}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          entries: TimelineEntry[];
+        };
+        if (!cancelled) {
+          setTimelineEntries(data.entries);
+        }
+      } catch {
+        if (!cancelled) {
+          setTimelineEntries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setTimelineLoading(false);
+        }
+      }
+    }
+    void loadTimeline();
+    return () => {
+      cancelled = true;
+    };
+  }, [timelineConsentEnabled, timelineType, goals, preferences]);
 
   function stop() {
     abortRef.current?.abort();
@@ -923,6 +967,14 @@ export default function Home() {
         onCreate={createGoal}
         onUpdateStatus={updateGoalStatus}
         onTouch={touchGoal}
+      />
+
+      <TimelineIndexPanel
+        entries={timelineEntries}
+        loading={timelineLoading}
+        consentEnabled={timelineConsentEnabled}
+        selectedType={timelineType}
+        onTypeChange={setTimelineType}
       />
 
       <MemoryCandidateReviewPanel
