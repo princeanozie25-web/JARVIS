@@ -6,6 +6,10 @@ import {
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
 import { ConsentManifestPanel } from "@/components/ConsentManifestPanel";
+import {
+  ConversationCuratorPanel,
+  type CuratorActionRequest,
+} from "@/components/ConversationCuratorPanel";
 import { GoalContinuityPanel } from "@/components/GoalContinuityPanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
@@ -21,11 +25,14 @@ import { TimelineIndexPanel } from "@/components/TimelineIndexPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
   ApiApprovalDecision,
+  CuratorAuditRow,
+  CuratorRecordRow,
   GoalRow,
   GoalStatus,
   MemoryCandidateRow,
   PreferenceRow,
   ProjectStateRow,
+  SessionSummaryRow,
 } from "@/lib/db/node";
 import type {
   LongTermMemoryCategory,
@@ -164,6 +171,16 @@ export default function Home() {
   const [memoryWeightingItemType, setMemoryWeightingItemType] = useState<
     MemoryWeightingItemType | ""
   >("");
+  const [curatorSummaries, setCuratorSummaries] = useState<SessionSummaryRow[]>(
+    [],
+  );
+  const [curatorCandidates, setCuratorCandidates] = useState<
+    MemoryCandidateRow[]
+  >([]);
+  const [curatorRecords, setCuratorRecords] = useState<CuratorRecordRow[]>([]);
+  const [curatorAudit, setCuratorAudit] = useState<CuratorAuditRow[]>([]);
+  const [curatorLoading, setCuratorLoading] = useState(false);
+  const [curatorSubmitting, setCuratorSubmitting] = useState(false);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -192,6 +209,10 @@ export default function Home() {
   const memoryWeightingConsentEnabled =
     consentManifest?.records.find(
       (record) => record.feature_id === "memory_weighting",
+    )?.enabled ?? false;
+  const conversationCuratorConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "conversation_curator",
     )?.enabled ?? false;
 
   useEffect(() => {
@@ -515,6 +536,52 @@ export default function Home() {
     memories,
     memoryCandidates,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCuratorWorkspace() {
+      if (!conversationCuratorConsentEnabled) {
+        setCuratorSummaries([]);
+        setCuratorCandidates([]);
+        setCuratorRecords([]);
+        setCuratorAudit([]);
+        setCuratorLoading(false);
+        return;
+      }
+      setCuratorLoading(true);
+      try {
+        const res = await fetch("/api/curator?limit=50");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          summaries: SessionSummaryRow[];
+          candidates: MemoryCandidateRow[];
+          records: CuratorRecordRow[];
+          audit: CuratorAuditRow[];
+        };
+        if (!cancelled) {
+          setCuratorSummaries(data.summaries);
+          setCuratorCandidates(data.candidates);
+          setCuratorRecords(data.records);
+          setCuratorAudit(data.audit);
+        }
+      } catch {
+        if (!cancelled) {
+          setCuratorSummaries([]);
+          setCuratorCandidates([]);
+          setCuratorRecords([]);
+          setCuratorAudit([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCuratorLoading(false);
+        }
+      }
+    }
+    void loadCuratorWorkspace();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationCuratorConsentEnabled, memoryCandidates]);
 
   function stop() {
     abortRef.current?.abort();
@@ -900,6 +967,38 @@ export default function Home() {
     }
   }
 
+  async function refreshCuratorWorkspace() {
+    const res = await fetch("/api/curator?limit=50");
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      summaries: SessionSummaryRow[];
+      candidates: MemoryCandidateRow[];
+      records: CuratorRecordRow[];
+      audit: CuratorAuditRow[];
+    };
+    setCuratorSummaries(data.summaries);
+    setCuratorCandidates(data.candidates);
+    setCuratorRecords(data.records);
+    setCuratorAudit(data.audit);
+  }
+
+  async function runCuratorAction(input: CuratorActionRequest) {
+    setCuratorSubmitting(true);
+    try {
+      const res = await fetch("/api/curator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) return;
+      await refreshCuratorWorkspace();
+    } catch {
+      return;
+    } finally {
+      setCuratorSubmitting(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -1042,6 +1141,17 @@ export default function Home() {
         consentEnabled={memoryWeightingConsentEnabled}
         selectedItemType={memoryWeightingItemType}
         onItemTypeChange={setMemoryWeightingItemType}
+      />
+
+      <ConversationCuratorPanel
+        summaries={curatorSummaries}
+        candidates={curatorCandidates}
+        records={curatorRecords}
+        audit={curatorAudit}
+        loading={curatorLoading}
+        consentEnabled={conversationCuratorConsentEnabled}
+        submitting={curatorSubmitting}
+        onAction={runCuratorAction}
       />
 
       <MemoryCandidateReviewPanel

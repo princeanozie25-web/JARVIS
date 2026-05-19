@@ -49,7 +49,12 @@ export type TelemetryEventType =
   | "timeline_read"
   | "timeline_projected"
   | "memory_weighting_read"
-  | "memory_weighting_projected";
+  | "memory_weighting_projected"
+  | "curator_action"
+  | "curator_merge"
+  | "curator_split"
+  | "curator_archive"
+  | "curator_delete";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -84,6 +84,7 @@ export type {
   ListGoalsInput,
   UpdateGoalStatusInput,
 } from "./goals";
+export type { CuratorAuditRow, CuratorRecordRow } from "../curator";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {

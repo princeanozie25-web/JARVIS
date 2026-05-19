@@ -11,6 +11,7 @@ const MIGRATION_IDS = [
   "008_memory_candidates",
   "009_preferences",
   "010_goals",
+  "011_conversation_curator",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -235,6 +236,44 @@ CREATE INDEX IF NOT EXISTS idx_goals_status
 
 CREATE INDEX IF NOT EXISTS idx_goals_parent
   ON goals (parent_id);
+
+CREATE TABLE IF NOT EXISTS curator_records (
+  id                     TEXT PRIMARY KEY,
+  record_type            TEXT NOT NULL CHECK (record_type IN ('merged_summary', 'manual_note')),
+  title                  TEXT NOT NULL,
+  content                TEXT NOT NULL,
+  source_type            TEXT NOT NULL CHECK (source_type IN ('summary', 'candidate', 'curator_record', 'mixed')),
+  source_ids_json        TEXT NOT NULL,
+  derived_from_ids_json  TEXT NOT NULL,
+  source_session_id      TEXT,
+  status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')),
+  created_at             INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_curator_records_created_at
+  ON curator_records (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_curator_records_status
+  ON curator_records (status);
+
+CREATE TABLE IF NOT EXISTS curator_audit_records (
+  id                       TEXT PRIMARY KEY,
+  action_type              TEXT NOT NULL CHECK (action_type IN ('curator_action', 'curator_merge', 'curator_split', 'curator_archive', 'curator_delete')),
+  target_type              TEXT NOT NULL CHECK (target_type IN ('summary', 'candidate', 'curator_record', 'mixed')),
+  target_ids_json          TEXT NOT NULL,
+  derived_record_ids_json  TEXT NOT NULL,
+  source_session_id        TEXT,
+  provenance_json          TEXT NOT NULL,
+  notes                    TEXT NOT NULL,
+  created_at               INTEGER NOT NULL,
+  created_by               TEXT NOT NULL DEFAULT 'user' CHECK (created_by = 'user')
+);
+
+CREATE INDEX IF NOT EXISTS idx_curator_audit_created_at
+  ON curator_audit_records (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_curator_audit_action
+  ON curator_audit_records (action_type, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

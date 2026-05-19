@@ -53,6 +53,8 @@ describe("schema", () => {
       expect.arrayContaining([
         "approvals",
         "_schema_migrations",
+        "curator_audit_records",
+        "curator_records",
         "goals",
         "long_term_memory",
         "long_term_memory_fts",
@@ -126,6 +128,30 @@ describe("schema", () => {
       "completed_at",
       "source",
     ]);
+    expect(columnNames("curator_records")).toEqual([
+      "id",
+      "record_type",
+      "title",
+      "content",
+      "source_type",
+      "source_ids_json",
+      "derived_from_ids_json",
+      "source_session_id",
+      "status",
+      "created_at",
+    ]);
+    expect(columnNames("curator_audit_records")).toEqual([
+      "id",
+      "action_type",
+      "target_type",
+      "target_ids_json",
+      "derived_record_ids_json",
+      "source_session_id",
+      "provenance_json",
+      "notes",
+      "created_at",
+      "created_by",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -140,6 +166,7 @@ describe("schema", () => {
       "008_memory_candidates",
       "009_preferences",
       "010_goals",
+      "011_conversation_curator",
     ]);
   });
 });
