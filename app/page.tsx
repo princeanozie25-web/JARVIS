@@ -11,6 +11,7 @@ import {
   type CuratorActionRequest,
 } from "@/components/ConversationCuratorPanel";
 import { GoalContinuityPanel } from "@/components/GoalContinuityPanel";
+import { HumanReviewQueuePanel } from "@/components/HumanReviewQueuePanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { MemoryWeightingPreviewPanel } from "@/components/MemoryWeightingPreviewPanel";
@@ -40,6 +41,7 @@ import type {
   SearchableMemorySensitivity,
 } from "@/lib/memory/types";
 import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
+import type { HumanReviewItem, HumanReviewStatus } from "@/lib/human-review";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { TimelineEntry, TimelineEntryType } from "@/lib/timeline";
@@ -181,6 +183,11 @@ export default function Home() {
   const [curatorAudit, setCuratorAudit] = useState<CuratorAuditRow[]>([]);
   const [curatorLoading, setCuratorLoading] = useState(false);
   const [curatorSubmitting, setCuratorSubmitting] = useState(false);
+  const [reviewItems, setReviewItems] = useState<HumanReviewItem[]>([]);
+  const [reviewQueueLoading, setReviewQueueLoading] = useState(false);
+  const [reviewQueueUpdatingId, setReviewQueueUpdatingId] = useState<
+    string | null
+  >(null);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -213,6 +220,10 @@ export default function Home() {
   const conversationCuratorConsentEnabled =
     consentManifest?.records.find(
       (record) => record.feature_id === "conversation_curator",
+    )?.enabled ?? false;
+  const humanReviewQueueConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "human_review_queue",
     )?.enabled ?? false;
 
   useEffect(() => {
@@ -582,6 +593,45 @@ export default function Home() {
       cancelled = true;
     };
   }, [conversationCuratorConsentEnabled, memoryCandidates]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadReviewQueue() {
+      if (!humanReviewQueueConsentEnabled) {
+        setReviewItems([]);
+        setReviewQueueLoading(false);
+        return;
+      }
+      setReviewQueueLoading(true);
+      try {
+        const res = await fetch("/api/review-queue?limit=100");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          items: HumanReviewItem[];
+        };
+        if (!cancelled) {
+          setReviewItems(data.items);
+        }
+      } catch {
+        if (!cancelled) {
+          setReviewItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setReviewQueueLoading(false);
+        }
+      }
+    }
+    void loadReviewQueue();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    humanReviewQueueConsentEnabled,
+    memoryCandidates,
+    curatorAudit,
+    memoryWeights,
+  ]);
 
   function stop() {
     abortRef.current?.abort();
@@ -999,6 +1049,52 @@ export default function Home() {
     }
   }
 
+  async function refreshReviewQueue() {
+    const res = await fetch("/api/review-queue?limit=100");
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      items: HumanReviewItem[];
+    };
+    setReviewItems(data.items);
+  }
+
+  async function updateReviewItemStatus(
+    id: string,
+    status: Exclude<HumanReviewStatus, "dismissed">,
+  ) {
+    setReviewQueueUpdatingId(id);
+    try {
+      const res = await fetch("/api/review-queue", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!res.ok) return;
+      await refreshReviewQueue();
+    } catch {
+      return;
+    } finally {
+      setReviewQueueUpdatingId(null);
+    }
+  }
+
+  async function dismissReviewItem(id: string) {
+    setReviewQueueUpdatingId(id);
+    try {
+      const res = await fetch("/api/review-queue", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "dismissed" }),
+      });
+      if (!res.ok) return;
+      await refreshReviewQueue();
+    } catch {
+      return;
+    } finally {
+      setReviewQueueUpdatingId(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -1152,6 +1248,15 @@ export default function Home() {
         consentEnabled={conversationCuratorConsentEnabled}
         submitting={curatorSubmitting}
         onAction={runCuratorAction}
+      />
+
+      <HumanReviewQueuePanel
+        items={reviewItems}
+        loading={reviewQueueLoading}
+        consentEnabled={humanReviewQueueConsentEnabled}
+        updatingId={reviewQueueUpdatingId}
+        onUpdateStatus={updateReviewItemStatus}
+        onDismiss={dismissReviewItem}
       />
 
       <MemoryCandidateReviewPanel

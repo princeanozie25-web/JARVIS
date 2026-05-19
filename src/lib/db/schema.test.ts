@@ -56,6 +56,7 @@ describe("schema", () => {
         "curator_audit_records",
         "curator_records",
         "goals",
+        "human_review_queue",
         "long_term_memory",
         "long_term_memory_fts",
         "memory_embeddings",
@@ -152,6 +153,15 @@ describe("schema", () => {
       "created_at",
       "created_by",
     ]);
+    expect(columnNames("human_review_queue")).toEqual([
+      "id",
+      "source_id",
+      "source_type",
+      "status",
+      "decision_reason",
+      "created_at",
+      "updated_at",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -167,6 +177,7 @@ describe("schema", () => {
       "009_preferences",
       "010_goals",
       "011_conversation_curator",
+      "012_human_review_queue",
     ]);
   });
 });

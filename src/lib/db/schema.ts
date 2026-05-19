@@ -12,6 +12,7 @@ const MIGRATION_IDS = [
   "009_preferences",
   "010_goals",
   "011_conversation_curator",
+  "012_human_review_queue",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -274,6 +275,23 @@ CREATE INDEX IF NOT EXISTS idx_curator_audit_created_at
 
 CREATE INDEX IF NOT EXISTS idx_curator_audit_action
   ON curator_audit_records (action_type, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS human_review_queue (
+  id               TEXT PRIMARY KEY,
+  source_id        TEXT NOT NULL,
+  source_type      TEXT NOT NULL CHECK (source_type IN ('memory_candidate', 'curator_audit', 'goal', 'memory_weighting')),
+  status           TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'dismissed')),
+  decision_reason  TEXT,
+  created_at       INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  UNIQUE(source_id, source_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_human_review_queue_status
+  ON human_review_queue (status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_human_review_queue_source
+  ON human_review_queue (source_type, source_id);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

@@ -54,7 +54,10 @@ export type TelemetryEventType =
   | "curator_merge"
   | "curator_split"
   | "curator_archive"
-  | "curator_delete";
+  | "curator_delete"
+  | "review_queue_read"
+  | "review_item_updated"
+  | "review_item_dismissed";
 
 export interface TelemetryEvent {
   timestamp: number;
