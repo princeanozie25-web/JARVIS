@@ -24,6 +24,7 @@ import {
   type SurfacedMemory,
 } from "@/components/ResurfacedIdeasPanel";
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
+import { RuntimeCommandPanel } from "@/components/RuntimeCommandPanel";
 import { TimelineIndexPanel } from "@/components/TimelineIndexPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
@@ -1248,6 +1249,8 @@ export default function Home() {
           onUndo={askUndo}
         />
       </section>
+
+      <RuntimeCommandPanel />
 
       <MemoryInspectorPanel
         memories={memories}
