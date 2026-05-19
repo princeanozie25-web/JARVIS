@@ -57,7 +57,10 @@ export type TelemetryEventType =
   | "curator_delete"
   | "review_queue_read"
   | "review_item_updated"
-  | "review_item_dismissed";
+  | "review_item_dismissed"
+  | "reflection_prompt_requested"
+  | "reflection_prompt_generated"
+  | "reflection_prompt_blocked";
 
 export interface TelemetryEvent {
   timestamp: number;

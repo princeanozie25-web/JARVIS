@@ -17,6 +17,7 @@ import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { MemoryWeightingPreviewPanel } from "@/components/MemoryWeightingPreviewPanel";
 import { PreferenceLedgerPanel } from "@/components/PreferenceLedgerPanel";
 import { ProjectContinuityPanel } from "@/components/ProjectContinuityPanel";
+import { ReflectionPromptPanel } from "@/components/ReflectionPromptPanel";
 import {
   ResurfacedIdeasPanel,
   type SurfacedMemory,
@@ -42,6 +43,10 @@ import type {
 } from "@/lib/memory/types";
 import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
 import type { HumanReviewItem, HumanReviewStatus } from "@/lib/human-review";
+import type {
+  ReflectionPrompt,
+  ReflectionPromptTemplateType,
+} from "@/lib/reflection-prompts";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { TimelineEntry, TimelineEntryType } from "@/lib/timeline";
@@ -188,6 +193,11 @@ export default function Home() {
   const [reviewQueueUpdatingId, setReviewQueueUpdatingId] = useState<
     string | null
   >(null);
+  const [reflectionPrompt, setReflectionPrompt] =
+    useState<ReflectionPrompt | null>(null);
+  const [reflectionPromptLoading, setReflectionPromptLoading] = useState(false);
+  const [reflectionPromptTemplate, setReflectionPromptTemplate] =
+    useState<ReflectionPromptTemplateType>("timeline_reflection");
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -224,6 +234,10 @@ export default function Home() {
   const humanReviewQueueConsentEnabled =
     consentManifest?.records.find(
       (record) => record.feature_id === "human_review_queue",
+    )?.enabled ?? false;
+  const reflectionPromptsConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "reflection_prompts",
     )?.enabled ?? false;
 
   useEffect(() => {
@@ -1095,6 +1109,26 @@ export default function Home() {
     }
   }
 
+  async function generateReflectionPrompt() {
+    setReflectionPromptLoading(true);
+    try {
+      const res = await fetch("/api/reflection-prompts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateType: reflectionPromptTemplate }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        prompt: ReflectionPrompt;
+      };
+      setReflectionPrompt(data.prompt);
+    } catch {
+      return;
+    } finally {
+      setReflectionPromptLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -1229,6 +1263,15 @@ export default function Home() {
         consentEnabled={timelineConsentEnabled}
         selectedType={timelineType}
         onTypeChange={setTimelineType}
+      />
+
+      <ReflectionPromptPanel
+        prompt={reflectionPrompt}
+        selectedTemplate={reflectionPromptTemplate}
+        loading={reflectionPromptLoading}
+        consentEnabled={reflectionPromptsConsentEnabled}
+        onTemplateChange={setReflectionPromptTemplate}
+        onGenerate={generateReflectionPrompt}
       />
 
       <MemoryWeightingPreviewPanel
