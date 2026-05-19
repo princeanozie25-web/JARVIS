@@ -34,7 +34,11 @@ export type TelemetryEventType =
   | "project_context_detected"
   | "memory_candidate_generated"
   | "memory_candidate_reviewed"
-  | "memory_candidate_rejected";
+  | "memory_candidate_rejected"
+  | "consent_read"
+  | "consent_granted"
+  | "consent_revoked"
+  | "consent_denied";
 
 export interface TelemetryEvent {
   timestamp: number;

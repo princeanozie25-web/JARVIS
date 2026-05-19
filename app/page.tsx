@@ -5,6 +5,7 @@ import {
   ApprovalCard,
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
+import { ConsentManifestPanel } from "@/components/ConsentManifestPanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { ProjectContinuityPanel } from "@/components/ProjectContinuityPanel";
@@ -24,6 +25,7 @@ import type {
   LongTermMemoryRow,
   SearchableMemorySensitivity,
 } from "@/lib/memory/types";
+import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { Message } from "@/lib/types";
@@ -125,6 +127,11 @@ export default function Home() {
     MemoryCandidateRow[]
   >([]);
   const [memoryCandidatesLoading, setMemoryCandidatesLoading] = useState(false);
+  const [consentManifest, setConsentManifest] =
+    useState<ConsentManifest | null>(null);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [consentUpdatingFeatureId, setConsentUpdatingFeatureId] =
+    useState<ConsentFeatureId | null>(null);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -282,6 +289,35 @@ export default function Home() {
       cancelled = true;
     };
   }, [messages, loading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadConsentManifest() {
+      setConsentLoading(true);
+      try {
+        const res = await fetch("/api/consent");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          manifest: ConsentManifest;
+        };
+        if (!cancelled) {
+          setConsentManifest(data.manifest);
+        }
+      } catch {
+        if (!cancelled) {
+          setConsentManifest(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setConsentLoading(false);
+        }
+      }
+    }
+    void loadConsentManifest();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function stop() {
     abortRef.current?.abort();
@@ -555,6 +591,26 @@ export default function Home() {
     }
   }
 
+  async function toggleConsent(featureId: ConsentFeatureId, enabled: boolean) {
+    setConsentUpdatingFeatureId(featureId);
+    try {
+      const res = await fetch("/api/consent", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featureId, enabled }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        manifest: ConsentManifest;
+      };
+      setConsentManifest(data.manifest);
+    } catch {
+      return;
+    } finally {
+      setConsentUpdatingFeatureId(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -654,6 +710,13 @@ export default function Home() {
       <ProjectContinuityPanel
         projects={projectStates}
         loading={projectStatesLoading}
+      />
+
+      <ConsentManifestPanel
+        manifest={consentManifest}
+        loading={consentLoading}
+        updatingFeatureId={consentUpdatingFeatureId}
+        onToggle={toggleConsent}
       />
 
       <MemoryCandidateReviewPanel
