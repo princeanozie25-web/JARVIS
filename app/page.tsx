@@ -8,6 +8,7 @@ import {
 import { ConsentManifestPanel } from "@/components/ConsentManifestPanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
+import { PreferenceLedgerPanel } from "@/components/PreferenceLedgerPanel";
 import { ProjectContinuityPanel } from "@/components/ProjectContinuityPanel";
 import {
   ResurfacedIdeasPanel,
@@ -18,6 +19,7 @@ import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
   ApiApprovalDecision,
   MemoryCandidateRow,
+  PreferenceRow,
   ProjectStateRow,
 } from "@/lib/db/node";
 import type {
@@ -132,6 +134,12 @@ export default function Home() {
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentUpdatingFeatureId, setConsentUpdatingFeatureId] =
     useState<ConsentFeatureId | null>(null);
+  const [preferences, setPreferences] = useState<PreferenceRow[]>([]);
+  const [effectivePreferences, setEffectivePreferences] = useState<
+    PreferenceRow[]
+  >([]);
+  const [preferencesLoading, setPreferencesLoading] = useState(false);
+  const [preferenceAdding, setPreferenceAdding] = useState(false);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -147,6 +155,10 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(globalThis.crypto.randomUUID());
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+  const preferencesConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "preferences",
+    )?.enabled ?? false;
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ block: "end" });
@@ -318,6 +330,44 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPreferences() {
+      if (!preferencesConsentEnabled) {
+        setPreferences([]);
+        setEffectivePreferences([]);
+        setPreferencesLoading(false);
+        return;
+      }
+      setPreferencesLoading(true);
+      try {
+        const res = await fetch("/api/preferences?limit=100");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          preferences: PreferenceRow[];
+          current: PreferenceRow[];
+        };
+        if (!cancelled) {
+          setPreferences(data.preferences);
+          setEffectivePreferences(data.current);
+        }
+      } catch {
+        if (!cancelled) {
+          setPreferences([]);
+          setEffectivePreferences([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPreferencesLoading(false);
+        }
+      }
+    }
+    void loadPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, [preferencesConsentEnabled]);
 
   function stop() {
     abortRef.current?.abort();
@@ -611,6 +661,35 @@ export default function Home() {
     }
   }
 
+  async function addPreference(input: {
+    key: string;
+    value: string;
+    category: string;
+  }) {
+    setPreferenceAdding(true);
+    try {
+      const res = await fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) return;
+
+      const refresh = await fetch("/api/preferences?limit=100");
+      if (!refresh.ok) return;
+      const data = (await refresh.json()) as {
+        preferences: PreferenceRow[];
+        current: PreferenceRow[];
+      };
+      setPreferences(data.preferences);
+      setEffectivePreferences(data.current);
+    } catch {
+      return;
+    } finally {
+      setPreferenceAdding(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -717,6 +796,15 @@ export default function Home() {
         loading={consentLoading}
         updatingFeatureId={consentUpdatingFeatureId}
         onToggle={toggleConsent}
+      />
+
+      <PreferenceLedgerPanel
+        current={effectivePreferences}
+        history={preferences}
+        loading={preferencesLoading}
+        consentEnabled={preferencesConsentEnabled}
+        adding={preferenceAdding}
+        onAdd={addPreference}
       />
 
       <MemoryCandidateReviewPanel

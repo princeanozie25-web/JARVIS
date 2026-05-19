@@ -49,6 +49,21 @@ export type {
   MemoryCandidateRow,
   MemoryCandidateStatus,
 } from "./memory-candidates";
+export {
+  addPreference,
+  getEffectivePreference,
+  listEffectivePreferences,
+  listPreferences,
+  supersedePreference,
+} from "./preferences";
+export type {
+  AddPreferenceInput,
+  ListPreferencesInput,
+  PreferenceRow,
+  PreferenceResult,
+  SupersedePreferenceInput,
+  SupersedePreferenceResult,
+} from "./preferences";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {

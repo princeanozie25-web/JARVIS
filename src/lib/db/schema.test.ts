@@ -58,6 +58,7 @@ describe("schema", () => {
         "memory_embeddings",
         "memory_candidates",
         "project_state",
+        "preferences",
         "reflective_memory",
         "rollbacks",
         "semantic_memory",
@@ -104,6 +105,16 @@ describe("schema", () => {
       "created_at",
       "reviewed_at",
     ]);
+    expect(columnNames("preferences")).toEqual([
+      "id",
+      "key",
+      "value",
+      "category",
+      "source",
+      "effective_from",
+      "supersedes_id",
+      "created_at",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -116,6 +127,7 @@ describe("schema", () => {
       "006_session_summaries",
       "007_project_state",
       "008_memory_candidates",
+      "009_preferences",
     ]);
   });
 });

@@ -38,7 +38,10 @@ export type TelemetryEventType =
   | "consent_read"
   | "consent_granted"
   | "consent_revoked"
-  | "consent_denied";
+  | "consent_denied"
+  | "preference_saved"
+  | "preference_read"
+  | "preference_superseded";
 
 export interface TelemetryEvent {
   timestamp: number;
