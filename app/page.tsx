@@ -9,6 +9,7 @@ import { ConsentManifestPanel } from "@/components/ConsentManifestPanel";
 import { GoalContinuityPanel } from "@/components/GoalContinuityPanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
+import { MemoryWeightingPreviewPanel } from "@/components/MemoryWeightingPreviewPanel";
 import { PreferenceLedgerPanel } from "@/components/PreferenceLedgerPanel";
 import { ProjectContinuityPanel } from "@/components/ProjectContinuityPanel";
 import {
@@ -35,6 +36,10 @@ import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
 import type { RollbackSummary } from "@/lib/rollbacks/visibility";
 import { parseSseEvents } from "@/lib/streaming/sse";
 import type { TimelineEntry, TimelineEntryType } from "@/lib/timeline";
+import type {
+  MemoryWeightingItemType,
+  MemoryWeightingProjection,
+} from "@/lib/memory-weighting";
 import type { Message } from "@/lib/types";
 
 const MAX_MESSAGES_TO_SEND = 50;
@@ -152,6 +157,13 @@ export default function Home() {
   const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineType, setTimelineType] = useState<TimelineEntryType | "">("");
+  const [memoryWeights, setMemoryWeights] = useState<
+    MemoryWeightingProjection[]
+  >([]);
+  const [memoryWeightsLoading, setMemoryWeightsLoading] = useState(false);
+  const [memoryWeightingItemType, setMemoryWeightingItemType] = useState<
+    MemoryWeightingItemType | ""
+  >("");
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -177,6 +189,10 @@ export default function Home() {
   const timelineConsentEnabled =
     consentManifest?.records.find((record) => record.feature_id === "timeline")
       ?.enabled ?? false;
+  const memoryWeightingConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "memory_weighting",
+    )?.enabled ?? false;
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ block: "end" });
@@ -456,6 +472,49 @@ export default function Home() {
       cancelled = true;
     };
   }, [timelineConsentEnabled, timelineType, goals, preferences]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMemoryWeights() {
+      if (!memoryWeightingConsentEnabled) {
+        setMemoryWeights([]);
+        setMemoryWeightsLoading(false);
+        return;
+      }
+      setMemoryWeightsLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (memoryWeightingItemType) {
+          params.set("itemType", memoryWeightingItemType);
+        }
+        const res = await fetch(`/api/memory/weighting?${params.toString()}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          weights: MemoryWeightingProjection[];
+        };
+        if (!cancelled) {
+          setMemoryWeights(data.weights);
+        }
+      } catch {
+        if (!cancelled) {
+          setMemoryWeights([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setMemoryWeightsLoading(false);
+        }
+      }
+    }
+    void loadMemoryWeights();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    memoryWeightingConsentEnabled,
+    memoryWeightingItemType,
+    memories,
+    memoryCandidates,
+  ]);
 
   function stop() {
     abortRef.current?.abort();
@@ -975,6 +1034,14 @@ export default function Home() {
         consentEnabled={timelineConsentEnabled}
         selectedType={timelineType}
         onTypeChange={setTimelineType}
+      />
+
+      <MemoryWeightingPreviewPanel
+        weights={memoryWeights}
+        loading={memoryWeightsLoading}
+        consentEnabled={memoryWeightingConsentEnabled}
+        selectedItemType={memoryWeightingItemType}
+        onItemTypeChange={setMemoryWeightingItemType}
       />
 
       <MemoryCandidateReviewPanel

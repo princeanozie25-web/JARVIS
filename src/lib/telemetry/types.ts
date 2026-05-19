@@ -47,7 +47,9 @@ export type TelemetryEventType =
   | "goal_status_changed"
   | "goal_touched"
   | "timeline_read"
-  | "timeline_projected";
+  | "timeline_projected"
+  | "memory_weighting_read"
+  | "memory_weighting_projected";
 
 export interface TelemetryEvent {
   timestamp: number;
