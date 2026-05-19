@@ -41,7 +41,11 @@ export type TelemetryEventType =
   | "consent_denied"
   | "preference_saved"
   | "preference_read"
-  | "preference_superseded";
+  | "preference_superseded"
+  | "goal_created"
+  | "goal_read"
+  | "goal_status_changed"
+  | "goal_touched";
 
 export interface TelemetryEvent {
   timestamp: number;

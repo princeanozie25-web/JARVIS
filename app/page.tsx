@@ -6,6 +6,7 @@ import {
   type ApprovalCardDetails,
 } from "@/components/ApprovalCard";
 import { ConsentManifestPanel } from "@/components/ConsentManifestPanel";
+import { GoalContinuityPanel } from "@/components/GoalContinuityPanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { PreferenceLedgerPanel } from "@/components/PreferenceLedgerPanel";
@@ -18,6 +19,8 @@ import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
   ApiApprovalDecision,
+  GoalRow,
+  GoalStatus,
   MemoryCandidateRow,
   PreferenceRow,
   ProjectStateRow,
@@ -140,6 +143,10 @@ export default function Home() {
   >([]);
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [preferenceAdding, setPreferenceAdding] = useState(false);
+  const [goals, setGoals] = useState<GoalRow[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(false);
+  const [goalCreating, setGoalCreating] = useState(false);
+  const [goalUpdatingId, setGoalUpdatingId] = useState<string | null>(null);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -159,6 +166,9 @@ export default function Home() {
     consentManifest?.records.find(
       (record) => record.feature_id === "preferences",
     )?.enabled ?? false;
+  const goalsConsentEnabled =
+    consentManifest?.records.find((record) => record.feature_id === "goals")
+      ?.enabled ?? false;
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ block: "end" });
@@ -368,6 +378,40 @@ export default function Home() {
       cancelled = true;
     };
   }, [preferencesConsentEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGoals() {
+      if (!goalsConsentEnabled) {
+        setGoals([]);
+        setGoalsLoading(false);
+        return;
+      }
+      setGoalsLoading(true);
+      try {
+        const res = await fetch("/api/goals?limit=100");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          goals: GoalRow[];
+        };
+        if (!cancelled) {
+          setGoals(data.goals);
+        }
+      } catch {
+        if (!cancelled) {
+          setGoals([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setGoalsLoading(false);
+        }
+      }
+    }
+    void loadGoals();
+    return () => {
+      cancelled = true;
+    };
+  }, [goalsConsentEnabled]);
 
   function stop() {
     abortRef.current?.abort();
@@ -690,6 +734,69 @@ export default function Home() {
     }
   }
 
+  async function refreshGoals() {
+    const res = await fetch("/api/goals?limit=100");
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      goals: GoalRow[];
+    };
+    setGoals(data.goals);
+  }
+
+  async function createGoal(input: {
+    title: string;
+    parentId?: string | null;
+  }) {
+    setGoalCreating(true);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) return;
+      await refreshGoals();
+    } catch {
+      return;
+    } finally {
+      setGoalCreating(false);
+    }
+  }
+
+  async function updateGoalStatus(id: string, status: GoalStatus) {
+    setGoalUpdatingId(id);
+    try {
+      const res = await fetch(`/api/goals/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "status", status }),
+      });
+      if (!res.ok) return;
+      await refreshGoals();
+    } catch {
+      return;
+    } finally {
+      setGoalUpdatingId(null);
+    }
+  }
+
+  async function touchGoal(id: string) {
+    setGoalUpdatingId(id);
+    try {
+      const res = await fetch(`/api/goals/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "touch" }),
+      });
+      if (!res.ok) return;
+      await refreshGoals();
+    } catch {
+      return;
+    } finally {
+      setGoalUpdatingId(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-between p-6">
       <section className="w-full max-w-3xl flex-1">
@@ -805,6 +912,17 @@ export default function Home() {
         consentEnabled={preferencesConsentEnabled}
         adding={preferenceAdding}
         onAdd={addPreference}
+      />
+
+      <GoalContinuityPanel
+        goals={goals}
+        loading={goalsLoading}
+        consentEnabled={goalsConsentEnabled}
+        creating={goalCreating}
+        updatingGoalId={goalUpdatingId}
+        onCreate={createGoal}
+        onUpdateStatus={updateGoalStatus}
+        onTouch={touchGoal}
       />
 
       <MemoryCandidateReviewPanel

@@ -64,6 +64,24 @@ export type {
   SupersedePreferenceInput,
   SupersedePreferenceResult,
 } from "./preferences";
+export {
+  createGoal,
+  getGoal,
+  GOAL_STATUSES,
+  isGoalCompletedStatus,
+  listGoals,
+  touchGoal,
+  updateGoalStatus,
+} from "./goals";
+export type {
+  CreateGoalInput,
+  GoalMutationResult,
+  GoalResult,
+  GoalRow,
+  GoalStatus,
+  ListGoalsInput,
+  UpdateGoalStatusInput,
+} from "./goals";
 export { insertTelemetryEvent, listTelemetryEvents } from "./telemetry";
 export type { TelemetryRow } from "./telemetry";
 export {

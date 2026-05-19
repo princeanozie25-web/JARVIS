@@ -53,6 +53,7 @@ describe("schema", () => {
       expect.arrayContaining([
         "approvals",
         "_schema_migrations",
+        "goals",
         "long_term_memory",
         "long_term_memory_fts",
         "memory_embeddings",
@@ -115,6 +116,16 @@ describe("schema", () => {
       "supersedes_id",
       "created_at",
     ]);
+    expect(columnNames("goals")).toEqual([
+      "id",
+      "title",
+      "status",
+      "parent_id",
+      "created_at",
+      "last_touched",
+      "completed_at",
+      "source",
+    ]);
   });
 
   it("tracks applied schema migrations", () => {
@@ -128,6 +139,7 @@ describe("schema", () => {
       "007_project_state",
       "008_memory_candidates",
       "009_preferences",
+      "010_goals",
     ]);
   });
 });

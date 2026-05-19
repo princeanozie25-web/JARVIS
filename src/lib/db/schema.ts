@@ -10,6 +10,7 @@ const MIGRATION_IDS = [
   "007_project_state",
   "008_memory_candidates",
   "009_preferences",
+  "010_goals",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -217,6 +218,23 @@ CREATE INDEX IF NOT EXISTS idx_preferences_key_effective
 
 CREATE INDEX IF NOT EXISTS idx_preferences_supersedes
   ON preferences (supersedes_id);
+
+CREATE TABLE IF NOT EXISTS goals (
+  id            TEXT PRIMARY KEY,
+  title         TEXT NOT NULL,
+  status        TEXT NOT NULL CHECK (status IN ('active', 'met', 'missed', 'abandoned')),
+  parent_id     TEXT REFERENCES goals(id) ON DELETE SET NULL,
+  created_at    INTEGER NOT NULL,
+  last_touched  INTEGER NOT NULL,
+  completed_at  INTEGER,
+  source        TEXT NOT NULL DEFAULT 'user' CHECK (source = 'user')
+);
+
+CREATE INDEX IF NOT EXISTS idx_goals_status
+  ON goals (status, last_touched DESC);
+
+CREATE INDEX IF NOT EXISTS idx_goals_parent
+  ON goals (parent_id);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,
