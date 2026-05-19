@@ -8,12 +8,26 @@ import type {
 import type { RuntimeCommandCallRow } from "@/lib/db/node";
 
 type RuntimeCallStatus = RuntimeCommandCallRow["status"];
+type RuntimeAuditStatusFilter = RuntimeCallStatus | "all";
 
 export interface RuntimeCommandPanelProps {
   initialCommands?: RuntimeCommandSpec[];
   initialCalls?: RuntimeCommandCallRow[];
   initialEvents?: Record<string, RuntimeStreamEvent[]>;
+  initialAuditStatusFilter?: RuntimeAuditStatusFilter;
+  initialAuditCommandFilter?: string;
 }
+
+const RUNTIME_CALL_STATUSES: RuntimeCallStatus[] = [
+  "pending",
+  "approved",
+  "denied",
+  "running",
+  "completed",
+  "failed",
+  "timeout",
+  "cancelled",
+];
 
 function parseArgv(argvJson: string): string[] {
   try {
@@ -44,6 +58,33 @@ function isReadOnlyRuntimeCommand(command: RuntimeCommandSpec): boolean {
 
 function formatArgs(args: string[]): string {
   return args.length > 0 ? args.join(" ") : "(no args)";
+}
+
+function formatTime(value: number | null): string {
+  return value === null ? "not set" : new Date(value).toISOString();
+}
+
+function commandFilterOptions(calls: RuntimeCommandCallRow[]): string[] {
+  return Array.from(new Set(calls.map((call) => call.command_id))).sort();
+}
+
+export function filterRuntimeCommandAuditCalls(
+  calls: RuntimeCommandCallRow[],
+  input: {
+    statusFilter: RuntimeAuditStatusFilter;
+    commandFilter: string;
+  },
+): RuntimeCommandCallRow[] {
+  return [...calls]
+    .filter((call) =>
+      input.statusFilter === "all" ? true : call.status === input.statusFilter,
+    )
+    .filter((call) =>
+      input.commandFilter === "all"
+        ? true
+        : call.command_id === input.commandFilter,
+    )
+    .sort((a, b) => b.proposed_at - a.proposed_at);
 }
 
 function updateCallStatus(
@@ -95,6 +136,154 @@ function RuntimeOutputEvents({ events }: { events: RuntimeStreamEvent[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+export function RuntimeCommandAuditPanel({
+  calls,
+  initialStatusFilter = "all",
+  initialCommandFilter = "all",
+}: {
+  calls: RuntimeCommandCallRow[];
+  initialStatusFilter?: RuntimeAuditStatusFilter;
+  initialCommandFilter?: string;
+}) {
+  const [statusFilter, setStatusFilter] =
+    useState<RuntimeAuditStatusFilter>(initialStatusFilter);
+  const [commandFilter, setCommandFilter] = useState(initialCommandFilter);
+  const commandOptions = useMemo(() => commandFilterOptions(calls), [calls]);
+  const filteredCalls = useMemo(
+    () =>
+      filterRuntimeCommandAuditCalls(calls, {
+        statusFilter,
+        commandFilter,
+      }),
+    [calls, commandFilter, statusFilter],
+  );
+
+  return (
+    <section className="mt-6 border-t border-gray-800 pt-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-300">
+            Runtime Command Audit
+          </h3>
+          <p className="mt-1 text-xs text-gray-500">
+            Read-only audit view. Manual-only, read-only commands only,
+            workspace-bounded, no shell access.
+          </p>
+        </div>
+        <span className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-400">
+          latest first
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <select
+          aria-label="Audit status filter"
+          className="rounded-md border border-gray-800 bg-black px-3 py-2 text-sm outline-none"
+          value={statusFilter}
+          onChange={(event) =>
+            setStatusFilter(event.target.value as RuntimeAuditStatusFilter)
+          }
+        >
+          <option value="all">All statuses</option>
+          {RUNTIME_CALL_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {statusLabel(status)}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Audit command filter"
+          className="rounded-md border border-gray-800 bg-black px-3 py-2 text-sm outline-none"
+          value={commandFilter}
+          onChange={(event) => setCommandFilter(event.target.value)}
+        >
+          <option value="all">All commands</option>
+          {commandOptions.map((commandId) => (
+            <option key={commandId} value={commandId}>
+              {commandId}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {filteredCalls.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No runtime command audit rows match the selected filters.
+          </p>
+        ) : (
+          filteredCalls.map((call) => {
+            const argv = parseArgv(call.argv_json);
+            return (
+              <article
+                key={`audit-${call.id}`}
+                className="rounded-md border border-gray-800 p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-100">
+                      {call.command_id}
+                    </h4>
+                    <p className="mt-1 text-xs text-gray-500">
+                      status: {statusLabel(call.status)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500">call id: {call.id}</p>
+                </div>
+                <dl className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-400 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-gray-500">argv</dt>
+                    <dd>{formatArgs(argv)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">normalized workspace cwd</dt>
+                    <dd>{call.working_directory}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">proposed_at</dt>
+                    <dd>{formatTime(call.proposed_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">approved_at</dt>
+                    <dd>{formatTime(call.approved_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">started_at</dt>
+                    <dd>{formatTime(call.started_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">completed_at</dt>
+                    <dd>{formatTime(call.completed_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">exit_code</dt>
+                    <dd>{call.exit_code ?? "not set"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">stdout_ref</dt>
+                    <dd>{call.stdout_ref ?? "not captured"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">stderr_ref</dt>
+                    <dd>{call.stderr_ref ?? "not captured"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">error class/message</dt>
+                    <dd>
+                      {call.error_class ?? "none"}
+                      {call.error_message ? `: ${call.error_message}` : ""}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -183,6 +372,8 @@ export function RuntimeCommandPanel({
   initialCommands = [],
   initialCalls = [],
   initialEvents = {},
+  initialAuditStatusFilter = "all",
+  initialAuditCommandFilter = "all",
 }: RuntimeCommandPanelProps) {
   const [commands, setCommands] =
     useState<RuntimeCommandSpec[]>(initialCommands);
@@ -210,10 +401,12 @@ export function RuntimeCommandPanel({
         if (!response.ok) return;
         const data = (await response.json()) as {
           commands: RuntimeCommandSpec[];
+          calls?: RuntimeCommandCallRow[];
           workspaceRoot?: string;
         };
         if (cancelled) return;
         setCommands(data.commands);
+        if (initialCalls.length === 0) setCalls(data.calls ?? []);
         setWorkspaceRoot(data.workspaceRoot ?? null);
         setSelectedCommandId(
           (current) =>
@@ -227,7 +420,7 @@ export function RuntimeCommandPanel({
     return () => {
       cancelled = true;
     };
-  }, [initialCommands.length]);
+  }, [initialCalls.length, initialCommands.length]);
 
   const readOnlyCommands = useMemo(
     () => commands.filter(isReadOnlyRuntimeCommand),
@@ -441,6 +634,12 @@ export function RuntimeCommandPanel({
           ))
         )}
       </div>
+
+      <RuntimeCommandAuditPanel
+        calls={calls}
+        initialStatusFilter={initialAuditStatusFilter}
+        initialCommandFilter={initialAuditCommandFilter}
+      />
     </section>
   );
 }

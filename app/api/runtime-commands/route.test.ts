@@ -13,6 +13,7 @@ import {
 import { applyMigrations } from "@/lib/db/schema";
 import { listTelemetryEvents } from "@/lib/db/telemetry";
 import { runtimeExecutionController } from "@/lib/runtime-commands";
+import { GET as getCommandDetail } from "./[callId]/route";
 import { POST as approveCommand } from "./[callId]/approve/route";
 import { POST as cancelCommand } from "./[callId]/cancel/route";
 import { POST as denyCommand } from "./[callId]/deny/route";
@@ -118,13 +119,17 @@ afterEach(() => {
 
 describe("runtime command API", () => {
   it("lists only read-only runtime commands", async () => {
-    const response = await listCommands();
+    const response = await listCommands(
+      new Request("http://localhost/api/runtime-commands"),
+    );
     const body = (await response.json()) as {
       commands: Array<{
         id: string;
         requiredSafetyTag: string;
         reversibilityClass: string;
       }>;
+      calls: unknown[];
+      workspaceRoot: string;
     };
 
     expect(body.commands.map((command) => command.id).sort()).toEqual([
@@ -140,6 +145,87 @@ describe("runtime command API", () => {
           command.reversibilityClass === "PURE_READ",
       ),
     ).toBe(true);
+    expect(body.calls).toEqual([]);
+    expect(body.workspaceRoot).toBe(workspaceRoot);
+  });
+
+  it("lists runtime command calls with status and command filters latest first", async () => {
+    createRuntimeCommandCall(db, {
+      id: "runtime-call-old",
+      sessionId: "session-1",
+      commandId: "git.status",
+      command: "git",
+      argv: ["status", "--short"],
+      workingDirectory: ".",
+      requiredSafetyTag: "ALLOW",
+      reversibilityClass: "PURE_READ",
+      status: "pending",
+      proposedAt: 1_000,
+    });
+    createRuntimeCommandCall(db, {
+      id: "runtime-call-new",
+      sessionId: "session-1",
+      commandId: "node.version",
+      command: "node",
+      argv: ["--version"],
+      workingDirectory: ".",
+      requiredSafetyTag: "ALLOW",
+      reversibilityClass: "PURE_READ",
+      status: "completed",
+      proposedAt: 2_000,
+      completedAt: 3_000,
+      stdoutRef: "runtime-inline://runtime-call-new/stdout",
+      exitCode: 0,
+    });
+
+    const response = await listCommands(
+      new Request(
+        "http://localhost/api/runtime-commands?status=completed&commandId=node.version",
+      ),
+    );
+    const body = (await response.json()) as {
+      calls: Array<{ id: string; command_id: string; status: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.calls).toHaveLength(1);
+    expect(body.calls[0]).toMatchObject({
+      id: "runtime-call-new",
+      command_id: "node.version",
+      status: "completed",
+    });
+  });
+
+  it("returns runtime command call detail", async () => {
+    createRuntimeCommandCall(db, {
+      id: "runtime-call-1",
+      sessionId: "session-1",
+      commandId: "node.version",
+      command: "node",
+      argv: ["--version"],
+      workingDirectory: ".",
+      requiredSafetyTag: "ALLOW",
+      reversibilityClass: "PURE_READ",
+      status: "failed",
+      proposedAt: 1_000,
+      errorClass: "RuntimeCommandFailed",
+      errorMessage: "boom",
+    });
+
+    const response = await getCommandDetail(
+      jsonRequest({}),
+      routeContext("runtime-call-1"),
+    );
+    const body = (await response.json()) as {
+      call: { id: string; error_class: string; error_message: string };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.call).toMatchObject({
+      id: "runtime-call-1",
+      error_class: "RuntimeCommandFailed",
+      error_message: "boom",
+    });
   });
 
   it("proposes a valid command", async () => {
