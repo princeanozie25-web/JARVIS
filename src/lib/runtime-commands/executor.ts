@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { spawn, type SpawnOptionsWithoutStdio } from "node:child_process";
 import type DatabaseType from "better-sqlite3";
 import {
@@ -40,6 +41,7 @@ export interface ExecuteRuntimeCommandInput {
   controller?: RuntimeExecutionController;
   spawnCommand?: RuntimeCommandSpawn;
   outputLimitBytes?: number;
+  onStreamEvent?: (event: RuntimeStreamEvent) => void;
   now?: () => number;
 }
 
@@ -75,6 +77,68 @@ export type RuntimeCommandExecutionResult =
       exitCode?: number | null;
     };
 
+interface RuntimeStreamEventBase {
+  command_call_id: string;
+  command_id: string;
+  timestamp: number;
+}
+
+export type RuntimeStreamEvent =
+  | (RuntimeStreamEventBase & {
+      type: "runtime_command_started";
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_stdout";
+      chunk: string;
+      bytes: number;
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_stderr";
+      chunk: string;
+      bytes: number;
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_command_completed";
+      exit_code: number;
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_command_failed";
+      exit_code: number | null;
+      error_class: string;
+      error_message: string;
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_command_timeout";
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_command_cancelled";
+    })
+  | (RuntimeStreamEventBase & {
+      type: "runtime_output_truncated";
+      stream: "stdout" | "stderr";
+      limit_bytes: number;
+      observed_bytes: number;
+    });
+
+export type StreamRuntimeCommandExecutionInput = Omit<
+  ExecuteRuntimeCommandInput,
+  "onStreamEvent"
+>;
+
+export interface RuntimeCommandStream {
+  events: AsyncIterable<RuntimeStreamEvent>;
+  emitter: RuntimeStreamEventEmitter;
+  result: Promise<RuntimeCommandExecutionResult>;
+}
+
+interface BoundedOutputAppendResult {
+  text: string;
+  bytes: number;
+  observedBytes: number;
+  truncated: boolean;
+  newlyTruncated: boolean;
+}
+
 class BoundedOutputCapture {
   private chunks: Buffer[] = [];
   private capturedBytes = 0;
@@ -83,24 +147,45 @@ class BoundedOutputCapture {
 
   constructor(private readonly limitBytes: number) {}
 
-  append(chunk: unknown): void {
+  append(chunk: unknown): BoundedOutputAppendResult {
     const buffer = Buffer.isBuffer(chunk)
       ? chunk
       : Buffer.from(String(chunk), "utf8");
+    const wasTruncated = this.truncated;
     this.observedBytes += buffer.byteLength;
     const remaining = this.limitBytes - this.capturedBytes;
     if (remaining <= 0) {
       this.truncated = true;
-      return;
+      return {
+        text: "",
+        bytes: buffer.byteLength,
+        observedBytes: this.observedBytes,
+        truncated: true,
+        newlyTruncated: !wasTruncated,
+      };
     }
     if (buffer.byteLength > remaining) {
-      this.chunks.push(buffer.subarray(0, remaining));
+      const captured = buffer.subarray(0, remaining);
+      this.chunks.push(captured);
       this.capturedBytes += remaining;
       this.truncated = true;
-      return;
+      return {
+        text: captured.toString("utf8"),
+        bytes: buffer.byteLength,
+        observedBytes: this.observedBytes,
+        truncated: true,
+        newlyTruncated: !wasTruncated,
+      };
     }
     this.chunks.push(buffer);
     this.capturedBytes += buffer.byteLength;
+    return {
+      text: buffer.toString("utf8"),
+      bytes: buffer.byteLength,
+      observedBytes: this.observedBytes,
+      truncated: false,
+      newlyTruncated: false,
+    };
   }
 
   toOutput(ref: string | null): RuntimeCommandCapturedOutput {
@@ -110,6 +195,63 @@ class BoundedOutputCapture {
       truncated: this.truncated,
       ref,
     };
+  }
+}
+
+class AsyncRuntimeEventQueue implements AsyncIterable<RuntimeStreamEvent> {
+  private events: RuntimeStreamEvent[] = [];
+  private resolvers: Array<
+    (value: IteratorResult<RuntimeStreamEvent>) => void
+  > = [];
+  private closed = false;
+
+  push(event: RuntimeStreamEvent): void {
+    const resolver = this.resolvers.shift();
+    if (resolver) {
+      resolver({ value: event, done: false });
+      return;
+    }
+    this.events.push(event);
+  }
+
+  close(): void {
+    this.closed = true;
+    for (const resolver of this.resolvers.splice(0)) {
+      resolver({ value: undefined, done: true });
+    }
+  }
+
+  [Symbol.asyncIterator](): AsyncIterator<RuntimeStreamEvent> {
+    return {
+      next: () => {
+        const event = this.events.shift();
+        if (event) {
+          return Promise.resolve({ value: event, done: false });
+        }
+        if (this.closed) {
+          return Promise.resolve({ value: undefined, done: true });
+        }
+        return new Promise<IteratorResult<RuntimeStreamEvent>>((resolve) => {
+          this.resolvers.push(resolve);
+        });
+      },
+    };
+  }
+}
+
+export class RuntimeStreamEventEmitter extends EventEmitter {
+  private history: RuntimeStreamEvent[] = [];
+
+  emitRuntimeEvent(event: RuntimeStreamEvent): boolean {
+    this.history.push(event);
+    const emittedGeneric = this.emit("event", event);
+    const emittedSpecific = this.emit(event.type, event);
+    return emittedGeneric || emittedSpecific;
+  }
+
+  onRuntimeEvent(listener: (event: RuntimeStreamEvent) => void): this {
+    for (const event of this.history) listener(event);
+    return this.on("event", listener);
   }
 }
 
@@ -153,6 +295,13 @@ function emitRuntimeExecutionTelemetry(
       .filter(Boolean)
       .join(" "),
   });
+}
+
+function emitStreamEvent(
+  input: ExecuteRuntimeCommandInput,
+  event: RuntimeStreamEvent,
+): void {
+  input.onStreamEvent?.(event);
 }
 
 function isReadOnlyRuntimeCommand(spec: RuntimeCommandSpec): boolean {
@@ -278,6 +427,12 @@ export class RuntimeCommandExecutor {
       commandId: call.command_id,
       notes: `shell=false`,
     });
+    emitStreamEvent(input, {
+      type: "runtime_command_started",
+      command_call_id: call.id,
+      command_id: call.command_id,
+      timestamp: startedAt,
+    });
 
     const context = controller.createContext({
       commandCallId: call.id,
@@ -300,12 +455,22 @@ export class RuntimeCommandExecutor {
       };
 
       const finishCancelled = (): void => {
+        if (settled) return;
         const latest = getRuntimeCommandCall(this.db, call.id);
         const status =
           context.cancellation_source === "timeout" ||
           latest?.status === "timeout"
             ? "timeout"
             : "cancelled";
+        emitStreamEvent(input, {
+          type:
+            status === "timeout"
+              ? "runtime_command_timeout"
+              : "runtime_command_cancelled",
+          command_call_id: call.id,
+          command_id: call.command_id,
+          timestamp: input.now?.() ?? Date.now(),
+        });
         settle({
           ok: false,
           status,
@@ -358,6 +523,16 @@ export class RuntimeCommandExecutor {
           commandId: call.command_id,
           notes: "error_class=RuntimeCommandSpawnFailed",
         });
+        emitStreamEvent(input, {
+          type: "runtime_command_failed",
+          command_call_id: call.id,
+          command_id: call.command_id,
+          timestamp: failedAt,
+          exit_code: null,
+          error_class: "RuntimeCommandSpawnFailed",
+          error_message:
+            error instanceof Error ? error.message : "Runtime spawn failed.",
+        });
         settle({
           ok: false,
           status: "failed",
@@ -371,8 +546,54 @@ export class RuntimeCommandExecutor {
         return;
       }
 
-      child.stdout?.on("data", (chunk) => stdout.append(chunk));
-      child.stderr?.on("data", (chunk) => stderr.append(chunk));
+      child.stdout?.on("data", (chunk) => {
+        const appended = stdout.append(chunk);
+        if (appended.text) {
+          emitStreamEvent(input, {
+            type: "runtime_stdout",
+            command_call_id: call.id,
+            command_id: call.command_id,
+            timestamp: input.now?.() ?? Date.now(),
+            chunk: appended.text,
+            bytes: appended.bytes,
+          });
+        }
+        if (appended.newlyTruncated) {
+          emitStreamEvent(input, {
+            type: "runtime_output_truncated",
+            command_call_id: call.id,
+            command_id: call.command_id,
+            timestamp: input.now?.() ?? Date.now(),
+            stream: "stdout",
+            limit_bytes: outputLimitBytes,
+            observed_bytes: appended.observedBytes,
+          });
+        }
+      });
+      child.stderr?.on("data", (chunk) => {
+        const appended = stderr.append(chunk);
+        if (appended.text) {
+          emitStreamEvent(input, {
+            type: "runtime_stderr",
+            command_call_id: call.id,
+            command_id: call.command_id,
+            timestamp: input.now?.() ?? Date.now(),
+            chunk: appended.text,
+            bytes: appended.bytes,
+          });
+        }
+        if (appended.newlyTruncated) {
+          emitStreamEvent(input, {
+            type: "runtime_output_truncated",
+            command_call_id: call.id,
+            command_id: call.command_id,
+            timestamp: input.now?.() ?? Date.now(),
+            stream: "stderr",
+            limit_bytes: outputLimitBytes,
+            observed_bytes: appended.observedBytes,
+          });
+        }
+      });
       child.once("error", (error) => {
         if (context.signal.aborted) {
           finishCancelled();
@@ -392,6 +613,15 @@ export class RuntimeCommandExecutor {
           callId: call.id,
           commandId: call.command_id,
           notes: "error_class=RuntimeCommandProcessError",
+        });
+        emitStreamEvent(input, {
+          type: "runtime_command_failed",
+          command_call_id: call.id,
+          command_id: call.command_id,
+          timestamp: failedAt,
+          exit_code: null,
+          error_class: "RuntimeCommandProcessError",
+          error_message: error.message,
         });
         settle({
           ok: false,
@@ -440,6 +670,13 @@ export class RuntimeCommandExecutor {
             commandId: call.command_id,
             notes: `exit_code=${exitCode}`,
           });
+          emitStreamEvent(input, {
+            type: "runtime_command_completed",
+            command_call_id: call.id,
+            command_id: call.command_id,
+            timestamp: completedAt,
+            exit_code: exitCode,
+          });
           settle({
             ok: true,
             status: "completed",
@@ -466,6 +703,15 @@ export class RuntimeCommandExecutor {
           commandId: call.command_id,
           notes: `exit_code=${exitCode}`,
         });
+        emitStreamEvent(input, {
+          type: "runtime_command_failed",
+          command_call_id: call.id,
+          command_id: call.command_id,
+          timestamp: completedAt,
+          exit_code: exitCode,
+          error_class: "RuntimeCommandNonZeroExit",
+          error_message: `Runtime command exited with code ${exitCode}.`,
+        });
         settle({
           ok: false,
           status: "failed",
@@ -485,4 +731,20 @@ export function executeRuntimeCommand(
   input: ExecuteRuntimeCommandInput,
 ): Promise<RuntimeCommandExecutionResult> {
   return new RuntimeCommandExecutor(db).runApproved(input);
+}
+
+export function streamRuntimeCommandExecution(
+  db: DatabaseType.Database,
+  input: StreamRuntimeCommandExecutionInput,
+): RuntimeCommandStream {
+  const queue = new AsyncRuntimeEventQueue();
+  const emitter = new RuntimeStreamEventEmitter();
+  const result = executeRuntimeCommand(db, {
+    ...input,
+    onStreamEvent: (event) => {
+      queue.push(event);
+      emitter.emitRuntimeEvent(event);
+    },
+  }).finally(() => queue.close());
+  return { events: queue, emitter, result };
 }

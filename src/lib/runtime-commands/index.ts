@@ -25,7 +25,9 @@ export type {
 export {
   RUNTIME_COMMAND_OUTPUT_LIMIT_BYTES,
   RuntimeCommandExecutor,
+  RuntimeStreamEventEmitter,
   executeRuntimeCommand,
+  streamRuntimeCommandExecution,
 } from "./executor";
 export type {
   ExecuteRuntimeCommandInput,
@@ -33,6 +35,9 @@ export type {
   RuntimeCommandCapturedOutput,
   RuntimeCommandExecutionResult,
   RuntimeCommandSpawn,
+  RuntimeCommandStream,
+  RuntimeStreamEvent,
+  StreamRuntimeCommandExecutionInput,
 } from "./executor";
 
 export type RuntimeCommandId =

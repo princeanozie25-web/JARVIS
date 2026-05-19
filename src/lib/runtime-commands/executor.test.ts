@@ -16,9 +16,11 @@ import {
   approveRuntimeCommandCall,
   createDefaultRuntimeCommandRegistry,
   proposeRuntimeCommandCall,
+  streamRuntimeCommandExecution,
   type RuntimeChildProcess,
   type RuntimeCommandSpawn,
   type RuntimeCommandSpec,
+  type RuntimeStreamEvent,
 } from ".";
 
 let db: Database.Database;
@@ -80,6 +82,19 @@ function proposeAndApprove(input: {
   });
   if (!approved.ok) throw new Error(approved.reason);
   return approved.call;
+}
+
+async function collectStream(input: {
+  events: AsyncIterable<RuntimeStreamEvent>;
+  result: Promise<unknown>;
+}): Promise<{ events: RuntimeStreamEvent[]; result: unknown }> {
+  const events: RuntimeStreamEvent[] = [];
+  const collecting = (async () => {
+    for await (const event of input.events) events.push(event);
+  })();
+  const result = await input.result;
+  await collecting;
+  return { events, result };
 }
 
 beforeEach(() => {
@@ -364,5 +379,261 @@ describe("RuntimeCommandExecutor", () => {
     expect(spawnCommand.calls.every((call) => call[2].shell === false)).toBe(
       true,
     );
+  });
+
+  it("streams started, stdout, stderr, and completed events", async () => {
+    proposeAndApprove({
+      callId: "runtime-call-1",
+      commandId: "node.version",
+      argv: ["--version"],
+      workingDirectory: "none",
+    });
+    const spawnCommand = makeSpawn((child) => {
+      queueMicrotask(() => {
+        child.stdout.write("node-out");
+        child.stderr.write("node-err");
+        child.close(0);
+      });
+    });
+
+    const stream = streamRuntimeCommandExecution(db, {
+      callId: "runtime-call-1",
+      controller,
+      spawnCommand,
+      now: () => 5_000,
+    });
+    const emitted: RuntimeStreamEvent[] = [];
+    stream.emitter.onRuntimeEvent((event) => emitted.push(event));
+    const { events, result } = await collectStream(stream);
+
+    expect(result).toMatchObject({ ok: true, status: "completed" });
+    expect(events).toEqual([
+      {
+        type: "runtime_command_started",
+        command_call_id: "runtime-call-1",
+        command_id: "node.version",
+        timestamp: 5_000,
+      },
+      {
+        type: "runtime_stdout",
+        command_call_id: "runtime-call-1",
+        command_id: "node.version",
+        timestamp: 5_000,
+        chunk: "node-out",
+        bytes: 8,
+      },
+      {
+        type: "runtime_stderr",
+        command_call_id: "runtime-call-1",
+        command_id: "node.version",
+        timestamp: 5_000,
+        chunk: "node-err",
+        bytes: 8,
+      },
+      {
+        type: "runtime_command_completed",
+        command_call_id: "runtime-call-1",
+        command_id: "node.version",
+        timestamp: 5_000,
+        exit_code: 0,
+      },
+    ]);
+    expect(spawnCommand.calls[0][2].shell).toBe(false);
+    expect(emitted).toEqual(events);
+  });
+
+  it("streams failed events", async () => {
+    proposeAndApprove({
+      callId: "runtime-call-1",
+      commandId: "node.version",
+      argv: ["--version"],
+      workingDirectory: "none",
+    });
+    const spawnCommand = makeSpawn((child) => {
+      queueMicrotask(() => child.close(2));
+    });
+
+    const { events, result } = await collectStream(
+      streamRuntimeCommandExecution(db, {
+        callId: "runtime-call-1",
+        controller,
+        spawnCommand,
+        now: () => 6_000,
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: false, status: "failed", exitCode: 2 });
+    expect(events).toContainEqual({
+      type: "runtime_command_failed",
+      command_call_id: "runtime-call-1",
+      command_id: "node.version",
+      timestamp: 6_000,
+      exit_code: 2,
+      error_class: "RuntimeCommandNonZeroExit",
+      error_message: "Runtime command exited with code 2.",
+    });
+  });
+
+  it("streams timeout events", async () => {
+    vi.useFakeTimers();
+    const registry = new RuntimeCommandRegistry();
+    registry.register({
+      ...createDefaultRuntimeCommandRegistry().get("node.version"),
+      timeoutMs: 100,
+    });
+    createRuntimeCommandCall(db, {
+      id: "runtime-call-1",
+      sessionId: "session-1",
+      commandId: "node.version",
+      command: "node",
+      argv: ["--version"],
+      workingDirectory: "none",
+      requiredSafetyTag: "ALLOW",
+      reversibilityClass: "PURE_READ",
+      status: "approved",
+      proposedAt: 1_000,
+      approvedAt: 2_000,
+    });
+    const spawnCommand = makeSpawn();
+    const stream = streamRuntimeCommandExecution(db, {
+      callId: "runtime-call-1",
+      registry,
+      controller,
+      spawnCommand,
+      now: () => 7_000,
+    });
+    const collecting = collectStream(stream);
+
+    await vi.advanceTimersByTimeAsync(100);
+    const { events, result } = await collecting;
+
+    expect(result).toMatchObject({ ok: false, status: "timeout" });
+    expect(events).toContainEqual({
+      type: "runtime_command_timeout",
+      command_call_id: "runtime-call-1",
+      command_id: "node.version",
+      timestamp: 7_000,
+    });
+  });
+
+  it("streams cancelled events", async () => {
+    proposeAndApprove({
+      callId: "runtime-call-1",
+      commandId: "node.version",
+      argv: ["--version"],
+      workingDirectory: "none",
+    });
+    const spawnCommand = makeSpawn();
+    const stream = streamRuntimeCommandExecution(db, {
+      callId: "runtime-call-1",
+      controller,
+      spawnCommand,
+      now: () => 8_000,
+    });
+    const collecting = collectStream(stream);
+
+    controller.cancel("runtime-call-1", { db, now: () => 9_000 });
+    const { events, result } = await collecting;
+
+    expect(result).toMatchObject({ ok: false, status: "cancelled" });
+    expect(events).toContainEqual({
+      type: "runtime_command_cancelled",
+      command_call_id: "runtime-call-1",
+      command_id: "node.version",
+      timestamp: 8_000,
+    });
+  });
+
+  it("streams truncation events and bounded chunks", async () => {
+    proposeAndApprove({
+      callId: "runtime-call-1",
+      commandId: "node.version",
+      argv: ["--version"],
+      workingDirectory: "none",
+    });
+    const spawnCommand = makeSpawn((child) => {
+      queueMicrotask(() => {
+        child.stdout.write("abcdef");
+        child.stderr.write("ghijkl");
+        child.close(0);
+      });
+    });
+
+    const { events, result } = await collectStream(
+      streamRuntimeCommandExecution(db, {
+        callId: "runtime-call-1",
+        controller,
+        spawnCommand,
+        outputLimitBytes: 3,
+        now: () => 10_000,
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      stdout: { text: "abc", truncated: true },
+      stderr: { text: "ghi", truncated: true },
+    });
+    expect(events).toEqual(
+      expect.arrayContaining([
+        {
+          type: "runtime_stdout",
+          command_call_id: "runtime-call-1",
+          command_id: "node.version",
+          timestamp: 10_000,
+          chunk: "abc",
+          bytes: 6,
+        },
+        {
+          type: "runtime_output_truncated",
+          command_call_id: "runtime-call-1",
+          command_id: "node.version",
+          timestamp: 10_000,
+          stream: "stdout",
+          limit_bytes: 3,
+          observed_bytes: 6,
+        },
+        {
+          type: "runtime_output_truncated",
+          command_call_id: "runtime-call-1",
+          command_id: "node.version",
+          timestamp: 10_000,
+          stream: "stderr",
+          limit_bytes: 3,
+          observed_bytes: 6,
+        },
+      ]),
+    );
+  });
+
+  it("keeps stream payloads free of environment and secret values", async () => {
+    process.env.JARVIS_STREAM_TEST_SECRET = "super-secret-value";
+    try {
+      proposeAndApprove({
+        callId: "runtime-call-1",
+        commandId: "node.version",
+        argv: ["--version"],
+        workingDirectory: "none",
+      });
+      const spawnCommand = makeSpawn((child) => {
+        queueMicrotask(() => child.close(0));
+      });
+
+      const { events } = await collectStream(
+        streamRuntimeCommandExecution(db, {
+          callId: "runtime-call-1",
+          controller,
+          spawnCommand,
+        }),
+      );
+      const serialized = JSON.stringify(events);
+
+      expect(serialized).not.toContain("JARVIS_STREAM_TEST_SECRET");
+      expect(serialized).not.toContain("super-secret-value");
+      expect(serialized).not.toContain("env");
+      expect(spawnCommand.calls[0][2].shell).toBe(false);
+    } finally {
+      delete process.env.JARVIS_STREAM_TEST_SECRET;
+    }
   });
 });

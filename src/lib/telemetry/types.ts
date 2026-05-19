@@ -88,7 +88,9 @@ export type TelemetryEventType =
   | "runtime_command_started"
   | "runtime_command_completed"
   | "runtime_command_failed"
-  | "runtime_command_output_truncated";
+  | "runtime_command_output_truncated"
+  | "runtime_api_request"
+  | "runtime_api_denied";
 
 export interface TelemetryEvent {
   timestamp: number;
