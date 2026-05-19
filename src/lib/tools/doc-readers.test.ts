@@ -748,27 +748,36 @@ describe("doc.read_pdf", () => {
     });
   });
 
-  it("parses the real ReportLab audit PDF through the runtime path", async () => {
+  it("parses the tiny PDF fixture through the runtime path", async () => {
     writeFileSync(
-      join(workspaceRoot, "audit.pdf"),
-      readFileSync(join(process.cwd(), "docs", "JARVIS_Audit_2026-05-16.pdf")),
+      join(workspaceRoot, "tiny-runtime.pdf"),
+      readFileSync(
+        join(
+          process.cwd(),
+          "src",
+          "lib",
+          "tools",
+          "__fixtures__",
+          "tiny-runtime.pdf",
+        ),
+      ),
     );
 
-    const result = await readPdf({ path: "audit.pdf" });
+    const result = await readPdf({ path: "tiny-runtime.pdf" });
 
     expect(result).toMatchObject({
       ok: true,
       status: "COMPLETED",
       data: {
-        path: "audit.pdf",
+        path: "tiny-runtime.pdf",
         extension: ".pdf",
-        pagesRead: 9,
-        totalPages: 9,
+        pagesRead: 1,
+        totalPages: 1,
         truncated: false,
       },
     });
-    expect((result.data as { text?: string }).text?.length).toBeGreaterThan(
-      1000,
+    expect((result.data as { text?: string }).text).toContain(
+      "Tiny JARVIS PDF fixture",
     );
     expect(JSON.stringify(result.data)).not.toContain("pdf_parse_error");
   });

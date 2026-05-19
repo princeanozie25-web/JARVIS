@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-19 12:23am GMT+1
+# [jarvis] recent context, 2026-05-19 7:19am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,886t read) | 2,395,237t work | 99% savings
+Stats: 50 obs (22,064t read) | 1,892,465t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,15 +25,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 17, 2026
 
-373 7:02p ⚖️ Rollback Hardening Architecture for Filesystem Mutation Tools
-374 7:03p 🟣 Rollback Hardening: Atomic rollback_id Linkage via SQLite Transaction
-375 " 🟣 Rollback Persistence Recovery: persistRollbackOrRecover Pattern in fs-write.ts
-376 " 🟣 fs.undo Hardened Selection via getLatestAvailableRollbackForSession
-377 " 🟣 Rollback Hardening Test Suite: Failure Injection + Linkage + Undo Skip Tests
 378 7:15p 🟣 fs.delete_file Tool Implemented with Reversible Trash System
-379 " 🟣 CONFIRM_ALWAYS Safety Tier Enforced — Session Approval Blocked for Delete
-380 " 🔵 Jarvis Tool Registry Architecture — Phase 2 Filesystem Tool Set
-381 " 🟣 Full Test Coverage Added for fs.delete_file Including Rollback, Undo, and Edge Cases
 382 7:19p ⚖️ Phase 2 Post-Delete Safety Audit Scope Defined
 383 7:20p 🔵 fs.delete_file Safety Architecture: Full Code-Path Audit Results
 384 " 🔵 Phase 2 CI Gates: All Pass — lint, tsc, build, test (255/255), eval (0 failures)
@@ -79,5 +71,16 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 456 11:46p 🟣 JARVIS Phase 3C.1 Implemented: session_summaries Table, CRUD Helpers, and Telemetry
 457 " ⚖️ session_summaries Self-Referential FK Requires Column Order Discipline in SQLite DDL
 
-Access 2395k tokens of past work via get_observations([IDs]) or mem-search skill.
+### May 19, 2026
+
+459 7:12a ⚖️ Phase 3D Readiness Audit Initiated for JARVIS Memory System
+460 7:14a 🔵 JARVIS Working Tree Not Clean — Four Uncommitted Changes Found
+461 7:15a 🔵 Phase 3C Last Commit Confirmed — 28 Files, 2473 Insertions
+462 " 🔵 Phase 3C Context NOT Injected into Live Chat Prompts
+463 " 🔵 Memory Candidate Accept/Edit Buttons Confirmed Hard-Disabled in UI
+464 " 🔵 memory.recall Enforces Sensitivity Ceiling at DB Query Level
+465 " 🔵 project_state API is GET-Only — No Write Endpoint Exists
+466 " 🔵 Build/Lint/TypeScript Pass; One Test Failure Caused by Deleted PDF Artifact
+
+Access 1892k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
