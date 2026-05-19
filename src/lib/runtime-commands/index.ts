@@ -1,4 +1,11 @@
+import { createHash } from "node:crypto";
 import type DatabaseType from "better-sqlite3";
+import {
+  createRuntimeCommandCall,
+  getRuntimeCommandCall,
+  updateRuntimeCommandCallStatus,
+  type RuntimeCommandCallRow,
+} from "../db/runtime-command-calls";
 import { insertTelemetryEvent } from "../db/telemetry";
 import type { SafetyTag } from "../router";
 import type { ReversibilityClass } from "../tools/types";
@@ -51,6 +58,37 @@ export interface RuntimeCommandRegistryOptions {
   now?: () => number;
 }
 
+export interface ProposeRuntimeCommandCallInput {
+  sessionId: string;
+  commandId: string;
+  argv?: string[];
+  workingDirectory: string;
+  callId?: string;
+  registry?: RuntimeCommandRegistry;
+  now?: () => number;
+  newId?: () => string;
+}
+
+export interface RuntimeCommandApprovalMetadata {
+  requiredSafetyTag: SafetyTag;
+  scopeHash: string;
+  approvalRequired: boolean;
+  decision: "PENDING";
+}
+
+export type RuntimeCommandProposalResult =
+  | {
+      ok: true;
+      call: RuntimeCommandCallRow;
+      callId: string;
+      approval: RuntimeCommandApprovalMetadata;
+    }
+  | { ok: false; status: "disabled" | "not_found" | "invalid"; reason: string };
+
+export type RuntimeCommandApprovalResult =
+  | { ok: true; call: RuntimeCommandCallRow }
+  | { ok: false; status: "not_found" | "not_pending"; reason: string };
+
 const DANGEROUS_SHELL_TOKEN_PATTERNS: RegExp[] = [
   /;/,
   /&/,
@@ -89,6 +127,27 @@ function emitTelemetry(
 
 function hasDangerousShellToken(value: string): boolean {
   return DANGEROUS_SHELL_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function newCallId(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+export function runtimeCommandScopeHash(input: {
+  commandId: string;
+  argv: string[];
+  workingDirectory: string;
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        commandId: input.commandId,
+        argv: input.argv,
+        workingDirectory: input.workingDirectory,
+      }),
+      "utf8",
+    )
+    .digest("hex");
 }
 
 function validateSpec(spec: RuntimeCommandSpec): void {
@@ -341,4 +400,175 @@ export function validateRuntimeCommandInput(
   options: RuntimeCommandRegistryOptions = {},
 ): RuntimeCommandValidationResult {
   return runtimeCommandRegistry.validateInput(input, options);
+}
+
+function emitRuntimeCommandApprovalTelemetry(
+  db: DatabaseType.Database,
+  input: {
+    eventType:
+      | "runtime_command_proposed"
+      | "runtime_command_approved"
+      | "runtime_command_denied"
+      | "runtime_command_approval_expired";
+    timestamp: number;
+    success: boolean;
+    callId: string;
+    commandId: string;
+    notes?: string;
+  },
+): void {
+  insertTelemetryEvent(db, {
+    timestamp: input.timestamp,
+    event_type: input.eventType,
+    success: input.success,
+    execution_id: input.callId,
+    tool_name: input.commandId,
+    notes: [
+      `call_id=${input.callId}`,
+      `command_id=${input.commandId}`,
+      input.notes,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  });
+}
+
+function registryFor(
+  registry: RuntimeCommandRegistry | undefined,
+): RuntimeCommandRegistry {
+  return registry ?? runtimeCommandRegistry;
+}
+
+export function proposeRuntimeCommandCall(
+  db: DatabaseType.Database,
+  input: ProposeRuntimeCommandCallInput,
+): RuntimeCommandProposalResult {
+  const registry = registryFor(input.registry);
+  const validated = registry.validateInput(
+    { id: input.commandId, args: input.argv },
+    { db, now: input.now },
+  );
+  if (!validated.ok) return validated;
+
+  const proposedAt = input.now?.() ?? Date.now();
+  const callId = input.callId ?? input.newId?.() ?? newCallId();
+  const scopeHash = runtimeCommandScopeHash({
+    commandId: validated.spec.id,
+    argv: validated.args,
+    workingDirectory: input.workingDirectory,
+  });
+  const call = createRuntimeCommandCall(db, {
+    id: callId,
+    sessionId: input.sessionId,
+    commandId: validated.spec.id,
+    command: validated.spec.command,
+    argv: validated.args,
+    workingDirectory: input.workingDirectory,
+    requiredSafetyTag: validated.spec.requiredSafetyTag,
+    reversibilityClass: validated.spec.reversibilityClass,
+    status: "pending",
+    proposedAt,
+  });
+  const approval: RuntimeCommandApprovalMetadata = {
+    requiredSafetyTag: validated.spec.requiredSafetyTag,
+    scopeHash,
+    approvalRequired: validated.spec.requiredSafetyTag !== "ALLOW",
+    decision: "PENDING",
+  };
+
+  emitRuntimeCommandApprovalTelemetry(db, {
+    eventType: "runtime_command_proposed",
+    timestamp: proposedAt,
+    success: true,
+    callId,
+    commandId: validated.spec.id,
+    notes: `required_safety_tag=${approval.requiredSafetyTag} scope_hash=${approval.scopeHash} approval_required=${approval.approvalRequired}`,
+  });
+
+  return { ok: true, call, callId, approval };
+}
+
+function updatePendingRuntimeCommandApproval(
+  db: DatabaseType.Database,
+  input: {
+    callId: string;
+    status: "approved" | "denied";
+    at?: number;
+    eventType:
+      | "runtime_command_approved"
+      | "runtime_command_denied"
+      | "runtime_command_approval_expired";
+    errorClass?: string;
+    errorMessage?: string;
+  },
+): RuntimeCommandApprovalResult {
+  const row = getRuntimeCommandCall(db, input.callId);
+  if (!row) {
+    return { ok: false, status: "not_found", reason: "not_found" };
+  }
+  if (row.status !== "pending") {
+    return { ok: false, status: "not_pending", reason: "not_pending" };
+  }
+
+  const at = input.at ?? Date.now();
+  const updated = updateRuntimeCommandCallStatus(db, input.callId, {
+    status: input.status,
+    at,
+    errorClass: input.errorClass,
+    errorMessage: input.errorMessage,
+  });
+  if (!updated) {
+    return { ok: false, status: "not_found", reason: "not_found" };
+  }
+
+  emitRuntimeCommandApprovalTelemetry(db, {
+    eventType: input.eventType,
+    timestamp: at,
+    success: true,
+    callId: updated.id,
+    commandId: updated.command_id,
+    notes: `status=${updated.status}`,
+  });
+
+  return { ok: true, call: updated };
+}
+
+export function approveRuntimeCommandCall(
+  db: DatabaseType.Database,
+  input: { callId: string; approvedAt?: number },
+): RuntimeCommandApprovalResult {
+  return updatePendingRuntimeCommandApproval(db, {
+    callId: input.callId,
+    status: "approved",
+    at: input.approvedAt,
+    eventType: "runtime_command_approved",
+  });
+}
+
+export function denyRuntimeCommandCall(
+  db: DatabaseType.Database,
+  input: { callId: string; deniedAt?: number; reason?: string },
+): RuntimeCommandApprovalResult {
+  return updatePendingRuntimeCommandApproval(db, {
+    callId: input.callId,
+    status: "denied",
+    at: input.deniedAt,
+    eventType: "runtime_command_denied",
+    errorClass: "RuntimeCommandApprovalDenied",
+    errorMessage: input.reason ?? "Runtime command approval denied.",
+  });
+}
+
+export function markRuntimeCommandApprovalExpired(
+  db: DatabaseType.Database,
+  input: { callId: string; expiredAt?: number },
+): RuntimeCommandApprovalResult {
+  return updatePendingRuntimeCommandApproval(db, {
+    callId: input.callId,
+    status: "denied",
+    at: input.expiredAt,
+    eventType: "runtime_command_approval_expired",
+    errorClass: "RuntimeCommandApprovalExpired",
+    errorMessage: "Runtime command approval expired.",
+  });
 }

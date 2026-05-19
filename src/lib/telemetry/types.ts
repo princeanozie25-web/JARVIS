@@ -77,7 +77,11 @@ export type TelemetryEventType =
   | "runtime_command_validation_failed"
   | "runtime_command_call_created"
   | "runtime_command_call_updated"
-  | "runtime_command_output_ref_attached";
+  | "runtime_command_output_ref_attached"
+  | "runtime_command_proposed"
+  | "runtime_command_approved"
+  | "runtime_command_denied"
+  | "runtime_command_approval_expired";
 
 export interface TelemetryEvent {
   timestamp: number;
