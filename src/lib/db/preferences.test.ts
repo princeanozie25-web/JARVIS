@@ -20,6 +20,15 @@ let db: Database.Database;
 let root: string;
 let manifestPath: string;
 
+function accessContext(purpose = "test_preferences") {
+  return {
+    caller: "preferences.test",
+    feature_id: "preferences" as const,
+    purpose,
+    personal_context: true,
+  };
+}
+
 function expectOk<T>(
   result: PreferenceResult<T> | SupersedePreferenceResult,
 ): T {
@@ -66,11 +75,18 @@ describe("preference ledger", () => {
       featureId: "preferences",
       reason: "consent_disabled",
     });
-    expect(listPreferences(db, { manifestPath })).toMatchObject({
+    expect(
+      listPreferences(db, { manifestPath, accessContext: accessContext() }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
     });
-    expect(getEffectivePreference(db, "tone", { manifestPath })).toMatchObject({
+    expect(
+      getEffectivePreference(db, "tone", {
+        manifestPath,
+        accessContext: accessContext(),
+      }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
     });
@@ -117,7 +133,9 @@ describe("preference ledger", () => {
       created_at: 2_000,
     });
     expect(
-      expectOk<PreferenceRow[]>(listPreferences(db, { manifestPath })),
+      expectOk<PreferenceRow[]>(
+        listPreferences(db, { manifestPath, accessContext: accessContext() }),
+      ),
     ).toEqual([created]);
   });
 
@@ -144,7 +162,10 @@ describe("preference ledger", () => {
 
     expect(
       expectOk<PreferenceRow | null>(
-        getEffectivePreference(db, "format", { manifestPath }),
+        getEffectivePreference(db, "format", {
+          manifestPath,
+          accessContext: accessContext(),
+        }),
       )?.id,
     ).toBe("pref-new");
   });
@@ -183,13 +204,16 @@ describe("preference ledger", () => {
       db.prepare("SELECT * FROM preferences WHERE id = ?").get("pref-1"),
     ).toEqual(original);
     expect(
-      expectOk<PreferenceRow[]>(listPreferences(db, { manifestPath })).map(
-        (row) => row.id,
-      ),
+      expectOk<PreferenceRow[]>(
+        listPreferences(db, { manifestPath, accessContext: accessContext() }),
+      ).map((row) => row.id),
     ).toEqual(["pref-2", "pref-1"]);
     expect(
       expectOk<PreferenceRow | null>(
-        getEffectivePreference(db, "verbosity", { manifestPath }),
+        getEffectivePreference(db, "verbosity", {
+          manifestPath,
+          accessContext: accessContext(),
+        }),
       )?.id,
     ).toBe("pref-2");
   });
@@ -204,7 +228,11 @@ describe("preference ledger", () => {
       category: "communication",
       createdAt: 2_000,
     });
-    listPreferences(db, { manifestPath, now: () => 3_000 });
+    listPreferences(db, {
+      manifestPath,
+      now: () => 3_000,
+      accessContext: accessContext(),
+    });
     supersedePreference(db, "pref-1", {
       manifestPath,
       id: "pref-2",

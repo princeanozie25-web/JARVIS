@@ -38,10 +38,24 @@ export async function GET(req: Request) {
   const history = listPreferences(db, {
     includeSuperseded: true,
     limit,
+    accessContext: {
+      caller: "api.preferences",
+      feature_id: "preferences",
+      purpose: "list_preference_history",
+      personal_context: true,
+    },
   });
   if (!history.ok) return blockedResponse(history);
 
-  const current = listEffectivePreferences(db, { limit });
+  const current = listEffectivePreferences(db, {
+    limit,
+    accessContext: {
+      caller: "api.preferences",
+      feature_id: "preferences",
+      purpose: "list_effective_preferences",
+      personal_context: true,
+    },
+  });
   if (!current.ok) return blockedResponse(current);
 
   return NextResponse.json({

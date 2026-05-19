@@ -48,6 +48,12 @@ export async function GET(req: Request) {
   const result = listReviewItems(getDb(), {
     limit,
     status: parsedStatus?.success ? parsedStatus.data : undefined,
+    accessContext: {
+      caller: "api.review_queue",
+      feature_id: "human_review_queue",
+      purpose: "list_review_items",
+      personal_context: true,
+    },
   });
   if (!result.ok) return blockedResponse(result);
 

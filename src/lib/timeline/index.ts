@@ -1,7 +1,6 @@
 import type DatabaseType from "better-sqlite3";
 import {
   readConsentManifest,
-  requireConsent,
   type ConsentFeatureId,
   type ConsentGateResult,
 } from "../consent";
@@ -11,6 +10,10 @@ import type {
   ProjectStateRow,
   SessionSummaryRow,
 } from "../db/node";
+import {
+  requirePersonalContextAccess,
+  type PersonalContextAccessContext,
+} from "../personal-context";
 import { insertTelemetryEvent } from "../db/telemetry";
 
 export const TIMELINE_ENTRY_TYPES = [
@@ -43,6 +46,7 @@ export interface TimelineIndexInput {
   manifestPath?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  accessContext?: PersonalContextAccessContext;
 }
 
 export type TimelineIndexResult =
@@ -212,12 +216,12 @@ export function readTimelineIndex(
   db: DatabaseType.Database,
   input: TimelineIndexInput = {},
 ): TimelineIndexResult {
-  const gate = requireConsent("timeline", {
+  const gate = requirePersonalContextAccess(
     db,
-    manifestPath: input.manifestPath,
-    env: input.env,
-    now: input.now,
-  });
+    "timeline",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return gate;
 
   const limit = normalizeLimit(input.limit);
@@ -235,13 +239,35 @@ export function readTimelineIndex(
     (!input.type || input.type === "goal") &&
     featureEnabled(db, "goals", input)
   ) {
-    entries.push(...listGoalEntries(db, limit));
+    const goalGate = requirePersonalContextAccess(
+      db,
+      "goals",
+      {
+        caller: "timeline",
+        feature_id: "goals",
+        purpose: "project_goal_timeline_entries",
+        personal_context: true,
+      },
+      input,
+    );
+    if (goalGate.ok) entries.push(...listGoalEntries(db, limit));
   }
   if (
     (!input.type || input.type === "preference") &&
     featureEnabled(db, "preferences", input)
   ) {
-    entries.push(...listPreferenceEntries(db, limit));
+    const preferenceGate = requirePersonalContextAccess(
+      db,
+      "preferences",
+      {
+        caller: "timeline",
+        feature_id: "preferences",
+        purpose: "project_preference_timeline_entries",
+        personal_context: true,
+      },
+      input,
+    );
+    if (preferenceGate.ok) entries.push(...listPreferenceEntries(db, limit));
   }
 
   const sorted = entries

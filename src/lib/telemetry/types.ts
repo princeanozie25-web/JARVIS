@@ -60,7 +60,12 @@ export type TelemetryEventType =
   | "review_item_dismissed"
   | "reflection_prompt_requested"
   | "reflection_prompt_generated"
-  | "reflection_prompt_blocked";
+  | "reflection_prompt_blocked"
+  | "keeper_registry_read"
+  | "keeper_registration_blocked"
+  | "keeper_registered"
+  | "personal_context_access_granted"
+  | "personal_context_access_denied";
 
 export interface TelemetryEvent {
   timestamp: number;

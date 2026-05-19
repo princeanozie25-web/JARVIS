@@ -21,6 +21,15 @@ let db: Database.Database;
 let root: string;
 let manifestPath: string;
 
+function accessContext(purpose = "test_goals") {
+  return {
+    caller: "goals.test",
+    feature_id: "goals" as const,
+    purpose,
+    personal_context: true,
+  };
+}
+
 function expectOk<T>(result: GoalResult<T> | GoalMutationResult): T {
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error("expected ok goal result");
@@ -60,11 +69,18 @@ describe("goal continuity store", () => {
       featureId: "goals",
       reason: "consent_disabled",
     });
-    expect(listGoals(db, { manifestPath })).toMatchObject({
+    expect(
+      listGoals(db, { manifestPath, accessContext: accessContext() }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
     });
-    expect(getGoal(db, "goal-1", { manifestPath })).toMatchObject({
+    expect(
+      getGoal(db, "goal-1", {
+        manifestPath,
+        accessContext: accessContext(),
+      }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
     });
@@ -112,11 +128,18 @@ describe("goal continuity store", () => {
       completed_at: null,
       source: "user",
     });
-    expect(expectOk<GoalRow[]>(listGoals(db, { manifestPath }))).toEqual([
-      created,
-    ]);
     expect(
-      expectOk<GoalRow | null>(getGoal(db, "goal-1", { manifestPath })),
+      expectOk<GoalRow[]>(
+        listGoals(db, { manifestPath, accessContext: accessContext() }),
+      ),
+    ).toEqual([created]);
+    expect(
+      expectOk<GoalRow | null>(
+        getGoal(db, "goal-1", {
+          manifestPath,
+          accessContext: accessContext(),
+        }),
+      ),
     ).toEqual(created);
   });
 
@@ -203,7 +226,11 @@ describe("goal continuity store", () => {
       title: "Emit telemetry.",
       createdAt: 2_000,
     });
-    listGoals(db, { manifestPath, now: () => 3_000 });
+    listGoals(db, {
+      manifestPath,
+      now: () => 3_000,
+      accessContext: accessContext(),
+    });
     updateGoalStatus(db, "goal-1", {
       manifestPath,
       status: "missed",

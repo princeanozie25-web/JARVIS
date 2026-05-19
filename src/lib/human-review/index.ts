@@ -11,6 +11,10 @@ import {
   readPassiveMemoryWeighting,
   type MemoryWeightingProjection,
 } from "../memory-weighting";
+import {
+  requirePersonalContextAccess,
+  type PersonalContextAccessContext,
+} from "../personal-context";
 
 export const HUMAN_REVIEW_STATUSES = [
   "pending",
@@ -57,6 +61,7 @@ export interface HumanReviewOptions {
   manifestPath?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  accessContext?: PersonalContextAccessContext;
 }
 
 export interface ListReviewItemsInput extends HumanReviewOptions {
@@ -280,7 +285,12 @@ export function listReviewItems(
   db: DatabaseType.Database,
   input: ListReviewItemsInput = {},
 ): HumanReviewResult<HumanReviewItem[]> {
-  const gate = requireHumanReviewConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "human_review_queue",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return gate;
 
   const limit = normalizeLimit(input.limit);

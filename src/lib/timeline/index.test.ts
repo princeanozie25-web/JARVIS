@@ -19,6 +19,15 @@ let db: Database.Database;
 let root: string;
 let manifestPath: string;
 
+function accessContext(purpose = "test_timeline") {
+  return {
+    caller: "timeline.test",
+    feature_id: "timeline" as const,
+    purpose,
+    personal_context: true,
+  };
+}
+
 function enable(featureId: "timeline" | "goals" | "preferences") {
   setConsentFromUserAction({
     manifestPath,
@@ -44,7 +53,9 @@ afterEach(() => {
 
 describe("TimelineIndex", () => {
   it("blocks timeline reads when timeline consent is disabled", () => {
-    expect(readTimelineIndex(db, { manifestPath })).toMatchObject({
+    expect(
+      readTimelineIndex(db, { manifestPath, accessContext: accessContext() }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
       featureId: "timeline",
@@ -66,7 +77,10 @@ describe("TimelineIndex", () => {
       updatedAt: 3_000,
     });
 
-    const result = readTimelineIndex(db, { manifestPath });
+    const result = readTimelineIndex(db, {
+      manifestPath,
+      accessContext: accessContext(),
+    });
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("timeline read blocked");
@@ -101,6 +115,7 @@ describe("TimelineIndex", () => {
       manifestPath,
       type: "project_state",
       project: "jarvis",
+      accessContext: accessContext(),
     });
 
     expect(result.ok).toBe(true);
@@ -147,7 +162,10 @@ describe("TimelineIndex", () => {
       now: () => 5_000,
     });
 
-    const excluded = readTimelineIndex(db, { manifestPath });
+    const excluded = readTimelineIndex(db, {
+      manifestPath,
+      accessContext: accessContext(),
+    });
     expect(excluded.ok).toBe(true);
     if (!excluded.ok) throw new Error("timeline read blocked");
     expect(excluded.entries.map((entry) => entry.type)).not.toContain("goal");
@@ -170,7 +188,10 @@ describe("TimelineIndex", () => {
       now: () => 7_000,
     });
 
-    const included = readTimelineIndex(db, { manifestPath });
+    const included = readTimelineIndex(db, {
+      manifestPath,
+      accessContext: accessContext(),
+    });
     expect(included.ok).toBe(true);
     if (!included.ok) throw new Error("timeline read blocked");
     expect(included.entries.map((entry) => entry.type)).toEqual(
@@ -191,7 +212,11 @@ describe("TimelineIndex", () => {
       });
     }
 
-    const result = readTimelineIndex(db, { manifestPath, limit: 500 });
+    const result = readTimelineIndex(db, {
+      manifestPath,
+      limit: 500,
+      accessContext: accessContext(),
+    });
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("timeline read blocked");
@@ -207,6 +232,7 @@ describe("TimelineIndex", () => {
     readTimelineIndex(db, {
       manifestPath,
       now: () => 9_000,
+      accessContext: accessContext(),
     });
 
     expect(listTelemetryEvents(db).map((event) => event.event_type)).toEqual(

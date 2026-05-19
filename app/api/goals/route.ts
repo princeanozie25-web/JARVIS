@@ -41,6 +41,12 @@ export async function GET(req: Request) {
   const result = listGoals(getDb(), {
     status: status?.success ? status.data : undefined,
     limit,
+    accessContext: {
+      caller: "api.goals",
+      feature_id: "goals",
+      purpose: "list_goals",
+      personal_context: true,
+    },
   });
   if (!result.ok) return blockedResponse(result);
 

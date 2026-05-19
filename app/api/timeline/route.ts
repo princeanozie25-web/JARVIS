@@ -39,6 +39,12 @@ export async function GET(req: Request) {
     type: type?.success ? type.data : undefined,
     project,
     limit,
+    accessContext: {
+      caller: "api.timeline",
+      feature_id: "timeline",
+      purpose: "read_timeline_index",
+      personal_context: true,
+    },
   });
   if (!result.ok) return blockedResponse(result);
 

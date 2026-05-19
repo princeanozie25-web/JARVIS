@@ -1,11 +1,11 @@
 import type DatabaseType from "better-sqlite3";
-import {
-  readConsentManifest,
-  requireConsent,
-  type ConsentGateResult,
-} from "../consent";
+import { readConsentManifest, type ConsentGateResult } from "../consent";
 import { listEffectivePreferences, type PreferenceRow } from "../db/node";
 import { insertTelemetryEvent } from "../db/telemetry";
+import {
+  requirePersonalContextAccess,
+  type PersonalContextAccessContext,
+} from "../personal-context";
 import { readTimelineIndex, type TimelineEntry } from "../timeline";
 
 export const REFLECTION_PROMPT_TEMPLATE_TYPES = [
@@ -33,6 +33,7 @@ export interface GenerateReflectionPromptInput {
   manifestPath?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  accessContext?: PersonalContextAccessContext;
 }
 
 export type ReflectionPromptResult =
@@ -120,6 +121,12 @@ function readTimelineIfAllowed(
     env: input.env,
     now: input.now,
     limit: normalizeLimit(input.limit),
+    accessContext: {
+      caller: "reflection_prompts",
+      feature_id: "timeline",
+      purpose: "seed_manual_reflection_prompt",
+      personal_context: true,
+    },
   });
   return result.ok ? result.entries : [];
 }
@@ -134,6 +141,12 @@ function readPreferencesIfAllowed(
     env: input.env,
     now: input.now,
     limit: normalizeLimit(input.limit),
+    accessContext: {
+      caller: "reflection_prompts",
+      feature_id: "preferences",
+      purpose: "seed_manual_reflection_prompt",
+      personal_context: true,
+    },
   });
   return result.ok ? result.value : [];
 }
@@ -160,12 +173,12 @@ export function generateReflectionPrompt(
   input: GenerateReflectionPromptInput = {},
 ): ReflectionPromptResult {
   const at = input.now?.() ?? Date.now();
-  const gate = requireConsent("reflection_prompts", {
+  const gate = requirePersonalContextAccess(
     db,
-    manifestPath: input.manifestPath,
-    env: input.env,
-    now: input.now,
-  });
+    "reflection_prompts",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) {
     insertTelemetryEvent(db, {
       timestamp: at,

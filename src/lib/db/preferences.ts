@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type DatabaseType from "better-sqlite3";
 import { requireConsent, type ConsentGateResult } from "../consent";
+import {
+  requirePersonalContextAccess,
+  type PersonalContextAccessContext,
+} from "../personal-context";
 import { insertTelemetryEvent } from "./telemetry";
 
 export interface PreferenceRow {
@@ -18,6 +22,7 @@ export interface PreferenceConsentOptions {
   manifestPath?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  accessContext?: PersonalContextAccessContext;
 }
 
 export interface AddPreferenceInput extends PreferenceConsentOptions {
@@ -156,7 +161,12 @@ export function listPreferences(
   db: DatabaseType.Database,
   input: ListPreferencesInput = {},
 ): PreferenceResult<PreferenceRow[]> {
-  const gate = requirePreferenceConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "preferences",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return consentBlockedResult(gate);
 
   const limit = normalizeLimit(input.limit);
@@ -199,7 +209,12 @@ export function getEffectivePreference(
   key: string,
   input: PreferenceConsentOptions = {},
 ): PreferenceResult<PreferenceRow | null> {
-  const gate = requirePreferenceConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "preferences",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return consentBlockedResult(gate);
 
   const normalizedKey = requireTrimmed(key, "key");
@@ -231,7 +246,12 @@ export function listEffectivePreferences(
   db: DatabaseType.Database,
   input: PreferenceConsentOptions & { limit?: number } = {},
 ): PreferenceResult<PreferenceRow[]> {
-  const gate = requirePreferenceConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "preferences",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return consentBlockedResult(gate);
 
   const rows = db

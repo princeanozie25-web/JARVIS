@@ -47,6 +47,12 @@ export async function GET(req: Request) {
   const result = generateReflectionPrompt(getDb(), {
     templateType: templateType?.success ? templateType.data : undefined,
     limit,
+    accessContext: {
+      caller: "api.reflection_prompts",
+      feature_id: "reflection_prompts",
+      purpose: "generate_manual_reflection_prompt",
+      personal_context: true,
+    },
   });
   if (!result.ok) return blockedResponse(result);
 
@@ -62,7 +68,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = generateReflectionPrompt(getDb(), parsed.data);
+  const result = generateReflectionPrompt(getDb(), {
+    ...parsed.data,
+    accessContext: {
+      caller: "api.reflection_prompts",
+      feature_id: "reflection_prompts",
+      purpose: "generate_manual_reflection_prompt",
+      personal_context: true,
+    },
+  });
   if (!result.ok) return blockedResponse(result);
   return NextResponse.json({ prompt: result.prompt });
 }

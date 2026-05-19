@@ -17,6 +17,15 @@ let db: Database.Database;
 let root: string;
 let manifestPath: string;
 
+function accessContext(purpose = "test_reflection_prompt") {
+  return {
+    caller: "reflection-prompts.test",
+    feature_id: "reflection_prompts" as const,
+    purpose,
+    personal_context: true,
+  };
+}
+
 function enable(featureId: "reflection_prompts" | "timeline" | "preferences") {
   setConsentFromUserAction({
     manifestPath,
@@ -60,7 +69,10 @@ afterEach(() => {
 
 describe("manual reflection prompts", () => {
   it("blocks generation when reflection prompt consent is disabled", () => {
-    const result = generateReflectionPrompt(db, { manifestPath });
+    const result = generateReflectionPrompt(db, {
+      manifestPath,
+      accessContext: accessContext(),
+    });
 
     expect(result).toMatchObject({
       ok: false,
@@ -86,6 +98,7 @@ describe("manual reflection prompts", () => {
         manifestPath,
         templateType: "project_reflection",
         now: () => 3_000,
+        accessContext: accessContext(),
       }),
     );
 
@@ -105,6 +118,7 @@ describe("manual reflection prompts", () => {
       generateReflectionPrompt(db, {
         manifestPath,
         templateType: "timeline_reflection",
+        accessContext: accessContext(),
       }),
     );
 
@@ -121,6 +135,7 @@ describe("manual reflection prompts", () => {
       generateReflectionPrompt(db, {
         manifestPath,
         templateType: "goal_reflection",
+        accessContext: accessContext(),
       }),
     );
 
@@ -150,6 +165,7 @@ describe("manual reflection prompts", () => {
       generateReflectionPrompt(db, {
         manifestPath,
         templateType: "preference_review",
+        accessContext: accessContext(),
       }),
     );
     expect(excluded.preference_count).toBe(0);
@@ -160,6 +176,7 @@ describe("manual reflection prompts", () => {
       generateReflectionPrompt(db, {
         manifestPath,
         templateType: "preference_review",
+        accessContext: accessContext(),
       }),
     );
     expect(included.preference_count).toBe(1);
@@ -184,6 +201,7 @@ describe("manual reflection prompts", () => {
         manifestPath,
         templateType: "preference_review",
         now: () => 4_000,
+        accessContext: accessContext(),
       }),
     );
 

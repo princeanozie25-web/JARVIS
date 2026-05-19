@@ -12,6 +12,7 @@ import {
 } from "@/components/ConversationCuratorPanel";
 import { GoalContinuityPanel } from "@/components/GoalContinuityPanel";
 import { HumanReviewQueuePanel } from "@/components/HumanReviewQueuePanel";
+import { KeeperInterfacePanel } from "@/components/KeeperInterfacePanel";
 import { MemoryCandidateReviewPanel } from "@/components/MemoryCandidateReviewPanel";
 import { MemoryInspectorPanel } from "@/components/MemoryInspectorPanel";
 import { MemoryWeightingPreviewPanel } from "@/components/MemoryWeightingPreviewPanel";
@@ -43,6 +44,7 @@ import type {
 } from "@/lib/memory/types";
 import type { ConsentFeatureId, ConsentManifest } from "@/lib/consent/types";
 import type { HumanReviewItem, HumanReviewStatus } from "@/lib/human-review";
+import type { KeeperMetadata } from "@/lib/keepers";
 import type {
   ReflectionPrompt,
   ReflectionPromptTemplateType,
@@ -198,6 +200,8 @@ export default function Home() {
   const [reflectionPromptLoading, setReflectionPromptLoading] = useState(false);
   const [reflectionPromptTemplate, setReflectionPromptTemplate] =
     useState<ReflectionPromptTemplateType>("timeline_reflection");
+  const [keepers, setKeepers] = useState<KeeperMetadata[]>([]);
+  const [keepersLoading, setKeepersLoading] = useState(false);
   const [memories, setMemories] = useState<LongTermMemoryRow[]>([]);
   const [memoryVaultRoot, setMemoryVaultRoot] = useState<string | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -238,6 +242,10 @@ export default function Home() {
   const reflectionPromptsConsentEnabled =
     consentManifest?.records.find(
       (record) => record.feature_id === "reflection_prompts",
+    )?.enabled ?? false;
+  const keeperInterfaceConsentEnabled =
+    consentManifest?.records.find(
+      (record) => record.feature_id === "keeper_interface",
     )?.enabled ?? false;
 
   useEffect(() => {
@@ -646,6 +654,40 @@ export default function Home() {
     curatorAudit,
     memoryWeights,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadKeepers() {
+      if (!keeperInterfaceConsentEnabled) {
+        setKeepers([]);
+        setKeepersLoading(false);
+        return;
+      }
+      setKeepersLoading(true);
+      try {
+        const res = await fetch("/api/keepers");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          keepers: KeeperMetadata[];
+        };
+        if (!cancelled) {
+          setKeepers(data.keepers);
+        }
+      } catch {
+        if (!cancelled) {
+          setKeepers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setKeepersLoading(false);
+        }
+      }
+    }
+    void loadKeepers();
+    return () => {
+      cancelled = true;
+    };
+  }, [keeperInterfaceConsentEnabled]);
 
   function stop() {
     abortRef.current?.abort();
@@ -1272,6 +1314,12 @@ export default function Home() {
         consentEnabled={reflectionPromptsConsentEnabled}
         onTemplateChange={setReflectionPromptTemplate}
         onGenerate={generateReflectionPrompt}
+      />
+
+      <KeeperInterfacePanel
+        keepers={keepers}
+        loading={keepersLoading}
+        consentEnabled={keeperInterfaceConsentEnabled}
       />
 
       <MemoryWeightingPreviewPanel

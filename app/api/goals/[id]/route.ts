@@ -43,7 +43,14 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const result = getGoal(getDb(), id);
+  const result = getGoal(getDb(), id, {
+    accessContext: {
+      caller: "api.goals",
+      feature_id: "goals",
+      purpose: "get_goal",
+      personal_context: true,
+    },
+  });
   if (!result.ok) return blockedResponse(result);
   if (!result.value) return notFoundResponse(id);
 

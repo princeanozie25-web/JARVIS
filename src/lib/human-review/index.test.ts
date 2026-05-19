@@ -22,6 +22,15 @@ let db: Database.Database;
 let root: string;
 let manifestPath: string;
 
+function accessContext(purpose = "test_review_queue") {
+  return {
+    caller: "human-review.test",
+    feature_id: "human_review_queue" as const,
+    purpose,
+    personal_context: true,
+  };
+}
+
 function enable(featureId: "human_review_queue" | "conversation_curator") {
   setConsentFromUserAction({
     manifestPath,
@@ -68,7 +77,9 @@ afterEach(() => {
 
 describe("human review queue", () => {
   it("blocks reads and writes when human review queue consent is disabled", () => {
-    expect(listReviewItems(db, { manifestPath })).toMatchObject({
+    expect(
+      listReviewItems(db, { manifestPath, accessContext: accessContext() }),
+    ).toMatchObject({
       ok: false,
       status: "blocked",
       featureId: "human_review_queue",
@@ -103,7 +114,13 @@ describe("human review queue", () => {
     enable("human_review_queue");
     seedCandidate();
 
-    const items = expectOk(listReviewItems(db, { manifestPath, limit: 10 }));
+    const items = expectOk(
+      listReviewItems(db, {
+        manifestPath,
+        limit: 10,
+        accessContext: accessContext(),
+      }),
+    );
 
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
@@ -139,7 +156,13 @@ describe("human review queue", () => {
       }),
     );
 
-    const items = expectOk(listReviewItems(db, { manifestPath, limit: 10 }));
+    const items = expectOk(
+      listReviewItems(db, {
+        manifestPath,
+        limit: 10,
+        accessContext: accessContext(),
+      }),
+    );
     expect(items.map((item) => item.id)).toContain(`curator_audit:${audit.id}`);
     const curatorItem = items.find(
       (item) => item.id === "curator_audit:audit-1",
@@ -197,7 +220,9 @@ describe("human review queue", () => {
     );
     expect(row.status).toBe("dismissed");
 
-    const items = expectOk(listReviewItems(db, { manifestPath }));
+    const items = expectOk(
+      listReviewItems(db, { manifestPath, accessContext: accessContext() }),
+    );
     expect(items[0]).toMatchObject({
       id: "memory_candidate:cand-1",
       status: "dismissed",
@@ -209,7 +234,9 @@ describe("human review queue", () => {
     enable("human_review_queue");
     seedCandidate();
 
-    expectOk(listReviewItems(db, { manifestPath }));
+    expectOk(
+      listReviewItems(db, { manifestPath, accessContext: accessContext() }),
+    );
 
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM human_review_queue").get(),
@@ -228,7 +255,13 @@ describe("human review queue", () => {
     enable("human_review_queue");
     seedCandidate();
 
-    expectOk(listReviewItems(db, { manifestPath, now: () => 6_000 }));
+    expectOk(
+      listReviewItems(db, {
+        manifestPath,
+        now: () => 6_000,
+        accessContext: accessContext(),
+      }),
+    );
     expectOk(
       updateReviewItemStatus(db, {
         manifestPath,

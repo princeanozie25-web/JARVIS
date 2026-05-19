@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type DatabaseType from "better-sqlite3";
 import { requireConsent, type ConsentGateResult } from "../consent";
+import {
+  requirePersonalContextAccess,
+  type PersonalContextAccessContext,
+} from "../personal-context";
 import { insertTelemetryEvent } from "./telemetry";
 
 export const GOAL_STATUSES = ["active", "met", "missed", "abandoned"] as const;
@@ -22,6 +26,7 @@ export interface GoalConsentOptions {
   manifestPath?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  accessContext?: PersonalContextAccessContext;
 }
 
 export interface CreateGoalInput extends GoalConsentOptions {
@@ -154,7 +159,12 @@ export function listGoals(
   db: DatabaseType.Database,
   input: ListGoalsInput = {},
 ): GoalResult<GoalRow[]> {
-  const gate = requireGoalConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "goals",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return gate;
 
   const limit = normalizeLimit(input.limit);
@@ -191,7 +201,12 @@ export function getGoal(
   id: string,
   input: GoalConsentOptions = {},
 ): GoalResult<GoalRow | null> {
-  const gate = requireGoalConsent(db, input);
+  const gate = requirePersonalContextAccess(
+    db,
+    "goals",
+    input.accessContext,
+    input,
+  );
   if (!gate.ok) return gate;
 
   const normalizedId = requireTrimmed(id, "id");
