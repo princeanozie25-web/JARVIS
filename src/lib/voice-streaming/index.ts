@@ -23,6 +23,14 @@ export {
   type VoicePlaybackSequencingInput,
   type VoicePlaybackSequencingResult,
 } from "./playback-sequencer";
+export {
+  isPipelineStageResult,
+  VoiceRealtimeOrchestrationPipeline,
+  type VoiceRealtimeOrchestrationPipelineOptions,
+  type VoiceRealtimePipelineDropReason,
+  type VoiceRealtimePipelineDropStage,
+  type VoiceRealtimePipelineIngestResult,
+} from "./pipeline";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,

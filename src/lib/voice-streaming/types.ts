@@ -202,13 +202,21 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_playback_sequence_item_dropped"
   | "voice_playback_sequence_overflow"
   | "voice_playback_sequence_cancelled"
-  | "voice_playback_sequence_interrupted";
+  | "voice_playback_sequence_interrupted"
+  | "voice_realtime_pipeline_started"
+  | "voice_realtime_pipeline_playback_intent_created"
+  | "voice_realtime_pipeline_completed"
+  | "voice_realtime_pipeline_cancelled"
+  | "voice_realtime_pipeline_interrupted"
+  | "voice_realtime_pipeline_failed"
+  | "voice_realtime_pipeline_dropped";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
   sessionId: string;
   state: VoiceTurnState;
   success: boolean;
+  pipelineStage?: "scheduler" | "synthesis_queue" | "playback_sequence";
   streamId?: string;
   responseId?: string;
   chunkId?: string;
