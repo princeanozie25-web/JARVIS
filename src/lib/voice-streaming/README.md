@@ -125,7 +125,8 @@ Current Phase 4F status:
 
 - accepts metadata-only runtime boundary events for pending approvals, tool lifecycle, and runtime cancellation lifecycle
 - produces advisory-only metadata records
-- rejects voice approval attempts as metadata-only no-ops
+- rejects voice approval attempts as refusal records and requires on-screen confirmation
+- rejects spoken yes/confirm/approve, inferred consent, ambiguous voice responses, and replayed voice responses
 - treats runtime cancellation requests as advisory-only and does not stop tools
 - emits metadata-only boundary telemetry
 - does not import or call runtime command execution modules
@@ -145,6 +146,8 @@ Phase 4F runtime boundary metadata may contain only:
 - tool name
 - timestamps
 - metadata-only rejection reason
+- voice approval attempt category
+- voice approval refusal ID/action
 
 Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, or approval UI. Those adapters must preserve the Phase 4D/4E/4F boundaries:
 
@@ -155,6 +158,7 @@ Future Phase 4F work may choose explicit, reviewable adapters for user-controlle
 - no command execution
 - no approval bypass
 - no voice approval path
+- no spoken approval acceptance
 - no spoken tool output or restricted content
 - no wake word or always-listening behavior
 - explicit user-controlled wiring

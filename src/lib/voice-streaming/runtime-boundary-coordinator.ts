@@ -1,4 +1,6 @@
 import type {
+  VoiceApprovalAttemptCategory,
+  VoiceApprovalRefusalRecord,
   VoiceOrchestrationTelemetryEvent,
   VoiceRuntimeBoundaryAdvisoryAction,
   VoiceRuntimeBoundaryAdvisoryRecord,
@@ -21,6 +23,10 @@ export class VoiceRuntimeBoundaryCoordinator {
     string,
     VoiceRuntimeBoundaryAdvisoryRecord
   >();
+  private readonly approvalRefusalByEventId = new Map<
+    string,
+    VoiceApprovalRefusalRecord
+  >();
 
   constructor(private readonly opts: VoiceRuntimeBoundaryCoordinatorOptions) {}
 
@@ -32,6 +38,7 @@ export class VoiceRuntimeBoundaryCoordinator {
 
     const existing = this.advisoryByEventId.get(safeEvent.id);
     if (existing) {
+      await this.emitApprovalAttemptNoop(safeEvent);
       const noop = this.createAdvisory(
         safeEvent,
         "no_op",
@@ -47,17 +54,30 @@ export class VoiceRuntimeBoundaryCoordinator {
       return { ok: true, event: safeEvent, advisory: noop };
     }
 
-    if (safeEvent.voiceApprovalAttempted) {
+    if (isVoiceApprovalAttempt(safeEvent)) {
+      const category =
+        safeEvent.voiceApprovalAttemptCategory ?? "ambiguous_voice_response";
+      await this.emit(
+        safeEvent,
+        "voice_runtime_boundary_voice_approval_attempt_received",
+        false,
+        {
+          voiceApprovalAttemptCategory: category,
+        },
+      );
+      const refusal = this.createApprovalRefusal(safeEvent, category);
+      this.approvalRefusalByEventId.set(safeEvent.id, refusal);
       const advisory = this.createAdvisory(
         safeEvent,
-        "reject_voice_approval",
+        "require_on_screen_confirmation",
         "rejected",
         "voice_approval_rejected",
       );
       this.advisoryByEventId.set(safeEvent.id, advisory);
+      await this.emitApprovalRefusal(safeEvent, refusal);
       await this.emitAdvisory(
         safeEvent,
-        "voice_runtime_boundary_voice_approval_rejected",
+        "voice_runtime_boundary_on_screen_confirmation_required",
         advisory,
         false,
       );
@@ -92,6 +112,14 @@ export class VoiceRuntimeBoundaryCoordinator {
       .map(copyAdvisoryRecord);
   }
 
+  getVoiceApprovalRefusals(sessionId?: string): VoiceApprovalRefusalRecord[] {
+    return Array.from(this.approvalRefusalByEventId.values())
+      .filter(
+        (record) => sessionId === undefined || record.sessionId === sessionId,
+      )
+      .map(copyApprovalRefusalRecord);
+  }
+
   private createAdvisory(
     event: VoiceRuntimeBoundaryEvent,
     action: VoiceRuntimeBoundaryAdvisoryAction,
@@ -112,6 +140,53 @@ export class VoiceRuntimeBoundaryCoordinator {
       toolName: event.toolName,
       reason,
     };
+  }
+
+  private createApprovalRefusal(
+    event: VoiceRuntimeBoundaryEvent,
+    category: VoiceApprovalAttemptCategory,
+  ): VoiceApprovalRefusalRecord {
+    return {
+      id: this.newId(),
+      eventId: event.id,
+      sessionId: event.sessionId,
+      createdAt: this.now(),
+      category,
+      action: "rejected_voice_approval",
+      reason: "voice_approval_rejected",
+      turnId: event.turnId,
+      runtimeCallId: event.runtimeCallId,
+      toolName: event.toolName,
+    };
+  }
+
+  private async emitApprovalRefusal(
+    event: VoiceRuntimeBoundaryEvent,
+    refusal: VoiceApprovalRefusalRecord,
+  ): Promise<void> {
+    await this.emit(
+      event,
+      "voice_runtime_boundary_voice_approval_rejected",
+      false,
+      {
+        voiceApprovalAttemptCategory: refusal.category,
+        voiceApprovalRefusalId: refusal.id,
+        voiceApprovalRefusalAction: refusal.action,
+        runtimeBoundaryReason: refusal.reason,
+      },
+    );
+  }
+
+  private async emitApprovalAttemptNoop(
+    event: VoiceRuntimeBoundaryEvent,
+  ): Promise<void> {
+    if (!isVoiceApprovalAttempt(event)) return;
+    await this.emit(event, "voice_runtime_boundary_voice_approval_noop", true, {
+      voiceApprovalAttemptCategory:
+        event.voiceApprovalAttemptCategory ?? "ambiguous_voice_response",
+      voiceApprovalRefusalAction: "no_op",
+      runtimeBoundaryReason: "voice_approval_rejected",
+    });
   }
 
   private async emitAdvisory(
@@ -143,7 +218,6 @@ export class VoiceRuntimeBoundaryCoordinator {
       runtimeBoundaryEventId: event.id,
       runtimeBoundaryEventType: event.type,
       runtimeCallId: event.runtimeCallId,
-      approvalRequestId: event.approvalRequestId,
       toolName: event.toolName,
       ...fields,
     });
@@ -190,6 +264,8 @@ function copyRuntimeBoundaryEvent(
     toolName: event.toolName,
     voiceTurnState: event.voiceTurnState,
     voiceApprovalAttempted: event.voiceApprovalAttempted,
+    voiceApprovalAttemptCategory: event.voiceApprovalAttemptCategory,
+    voiceApprovalAttemptId: event.voiceApprovalAttemptId,
   };
 }
 
@@ -197,4 +273,17 @@ function copyAdvisoryRecord(
   record: VoiceRuntimeBoundaryAdvisoryRecord,
 ): VoiceRuntimeBoundaryAdvisoryRecord {
   return { ...record };
+}
+
+function copyApprovalRefusalRecord(
+  record: VoiceApprovalRefusalRecord,
+): VoiceApprovalRefusalRecord {
+  return { ...record };
+}
+
+function isVoiceApprovalAttempt(event: VoiceRuntimeBoundaryEvent): boolean {
+  return (
+    event.voiceApprovalAttempted === true ||
+    event.voiceApprovalAttemptCategory !== undefined
+  );
 }

@@ -347,6 +347,8 @@ export interface VoiceRuntimeBoundaryEvent {
   toolName?: string;
   voiceTurnState?: VoiceTurnState;
   voiceApprovalAttempted?: boolean;
+  voiceApprovalAttemptCategory?: VoiceApprovalAttemptCategory;
+  voiceApprovalAttemptId?: string;
 }
 
 export type VoiceRuntimeBoundaryAdvisoryAction =
@@ -357,7 +359,7 @@ export type VoiceRuntimeBoundaryAdvisoryAction =
   | "request_runtime_cancel_advisory"
   | "surface_runtime_cancel_denied"
   | "surface_runtime_cancel_acknowledged"
-  | "reject_voice_approval"
+  | "require_on_screen_confirmation"
   | "no_op";
 
 export type VoiceRuntimeBoundaryAdvisoryState =
@@ -366,6 +368,32 @@ export type VoiceRuntimeBoundaryAdvisoryState =
   | "noop";
 
 export type VoiceRuntimeBoundaryRejectionReason = "voice_approval_rejected";
+
+export type VoiceApprovalAttemptCategory =
+  | "spoken_yes"
+  | "spoken_confirm"
+  | "spoken_approve"
+  | "inferred_consent"
+  | "ambiguous_voice_response"
+  | "replayed_voice_response";
+
+export type VoiceApprovalRefusalAction =
+  | "rejected_voice_approval"
+  | "require_on_screen_confirmation"
+  | "no_op";
+
+export interface VoiceApprovalRefusalRecord {
+  id: string;
+  eventId: string;
+  sessionId: string;
+  createdAt: number;
+  category: VoiceApprovalAttemptCategory;
+  action: VoiceApprovalRefusalAction;
+  reason: VoiceRuntimeBoundaryRejectionReason;
+  turnId?: string;
+  runtimeCallId?: string;
+  toolName?: string;
+}
 
 export interface VoiceRuntimeBoundaryAdvisoryRecord {
   id: string;
@@ -467,7 +495,10 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_runtime_boundary_event_received"
   | "voice_runtime_boundary_advisory_selected"
   | "voice_runtime_boundary_voice_approval_rejected"
-  | "voice_runtime_boundary_noop";
+  | "voice_runtime_boundary_noop"
+  | "voice_runtime_boundary_voice_approval_attempt_received"
+  | "voice_runtime_boundary_on_screen_confirmation_required"
+  | "voice_runtime_boundary_voice_approval_noop";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -531,8 +562,10 @@ export interface VoiceOrchestrationTelemetryEvent {
   runtimeBoundaryAction?: VoiceRuntimeBoundaryAdvisoryAction;
   runtimeBoundaryState?: VoiceRuntimeBoundaryAdvisoryState;
   runtimeBoundaryReason?: VoiceRuntimeBoundaryRejectionReason;
+  voiceApprovalAttemptCategory?: VoiceApprovalAttemptCategory;
+  voiceApprovalRefusalId?: string;
+  voiceApprovalRefusalAction?: VoiceApprovalRefusalAction;
   runtimeCallId?: string;
-  approvalRequestId?: string;
   toolName?: string;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;

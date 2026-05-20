@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VoiceRuntimeBoundaryCoordinator } from "./runtime-boundary-coordinator";
 import type {
+  VoiceApprovalAttemptCategory,
   VoiceOrchestrationTelemetryEvent,
   VoiceRuntimeBoundaryEvent,
 } from "./types";
@@ -54,6 +55,7 @@ function expectMetadataOnly(
   expect(serialized).not.toContain("secret spoken payload");
   expect(serialized).not.toContain("secret assistant body payload");
   expect(serialized).not.toContain("secret audio payload");
+  expect(JSON.stringify(telemetry)).not.toContain("approval-request-1");
 
   for (const event of telemetry) {
     expect(Object.keys(event)).not.toEqual(
@@ -67,6 +69,8 @@ function expectMetadataOnly(
         "spokenText",
         "assistantBody",
         "audio",
+        "approvalRequestId",
+        "approvalPayload",
       ]),
     );
   }
@@ -128,6 +132,8 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
     const result = await coordinator.handleEvent(
       boundaryEvent({
         voiceApprovalAttempted: true,
+        voiceApprovalAttemptCategory: "spoken_yes",
+        voiceApprovalAttemptId: "voice-attempt-secret-id",
       }),
     );
 
@@ -137,7 +143,7 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
         voiceApprovalAttempted: true,
       }),
       advisory: expect.objectContaining({
-        action: "reject_voice_approval",
+        action: "require_on_screen_confirmation",
         state: "rejected",
         reason: "voice_approval_rejected",
       }),
@@ -145,13 +151,122 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
     });
     expect(telemetry).toContainEqual(
       expect.objectContaining({
+        eventType: "voice_runtime_boundary_voice_approval_attempt_received",
+        voiceApprovalAttemptCategory: "spoken_yes",
+        success: false,
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
         eventType: "voice_runtime_boundary_voice_approval_rejected",
-        runtimeBoundaryAction: "reject_voice_approval",
+        voiceApprovalRefusalAction: "rejected_voice_approval",
         runtimeBoundaryReason: "voice_approval_rejected",
         success: false,
       }),
     );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_on_screen_confirmation_required",
+        runtimeBoundaryAction: "require_on_screen_confirmation",
+        success: false,
+      }),
+    );
+    expect(coordinator.getVoiceApprovalRefusals()).toEqual([
+      {
+        id: "runtime-advisory-1",
+        eventId: "runtime-event-1",
+        sessionId: "session-1",
+        createdAt: 6_000,
+        category: "spoken_yes",
+        action: "rejected_voice_approval",
+        reason: "voice_approval_rejected",
+        turnId: "turn-1",
+        runtimeCallId: "runtime-call-1",
+        toolName: "safe_tool_name",
+      },
+    ]);
     expectMetadataOnly(coordinator.getAdvisories(), telemetry);
+  });
+
+  it.each([
+    "spoken_yes",
+    "spoken_confirm",
+    "spoken_approve",
+    "inferred_consent",
+    "ambiguous_voice_response",
+    "replayed_voice_response",
+  ] satisfies VoiceApprovalAttemptCategory[])(
+    "refuses %s voice approval attempts",
+    async (category) => {
+      const { coordinator, telemetry } = createHarness();
+
+      const result = await coordinator.handleEvent(
+        boundaryEvent({
+          id: `runtime-event-${category}`,
+          voiceApprovalAttemptCategory: category,
+        }),
+      );
+
+      expect(result).toMatchObject({
+        ok: false,
+        advisory: {
+          action: "require_on_screen_confirmation",
+          state: "rejected",
+          reason: "voice_approval_rejected",
+        },
+        reason: "voice_approval_rejected",
+      });
+      expect(coordinator.getVoiceApprovalRefusals()).toEqual([
+        expect.objectContaining({
+          category,
+          action: "rejected_voice_approval",
+          reason: "voice_approval_rejected",
+        }),
+      ]);
+      expect(telemetry).toContainEqual(
+        expect.objectContaining({
+          eventType: "voice_runtime_boundary_voice_approval_rejected",
+          voiceApprovalAttemptCategory: category,
+          voiceApprovalRefusalAction: "rejected_voice_approval",
+        }),
+      );
+      expect(telemetry).toContainEqual(
+        expect.objectContaining({
+          eventType: "voice_runtime_boundary_on_screen_confirmation_required",
+          runtimeBoundaryAction: "require_on_screen_confirmation",
+        }),
+      );
+    },
+  );
+
+  it("keeps repeated voice approval attempts idempotent", async () => {
+    const { coordinator, telemetry } = createHarness();
+    const event = boundaryEvent({
+      voiceApprovalAttemptCategory: "spoken_confirm",
+    });
+
+    const first = await coordinator.handleEvent(event);
+    const repeated = await coordinator.handleEvent(event);
+
+    expect(first).toMatchObject({
+      ok: false,
+      reason: "voice_approval_rejected",
+    });
+    expect(repeated).toMatchObject({
+      ok: true,
+      advisory: {
+        action: "no_op",
+        state: "noop",
+      },
+    });
+    expect(coordinator.getVoiceApprovalRefusals()).toHaveLength(1);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_voice_approval_noop",
+        voiceApprovalAttemptCategory: "spoken_confirm",
+        voiceApprovalRefusalAction: "no_op",
+      }),
+    );
   });
 
   it("keeps runtime cancel requests advisory-only and idempotent", async () => {
@@ -244,6 +359,7 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
 
     expect(source).not.toMatch(/runtime-commands|executeRuntime|runTool/i);
     expect(source).not.toMatch(/approveRuntime|executeApproval|bypass/i);
+    expect(source).not.toMatch(/acceptApproval|grantApproval|submitApproval/i);
     expect(source).not.toMatch(/from\s+["']\.\.\/runtime-commands/i);
     expect(source).not.toMatch(/from\s+["']\.\.\/approvals/i);
   });

@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:49pm GMT+1
+# [jarvis] recent context, 2026-05-20 11:54pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (24,938t read) | 1,205,829t work | 98% savings
+Stats: 50 obs (25,298t read) | 1,282,178t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,14 +26,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-722 8:35p 🔵 STT InMemoryTranscriptionJobManager Used as Architectural Pattern for TTS Queue
-724 8:47p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Assigned
-725 " 🟣 InMemorySpeechQueueManager Implemented with Safety Gating and Telemetry
-726 " 🔵 Phase 3.75 Streaming Tasks Not Yet Started — TTS Queue Work Done Instead
-727 8:57p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated for JARVIS
 728 8:58p 🔵 JARVIS TTS Queue Scaffold Exists with Safety Policy Integration
-729 " 🔵 TelemetryEvent Schema Already Has time_to_first_token_ms Field
-730 " 🔵 Full JARVIS Test Suite at 706 Tests All Passing; Build Succeeds with One Pre-existing Warning
 731 9:04p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Plan
 732 9:05p 🔵 TTS Queue Scaffold Already Exists and Is Well-Structured Pre-Phase-3.75
 733 " 🔵 time_to_first_token_ms Already Present in TelemetryEvent Schema
@@ -76,6 +69,13 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 770 11:45p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold
 771 " 🟣 VoiceBargeInCoordinator: In-Flight Terminal Transition Guard
 772 " 🔵 JARVIS voice-streaming types.ts: Full Type Surface as of Phase 4E
+773 11:49p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion and Chunk Scheduling Scaffold
+774 11:51p 🟣 Phase 4E VoiceBargeInCoordinator Test Suite Expanded with Coverage, Failure, and Telemetry-Safety Tests
+775 " 🔴 Safety Wiring Test False Positive: `canAutoplay` Field in types.ts Matched Autoplay Regex
+776 " 🔴 TypeScript Error: Array.includes on Narrow Tuple Against Full Union Type
+777 " ✅ Phase 4E Frozen and Phase 4F Handoff Documented in voice-streaming README
+778 " 🔵 JARVIS Test Suite Grew from 737 to 795 Tests After Phase 4E Barge-In Coordinator Additions
+779 11:54p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
 
-Access 1206k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1282k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

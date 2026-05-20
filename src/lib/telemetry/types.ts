@@ -191,7 +191,10 @@ export type TelemetryEventType =
   | "voice_runtime_boundary_event_received"
   | "voice_runtime_boundary_advisory_selected"
   | "voice_runtime_boundary_voice_approval_rejected"
-  | "voice_runtime_boundary_noop";
+  | "voice_runtime_boundary_noop"
+  | "voice_runtime_boundary_voice_approval_attempt_received"
+  | "voice_runtime_boundary_on_screen_confirmation_required"
+  | "voice_runtime_boundary_voice_approval_noop";
 
 export interface TelemetryEvent {
   timestamp: number;
