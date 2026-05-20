@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:07pm GMT+1
+# [jarvis] recent context, 2026-05-20 11:24pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,315t read) | 1,119,821t work | 98% savings
+Stats: 50 obs (22,400t read) | 1,209,158t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,10 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-703 8:01p 🟣 LocalTtsRuntime Class Added to JARVIS TTS Layer
-705 8:03p ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Plan Established
-706 8:04p 🔵 JARVIS Pre-Phase-3.75 Baseline: 97 Test Files, 686 Tests All Passing
-707 " 🔵 Uncommitted TTS Stub Work Pre-Exists Phase 3.75 Start
 708 8:08p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated
 709 " 🔵 JARVIS TTS Layer Pre-Flight Audit — Infrastructure Confirmed Clean
 710 " 🔴 Added Missing Voice-Model-Missing Test Case to LocalTtsRuntime
@@ -76,6 +72,10 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 751 " 🔵 JARVIS TTS Safety Policy: Whitelist-Only Speech Sources with Pattern-Based Content Blocking
 752 " 🔵 JARVIS Telemetry Types: TTS Events Added to Global Registry, No Text or Audio Fields in Base Event
 753 " 🟣 Phase 4C-9 Hardening: Two New Tests Added to local-synthesis-provider.test.ts
+754 11:22p ⚖️ JARVIS Phase 4D: Stream Metadata Ingestion & Chunk Scheduling Scaffold Initiated
+755 11:23p 🔵 JARVIS Phase 4D Voice Streaming Pipeline Already Fully Implemented
+756 " 🟣 JARVIS Phase 4E.1: Metadata-Only Barge-In Coordinator Implemented
+757 " 🟣 Barge-In Coordinator Test Suite Added with Safety Assertion Coverage
 
-Access 1120k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1209k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

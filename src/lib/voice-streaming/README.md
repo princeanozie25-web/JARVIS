@@ -65,11 +65,24 @@ The playback sequencer produces sequencing intents only. It does not start playb
 
 ## Phase 4E Handoff Points
 
-Future Phase 4E work may choose explicit, reviewable adapters for real synthesis or playback, but those adapters must preserve the Phase 4D boundaries:
+Phase 4E may add library-only intent coordination on top of the Phase 4D pipeline. Phase 4E includes a metadata-only barge-in coordinator that accepts explicit interrupt intents, selects safe orchestration actions, and advances an internal state machine.
+
+Current Phase 4E status:
+
+- accepts metadata-only interrupt/barge-in intents
+- maps intents to cancellation/interruption preparation actions
+- tracks metadata-only states from `idle` through cancellation, pending-work clearing, optional capture preparation, and terminal completion/failure
+- rejects invalid or terminal-state transitions as no-ops
+- calls only the Phase 4D pipeline boundary for cancellation or interruption
+- does not listen to microphones, keyboards, wake words, UI events, playback, chat, runtime commands, approvals, Realtime, or cloud APIs
+
+Future Phase 4E work may choose explicit, reviewable adapters for real synthesis or playback, but those adapters must preserve the Phase 4D/4E boundaries:
 
 - metadata-only telemetry
 - no implicit autoplay
 - no command execution
 - no approval bypass
+- no voice approval path
+- no wake word or always-listening behavior
 - explicit user-controlled wiring
 - terminal and stale-session guards at every async boundary

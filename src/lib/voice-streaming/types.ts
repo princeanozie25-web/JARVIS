@@ -221,6 +221,63 @@ export interface VoiceChunkReadinessRecord {
   timestamps: VoiceChunkReadinessTimestamps;
 }
 
+export type VoiceBargeInIntentCategory =
+  | "user_ptt_pressed_during_playback"
+  | "user_requested_stop"
+  | "user_started_new_turn"
+  | "playback_preempted";
+
+export type VoiceBargeInAction =
+  | "cancel_current_voice_pipeline"
+  | "clear_pending_audio_work"
+  | "mark_turn_interrupted"
+  | "prepare_for_new_capture"
+  | "no_op";
+
+export type VoiceBargeInState =
+  | "idle"
+  | "observing_playback"
+  | "interrupt_requested"
+  | "cancelling_current_turn"
+  | "clearing_pending_work"
+  | "preparing_new_capture"
+  | "ready_for_capture"
+  | "completed"
+  | "failed";
+
+export interface VoiceBargeInIntent {
+  id: string;
+  sessionId: string;
+  category: VoiceBargeInIntentCategory;
+  createdAt?: number;
+  streamId?: string;
+  responseId?: string;
+  playbackIntentId?: string;
+}
+
+export type VoiceBargeInRejectionReason =
+  | "session_not_found"
+  | "stale_turn"
+  | "session_terminal"
+  | "state_terminal"
+  | "invalid_transition"
+  | "transition_failed";
+
+export type VoiceBargeInCoordinatorResult =
+  | {
+      ok: true;
+      intent: VoiceBargeInIntent;
+      actions: VoiceBargeInAction[];
+      state: VoiceBargeInState;
+    }
+  | {
+      ok: false;
+      intent: VoiceBargeInIntent;
+      reason: VoiceBargeInRejectionReason;
+      actions: VoiceBargeInAction[];
+      state: VoiceBargeInState;
+    };
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -273,7 +330,15 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_realtime_chunk_readiness_changed"
   | "voice_realtime_first_chunk_ready"
   | "voice_realtime_chunk_readiness_timeout"
-  | "voice_realtime_stage_latency_marker";
+  | "voice_realtime_stage_latency_marker"
+  | "voice_barge_in_intent_received"
+  | "voice_barge_in_action_selected"
+  | "voice_barge_in_noop"
+  | "voice_barge_in_intent_rejected"
+  | "voice_barge_in_state_transition"
+  | "voice_barge_in_invalid_transition"
+  | "voice_barge_in_terminal_noop"
+  | "voice_barge_in_transition_failed";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -311,6 +376,13 @@ export interface VoiceOrchestrationTelemetryEvent {
   readinessState?: VoiceChunkReadinessState;
   previousReadinessState?: VoiceChunkReadinessState;
   latencyStage?: VoiceReadinessLatencyStage;
+  bargeInIntentId?: string;
+  bargeInIntentCategory?: VoiceBargeInIntentCategory;
+  bargeInAction?: VoiceBargeInAction;
+  bargeInRejectionReason?: VoiceBargeInRejectionReason;
+  bargeInState?: VoiceBargeInState;
+  previousBargeInState?: VoiceBargeInState;
+  nextBargeInState?: VoiceBargeInState;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

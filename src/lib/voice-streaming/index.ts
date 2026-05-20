@@ -31,6 +31,10 @@ export {
   type VoiceRealtimePipelineDropStage,
   type VoiceRealtimePipelineIngestResult,
 } from "./pipeline";
+export {
+  VoiceBargeInCoordinator,
+  type VoiceBargeInCoordinatorOptions,
+} from "./barge-in-coordinator";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -47,6 +51,12 @@ export type {
   VoiceChunkReadinessRecord,
   VoiceChunkReadinessState,
   VoiceChunkReadinessTimestamps,
+  VoiceBargeInAction,
+  VoiceBargeInCoordinatorResult,
+  VoiceBargeInIntent,
+  VoiceBargeInIntentCategory,
+  VoiceBargeInRejectionReason,
+  VoiceBargeInState,
   VoiceReadinessLatencyStage,
   VoicePlaybackSequenceIntent,
   VoicePlaybackSequenceIntentState,

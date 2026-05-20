@@ -1,0 +1,415 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { VoiceBargeInCoordinator } from "./barge-in-coordinator";
+import { VoicePlaybackSequencer } from "./playback-sequencer";
+import { VoiceRealtimeOrchestrationPipeline } from "./pipeline";
+import { VoiceResponseChunkScheduler } from "./scheduler";
+import { VoiceOrchestrationSupervisor } from "./supervisor";
+import { VoiceSynthesisOrchestrationQueue } from "./synthesis-queue";
+import type {
+  AssistantResponseStreamMetadataEvent,
+  VoiceBargeInIntent,
+  VoiceOrchestrationTelemetryEvent,
+} from "./types";
+
+function createIdGenerator(prefix: string) {
+  let next = 1;
+  return () => `${prefix}-${next++}`;
+}
+
+async function createHarness() {
+  const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+  const emitTelemetry = (event: VoiceOrchestrationTelemetryEvent) => {
+    telemetry.push(event);
+  };
+  const supervisor = new VoiceOrchestrationSupervisor({
+    newId: createIdGenerator("session"),
+    now: () => 1_000,
+    emitTelemetry,
+  });
+  const scheduler = new VoiceResponseChunkScheduler({
+    supervisor,
+    newId: createIdGenerator("intent"),
+    now: () => 2_000,
+    emitTelemetry,
+  });
+  const synthesisQueue = new VoiceSynthesisOrchestrationQueue({
+    supervisor,
+    newId: createIdGenerator("synthesis"),
+    now: () => 3_000,
+    emitTelemetry,
+  });
+  const playbackSequencer = new VoicePlaybackSequencer({
+    supervisor,
+    newId: createIdGenerator("playback"),
+    now: () => 4_000,
+    emitTelemetry,
+  });
+  const pipeline = new VoiceRealtimeOrchestrationPipeline({
+    supervisor,
+    scheduler,
+    synthesisQueue,
+    playbackSequencer,
+    emitTelemetry,
+  });
+  const coordinator = new VoiceBargeInCoordinator({
+    supervisor,
+    pipeline,
+    emitTelemetry,
+  });
+  const started = await supervisor.startSession();
+  if (!started.ok) throw new Error("Expected voice session to start");
+
+  return {
+    coordinator,
+    pipeline,
+    supervisor,
+    telemetry,
+    sessionId: started.session.id,
+  };
+}
+
+function chunkEvent(
+  sessionId: string,
+  index: number,
+): Extract<AssistantResponseStreamMetadataEvent, { type: "chunk_available" }> {
+  return {
+    type: "chunk_available",
+    sessionId,
+    streamId: "stream-1",
+    responseId: "response-1",
+    chunkId: `assistant-chunk-${index}`,
+    index,
+  };
+}
+
+function intent(
+  sessionId: string,
+  input: Partial<VoiceBargeInIntent> = {},
+): VoiceBargeInIntent {
+  return {
+    id: input.id ?? "barge-in-1",
+    sessionId,
+    category: input.category ?? "user_ptt_pressed_during_playback",
+    streamId: "stream-1",
+    responseId: "response-1",
+    playbackIntentId: "playback-1",
+    ...input,
+  };
+}
+
+function expectMetadataOnlyTelemetry(
+  telemetry: VoiceOrchestrationTelemetryEvent[],
+): void {
+  const serialized = JSON.stringify(telemetry);
+  expect(serialized).not.toContain("secret transcript payload");
+  expect(serialized).not.toContain("secret spoken payload");
+  expect(serialized).not.toContain("secret assistant body payload");
+  expect(serialized).not.toContain("secret audio payload");
+}
+
+function createDeferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+describe("VoiceBargeInCoordinator", () => {
+  it("maps PTT during playback to safe cancellation and new-capture prep actions", async () => {
+    const { coordinator, pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    const result = await coordinator.handleIntent(
+      intent(sessionId, {
+        category: "user_ptt_pressed_during_playback",
+        transcript: "secret transcript payload",
+        spokenText: "secret spoken payload",
+        assistantBody: "secret assistant body payload",
+        audio: "secret audio payload",
+      } as unknown as Partial<VoiceBargeInIntent>),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      intent: expect.objectContaining({
+        id: "barge-in-1",
+        category: "user_ptt_pressed_during_playback",
+      }),
+      actions: [
+        "cancel_current_voice_pipeline",
+        "clear_pending_audio_work",
+        "mark_turn_interrupted",
+        "prepare_for_new_capture",
+      ],
+      state: "completed",
+    });
+    expect(
+      telemetry
+        .filter(
+          (event) => event.eventType === "voice_barge_in_state_transition",
+        )
+        .map((event) => [event.previousBargeInState, event.nextBargeInState]),
+    ).toEqual([
+      ["idle", "observing_playback"],
+      ["observing_playback", "interrupt_requested"],
+      ["interrupt_requested", "cancelling_current_turn"],
+      ["cancelling_current_turn", "clearing_pending_work"],
+      ["clearing_pending_work", "preparing_new_capture"],
+      ["preparing_new_capture", "ready_for_capture"],
+      ["ready_for_capture", "completed"],
+    ]);
+    expect(coordinator.getState(sessionId)).toBe("completed");
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      state: "interrupted",
+      active: false,
+    });
+    expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_intent_received",
+        bargeInIntentCategory: "user_ptt_pressed_during_playback",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_action_selected",
+        bargeInAction: "prepare_for_new_capture",
+      }),
+    );
+    expectMetadataOnlyTelemetry(telemetry);
+  });
+
+  it("maps stop intent to safe pipeline cancellation actions", async () => {
+    const { coordinator, pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    const result = await coordinator.handleIntent(
+      intent(sessionId, { category: "user_requested_stop" }),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      intent: expect.objectContaining({ category: "user_requested_stop" }),
+      actions: ["cancel_current_voice_pipeline", "clear_pending_audio_work"],
+      state: "completed",
+    });
+    expect(
+      telemetry
+        .filter(
+          (event) => event.eventType === "voice_barge_in_state_transition",
+        )
+        .map((event) => event.nextBargeInState),
+    ).toEqual([
+      "observing_playback",
+      "interrupt_requested",
+      "cancelling_current_turn",
+      "clearing_pending_work",
+      "completed",
+    ]);
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      state: "cancelled",
+      active: false,
+    });
+    expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_action_selected",
+        bargeInAction: "cancel_current_voice_pipeline",
+      }),
+    );
+  });
+
+  it("rejects stale or non-active session intents", async () => {
+    const { coordinator, pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.completeSession(sessionId);
+    const next = await supervisor.startSession();
+    if (!next.ok) throw new Error("Expected next session to start");
+
+    const stale = await coordinator.handleIntent(intent(sessionId));
+    const missing = await coordinator.handleIntent(intent("missing-session"));
+
+    expect(stale).toEqual({
+      ok: false,
+      intent: expect.objectContaining({ sessionId }),
+      reason: "stale_turn",
+      actions: ["no_op"],
+      state: "idle",
+    });
+    expect(missing).toEqual({
+      ok: false,
+      intent: expect.objectContaining({ sessionId: "missing-session" }),
+      reason: "session_not_found",
+      actions: ["no_op"],
+      state: "idle",
+    });
+    expect(supervisor.getSession(next.session.id)).toMatchObject({
+      active: true,
+    });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_intent_rejected",
+        bargeInRejectionReason: "stale_turn",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_noop",
+        bargeInAction: "no_op",
+      }),
+    );
+  });
+
+  it("handles repeated interrupt intents idempotently", async () => {
+    const { coordinator, pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    const first = await coordinator.handleIntent(intent(sessionId));
+    const repeated = await coordinator.handleIntent(
+      intent(sessionId, { id: "barge-in-2" }),
+    );
+
+    expect(first).toMatchObject({ ok: true });
+    expect(repeated).toEqual({
+      ok: false,
+      intent: expect.objectContaining({ id: "barge-in-2" }),
+      reason: "state_terminal",
+      actions: ["no_op"],
+      state: "completed",
+    });
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      state: "interrupted",
+      active: false,
+    });
+    expect(
+      telemetry.filter((event) => event.eventType === "voice_barge_in_noop"),
+    ).toEqual([expect.objectContaining({ bargeInIntentId: "barge-in-2" })]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_terminal_noop",
+        bargeInRejectionReason: "state_terminal",
+      }),
+    );
+  });
+
+  it("keeps terminal state from producing new work", async () => {
+    const { coordinator, pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    const first = await coordinator.handleIntent(
+      intent(sessionId, { category: "user_requested_stop" }),
+    );
+    const invalid = await coordinator.handleIntent(
+      intent(sessionId, {
+        id: "barge-in-2",
+        category: "user_started_new_turn",
+      }),
+    );
+
+    expect(first).toMatchObject({ ok: true, state: "completed" });
+    expect(invalid).toEqual({
+      ok: false,
+      intent: expect.objectContaining({
+        id: "barge-in-2",
+        category: "user_started_new_turn",
+      }),
+      reason: "state_terminal",
+      actions: ["no_op"],
+      state: "completed",
+    });
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      state: "cancelled",
+      active: false,
+    });
+    expect(coordinator.getState(sessionId)).toBe("completed");
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_terminal_noop",
+        bargeInRejectionReason: "state_terminal",
+      }),
+    );
+  });
+
+  it("fails invalid in-flight transitions closed without creating new work", async () => {
+    const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+    const supervisor = new VoiceOrchestrationSupervisor({
+      newId: createIdGenerator("session"),
+      now: () => 1_000,
+    });
+    const started = await supervisor.startSession();
+    if (!started.ok) throw new Error("Expected voice session to start");
+    const interruptStarted = createDeferred();
+    const releaseInterrupt = createDeferred();
+    const coordinator = new VoiceBargeInCoordinator({
+      supervisor,
+      pipeline: {
+        cancelSession: async () => undefined,
+        interrupt: async () => {
+          interruptStarted.resolve();
+          await releaseInterrupt.promise;
+        },
+      },
+      emitTelemetry: (event) => {
+        telemetry.push(event);
+      },
+    });
+
+    const inFlight = coordinator.handleIntent(
+      intent(started.session.id, {
+        category: "user_ptt_pressed_during_playback",
+      }),
+    );
+    await interruptStarted.promise;
+
+    const invalid = await coordinator.handleIntent(
+      intent(started.session.id, {
+        id: "barge-in-2",
+        category: "user_started_new_turn",
+      }),
+    );
+    releaseInterrupt.resolve();
+    const completed = await inFlight;
+
+    expect(invalid).toEqual({
+      ok: false,
+      intent: expect.objectContaining({
+        id: "barge-in-2",
+        category: "user_started_new_turn",
+      }),
+      reason: "invalid_transition",
+      actions: ["no_op"],
+      state: "ready_for_capture",
+    });
+    expect(completed).toMatchObject({ ok: true, state: "completed" });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_invalid_transition",
+        bargeInRejectionReason: "invalid_transition",
+        bargeInState: "ready_for_capture",
+      }),
+    );
+  });
+
+  it("does not introduce voice approval, autoplay, chat, runtime, Realtime, wake word, or cloud wiring", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/lib/voice-streaming/barge-in-coordinator.ts"),
+      "utf8",
+    );
+
+    expect(source).not.toMatch(/voiceApproval|approval|approve/i);
+    expect(source).not.toMatch(/wake\s*word|always[-_\s]?listening/i);
+    expect(source).not.toMatch(/microphone|navigator\.mediaDevices|keyboard/i);
+    expect(source).not.toMatch(/autoplay|HTMLAudioElement|\.play\(/i);
+    expect(source).not.toMatch(/\/api\/chat|submitChat|autoSubmit/i);
+    expect(source).not.toMatch(/runtime-commands|runTool|toolRuntime/i);
+    expect(source).not.toMatch(/OpenAI|chat\.completions|\/realtime/i);
+    expect(source).not.toMatch(/cloud\s*(stream|streaming)|cloudStreaming/i);
+  });
+});

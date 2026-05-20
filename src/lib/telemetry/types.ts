@@ -171,7 +171,15 @@ export type TelemetryEventType =
   | "voice_realtime_chunk_readiness_changed"
   | "voice_realtime_first_chunk_ready"
   | "voice_realtime_chunk_readiness_timeout"
-  | "voice_realtime_stage_latency_marker";
+  | "voice_realtime_stage_latency_marker"
+  | "voice_barge_in_intent_received"
+  | "voice_barge_in_action_selected"
+  | "voice_barge_in_noop"
+  | "voice_barge_in_intent_rejected"
+  | "voice_barge_in_state_transition"
+  | "voice_barge_in_invalid_transition"
+  | "voice_barge_in_terminal_noop"
+  | "voice_barge_in_transition_failed";
 
 export interface TelemetryEvent {
   timestamp: number;
