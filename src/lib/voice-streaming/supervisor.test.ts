@@ -180,6 +180,41 @@ describe("VoiceOrchestrationSupervisor", () => {
     );
   });
 
+  it("still terminates the session when cleanup callbacks fail", async () => {
+    const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+    const supervisor = new VoiceOrchestrationSupervisor({
+      newId: createIdGenerator(),
+      now: () => 6_000,
+      cancelSynthesis: vi.fn().mockRejectedValue(new Error("secret audio")),
+      clearTranscriptDraft: vi
+        .fn()
+        .mockRejectedValue(new Error("secret transcript")),
+      emitTelemetry: (event) => {
+        telemetry.push(event);
+      },
+    });
+    const started = await supervisor.startSession();
+    if (!started.ok) throw new Error("Expected session to start");
+
+    await expect(
+      supervisor.cancelSession(started.session.id),
+    ).resolves.toMatchObject({
+      state: "cancelled",
+      active: false,
+      cancellation: { aborted: true },
+    });
+
+    expect(supervisor.getState().activeSessionId).toBeNull();
+    expect(JSON.stringify(telemetry)).not.toContain("secret audio");
+    expect(JSON.stringify(telemetry)).not.toContain("secret transcript");
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_session_cancelled",
+        error: "cancelled",
+      }),
+    );
+  });
+
   it("supports interruption state transitions without autoplay", async () => {
     const speechQueueManager = new InMemorySpeechQueueManager({
       newId: createIdGenerator(),
@@ -315,5 +350,37 @@ describe("VoiceOrchestrationSupervisor", () => {
     });
     expect(playbackManager.getActiveItem()).toMatchObject({ status: "ready" });
     expect(supervisor.getState().canAutoplay).toBe(false);
+  });
+
+  it("keeps transcript text, spoken text, and audio bytes out of orchestration telemetry", async () => {
+    const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+    const supervisor = new VoiceOrchestrationSupervisor({
+      newId: createIdGenerator(),
+      now: () => 7_000,
+      emitTelemetry: (event) => {
+        telemetry.push(event);
+      },
+    });
+    const started = await supervisor.startSession();
+    if (!started.ok) throw new Error("Expected session to start");
+
+    supervisor.recordTranscriptDraft({
+      sessionId: started.session.id,
+      draftId: "secret transcript text",
+      transcriptionJobId: "job-1",
+    });
+    supervisor.recordResponseChunk({
+      sessionId: started.session.id,
+      speechChunkId: "secret spoken text 1,2,3",
+      index: 0,
+    });
+    await supervisor.cancelSession(started.session.id);
+
+    const serialized = JSON.stringify(telemetry);
+    expect(serialized).toContain("voice_session_started");
+    expect(serialized).toContain("voice_session_cancelled");
+    expect(serialized).not.toContain("secret transcript text");
+    expect(serialized).not.toContain("secret spoken text");
+    expect(serialized).not.toContain("1,2,3");
   });
 });

@@ -387,9 +387,9 @@ export class VoiceOrchestrationSupervisor {
     this.opts.playbackManager?.cancel();
     this.opts.playbackManager?.cleanup();
     if (signal) {
-      await this.opts.cancelSynthesis?.(signal);
+      await ignoreCleanupFailure(this.opts.cancelSynthesis?.(signal));
     }
-    await this.opts.clearTranscriptDraft?.();
+    await ignoreCleanupFailure(this.opts.clearTranscriptDraft?.());
   }
 
   private markSessionChunks(
@@ -443,6 +443,16 @@ function sanitizeOrchestrationError(error: string): string {
   if (error === "cancelled") return "cancelled";
   if (error === "interrupted") return "interrupted";
   return "voice_session_failed";
+}
+
+async function ignoreCleanupFailure(
+  result: void | Promise<void>,
+): Promise<void> {
+  try {
+    await result;
+  } catch {
+    // Cleanup is best-effort so terminal state and telemetry are still recorded.
+  }
 }
 
 function copySession(session: StreamingSpeechSession): StreamingSpeechSession {
