@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { AudioSessionState } from "@/lib/audio";
+import type { VoiceTranscriptChatPayload } from "@/lib/stt";
 import { VoiceControlPanel } from "./VoiceControlPanel";
 
 const readyState: AudioSessionState = {
@@ -19,6 +20,15 @@ const readyState: AudioSessionState = {
   outputDevices: [
     { kind: "audiooutput", deviceId: "speaker-1", label: "Desk Speaker" },
   ],
+};
+
+const transcriptDraftPayload: VoiceTranscriptChatPayload = {
+  target: "chat_input",
+  source: "voice",
+  text: "Reviewed voice draft.",
+  sourceDraftId: "draft-1",
+  sourceJobId: "job-1",
+  canApproveRuntimeActions: false,
 };
 
 describe("VoiceControlPanel", () => {
@@ -68,5 +78,30 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("capture-1");
     expect(html).toContain("48000Hz");
     expect(html).toContain('aria-pressed="true"');
+  });
+
+  it("keeps transcript submit disabled unless a draft payload exists", () => {
+    const disabledHtml = renderToStaticMarkup(
+      <VoiceControlPanel initialState={readyState} />,
+    );
+    const enabledHtml = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        transcriptDraftPayload={transcriptDraftPayload}
+      />,
+    );
+
+    expect(disabledHtml).toContain("Submit reviewed transcript");
+    const disabledButton = disabledHtml.match(
+      /<button[^>]*>Submit reviewed transcript<\/button>/,
+    )?.[0];
+    const enabledButton = enabledHtml.match(
+      /<button[^>]*>Submit reviewed transcript<\/button>/,
+    )?.[0];
+
+    expect(disabledButton).toMatch(/\sdisabled(=|\s|>)/);
+    expect(enabledHtml).toContain("Submit reviewed transcript");
+    expect(enabledHtml).not.toContain("Reviewed voice draft");
+    expect(enabledButton).not.toMatch(/\sdisabled(=|\s|>)/);
   });
 });

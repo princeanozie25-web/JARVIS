@@ -15,13 +15,18 @@ import {
 import { initialTranscriptionState } from "@/lib/stt/state";
 import { localWhisperPlaceholderProvider } from "@/lib/stt/local-whisper-placeholder";
 import { transcriptionProviders } from "@/lib/stt/registry";
+import type { VoiceTranscriptChatPayload } from "@/lib/stt/types";
 
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
+  transcriptDraftPayload?: VoiceTranscriptChatPayload | null;
+  onVoiceDraftSubmitted?: (payload: VoiceTranscriptChatPayload) => void;
 }
 
 export function VoiceControlPanel({
   initialState = initialAudioSessionState,
+  transcriptDraftPayload = null,
+  onVoiceDraftSubmitted,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
   const transcriptionState = initialTranscriptionState;
@@ -32,6 +37,7 @@ export function VoiceControlPanel({
     ? localWhisperPlaceholderProvider.status
     : "disabled";
   const activeTranscriptionJobLabel = "No active transcription job";
+  const canSubmitTranscriptDraft = transcriptDraftPayload !== null;
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
@@ -458,7 +464,11 @@ export function VoiceControlPanel({
             </p>
             <button
               type="button"
-              disabled
+              disabled={!canSubmitTranscriptDraft}
+              onClick={() => {
+                if (!transcriptDraftPayload) return;
+                onVoiceDraftSubmitted?.(transcriptDraftPayload);
+              }}
               className="mt-3 rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Submit reviewed transcript

@@ -28,6 +28,7 @@ import { RuntimeCommandPanel } from "@/components/RuntimeCommandPanel";
 import { TimelineIndexPanel } from "@/components/TimelineIndexPanel";
 import { VoiceControlPanel } from "@/components/VoiceControlPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
+import type { VoiceTranscriptChatPayload } from "@/lib/stt";
 import type {
   ApiApprovalDecision,
   CuratorAuditRow,
@@ -73,6 +74,18 @@ type ApiMessage = Message & {
   id: string;
 };
 
+export interface VoiceDraftInputMarker {
+  source: "voice";
+  sourceDraftId: string;
+  sourceJobId: string;
+  canApproveRuntimeActions: false;
+}
+
+export interface VoiceDraftInputState {
+  input: string;
+  marker: VoiceDraftInputMarker;
+}
+
 function createMessage(role: Message["role"], content: string): UiMessage {
   return {
     id: globalThis.crypto.randomUUID(),
@@ -87,6 +100,36 @@ function toApiMessage(message: UiMessage): ApiMessage {
     role: message.role,
     content: message.content,
   };
+}
+
+export function voiceDraftPayloadToChatInputState(
+  payload: VoiceTranscriptChatPayload,
+): VoiceDraftInputState | null {
+  const text = payload.text.trim();
+  if (payload.target !== "chat_input" || !text) return null;
+  return {
+    input: text,
+    marker: {
+      source: "voice",
+      sourceDraftId: payload.sourceDraftId,
+      sourceJobId: payload.sourceJobId,
+      canApproveRuntimeActions: false,
+    },
+  };
+}
+
+export function voiceDraftMarkerAfterInputChange(
+  value: string,
+  current: VoiceDraftInputMarker | null,
+): VoiceDraftInputMarker | null {
+  return value.trim() ? current : null;
+}
+
+export function canSendTypedChatInput(
+  input: string,
+  loading: boolean,
+): boolean {
+  return Boolean(input.trim()) && !loading;
 }
 
 function surfacedMemoriesFromToolData(data: unknown): SurfacedMemory[] {
@@ -144,6 +187,8 @@ export default function Home() {
   ]);
 
   const [input, setInput] = useState("");
+  const [voiceDraftInput, setVoiceDraftInput] =
+    useState<VoiceDraftInputMarker | null>(null);
   const [provider, setProvider] = useState<SupportedProvider>("openai");
   const [loading, setLoading] = useState(false);
   const [streamingStarted, setStreamingStarted] = useState(false);
@@ -695,8 +740,22 @@ export default function Home() {
     abortRef.current?.abort();
   }
 
+  function applyVoiceDraftToInput(payload: VoiceTranscriptChatPayload) {
+    const next = voiceDraftPayloadToChatInputState(payload);
+    if (!next) return;
+    setInput(next.input);
+    setVoiceDraftInput(next.marker);
+  }
+
+  function updateInput(value: string) {
+    setInput(value);
+    setVoiceDraftInput((current) =>
+      voiceDraftMarkerAfterInputChange(value, current),
+    );
+  }
+
   async function sendMessage() {
-    if (!input.trim() || loading) return;
+    if (!canSendTypedChatInput(input, loading)) return;
 
     const assistantMessageId = globalThis.crypto.randomUUID();
     const newMessages: UiMessage[] = [
@@ -706,6 +765,7 @@ export default function Home() {
 
     setMessages(newMessages);
     setInput("");
+    setVoiceDraftInput(null);
     setLoading(true);
     setStreamingStarted(false);
     setError(null);
@@ -1253,7 +1313,7 @@ export default function Home() {
 
       <RuntimeCommandPanel />
 
-      <VoiceControlPanel />
+      <VoiceControlPanel onVoiceDraftSubmitted={applyVoiceDraftToInput} />
 
       <MemoryInspectorPanel
         memories={memories}
@@ -1384,7 +1444,7 @@ export default function Home() {
         <input
           className="flex-1 rounded-xl bg-gray-900 border border-gray-700 p-4 outline-none disabled:opacity-50"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => updateInput(e.target.value)}
           placeholder="Message JARVIS..."
           disabled={loading}
           onKeyDown={(e) => {
@@ -1402,13 +1462,18 @@ export default function Home() {
         ) : (
           <button
             onClick={sendMessage}
-            disabled={!input.trim()}
+            disabled={!canSendTypedChatInput(input, loading)}
             className="rounded-xl bg-white text-black px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
           </button>
         )}
       </section>
+      {voiceDraftInput && input.trim() && (
+        <p className="w-full max-w-3xl mt-2 text-xs text-cyan-300">
+          Reviewed voice draft loaded. Press Send manually.
+        </p>
+      )}
     </main>
   );
 }
