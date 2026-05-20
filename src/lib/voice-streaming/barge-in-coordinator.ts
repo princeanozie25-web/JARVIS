@@ -6,7 +6,9 @@ import type {
   VoiceBargeInIntent,
   VoiceBargeInRejectionReason,
   VoiceBargeInState,
+  VoiceChunkReadinessRecord,
   VoiceOrchestrationTelemetryEvent,
+  VoiceTurnPreemptionRecord,
   VoiceTurnState,
 } from "./types";
 
@@ -14,8 +16,10 @@ export interface VoiceBargeInCoordinatorOptions {
   supervisor: VoiceOrchestrationSupervisor;
   pipeline: Pick<
     VoiceRealtimeOrchestrationPipeline,
-    "cancelSession" | "interrupt"
+    "cancelSession" | "interrupt" | "getPlaybackIntents" | "getChunkReadiness"
   >;
+  now?: () => number;
+  newId?: () => string;
   emitTelemetry?: (
     event: VoiceOrchestrationTelemetryEvent,
   ) => void | Promise<void>;
@@ -41,6 +45,10 @@ const TERMINAL_BARGE_IN_STATES = new Set<VoiceBargeInState>([
 
 export class VoiceBargeInCoordinator {
   private readonly stateBySession = new Map<string, VoiceBargeInState>();
+  private readonly preemptionByTurn = new Map<
+    string,
+    VoiceTurnPreemptionRecord
+  >();
 
   constructor(private readonly opts: VoiceBargeInCoordinatorOptions) {}
 
@@ -62,6 +70,11 @@ export class VoiceBargeInCoordinator {
     );
     if (rejection) {
       await this.rejectIntent(intent, rejection, session?.state, currentState);
+      await this.handleRejectedPreemption(
+        intent,
+        rejection,
+        session?.state ?? "failed",
+      );
       return {
         ok: false,
         intent: copyIntent(intent),
@@ -108,6 +121,19 @@ export class VoiceBargeInCoordinator {
     return this.stateBySession.get(sessionId) ?? "idle";
   }
 
+  getPreemptionRecords(sessionId?: string): VoiceTurnPreemptionRecord[] {
+    return Array.from(this.preemptionByTurn.values())
+      .filter(
+        (record) => sessionId === undefined || record.sessionId === sessionId,
+      )
+      .map(copyPreemptionRecord);
+  }
+
+  getPreemptionRecord(turnId: string): VoiceTurnPreemptionRecord | null {
+    const record = this.preemptionByTurn.get(turnId);
+    return record ? copyPreemptionRecord(record) : null;
+  }
+
   private async runTransitionPlan(
     intent: VoiceBargeInIntent,
     plan: BargeInTransitionPlan,
@@ -122,6 +148,8 @@ export class VoiceBargeInCoordinator {
     for (const action of plan.actions) {
       await this.emitAction(intent, action, turnState, true);
     }
+
+    await this.recordPreemption(intent, turnState);
 
     if (plan.terminalMethod === "cancel") {
       await this.opts.pipeline.cancelSession(intent.sessionId);
@@ -175,6 +203,85 @@ export class VoiceBargeInCoordinator {
     await this.emitAction(intent, "no_op", turnState ?? "failed", false);
   }
 
+  private async recordPreemption(
+    intent: VoiceBargeInIntent,
+    state: VoiceTurnState,
+  ): Promise<VoiceTurnPreemptionRecord> {
+    const turnId = preemptionTurnId(intent);
+    const existing = this.preemptionByTurn.get(turnId);
+    if (existing) {
+      await this.emitPreemption(
+        intent,
+        "voice_turn_preemption_noop",
+        existing,
+        {
+          state,
+          success: true,
+        },
+      );
+      return copyPreemptionRecord(existing);
+    }
+
+    const playbackIntents = this.opts.pipeline.getPlaybackIntents(
+      intent.sessionId,
+    );
+    const readiness = this.opts.pipeline.getChunkReadiness(intent.sessionId);
+    const record: VoiceTurnPreemptionRecord = {
+      id: this.newId(),
+      sessionId: intent.sessionId,
+      turnId,
+      interruptedAt: this.now(),
+      lastReadyChunkIndex: maxChunkIndex(
+        readiness.filter(isReadyForPlayback).map((item) => item.chunkIndex),
+      ),
+      lastSequencedChunkIndex: maxChunkIndex(
+        playbackIntents.map((item) => item.chunkIndex),
+      ),
+      pendingChunkCount: playbackIntents.length,
+      reason: intent.category,
+    };
+
+    this.preemptionByTurn.set(turnId, record);
+    await this.emitPreemption(
+      intent,
+      "voice_turn_preemption_recorded",
+      record,
+      {
+        state,
+        success: true,
+      },
+    );
+    return copyPreemptionRecord(record);
+  }
+
+  private async handleRejectedPreemption(
+    intent: VoiceBargeInIntent,
+    reason: VoiceBargeInRejectionReason,
+    state: VoiceTurnState,
+  ): Promise<void> {
+    const existing = this.preemptionByTurn.get(preemptionTurnId(intent));
+    if (existing) {
+      await this.emitPreemption(
+        intent,
+        "voice_turn_preemption_noop",
+        existing,
+        {
+          state,
+          success: true,
+          bargeInRejectionReason: reason,
+        },
+      );
+      return;
+    }
+
+    await this.emit(intent, "voice_turn_preemption_rejected", false, {
+      state,
+      turnId: preemptionTurnId(intent),
+      preemptionReason: intent.category,
+      bargeInRejectionReason: reason,
+    });
+  }
+
   private async transitionState(
     intent: VoiceBargeInIntent,
     previousState: VoiceBargeInState,
@@ -212,6 +319,28 @@ export class VoiceBargeInCoordinator {
     );
   }
 
+  private async emitPreemption(
+    intent: VoiceBargeInIntent,
+    eventType: Extract<
+      VoiceOrchestrationTelemetryEvent["eventType"],
+      "voice_turn_preemption_recorded" | "voice_turn_preemption_noop"
+    >,
+    record: VoiceTurnPreemptionRecord,
+    fields: Partial<VoiceOrchestrationTelemetryEvent>,
+  ): Promise<void> {
+    await this.emit(intent, eventType, fields.success ?? true, {
+      state: fields.state ?? "failed",
+      preemptionRecordId: record.id,
+      turnId: record.turnId,
+      interruptedAt: record.interruptedAt,
+      lastReadyChunkIndex: record.lastReadyChunkIndex,
+      lastSequencedChunkIndex: record.lastSequencedChunkIndex,
+      pendingChunkCount: record.pendingChunkCount,
+      preemptionReason: record.reason,
+      bargeInRejectionReason: fields.bargeInRejectionReason,
+    });
+  }
+
   private async emit(
     intent: VoiceBargeInIntent,
     eventType: VoiceOrchestrationTelemetryEvent["eventType"],
@@ -228,8 +357,17 @@ export class VoiceBargeInCoordinator {
       playbackIntentId: intent.playbackIntentId,
       bargeInIntentId: intent.id,
       bargeInIntentCategory: intent.category,
+      turnId: fields.turnId ?? intent.turnId,
       ...fields,
     });
+  }
+
+  private now(): number {
+    return this.opts.now?.() ?? Date.now();
+  }
+
+  private newId(): string {
+    return this.opts.newId?.() ?? `preemption-${this.now()}`;
   }
 }
 
@@ -294,4 +432,22 @@ function isValidIntentFromState(
 
 function copyIntent(intent: VoiceBargeInIntent): VoiceBargeInIntent {
   return { ...intent };
+}
+
+function copyPreemptionRecord(
+  record: VoiceTurnPreemptionRecord,
+): VoiceTurnPreemptionRecord {
+  return { ...record };
+}
+
+function preemptionTurnId(intent: VoiceBargeInIntent): string {
+  return intent.turnId ?? intent.sessionId;
+}
+
+function isReadyForPlayback(record: VoiceChunkReadinessRecord): boolean {
+  return record.state === "ready_to_play" && !record.terminal;
+}
+
+function maxChunkIndex(indexes: number[]): number | undefined {
+  return indexes.length > 0 ? Math.max(...indexes) : undefined;
 }

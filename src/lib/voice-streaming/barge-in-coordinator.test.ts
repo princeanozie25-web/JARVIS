@@ -56,6 +56,8 @@ async function createHarness() {
   const coordinator = new VoiceBargeInCoordinator({
     supervisor,
     pipeline,
+    newId: createIdGenerator("preemption"),
+    now: () => 5_000,
     emitTelemetry,
   });
   const started = await supervisor.startSession();
@@ -95,6 +97,7 @@ function intent(
     streamId: "stream-1",
     responseId: "response-1",
     playbackIntentId: "playback-1",
+    turnId: "turn-1",
     ...input,
   };
 }
@@ -168,6 +171,18 @@ describe("VoiceBargeInCoordinator", () => {
       active: false,
     });
     expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    expect(coordinator.getPreemptionRecords(sessionId)).toEqual([
+      {
+        id: "preemption-1",
+        sessionId,
+        turnId: "turn-1",
+        interruptedAt: 5_000,
+        lastReadyChunkIndex: 0,
+        lastSequencedChunkIndex: 0,
+        pendingChunkCount: 1,
+        reason: "user_ptt_pressed_during_playback",
+      },
+    ]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_intent_received",
@@ -178,6 +193,17 @@ describe("VoiceBargeInCoordinator", () => {
       expect.objectContaining({
         eventType: "voice_barge_in_action_selected",
         bargeInAction: "prepare_for_new_capture",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_turn_preemption_recorded",
+        preemptionRecordId: "preemption-1",
+        turnId: "turn-1",
+        lastReadyChunkIndex: 0,
+        lastSequencedChunkIndex: 0,
+        pendingChunkCount: 1,
+        preemptionReason: "user_ptt_pressed_during_playback",
       }),
     );
     expectMetadataOnlyTelemetry(telemetry);
@@ -216,6 +242,12 @@ describe("VoiceBargeInCoordinator", () => {
       active: false,
     });
     expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    expect(coordinator.getPreemptionRecords(sessionId)).toEqual([
+      expect.objectContaining({
+        reason: "user_requested_stop",
+        pendingChunkCount: 1,
+      }),
+    ]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_action_selected",
@@ -251,6 +283,14 @@ describe("VoiceBargeInCoordinator", () => {
     expect(supervisor.getSession(next.session.id)).toMatchObject({
       active: true,
     });
+    expect(coordinator.getPreemptionRecords(sessionId)).toEqual([]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_turn_preemption_rejected",
+        bargeInRejectionReason: "stale_turn",
+        preemptionReason: "user_ptt_pressed_during_playback",
+      }),
+    );
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_intent_rejected",
@@ -287,6 +327,14 @@ describe("VoiceBargeInCoordinator", () => {
       state: "interrupted",
       active: false,
     });
+    expect(coordinator.getPreemptionRecords(sessionId)).toHaveLength(1);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_turn_preemption_noop",
+        preemptionRecordId: "preemption-1",
+        bargeInIntentId: "barge-in-2",
+      }),
+    );
     expect(
       telemetry.filter((event) => event.eventType === "voice_barge_in_noop"),
     ).toEqual([expect.objectContaining({ bargeInIntentId: "barge-in-2" })]);
@@ -337,6 +385,46 @@ describe("VoiceBargeInCoordinator", () => {
     );
   });
 
+  it("captures only metadata for half-spoken turn preemption records", async () => {
+    const { coordinator, pipeline, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+    await pipeline.ingest(chunkEvent(sessionId, 1));
+
+    await coordinator.handleIntent(
+      intent(sessionId, {
+        id: "barge-in-with-unsafe-fields",
+        category: "playback_preempted",
+        transcript: "secret transcript payload",
+        spokenText: "secret spoken payload",
+        assistantBody: "secret assistant body payload",
+        audioUrl: "secret audio payload",
+        pcm: "secret audio payload",
+      } as unknown as Partial<VoiceBargeInIntent>),
+    );
+
+    const records = coordinator.getPreemptionRecords(sessionId);
+    expect(records).toEqual([
+      {
+        id: "preemption-1",
+        sessionId,
+        turnId: "turn-1",
+        interruptedAt: 5_000,
+        lastReadyChunkIndex: 1,
+        lastSequencedChunkIndex: 1,
+        pendingChunkCount: 2,
+        reason: "playback_preempted",
+      },
+    ]);
+
+    const serializedRecords = JSON.stringify(records);
+    expect(serializedRecords).not.toContain("secret transcript payload");
+    expect(serializedRecords).not.toContain("secret spoken payload");
+    expect(serializedRecords).not.toContain("secret assistant body payload");
+    expect(serializedRecords).not.toContain("secret audio payload");
+    expectMetadataOnlyTelemetry(telemetry);
+  });
+
   it("fails invalid in-flight transitions closed without creating new work", async () => {
     const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
     const supervisor = new VoiceOrchestrationSupervisor({
@@ -355,7 +443,11 @@ describe("VoiceBargeInCoordinator", () => {
           interruptStarted.resolve();
           await releaseInterrupt.promise;
         },
+        getPlaybackIntents: () => [],
+        getChunkReadiness: () => [],
       },
+      newId: createIdGenerator("preemption"),
+      now: () => 5_000,
       emitTelemetry: (event) => {
         telemetry.push(event);
       },

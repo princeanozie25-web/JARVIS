@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:24pm GMT+1
+# [jarvis] recent context, 2026-05-20 11:28pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,400t read) | 1,209,158t work | 98% savings
+Stats: 50 obs (22,393t read) | 1,185,221t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,9 +26,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-708 8:08p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated
-709 " 🔵 JARVIS TTS Layer Pre-Flight Audit — Infrastructure Confirmed Clean
-710 " 🔴 Added Missing Voice-Model-Missing Test Case to LocalTtsRuntime
+709 8:08p 🔵 JARVIS TTS Layer Pre-Flight Audit — Infrastructure Confirmed Clean
 711 8:14p ⚖️ JARVIS Phase 4C-5: TTS Sentence Chunker Audit Scope Defined
 712 8:15p 🔵 JARVIS TTS Module Architecture: Types, Safety Policy, and StreamEvent Integration
 713 " 🟣 TtsSentenceChunker Implemented: Streaming Text-to-Speech Sentence Chunker
@@ -76,6 +74,8 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 755 11:23p 🔵 JARVIS Phase 4D Voice Streaming Pipeline Already Fully Implemented
 756 " 🟣 JARVIS Phase 4E.1: Metadata-Only Barge-In Coordinator Implemented
 757 " 🟣 Barge-In Coordinator Test Suite Added with Safety Assertion Coverage
+758 11:28p 🔵 JARVIS Phase 4D Voice Streaming — Current State Before Metadata Ingestion Slice
+759 " 🟣 JARVIS Phase 4D — Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
 
-Access 1209k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1185k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

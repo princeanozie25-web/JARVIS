@@ -57,6 +57,7 @@ export type {
   VoiceBargeInIntentCategory,
   VoiceBargeInRejectionReason,
   VoiceBargeInState,
+  VoiceTurnPreemptionRecord,
   VoiceReadinessLatencyStage,
   VoicePlaybackSequenceIntent,
   VoicePlaybackSequenceIntentState,

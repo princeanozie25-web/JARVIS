@@ -179,7 +179,10 @@ export type TelemetryEventType =
   | "voice_barge_in_state_transition"
   | "voice_barge_in_invalid_transition"
   | "voice_barge_in_terminal_noop"
-  | "voice_barge_in_transition_failed";
+  | "voice_barge_in_transition_failed"
+  | "voice_turn_preemption_recorded"
+  | "voice_turn_preemption_noop"
+  | "voice_turn_preemption_rejected";
 
 export interface TelemetryEvent {
   timestamp: number;

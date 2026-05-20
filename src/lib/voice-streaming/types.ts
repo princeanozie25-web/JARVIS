@@ -253,6 +253,7 @@ export interface VoiceBargeInIntent {
   streamId?: string;
   responseId?: string;
   playbackIntentId?: string;
+  turnId?: string;
 }
 
 export type VoiceBargeInRejectionReason =
@@ -277,6 +278,17 @@ export type VoiceBargeInCoordinatorResult =
       actions: VoiceBargeInAction[];
       state: VoiceBargeInState;
     };
+
+export interface VoiceTurnPreemptionRecord {
+  id: string;
+  sessionId: string;
+  turnId: string;
+  interruptedAt: number;
+  lastReadyChunkIndex?: number;
+  lastSequencedChunkIndex?: number;
+  pendingChunkCount: number;
+  reason: VoiceBargeInIntentCategory;
+}
 
 export interface OrchestrationState {
   activeSessionId: string | null;
@@ -338,7 +350,10 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_barge_in_state_transition"
   | "voice_barge_in_invalid_transition"
   | "voice_barge_in_terminal_noop"
-  | "voice_barge_in_transition_failed";
+  | "voice_barge_in_transition_failed"
+  | "voice_turn_preemption_recorded"
+  | "voice_turn_preemption_noop"
+  | "voice_turn_preemption_rejected";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -383,6 +398,13 @@ export interface VoiceOrchestrationTelemetryEvent {
   bargeInState?: VoiceBargeInState;
   previousBargeInState?: VoiceBargeInState;
   nextBargeInState?: VoiceBargeInState;
+  preemptionRecordId?: string;
+  turnId?: string;
+  interruptedAt?: number;
+  lastReadyChunkIndex?: number;
+  lastSequencedChunkIndex?: number;
+  pendingChunkCount?: number;
+  preemptionReason?: VoiceBargeInIntentCategory;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;
