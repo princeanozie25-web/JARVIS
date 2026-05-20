@@ -13,6 +13,7 @@ import type {
 import type {
   LocalSpeechProviderConfig,
   SpeechChunk,
+  SpeechProviderMetadata,
   SpeechProviderStatus,
 } from "./types";
 
@@ -55,6 +56,7 @@ function createProvider(input: {
   enabled?: boolean;
   status?: SpeechProviderStatus;
   telemetry?: LocalTtsSynthesisTelemetryEvent[];
+  metadata?: SpeechProviderMetadata;
   now?: () => number;
 }) {
   return createLocalTtsSynthesisProvider({
@@ -62,6 +64,7 @@ function createProvider(input: {
     status: input.status ?? "ready",
     handle: input.handle === undefined ? createHandle() : input.handle,
     config,
+    metadata: input.metadata,
     now: input.now,
     newId: () => "audio-1",
     emitTelemetry: (event) => input.telemetry?.push(event),
@@ -229,6 +232,28 @@ describe("createLocalTtsSynthesisProvider", () => {
     expect(JSON.stringify(telemetry)).not.toContain(secretFailure);
   });
 
+  it("refuses unsafe runtime metadata before calling the handle", async () => {
+    const handle = createHandle();
+    const provider = createProvider({
+      handle,
+      metadata: {
+        runsLocally: true,
+        requiresNetwork: true,
+        storesAudio: false,
+        supportsStreaming: false,
+      },
+    });
+
+    await expect(
+      provider.synthesize(speechInputFromChunk(chunk())),
+    ).resolves.toMatchObject({
+      status: "error",
+      audio: null,
+      errorMessage: "synthesis_failed",
+    });
+    expect(handle.synthesize).not.toHaveBeenCalled();
+  });
+
   it("marks a queue item ready after successful synthesis", async () => {
     const manager = new InMemorySpeechQueueManager({
       newId: () => "queue-1",
@@ -254,6 +279,35 @@ describe("createLocalTtsSynthesisProvider", () => {
     });
     expect(manager.getItem("queue-1")).toMatchObject({
       status: "ready",
+    });
+    expect(manager.getItem("queue-1")).not.toHaveProperty("audio");
+  });
+
+  it("marks a queue item failed with sanitized metadata after synthesis failure", async () => {
+    const manager = new InMemorySpeechQueueManager({
+      newId: () => "queue-1",
+      now: () => 1_000,
+    });
+    const item = manager.enqueue(chunk());
+    if (!item.ok) throw new Error("Expected queue enqueue to succeed");
+    const active = manager.startNext();
+    if (!active) throw new Error("Expected active queue item");
+    const provider = createProvider({ status: "not_installed" });
+
+    await expect(
+      synthesizeQueuedSpeechItem({
+        provider,
+        item: active,
+        markReady: (itemId) => manager.markReady(itemId),
+        fail: (itemId, error) => manager.fail(itemId, error),
+      }),
+    ).resolves.toMatchObject({
+      item: {
+        id: "queue-1",
+        status: "failed",
+        error: "queue_item_failed",
+      },
+      result: { status: "disabled", audio: null },
     });
     expect(manager.getItem("queue-1")).not.toHaveProperty("audio");
   });

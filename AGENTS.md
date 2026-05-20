@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 9:03pm GMT+1
+# [jarvis] recent context, 2026-05-20 9:15pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,295t read) | 1,312,450t work | 98% savings
+Stats: 50 obs (21,700t read) | 1,070,763t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,27 +26,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-681 7:18p 🔵 VoiceControlPanel Refactor Committed; Only AGENTS.md Remains Staged
-682 7:31p ⚖️ Phase 4B-13: Manual Local STT Flow Audit Scoped
-683 7:32p 🔵 Phase 4B-13 Audit: Manual Local STT Flow Verified Clean — No P0/P1 Issues Found
-684 " 🔵 STT Pre-flight Gate: `getManualTranscriptionStartBlockReason` Enforces Four Hard Stops
-685 " 🔵 Audio Snapshot Pattern: Transient Chunks Cloned Before `capture.stop()` Is Awaited
-686 " 🔵 Local Whisper Runtime Enforces `assertLocalOnly` at Both Initialize and Transcribe Call Sites
-687 " 🔵 Transcript Draft Pipeline: `canApproveRuntimeActions: false` Hardcoded End-to-End
-688 " 🔵 InMemoryTranscriptionJobManager: Double-Guard with `isCancelled` Check After Async Transcription
-689 7:35p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Planned for JARVIS
-690 7:36p 🔵 JARVIS src/lib Directory Structure Mapped
-691 " 🟣 TTS Scaffold Module Created at src/lib/tts/
-692 " ✅ VoiceControlPanel Speaker Section Updated to Show TTS Provider State
-693 " 🔵 JARVIS Full Test Suite at 96 Files / 679 Tests All Passing
-694 7:55p 🔵 JARVIS Phase 4C-1: TTS Scaffold Audit Initiated
-695 7:56p 🔵 JARVIS TTS Types: Full Type System Confirmed Safe
 696 7:57p 🔵 JARVIS TTS Providers: Disabled and Local Placeholder Confirmed Safe
 697 " 🔵 JARVIS TTS Registry: Default Provider is "disabled", Unknown Lookup Throws
 698 " 🔵 JARVIS TTS Safety Policy: Multi-Layer Block Logic Confirmed
 699 " 🔵 JARVIS VoiceControlPanel Speaker Panel: TTS Disabled State Rendered Correctly
 700 " 🟣 TTS Safety Policy Tests Hardened: Two New personal_context Block Cases Added
-701 " 🔵 JARVIS Phase 4C-1 TTS Audit: All Checks Pass, No Prohibited Paths Found
 702 8:00p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Planned for JARVIS
 703 8:01p 🟣 LocalTtsRuntime Class Added to JARVIS TTS Layer
 704 " 🔵 TTS Layer Was Pre-Phase-4 Stub With No Runtime Lifecycle
@@ -76,6 +60,22 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 728 8:58p 🔵 JARVIS TTS Queue Scaffold Exists with Safety Policy Integration
 729 " 🔵 TelemetryEvent Schema Already Has time_to_first_token_ms Field
 730 " 🔵 Full JARVIS Test Suite at 706 Tests All Passing; Build Succeeds with One Pre-existing Warning
+731 9:04p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Plan
+732 9:05p 🔵 TTS Queue Scaffold Already Exists and Is Well-Structured Pre-Phase-3.75
+733 " 🔵 time_to_first_token_ms Already Present in TelemetryEvent Schema
+734 " 🟣 TTS Queue Test Extended With Error Sanitization Coverage
+735 " 🔵 Known Build Warning: NFT Tracing Spans Whole Project via runtime-commands/workspace.ts
+736 9:07p ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Scoped
+737 " 🔵 JARVIS TTS Layer — Existing Infrastructure Mapped
+738 " 🟣 TTS Type System Extended with SpeechAudioResult and AbortSignal Support
+739 " 🟣 LocalTtsSynthesisHandle Interface Added to local-runtime.ts
+740 " 🟣 New local-synthesis-provider.ts — Full Local TTS Synthesis Execution Layer
+741 " 🟣 InMemorySpeechQueueManager Gets markReady() Transition
+742 " ✅ Telemetry Type Union Extended with Three Local TTS Synthesis Events
+743 9:09p 🟣 local-synthesis-provider.test.ts — 8-Case Test Suite Added
+744 " 🔴 Null-Handle Test Broken by ?? Operator — Fixed to Strict undefined Check
+745 9:10p ✅ TypeScript Full Project Type-Check Passes After Phase 3.75 TTS Changes
+746 " ✅ Phase 3.75 TTS Layer — Full Verification Passed: 714 Tests, Clean Lint, Clean Build
 
-Access 1312k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1071k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
