@@ -188,6 +188,40 @@ describe("InMemoryTranscriptionJobManager", () => {
     );
   });
 
+  it("does not hand off a draft result after cancellation", async () => {
+    let resolveTranscription:
+      | ((result: TranscriptionResult) => void)
+      | undefined;
+    const onCompletedResult = vi.fn();
+    const manager = new InMemoryTranscriptionJobManager({
+      newId: () => "job-1",
+      onCompletedResult,
+    });
+    const provider = createProvider({
+      transcribe: vi.fn(
+        () =>
+          new Promise<TranscriptionResult>((resolve) => {
+            resolveTranscription = resolve;
+          }),
+      ),
+    });
+
+    const running = manager.startJob({
+      provider,
+      input: transientInput,
+      source: "ptt_capture",
+    });
+    await manager.cancel("job-1");
+    resolveTranscription?.({
+      status: "completed",
+      providerId: "test-provider",
+      text: "late transcript",
+    });
+
+    await expect(running).resolves.toMatchObject({ status: "cancelled" });
+    expect(onCompletedResult).not.toHaveBeenCalled();
+  });
+
   it("clears transient audio references after completed and failed jobs", async () => {
     const completed = createManager();
     await expect(

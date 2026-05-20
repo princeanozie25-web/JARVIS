@@ -8,6 +8,10 @@ export {
   transcribeWithGuard,
 } from "./guard";
 export {
+  getManualTranscriptionStartBlockReason,
+  type ManualTranscriptionStartBlockReason,
+} from "./manual-voice-flow";
+export {
   InMemoryTranscriptionJobManager,
   type StartTranscriptionJobInput,
   type TranscriptionJobManagerOptions,

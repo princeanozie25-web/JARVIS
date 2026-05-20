@@ -47,7 +47,7 @@ describe("VoiceControlPanel", () => {
     );
 
     expect(html).toContain("Voice Scaffold");
-    expect(html).toContain("Push-to-talk lifecycle only");
+    expect(html).toContain("Push-to-talk lifecycle with manual local");
     expect(html).toContain("Hold to Talk");
     expect(html).toContain("VU placeholder");
     expect(html).toContain("STT not configured yet.");
@@ -56,6 +56,7 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("not installed");
     expect(html).toContain("Runtime state: disabled");
     expect(html).toContain("No active transcription job");
+    expect(html).toContain("Transcription disabled/not configured");
     expect(html).toContain("Transcript draft");
     expect(html).toContain("Voice transcript must be reviewed before sending.");
     expect(html).toContain("Submit reviewed transcript");
@@ -123,6 +124,30 @@ describe("VoiceControlPanel", () => {
     );
 
     expect(html).toContain("Transcription running");
+    expect(html).toContain("Transcribing locally");
+    expect(html).toContain("Cancel transcription");
     expect(html).toContain("Local processing only - review before sending.");
+  });
+
+  it("shows failed transcription state without enabling transcript submit", () => {
+    const html = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        transcriptionJob={{
+          ...runningTranscriptionJob,
+          status: "failed",
+          completedAt: 1_100,
+          durationMs: 99,
+          error: "transcription_failed",
+        }}
+      />,
+    );
+    const submitButton = html.match(
+      /<button[^>]*>Submit reviewed transcript<\/button>/,
+    )?.[0];
+
+    expect(html).toContain("Transcription failed");
+    expect(html).not.toContain("Cancel transcription");
+    expect(submitButton).toMatch(/\sdisabled(=|\s|>)/);
   });
 });

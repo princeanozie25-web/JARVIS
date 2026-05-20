@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   audioSessionReducer,
   initialAudioSessionState,
@@ -11,19 +11,27 @@ import {
   subscribeToAudioDeviceChanges,
   type LocalAudioCaptureHandle,
   type AudioSessionState,
+  type TransientAudioChunk,
 } from "@/lib/audio";
 import { initialTranscriptionState } from "@/lib/stt/state";
 import { localWhisperPlaceholderProvider } from "@/lib/stt/local-whisper-placeholder";
 import { transcriptionProviders } from "@/lib/stt/registry";
+import { getManualTranscriptionStartBlockReason } from "@/lib/stt/manual-voice-flow";
+import { InMemoryTranscriptionJobManager } from "@/lib/stt/jobs";
+import { InMemoryVoiceTranscriptDraftManager } from "@/lib/stt/transcript-drafts";
 import type {
+  TranscriptionInput,
   TranscriptionJob,
+  TranscriptionProvider,
   VoiceTranscriptChatPayload,
+  VoiceTranscriptDraft,
 } from "@/lib/stt/types";
 
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
   transcriptionJob?: TranscriptionJob | null;
   transcriptDraftPayload?: VoiceTranscriptChatPayload | null;
+  transcriptionProvider?: TranscriptionProvider;
   onVoiceDraftSubmitted?: (payload: VoiceTranscriptChatPayload) => void;
 }
 
@@ -31,29 +39,72 @@ export function VoiceControlPanel({
   initialState = initialAudioSessionState,
   transcriptionJob = null,
   transcriptDraftPayload = null,
+  transcriptionProvider = localWhisperPlaceholderProvider,
   onVoiceDraftSubmitted,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
+  const [localTranscriptionJob, setLocalTranscriptionJob] =
+    useState<TranscriptionJob | null>(null);
+  const [localTranscriptDraft, setLocalTranscriptDraft] =
+    useState<VoiceTranscriptDraft | null>(null);
+  const [localDraftText, setLocalDraftText] = useState("");
+  const [transcriptionNotice, setTranscriptionNotice] = useState<string | null>(
+    null,
+  );
   const transcriptionState = initialTranscriptionState;
   const defaultTranscriptionProvider = transcriptionProviders.getDefault();
+  const activeTranscriptionJob = transcriptionJob ?? localTranscriptionJob;
   const localWhisperInstalled =
-    localWhisperPlaceholderProvider.status !== "not_installed";
-  const localWhisperRuntimeState = localWhisperPlaceholderProvider.enabled
-    ? localWhisperPlaceholderProvider.status
+    transcriptionProvider.status !== "not_installed";
+  const localWhisperRuntimeState = transcriptionProvider.enabled
+    ? transcriptionProvider.status
     : "disabled";
-  const activeTranscriptionJobLabel = transcriptionJob
-    ? `Transcription ${transcriptionJob.status}`
+  const activeTranscriptionJobLabel = activeTranscriptionJob
+    ? `Transcription ${activeTranscriptionJob.status}`
     : "No active transcription job";
-  const canSubmitTranscriptDraft = transcriptDraftPayload !== null;
+  const hasLocalDraftText =
+    localTranscriptDraft?.status === "draft" && localDraftText.trim() !== "";
+  const canSubmitTranscriptDraft =
+    transcriptDraftPayload !== null || hasLocalDraftText;
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
+  const transcriptionJobManagerRef =
+    useRef<InMemoryTranscriptionJobManager | null>(null);
+  const transcriptDraftManagerRef =
+    useRef<InMemoryVoiceTranscriptDraftManager | null>(null);
   const pttHeldRef = useRef(false);
   const stateRef = useRef(state);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  const getTranscriptDraftManager = useCallback(() => {
+    if (!transcriptDraftManagerRef.current) {
+      transcriptDraftManagerRef.current =
+        new InMemoryVoiceTranscriptDraftManager();
+    }
+    return transcriptDraftManagerRef.current;
+  }, []);
+
+  const getTranscriptionJobManager = useCallback(() => {
+    if (!transcriptionJobManagerRef.current) {
+      transcriptionJobManagerRef.current = new InMemoryTranscriptionJobManager({
+        async onCompletedResult({ job, result }) {
+          const draft = await getTranscriptDraftManager().createDraft({
+            result,
+            sourceJobId: job.id,
+          });
+          if (!draft) return;
+          setLocalTranscriptDraft(draft);
+          setLocalDraftText(draft.text);
+          setTranscriptionNotice("Transcript ready for review.");
+        },
+      });
+    }
+    return transcriptionJobManagerRef.current;
+  }, [getTranscriptDraftManager]);
 
   const refreshDevices = useCallback(async () => {
     try {
@@ -70,6 +121,51 @@ export function VoiceControlPanel({
     }
   }, []);
 
+  const startTranscriptionForCapture = useCallback(
+    async (transcriptionInput: TranscriptionInput) => {
+      const blockReason = getManualTranscriptionStartBlockReason({
+        provider: transcriptionProvider,
+        transcriptionInput,
+        recordingActive:
+          stateRef.current.status === "recording" ||
+          stateRef.current.pushToTalkActive,
+      });
+
+      if (blockReason) {
+        if (
+          blockReason === "provider_disabled" ||
+          blockReason === "provider_unavailable"
+        ) {
+          setTranscriptionNotice("Transcription disabled/not configured.");
+        }
+        return;
+      }
+
+      const visibleJob: TranscriptionJob = {
+        id: "local-stt-pending",
+        providerId: transcriptionProvider.id,
+        status: "running",
+        createdAt: Date.now(),
+        startedAt: Date.now(),
+        source: "ptt_capture",
+      };
+      setLocalTranscriptionJob(visibleJob);
+      setTranscriptionNotice("Transcribing locally.");
+      const job = await getTranscriptionJobManager().startJob({
+        provider: transcriptionProvider,
+        input: transcriptionInput,
+        source: "ptt_capture",
+      });
+      setLocalTranscriptionJob(job);
+      if (job.status === "failed" || job.status === "rejected") {
+        setTranscriptionNotice(job.error ?? "Transcription failed.");
+      } else if (job.status === "cancelled") {
+        setTranscriptionNotice("Transcription cancelled.");
+      }
+    },
+    [getTranscriptionJobManager, transcriptionProvider],
+  );
+
   const stopActiveCapture = useCallback(
     async (reason: "release" | "devicechange" | "visibility" | "unmount") => {
       captureStartAbortRef.current?.abort();
@@ -79,6 +175,9 @@ export function VoiceControlPanel({
       if (!capture) return;
       captureRef.current = null;
       const stoppedAt = Date.now();
+      const transientChunks = cloneTransientChunks(
+        capture.getTransientChunks(),
+      );
       const result = await capture.stop(stoppedAt);
       dispatch({ type: "ptt_stopped", stoppedAt });
       stateRef.current = {
@@ -105,8 +204,16 @@ export function VoiceControlPanel({
         selectedOutputDeviceId: stateRef.current.selectedOutputDeviceId,
         notes: `duration_ms=${result.durationMs} reason=${reason}`,
       });
+      if (reason === "release" && transientChunks.length > 0) {
+        void startTranscriptionForCapture({
+          captureSessionId: capture.metadata.id,
+          chunks: transientChunks,
+          sampleRate: capture.metadata.sampleRate,
+          durationMs: result.durationMs,
+        });
+      }
     },
-    [],
+    [startTranscriptionForCapture],
   );
 
   const failActiveCapture = useCallback(async (message: string) => {
@@ -274,10 +381,53 @@ export function VoiceControlPanel({
     await stopActiveCapture("release");
   }
 
+  async function cancelTranscription() {
+    const manager = transcriptionJobManagerRef.current;
+    const activeJob = manager?.getActiveJob();
+    if (!manager || !activeJob) return;
+    const cancelled = await manager.cancel(activeJob.id);
+    setLocalTranscriptionJob(cancelled);
+    setLocalTranscriptDraft(null);
+    setLocalDraftText("");
+    setTranscriptionNotice("Transcription cancelled.");
+  }
+
+  async function updateLocalDraft(text: string) {
+    setLocalDraftText(text);
+    const draft = await getTranscriptDraftManager().editDraft(text);
+    setLocalTranscriptDraft(draft);
+  }
+
+  async function submitReviewedTranscript() {
+    if (transcriptDraftPayload) {
+      onVoiceDraftSubmitted?.(transcriptDraftPayload);
+      return;
+    }
+    const payload = await getTranscriptDraftManager().submitDraft();
+    if (!payload) return;
+    setLocalTranscriptDraft(null);
+    setLocalDraftText("");
+    setTranscriptionNotice("Transcript submitted to chat input.");
+    onVoiceDraftSubmitted?.(payload);
+  }
+
   const canRecord =
     state.microphonePermissionStatus === "granted" &&
     (state.status === "idle" || state.status === "ready");
   const isRecording = state.status === "recording";
+  const isTranscribing = activeTranscriptionJob?.status === "running";
+  const transcriptStatusText = isRecording
+    ? "Recording"
+    : isTranscribing
+      ? "Transcribing locally"
+      : localTranscriptDraft
+        ? "Transcript ready for review"
+        : activeTranscriptionJob?.status === "failed"
+          ? "Transcription failed"
+          : !transcriptionProvider.enabled ||
+              transcriptionProvider.status !== "ready"
+            ? "Transcription disabled/not configured"
+            : "No active transcription job";
   const vuBars = [0.3, 0.55, 0.8, 1, 0.7, 0.45, 0.25].map((scale) =>
     isRecording ? Math.max(6, Math.round(state.vuLevel * 48 * scale)) : 6,
   );
@@ -290,7 +440,8 @@ export function VoiceControlPanel({
             Voice Scaffold
           </h2>
           <p className="mt-1 text-xs text-gray-500">
-            Push-to-talk lifecycle only; no transcription or speech output
+            Push-to-talk lifecycle with manual local transcription only; no
+            speech output
           </p>
         </div>
         <span
@@ -447,13 +598,18 @@ export function VoiceControlPanel({
           <h3 className="text-xs font-semibold uppercase text-gray-500">
             Transcript
           </h3>
-          <p className="mt-2 text-sm text-gray-500">STT not configured yet.</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {transcriptionProvider.enabled &&
+            transcriptionProvider.status === "ready"
+              ? "Local STT ready; review is required before chat input."
+              : "STT not configured yet."}
+          </p>
           <p className="mt-1 text-xs text-gray-600">
             Default provider {defaultTranscriptionProvider.id}:{" "}
             {transcriptionState.status}
           </p>
           <p className="mt-1 text-xs text-gray-600">
-            Local provider {localWhisperPlaceholderProvider.id}:{" "}
+            Local provider {transcriptionProvider.id}:{" "}
             {localWhisperInstalled ? "installed" : "not installed"}
           </p>
           <p className="mt-1 text-xs text-gray-600">
@@ -462,10 +618,25 @@ export function VoiceControlPanel({
           <p className="mt-1 text-xs text-gray-600">
             {activeTranscriptionJobLabel}
           </p>
-          {transcriptionJob && (
+          <p className="mt-1 text-xs text-gray-600">{transcriptStatusText}</p>
+          {transcriptionNotice && (
+            <p className="mt-1 text-xs text-gray-600">{transcriptionNotice}</p>
+          )}
+          {activeTranscriptionJob && (
             <p className="mt-1 text-xs text-cyan-300">
               Local processing only - review before sending.
             </p>
+          )}
+          {isTranscribing && (
+            <button
+              type="button"
+              onClick={() => {
+                void cancelTranscription();
+              }}
+              className="mt-3 rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-400"
+            >
+              Cancel transcription
+            </button>
           )}
           <div className="mt-3 rounded-md border border-gray-900 bg-gray-950 p-3">
             <p className="text-xs font-semibold uppercase text-gray-500">
@@ -474,12 +645,21 @@ export function VoiceControlPanel({
             <p className="mt-2 text-sm text-gray-500">
               Voice transcript must be reviewed before sending.
             </p>
+            {localTranscriptDraft && (
+              <textarea
+                className="mt-3 min-h-20 w-full rounded-md border border-gray-800 bg-black p-2 text-sm text-gray-200"
+                value={localDraftText}
+                aria-label="Reviewed voice transcript draft"
+                onChange={(event) => {
+                  void updateLocalDraft(event.target.value);
+                }}
+              />
+            )}
             <button
               type="button"
               disabled={!canSubmitTranscriptDraft}
               onClick={() => {
-                if (!transcriptDraftPayload) return;
-                onVoiceDraftSubmitted?.(transcriptDraftPayload);
+                void submitReviewedTranscript();
               }}
               className="mt-3 rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -501,4 +681,13 @@ export function VoiceControlPanel({
       </div>
     </section>
   );
+}
+
+function cloneTransientChunks(
+  chunks: readonly TransientAudioChunk[],
+): TransientAudioChunk[] {
+  return chunks.map((chunk) => ({
+    ...chunk,
+    pcm: new Float32Array(chunk.pcm),
+  }));
 }
