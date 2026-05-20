@@ -1,7 +1,7 @@
 import type { StreamEvent } from "../providers";
 
 export function encodeSseEvent(event: StreamEvent): string {
-  return `data: ${JSON.stringify(event)}\n\n`;
+  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 
 export interface ParsedSseEvents {

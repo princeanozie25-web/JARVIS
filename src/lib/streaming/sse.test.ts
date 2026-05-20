@@ -84,6 +84,12 @@ describe("SSE stream protocol", () => {
     expect(parsed.remaining).toBe(partial);
   });
 
+  it("serializes the StreamEvent type as the SSE event name", () => {
+    expect(encodeSseEvent({ type: "text", value: "hello" })).toBe(
+      'event: text\ndata: {"type":"text","value":"hello"}\n\n',
+    );
+  });
+
   it("ignores malformed frames without dropping later valid frames", () => {
     const valid = { type: "text", value: "safe" } as const;
     const encoded = `data: nope\n\n${encodeSseEvent(valid)}`;
