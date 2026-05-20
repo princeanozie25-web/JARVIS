@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VoicePlaybackSequencer } from "./playback-sequencer";
@@ -111,6 +111,16 @@ function assertTelemetryHygiene(
   expect(serialized).not.toContain("secret spoken payload");
   expect(serialized).not.toContain("secret assistant body payload");
   expect(serialized).not.toContain("secret audio payload");
+}
+
+function readVoiceStreamingImplementationSources(): string {
+  const dir = join(process.cwd(), "src/lib/voice-streaming");
+  return readdirSync(dir)
+    .filter(
+      (fileName) => fileName.endsWith(".ts") && !fileName.endsWith(".test.ts"),
+    )
+    .map((fileName) => readFileSync(join(dir, fileName), "utf8"))
+    .join("\n");
 }
 
 describe("VoiceRealtimeOrchestrationPipeline", () => {
@@ -1343,6 +1353,153 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(serialized).not.toContain("secret spoken failure");
   });
 
+  it("keeps all Phase 4D telemetry event shapes metadata-only", async () => {
+    const scenarios = [
+      async () => {
+        const { pipeline, telemetry, sessionId } = await createHarness({
+          readinessTimeoutMs: 500,
+        });
+        await pipeline.ingest({
+          ...chunkEvent(sessionId, 2),
+          createdAt: 1_000,
+          transcript: "secret transcript payload",
+          spokenText: "secret spoken payload",
+          assistantBody: "secret assistant body payload",
+          audio: "secret audio payload",
+        } as unknown as AssistantResponseStreamMetadataEvent);
+        await pipeline.ingest(chunkEvent(sessionId, 2));
+        await pipeline.detectReadinessTimeouts(sessionId, 1_600);
+        await pipeline.cancelSession(sessionId);
+        await pipeline.cancelSession(sessionId);
+        return telemetry;
+      },
+      async () => {
+        const { pipeline, telemetry, sessionId } = await createHarness({
+          maxScheduledIntents: 1,
+        });
+        await pipeline.ingest(chunkEvent(sessionId, 0));
+        await pipeline.ingest(chunkEvent(sessionId, 1));
+        return telemetry;
+      },
+      async () => {
+        const { pipeline, telemetry, sessionId } = await createHarness();
+        await pipeline.ingest({
+          type: "response_failed",
+          sessionId,
+          streamId: "stream-1",
+          responseId: "response-1",
+          error: "secret assistant body payload",
+        });
+        return telemetry;
+      },
+    ];
+    const telemetry = (
+      await Promise.all(scenarios.map((scenario) => scenario()))
+    ).flat();
+    const forbiddenKeys = new Set([
+      "transcript",
+      "text",
+      "spokenText",
+      "assistantBody",
+      "body",
+      "audio",
+      "audioData",
+      "audioBytes",
+      "payload",
+    ]);
+
+    expect(telemetry.length).toBeGreaterThan(0);
+    for (const event of telemetry) {
+      for (const key of Object.keys(event)) {
+        expect(forbiddenKeys.has(key)).toBe(false);
+      }
+    }
+    expect(telemetry.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining([
+        "voice_realtime_pipeline_playback_intent_created",
+        "voice_realtime_chunk_readiness_changed",
+        "voice_realtime_first_chunk_ready",
+        "voice_realtime_chunk_readiness_timeout",
+        "voice_realtime_stage_latency_marker",
+        "voice_realtime_pipeline_terminal_started",
+        "voice_realtime_pipeline_terminal_completed",
+        "voice_realtime_pipeline_terminal_noop",
+        "voice_realtime_pipeline_fanout_started",
+        "voice_realtime_pipeline_fanout_completed",
+        "voice_realtime_pipeline_fanout_noop",
+        "voice_realtime_pipeline_failed",
+      ]),
+    );
+    assertTelemetryHygiene(telemetry);
+  });
+
+  it("preserves final Phase 4D lifecycle invariants in one active turn", async () => {
+    const {
+      pipeline,
+      scheduler,
+      synthesisQueue,
+      playbackSequencer,
+      supervisor,
+      telemetry,
+      sessionId,
+    } = await createHarness();
+
+    expect(await supervisor.startSession()).toEqual({
+      ok: false,
+      reason: "active_session_exists",
+    });
+    const first = await pipeline.ingest(chunkEvent(sessionId, 1));
+    const second = await pipeline.ingest(chunkEvent(sessionId, 0));
+    const duplicate = await pipeline.ingest(chunkEvent(sessionId, 1));
+
+    expect(first).toMatchObject({ ok: true });
+    expect(second).toMatchObject({ ok: true });
+    expect(duplicate).toEqual({
+      ok: false,
+      stage: "scheduler",
+      reason: "duplicate_chunk",
+    });
+    expect(
+      pipeline.getPlaybackIntents(sessionId).map((intent) => intent.chunkIndex),
+    ).toEqual([0, 1]);
+
+    await pipeline.completeSession(sessionId);
+    await pipeline.completeSession(sessionId);
+    const stale = await pipeline.ingest(chunkEvent(sessionId, 2));
+
+    expect(stale).toEqual({
+      ok: false,
+      stage: "scheduler",
+      reason: "stale_turn",
+    });
+    expect(scheduler.getPendingIntents(sessionId)).toEqual([]);
+    expect(synthesisQueue.getPendingItems(sessionId)).toEqual([]);
+    expect(playbackSequencer.getPendingIntents(sessionId)).toEqual([]);
+    expect(
+      pipeline
+        .getChunkReadiness(sessionId)
+        .map((record) => [record.chunkIndex, record.state, record.firstReady]),
+    ).toEqual([
+      [0, "terminal", false],
+      [1, "terminal", false],
+    ]);
+    expect(pipeline.getFirstReadyChunk(sessionId)).toBeNull();
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      active: false,
+      state: "completed",
+    });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_realtime_pipeline_terminal_noop",
+        terminalAction: "complete",
+      }),
+    );
+    expect(supervisor.getState()).toMatchObject({
+      activeSessionId: null,
+      canAutoplay: false,
+    });
+  });
+
   it("does not introduce autoplay, live chat, command, Realtime API, or cloud wiring", () => {
     const source = readFileSync(
       join(process.cwd(), "src/lib/voice-streaming/pipeline.ts"),
@@ -1357,5 +1514,21 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(source).not.toMatch(/runTool|toolRuntime|submitApproval/);
     expect(source).not.toMatch(/createFromReadyQueueItem|play\(/);
     expect(source).not.toMatch(/cloud/i);
+  });
+
+  it("freezes Phase 4D implementation against forbidden wiring dependencies", () => {
+    const sources = readVoiceStreamingImplementationSources();
+
+    expect(sources).not.toMatch(
+      /from\s+["'][^"']*(app\/page|components\/chat|chat-ui)/i,
+    );
+    expect(sources).not.toMatch(/\/api\/chat|submitChat|autoSubmit/i);
+    expect(sources).not.toMatch(/runtime-commands|runTool|toolRuntime/i);
+    expect(sources).not.toMatch(/submitApproval|approveExecution|approval/i);
+    expect(sources).not.toMatch(/OpenAI|chat\.completions|\/realtime/i);
+    expect(sources).not.toMatch(/cloud\s*(stream|streaming)|cloudStreaming/i);
+    expect(sources).not.toMatch(
+      /autoplay\s*[:=]\s*true|HTMLAudioElement|\.play\(/i,
+    );
   });
 });
