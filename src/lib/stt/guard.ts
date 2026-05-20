@@ -1,7 +1,5 @@
-import {
-  disabledTranscriptionResult,
-  disabledTranscriptionProvider,
-} from "./disabled-provider";
+import { disabledTranscriptionResult } from "./disabled-provider";
+import { transcriptionProviders } from "./registry";
 import type {
   TranscriptionInput,
   TranscriptionProvider,
@@ -15,10 +13,13 @@ export async function transcribeWithGuard(
   if (!provider.enabled) {
     return disabledTranscriptionResult("provider_disabled", provider.id);
   }
+  if (provider.status !== "available") {
+    return disabledTranscriptionResult("provider_unavailable", provider.id);
+  }
 
   return provider.transcribe(input);
 }
 
 export function getDefaultTranscriptionProvider(): TranscriptionProvider {
-  return disabledTranscriptionProvider;
+  return transcriptionProviders.getDefault();
 }

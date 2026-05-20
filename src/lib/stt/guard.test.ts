@@ -14,6 +14,14 @@ describe("transcribeWithGuard", () => {
     const provider: TranscriptionProvider = {
       id: "disabled-test",
       enabled: false,
+      status: "unavailable",
+      capabilities: {
+        supportsStreaming: false,
+        supportsPartialResults: false,
+        runsLocally: true,
+        requiresNetwork: false,
+        storesAudio: false,
+      },
       transcribe: vi.fn(),
     };
 
@@ -30,6 +38,14 @@ describe("transcribeWithGuard", () => {
     const provider: TranscriptionProvider = {
       id: "enabled-test",
       enabled: true,
+      status: "available",
+      capabilities: {
+        supportsStreaming: false,
+        supportsPartialResults: false,
+        runsLocally: true,
+        requiresNetwork: false,
+        storesAudio: false,
+      },
       transcribe: vi.fn().mockResolvedValue({
         status: "completed",
         providerId: "enabled-test",

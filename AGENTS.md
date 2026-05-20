@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 5:29am GMT+1
+# [jarvis] recent context, 2026-05-20 5:33am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,746t read) | 2,114,009t work | 99% savings
+Stats: 50 obs (21,747t read) | 2,031,864t work | 99% savings
 
 ### May 16, 2026
 
@@ -23,20 +23,9 @@ S9 User asked where the PDF was saved — Claude provided the full file path (Ma
 S8 JARVIS codebase audit against ARCHITECTURE.md v3.1 and Claude audit context.md, output as PDF (May 16, 7:26 AM)
 S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpoint audit for Phase 1B readiness (May 16, 10:46 AM)
 
-### May 19, 2026
-
-601 9:59p 🔵 JARVIS Existing Codebase Structure Confirmed Before Phase 3A
-602 " 🟣 Full Runtime Command REST API Implemented with 6 New Route Endpoints
-603 " 🔴 vitest.config.ts Created to Fix @/ Path Alias Resolution in Tests
-604 " 🔴 server-only Package Must Be Mocked in Vitest to Test Next.js Server Routes
-
 ### May 20, 2026
 
 609 4:50a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
-610 " 🟣 Typed StreamEvent Union Replaces Plain String Stream Shape
-611 " 🟣 SSE Protocol Adopted for /api/chat Streaming Endpoint
-612 " 🟣 First-Token Telemetry Added to Streaming Path
-613 " 🟣 AbortSignal Threading Through Full Stream Path
 614 4:52a 🔵 Phase 3.75 Streaming Infrastructure Already Fully Implemented
 615 " 🟣 SSE Encoder Upgraded to Emit Named Event Fields
 616 " 🟣 OpenAI Provider Stream Tests Added
@@ -78,6 +67,14 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 652 " 🔵 node_repl Kernel Crashes with EPERM on C:\Users\princ\AppData lstat in This Environment
 653 " ✅ Phase 3.75 Git Status — Final File Set
 654 5:28a 🔵 JARVIS Phase 4A-3: Voice Capture Audit Scope Defined
+655 5:29a 🔵 JARVIS Audio Capture Stack: Safety Invariants Audit Results
+656 " 🔴 PTT Race Condition Fixed with AbortSignal on startLocalAudioCapture
+657 " 🔴 VoiceControlPanel Session Status Line: Mojibake Middle-Dot Characters Fixed
+658 " 🟣 Added AbortSignal Test for PTT Release During In-Flight Capture
+659 " 🔵 AppData EPERM Smoke-Test Blocker: Confirmed Local Environment Permission Anomaly
+660 " ✅ Phase 4A-3 Final Build & Test Verification: All Green
+661 5:32a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated
+662 5:33a 🟣 STT Provider Scaffold (src/lib/stt) Created as Disabled Placeholder
 
-Access 2114k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2032k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

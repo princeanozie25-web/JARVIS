@@ -13,8 +13,9 @@ import {
   type AudioSessionState,
 } from "@/lib/audio";
 import {
-  disabledTranscriptionProvider,
   initialTranscriptionState,
+  localWhisperPlaceholderProvider,
+  transcriptionProviders,
 } from "@/lib/stt";
 
 export interface VoiceControlPanelProps {
@@ -26,6 +27,7 @@ export function VoiceControlPanel({
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
   const transcriptionState = initialTranscriptionState;
+  const defaultTranscriptionProvider = transcriptionProviders.getDefault();
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
@@ -430,8 +432,15 @@ export function VoiceControlPanel({
           </h3>
           <p className="mt-2 text-sm text-gray-500">STT not configured yet.</p>
           <p className="mt-1 text-xs text-gray-600">
-            Provider {disabledTranscriptionProvider.id}:{" "}
+            Default provider {defaultTranscriptionProvider.id}:{" "}
             {transcriptionState.status}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Local provider {localWhisperPlaceholderProvider.id}:{" "}
+            {localWhisperPlaceholderProvider.status}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            local only, no network, no audio storage
           </p>
         </div>
         <div className="rounded-md border border-gray-800 bg-black p-3 opacity-60">

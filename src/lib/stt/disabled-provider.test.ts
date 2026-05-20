@@ -20,5 +20,12 @@ describe("disabledTranscriptionProvider", () => {
       reason: "not_configured",
     });
     expect(disabledTranscriptionProvider.enabled).toBe(false);
+    expect(disabledTranscriptionProvider.capabilities).toMatchObject({
+      supportsStreaming: false,
+      supportsPartialResults: false,
+      runsLocally: true,
+      requiresNetwork: false,
+      storesAudio: false,
+    });
   });
 });
