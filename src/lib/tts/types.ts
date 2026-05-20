@@ -110,6 +110,22 @@ export interface PlaybackTelemetryEvent {
   error?: string;
 }
 
+export type ManualTtsDemoTelemetryEventType =
+  | "demo_tts_prepare_started"
+  | "demo_tts_prepare_completed"
+  | "demo_tts_prepare_failed";
+
+export interface ManualTtsDemoTelemetryEvent {
+  eventType: ManualTtsDemoTelemetryEventType;
+  success: boolean;
+  chunkId?: string;
+  queueItemId?: string;
+  playbackItemId?: string;
+  audioId?: string;
+  byteLength?: number;
+  error?: string;
+}
+
 export type SpeechQueueItemStatus =
   | "queued"
   | "synthesizing"

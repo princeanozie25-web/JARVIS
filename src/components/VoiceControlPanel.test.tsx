@@ -82,8 +82,13 @@ describe("VoiceControlPanel", () => {
     );
     expect(html).toContain("Runtime state: disabled");
     expect(html).toContain("No speech ready");
-    expect(html).toContain("Play speech");
-    expect(html).toContain("Stop speech");
+    expect(html).toContain("Manual TTS demo");
+    expect(html).toContain("Prepare speech");
+    expect(html).toContain(
+      "No assistant response wiring, no autoplay, no cloud speech.",
+    );
+    expect(html).not.toContain(">Play speech</button>");
+    expect(html).not.toContain(">Stop speech</button>");
     expect(html).toContain(
       "Manual playback only; no automatic speaking after assistant replies.",
     );
@@ -96,12 +101,14 @@ describe("VoiceControlPanel", () => {
       <VoiceControlPanel
         initialState={readyState}
         playbackItem={readyPlaybackItem}
+        onPrepareTtsDemo={() => undefined}
       />,
     );
     const playingHtml = renderToStaticMarkup(
       <VoiceControlPanel
         initialState={readyState}
         playbackItem={{ ...readyPlaybackItem, status: "playing" }}
+        onPrepareTtsDemo={() => undefined}
       />,
     );
     const playButton = readyHtml.match(
@@ -112,9 +119,33 @@ describe("VoiceControlPanel", () => {
     )?.[0];
 
     expect(readyHtml).toContain("Speech ready");
+    expect(readyHtml).toContain("Prepare speech");
     expect(playButton).not.toMatch(/\sdisabled(=|\s|>)/);
+    expect(readyHtml).not.toContain(">Stop speech</button>");
     expect(playingHtml).toContain("Speech playing");
+    expect(playingHtml).not.toContain(">Play speech</button>");
     expect(stopButton).not.toMatch(/\sdisabled(=|\s|>)/);
+  });
+
+  it("renders manual TTS demo controls without enabling autoplay", () => {
+    const html = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        ttsDemoText="Safe assistant demo prose."
+        ttsDemoStatus="ready"
+        ttsDemoMessage="Speech prepared for manual playback."
+        onPrepareTtsDemo={() => undefined}
+      />,
+    );
+    const prepareButton = html.match(
+      /<button[^>]*>Prepare speech<\/button>/,
+    )?.[0];
+
+    expect(html).toContain("Manual TTS demo");
+    expect(html).toContain("Safe assistant demo prose.");
+    expect(html).toContain("Speech prepared for manual playback.");
+    expect(prepareButton).not.toMatch(/\sdisabled(=|\s|>)/);
+    expect(html).not.toContain(">Play speech</button>");
   });
 
   it("makes recording state visually explicit", () => {

@@ -123,7 +123,10 @@ export type TelemetryEventType =
   | "tts_playback_stopped"
   | "tts_playback_completed"
   | "tts_playback_failed"
-  | "tts_playback_cancelled";
+  | "tts_playback_cancelled"
+  | "demo_tts_prepare_started"
+  | "demo_tts_prepare_completed"
+  | "demo_tts_prepare_failed";
 
 export interface TelemetryEvent {
   timestamp: number;

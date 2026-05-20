@@ -30,12 +30,20 @@ import type {
   VoiceTranscriptDraft,
 } from "@/lib/stt/types";
 
+const DEFAULT_TTS_DEMO_TEXT =
+  "This is a local manual speech demo. It will not play automatically.";
+
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
   transcriptionJob?: TranscriptionJob | null;
   transcriptDraftPayload?: VoiceTranscriptChatPayload | null;
   transcriptionProvider?: TranscriptionProvider;
   playbackItem?: PlaybackItem | null;
+  ttsDemoText?: string;
+  ttsDemoStatus?: "idle" | "preparing" | "ready" | "failed";
+  ttsDemoMessage?: string | null;
+  onTtsDemoTextChange?: (text: string) => void;
+  onPrepareTtsDemo?: (text: string) => void | Promise<void>;
   onManualSpeechPlay?: () => void;
   onManualSpeechStop?: () => void;
   onVoiceDraftSubmitted?: (payload: VoiceTranscriptChatPayload) => void;
@@ -47,11 +55,19 @@ export function VoiceControlPanel({
   transcriptDraftPayload = null,
   transcriptionProvider = localWhisperPlaceholderProvider,
   playbackItem = null,
+  ttsDemoText,
+  ttsDemoStatus = "idle",
+  ttsDemoMessage = null,
+  onTtsDemoTextChange,
+  onPrepareTtsDemo,
   onManualSpeechPlay,
   onManualSpeechStop,
   onVoiceDraftSubmitted,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
+  const [localTtsDemoText, setLocalTtsDemoText] = useState(
+    ttsDemoText ?? DEFAULT_TTS_DEMO_TEXT,
+  );
   const [localTranscriptionJob, setLocalTranscriptionJob] =
     useState<TranscriptionJob | null>(null);
   const [localTranscriptDraft, setLocalTranscriptDraft] =
@@ -87,6 +103,11 @@ export function VoiceControlPanel({
             : "No speech ready";
   const canPlaySpeech = playbackItem?.status === "ready";
   const canStopSpeech = playbackItem?.status === "playing";
+  const currentTtsDemoText = ttsDemoText ?? localTtsDemoText;
+  const canPrepareTtsDemo =
+    Boolean(onPrepareTtsDemo) &&
+    ttsDemoStatus !== "preparing" &&
+    currentTtsDemoText.trim() !== "";
   const hasLocalDraftText =
     localTranscriptDraft?.status === "draft" && localDraftText.trim() !== "";
   const canSubmitTranscriptDraft =
@@ -446,6 +467,17 @@ export function VoiceControlPanel({
     onVoiceDraftSubmitted?.(payload);
   }
 
+  function updateTtsDemoText(text: string) {
+    if (ttsDemoText === undefined) {
+      setLocalTtsDemoText(text);
+    }
+    onTtsDemoTextChange?.(text);
+  }
+
+  function prepareTtsDemo() {
+    void onPrepareTtsDemo?.(currentTtsDemoText);
+  }
+
   const canRecord =
     state.microphonePermissionStatus === "granted" &&
     (state.status === "idle" || state.status === "ready");
@@ -727,27 +759,58 @@ export function VoiceControlPanel({
             local only, no network, no audio storage
           </p>
           <p className="mt-2 text-xs text-gray-600">{playbackStatusText}</p>
+          <div className="mt-3 rounded-md border border-gray-900 bg-gray-950 p-3">
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              Manual TTS demo
+            </p>
+            <p className="mt-2 text-xs text-gray-600">
+              Local-only demo path; prepare speech manually and press Play
+              yourself.
+            </p>
+            <textarea
+              className="mt-3 min-h-20 w-full rounded-md border border-gray-800 bg-black p-2 text-sm text-gray-300"
+              aria-label="Manual TTS demo text"
+              value={currentTtsDemoText}
+              onChange={(event) => updateTtsDemoText(event.target.value)}
+            />
+            <button
+              type="button"
+              disabled={!canPrepareTtsDemo}
+              onClick={prepareTtsDemo}
+              className="mt-3 rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {ttsDemoStatus === "preparing"
+                ? "Preparing speech"
+                : "Prepare speech"}
+            </button>
+            <p className="mt-2 text-xs text-gray-600">
+              {ttsDemoMessage ??
+                "No assistant response wiring, no autoplay, no cloud speech."}
+            </p>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!canPlaySpeech}
-              onClick={() => {
-                onManualSpeechPlay?.();
-              }}
-              className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Play speech
-            </button>
-            <button
-              type="button"
-              disabled={!canStopSpeech}
-              onClick={() => {
-                onManualSpeechStop?.();
-              }}
-              className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Stop speech
-            </button>
+            {canPlaySpeech && (
+              <button
+                type="button"
+                onClick={() => {
+                  onManualSpeechPlay?.();
+                }}
+                className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600"
+              >
+                Play speech
+              </button>
+            )}
+            {canStopSpeech && (
+              <button
+                type="button"
+                onClick={() => {
+                  onManualSpeechStop?.();
+                }}
+                className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600"
+              >
+                Stop speech
+              </button>
+            )}
           </div>
           <p className="mt-2 text-xs text-gray-600">
             Manual playback only; no automatic speaking after assistant replies.

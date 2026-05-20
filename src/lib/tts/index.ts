@@ -52,6 +52,13 @@ export {
   type PlaybackManagerOptions,
   type PlaybackRejectionReason,
 } from "./playback";
+export {
+  ManualTtsDemoController,
+  type ManualTtsDemoControllerOptions,
+  type ManualTtsDemoPrepareFailureReason,
+  type ManualTtsDemoPrepareOptions,
+  type ManualTtsDemoPrepareResult,
+} from "./demo-controller";
 export { SpeechProviderRegistry, speechProviders } from "./registry";
 export {
   evaluateSpeechSafetyPolicy,
@@ -66,6 +73,8 @@ export type {
   PlaybackState,
   PlaybackTelemetryEvent,
   PlaybackTelemetryEventType,
+  ManualTtsDemoTelemetryEvent,
+  ManualTtsDemoTelemetryEventType,
   SpeechAudioResult,
   SpeechChunk,
   SpeechQueueItem,
