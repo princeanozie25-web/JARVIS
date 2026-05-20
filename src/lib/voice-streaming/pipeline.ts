@@ -209,6 +209,7 @@ export class VoiceRealtimeOrchestrationPipeline {
       {
         pipelineStage: stage,
         chunkIndex: event.type === "chunk_available" ? event.index : undefined,
+        orderingIssue: stale ? "late" : undefined,
       },
     );
     return { ok: false, stage, reason };

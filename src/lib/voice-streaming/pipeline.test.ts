@@ -265,6 +265,101 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     );
   });
 
+  it("drops duplicate chunks before they create duplicate downstream work", async () => {
+    const {
+      pipeline,
+      scheduler,
+      synthesisQueue,
+      playbackSequencer,
+      supervisor,
+      telemetry,
+      sessionId,
+    } = await createHarness();
+
+    const first = await pipeline.ingest(chunkEvent(sessionId, 0));
+    const duplicate = await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    expect(first).toMatchObject({
+      ok: true,
+      playbackIntent: { chunkIndex: 0 },
+    });
+    expect(duplicate).toEqual({
+      ok: false,
+      stage: "scheduler",
+      reason: "duplicate_chunk",
+    });
+    expect(supervisor.getState().chunks).toHaveLength(1);
+    expect(scheduler.getPendingIntents(sessionId)).toHaveLength(1);
+    expect(synthesisQueue.getPendingItems(sessionId)).toHaveLength(1);
+    expect(playbackSequencer.getPendingIntents(sessionId)).toHaveLength(1);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_response_chunk_duplicate_dropped",
+        error: "duplicate_chunk",
+        orderingIssue: "duplicate",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_realtime_pipeline_dropped",
+        pipelineStage: "scheduler",
+        error: "duplicate_chunk",
+      }),
+    );
+  });
+
+  it("handles skipped and out-of-order chunk indexes deterministically without deadlock", async () => {
+    const { pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+
+    const skipped = await pipeline.ingest(chunkEvent(sessionId, 2));
+    const outOfOrder = await pipeline.ingest(chunkEvent(sessionId, 0));
+    const stillMissingOne = await pipeline.ingest(chunkEvent(sessionId, 3));
+
+    expect(skipped).toMatchObject({
+      ok: true,
+      playbackIntent: { chunkIndex: 2 },
+    });
+    expect(outOfOrder).toMatchObject({
+      ok: true,
+      playbackIntent: { chunkIndex: 0 },
+    });
+    expect(stillMissingOne).toMatchObject({
+      ok: true,
+      playbackIntent: { chunkIndex: 3 },
+    });
+    expect(
+      pipeline.getPlaybackIntents(sessionId).map((intent) => intent.chunkIndex),
+    ).toEqual([0, 2, 3]);
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      metadata: { responseChunkCount: 3 },
+    });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_response_chunk_gap_detected",
+        chunkIndex: 2,
+        expectedChunkIndex: 0,
+        orderingIssue: "gap",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_response_chunk_out_of_order",
+        chunkIndex: 0,
+        expectedChunkIndex: 0,
+        orderingIssue: "out_of_order",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_response_chunk_gap_detected",
+        chunkIndex: 3,
+        expectedChunkIndex: 1,
+        orderingIssue: "gap",
+      }),
+    );
+  });
+
   it("handles completed and failed terminal states without leaking new work", async () => {
     const completed = await createHarness();
     await completed.pipeline.ingest(chunkEvent(completed.sessionId, 0));
@@ -284,6 +379,12 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
       stage: "scheduler",
       reason: "stale_turn",
     });
+    expect(completed.telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_realtime_pipeline_stale_event_rejected",
+        orderingIssue: "late",
+      }),
+    );
     expect(completed.supervisor.getSession(completed.sessionId)).toMatchObject({
       state: "completed",
       active: false,

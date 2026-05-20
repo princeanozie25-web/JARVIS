@@ -191,6 +191,9 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_response_chunk_scheduled"
   | "voice_response_chunk_schedule_dropped"
   | "voice_response_chunk_schedule_overflow"
+  | "voice_response_chunk_duplicate_dropped"
+  | "voice_response_chunk_gap_detected"
+  | "voice_response_chunk_out_of_order"
   | "voice_response_chunk_scheduling_cancelled"
   | "voice_response_chunk_scheduling_interrupted"
   | "voice_synthesis_queue_item_enqueued"
@@ -220,6 +223,7 @@ export interface VoiceOrchestrationTelemetryEvent {
   success: boolean;
   pipelineStage?: "scheduler" | "synthesis_queue" | "playback_sequence";
   terminalAction?: "cancel" | "interrupt" | "complete" | "fail";
+  orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;
   chunkId?: string;
@@ -227,6 +231,7 @@ export interface VoiceOrchestrationTelemetryEvent {
   queueItemId?: string;
   playbackIntentId?: string;
   chunkIndex?: number;
+  expectedChunkIndex?: number;
   pendingIntentCount?: number;
   clearedIntentCount?: number;
   maxPendingIntents?: number;

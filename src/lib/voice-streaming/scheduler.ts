@@ -22,6 +22,7 @@ export type ChunkSchedulingDropReason =
   | "session_terminal"
   | "session_cancelled"
   | "invalid_chunk_index"
+  | "duplicate_chunk"
   | "overflow";
 
 export type AssistantResponseMetadataIngestResult =
@@ -40,6 +41,10 @@ const TERMINAL_STATES = new Set<VoiceTurnState>([
 export class VoiceResponseChunkScheduler {
   private readonly pendingIntents = new Map<string, ChunkSchedulingIntent>();
   private readonly clearedIntents: ChunkSchedulingIntent[] = [];
+  private readonly seenChunkIndexes = new Map<string, Set<number>>();
+  private readonly seenChunkIds = new Map<string, Set<string>>();
+  private readonly nextExpectedChunkIndex = new Map<string, number>();
+  private readonly highestSeenChunkIndex = new Map<string, number>();
   private readonly maxPendingIntents: number;
 
   constructor(private readonly opts: VoiceResponseChunkSchedulerOptions) {
@@ -136,6 +141,10 @@ export class VoiceResponseChunkScheduler {
       return this.drop(event, "invalid_chunk_index");
     }
 
+    if (this.isDuplicateChunk(event)) {
+      return this.drop(event, "duplicate_chunk");
+    }
+
     if (
       this.getPendingIntents(event.sessionId).length >= this.maxPendingIntents
     ) {
@@ -150,6 +159,9 @@ export class VoiceResponseChunkScheduler {
     if (!chunk) {
       return this.drop(event, "session_terminal");
     }
+
+    await this.emitOrderingTelemetry(event);
+    this.recordSeenChunk(event);
 
     const now = this.now();
     const intent: ChunkSchedulingIntent = {
@@ -185,18 +197,124 @@ export class VoiceResponseChunkScheduler {
       event,
       reason === "overflow"
         ? "voice_response_chunk_schedule_overflow"
-        : "voice_response_chunk_schedule_dropped",
+        : reason === "duplicate_chunk"
+          ? "voice_response_chunk_duplicate_dropped"
+          : "voice_response_chunk_schedule_dropped",
       false,
       reason,
       {
         chunkId: event.type === "chunk_available" ? event.chunkId : undefined,
         chunkIndex: event.type === "chunk_available" ? event.index : undefined,
+        expectedChunkIndex:
+          event.type === "chunk_available"
+            ? this.getNextExpectedChunkIndex(event.sessionId)
+            : undefined,
+        orderingIssue: reason === "duplicate_chunk" ? "duplicate" : undefined,
         pendingIntentCount: this.getPendingIntents(event.sessionId).length,
         maxPendingIntents: this.maxPendingIntents,
       },
       state,
     );
     return { ok: false, reason };
+  }
+
+  private isDuplicateChunk(
+    event: Extract<
+      AssistantResponseStreamMetadataEvent,
+      { type: "chunk_available" }
+    >,
+  ): boolean {
+    return (
+      this.getSeenIndexes(event.sessionId).has(event.index) ||
+      this.getSeenChunkIds(event.sessionId).has(event.chunkId)
+    );
+  }
+
+  private async emitOrderingTelemetry(
+    event: Extract<
+      AssistantResponseStreamMetadataEvent,
+      { type: "chunk_available" }
+    >,
+  ): Promise<void> {
+    const expectedChunkIndex = this.getNextExpectedChunkIndex(event.sessionId);
+    const highestSeen = this.highestSeenChunkIndex.get(event.sessionId);
+    if (event.index > expectedChunkIndex) {
+      await this.emit(
+        event,
+        "voice_response_chunk_gap_detected",
+        true,
+        undefined,
+        {
+          chunkId: event.chunkId,
+          chunkIndex: event.index,
+          expectedChunkIndex,
+          orderingIssue: "gap",
+        },
+      );
+    }
+    if (highestSeen !== undefined && event.index < highestSeen) {
+      await this.emit(
+        event,
+        "voice_response_chunk_out_of_order",
+        true,
+        undefined,
+        {
+          chunkId: event.chunkId,
+          chunkIndex: event.index,
+          expectedChunkIndex,
+          orderingIssue: "out_of_order",
+        },
+      );
+    }
+  }
+
+  private recordSeenChunk(
+    event: Extract<
+      AssistantResponseStreamMetadataEvent,
+      { type: "chunk_available" }
+    >,
+  ): void {
+    this.getSeenIndexes(event.sessionId).add(event.index);
+    this.getSeenChunkIds(event.sessionId).add(event.chunkId);
+    const highestSeen = this.highestSeenChunkIndex.get(event.sessionId);
+    this.highestSeenChunkIndex.set(
+      event.sessionId,
+      highestSeen === undefined
+        ? event.index
+        : Math.max(highestSeen, event.index),
+    );
+    this.advanceExpectedChunkIndex(event.sessionId);
+  }
+
+  private advanceExpectedChunkIndex(sessionId: string): void {
+    const seen = this.getSeenIndexes(sessionId);
+    let expected = this.getNextExpectedChunkIndex(sessionId);
+    while (seen.has(expected)) {
+      expected += 1;
+    }
+    this.nextExpectedChunkIndex.set(sessionId, expected);
+  }
+
+  private getNextExpectedChunkIndex(sessionId: string): number {
+    return this.nextExpectedChunkIndex.get(sessionId) ?? 0;
+  }
+
+  private getSeenIndexes(sessionId: string): Set<number> {
+    let seen = this.seenChunkIndexes.get(sessionId);
+    if (!seen) {
+      seen = new Set<number>();
+      this.seenChunkIndexes.set(sessionId, seen);
+    }
+    return seen;
+  }
+
+  private getSeenChunkIds(sessionId: string): Set<string> {
+    let seen = this.seenChunkIds.get(sessionId);
+    if (!seen) {
+      seen = new Set<string>();
+      this.seenChunkIds.set(sessionId, seen);
+    }
+    return seen;
   }
 
   private clearSessionIntents(
