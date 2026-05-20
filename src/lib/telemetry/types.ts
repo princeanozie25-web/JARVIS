@@ -117,7 +117,13 @@ export type TelemetryEventType =
   | "tts_queue_cleared"
   | "local_tts_synthesis_started"
   | "local_tts_synthesis_completed"
-  | "local_tts_synthesis_failed";
+  | "local_tts_synthesis_failed"
+  | "tts_playback_ready"
+  | "tts_playback_started"
+  | "tts_playback_stopped"
+  | "tts_playback_completed"
+  | "tts_playback_failed"
+  | "tts_playback_cancelled";
 
 export interface TelemetryEvent {
   timestamp: number;

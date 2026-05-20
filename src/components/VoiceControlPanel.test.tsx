@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { AudioSessionState } from "@/lib/audio";
 import type { TranscriptionJob, VoiceTranscriptChatPayload } from "@/lib/stt";
+import type { PlaybackItem } from "@/lib/tts";
 import { VoiceControlPanel } from "./VoiceControlPanel";
 
 const readyState: AudioSessionState = {
@@ -40,6 +41,19 @@ const runningTranscriptionJob: TranscriptionJob = {
   source: "ptt_capture",
 };
 
+const readyPlaybackItem: PlaybackItem = {
+  id: "playback-1",
+  audioId: "audio-1",
+  chunkId: "chunk-1",
+  source: "local_tts",
+  status: "ready",
+  createdAt: 1_000,
+  mimeType: "audio/wav",
+  byteLength: 4,
+  durationMs: 250,
+  sampleRate: 24_000,
+};
+
 describe("VoiceControlPanel", () => {
   it("renders the Phase 4 audio scaffold without transcript or speaker features", () => {
     const html = renderToStaticMarkup(
@@ -67,11 +81,40 @@ describe("VoiceControlPanel", () => {
       "Local provider local-tts-placeholder: not_installed",
     );
     expect(html).toContain("Runtime state: disabled");
+    expect(html).toContain("No speech ready");
+    expect(html).toContain("Play speech");
+    expect(html).toContain("Stop speech");
     expect(html).toContain(
-      "Playback unavailable until a reviewed TTS provider is configured.",
+      "Manual playback only; no automatic speaking after assistant replies.",
     );
     expect(html).toContain("Desk Mic");
     expect(html).toContain("Desk Speaker");
+  });
+
+  it("shows manual playback controls only when transient speech is ready", () => {
+    const readyHtml = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        playbackItem={readyPlaybackItem}
+      />,
+    );
+    const playingHtml = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        playbackItem={{ ...readyPlaybackItem, status: "playing" }}
+      />,
+    );
+    const playButton = readyHtml.match(
+      /<button[^>]*>Play speech<\/button>/,
+    )?.[0];
+    const stopButton = playingHtml.match(
+      /<button[^>]*>Stop speech<\/button>/,
+    )?.[0];
+
+    expect(readyHtml).toContain("Speech ready");
+    expect(playButton).not.toMatch(/\sdisabled(=|\s|>)/);
+    expect(playingHtml).toContain("Speech playing");
+    expect(stopButton).not.toMatch(/\sdisabled(=|\s|>)/);
   });
 
   it("makes recording state visually explicit", () => {

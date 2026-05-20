@@ -62,6 +62,54 @@ export interface SpeechAudioResult {
   data: Uint8Array;
 }
 
+export type PlaybackSource = "local_tts";
+
+export type PlaybackState =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "playing"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface PlaybackItem {
+  id: string;
+  audioId: string;
+  chunkId: string;
+  source: PlaybackSource;
+  status: PlaybackState;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  mimeType: string;
+  byteLength: number;
+  durationMs?: number;
+  sampleRate?: number;
+  error?: string;
+}
+
+export type PlaybackTelemetryEventType =
+  | "tts_playback_ready"
+  | "tts_playback_started"
+  | "tts_playback_stopped"
+  | "tts_playback_completed"
+  | "tts_playback_failed"
+  | "tts_playback_cancelled";
+
+export interface PlaybackTelemetryEvent {
+  eventType: PlaybackTelemetryEventType;
+  itemId?: string;
+  audioId?: string;
+  chunkId?: string;
+  source?: PlaybackSource;
+  status?: PlaybackState;
+  success: boolean;
+  durationMs?: number;
+  error?: string;
+}
+
 export type SpeechQueueItemStatus =
   | "queued"
   | "synthesizing"

@@ -21,6 +21,7 @@ import { InMemoryTranscriptionJobManager } from "@/lib/stt/jobs";
 import { InMemoryVoiceTranscriptDraftManager } from "@/lib/stt/transcript-drafts";
 import { localTtsPlaceholderProvider } from "@/lib/tts/local-placeholder";
 import { speechProviders } from "@/lib/tts/registry";
+import type { PlaybackItem } from "@/lib/tts/types";
 import type {
   TranscriptionInput,
   TranscriptionJob,
@@ -34,6 +35,9 @@ export interface VoiceControlPanelProps {
   transcriptionJob?: TranscriptionJob | null;
   transcriptDraftPayload?: VoiceTranscriptChatPayload | null;
   transcriptionProvider?: TranscriptionProvider;
+  playbackItem?: PlaybackItem | null;
+  onManualSpeechPlay?: () => void;
+  onManualSpeechStop?: () => void;
   onVoiceDraftSubmitted?: (payload: VoiceTranscriptChatPayload) => void;
 }
 
@@ -42,6 +46,9 @@ export function VoiceControlPanel({
   transcriptionJob = null,
   transcriptDraftPayload = null,
   transcriptionProvider = localWhisperPlaceholderProvider,
+  playbackItem = null,
+  onManualSpeechPlay,
+  onManualSpeechStop,
   onVoiceDraftSubmitted,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
@@ -68,6 +75,18 @@ export function VoiceControlPanel({
   const activeTranscriptionJobLabel = activeTranscriptionJob
     ? `Transcription ${activeTranscriptionJob.status}`
     : "No active transcription job";
+  const playbackStatusText =
+    playbackItem?.status === "ready"
+      ? "Speech ready"
+      : playbackItem?.status === "playing"
+        ? "Speech playing"
+        : playbackItem?.status === "failed"
+          ? "Speech playback failed"
+          : playbackItem?.status === "cancelled"
+            ? "Speech playback cancelled"
+            : "No speech ready";
+  const canPlaySpeech = playbackItem?.status === "ready";
+  const canStopSpeech = playbackItem?.status === "playing";
   const hasLocalDraftText =
     localTranscriptDraft?.status === "draft" && localDraftText.trim() !== "";
   const canSubmitTranscriptDraft =
@@ -707,8 +726,31 @@ export function VoiceControlPanel({
           <p className="mt-1 text-xs text-gray-600">
             local only, no network, no audio storage
           </p>
+          <p className="mt-2 text-xs text-gray-600">{playbackStatusText}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!canPlaySpeech}
+              onClick={() => {
+                onManualSpeechPlay?.();
+              }}
+              className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Play speech
+            </button>
+            <button
+              type="button"
+              disabled={!canStopSpeech}
+              onClick={() => {
+                onManualSpeechStop?.();
+              }}
+              className="rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Stop speech
+            </button>
+          </div>
           <p className="mt-2 text-xs text-gray-600">
-            Playback unavailable until a reviewed TTS provider is configured.
+            Manual playback only; no automatic speaking after assistant replies.
           </p>
         </div>
       </div>

@@ -43,6 +43,15 @@ export {
   type SpeechQueueManagerOptions,
   type SpeechQueueRejectionReason,
 } from "./queue";
+export {
+  BrowserPlaybackWrapper,
+  InMemoryPlaybackManager,
+  type BrowserAudioElement,
+  type BrowserPlaybackWrapperOptions,
+  type PlaybackItemResult,
+  type PlaybackManagerOptions,
+  type PlaybackRejectionReason,
+} from "./playback";
 export { SpeechProviderRegistry, speechProviders } from "./registry";
 export {
   evaluateSpeechSafetyPolicy,
@@ -52,6 +61,11 @@ export type {
   SpeechPlaybackState,
   SpeechPlaybackStateStatus,
   LocalSpeechProviderConfig,
+  PlaybackItem,
+  PlaybackSource,
+  PlaybackState,
+  PlaybackTelemetryEvent,
+  PlaybackTelemetryEventType,
   SpeechAudioResult,
   SpeechChunk,
   SpeechQueueItem,
