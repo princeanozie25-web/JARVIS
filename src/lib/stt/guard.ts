@@ -13,7 +13,7 @@ export async function transcribeWithGuard(
   if (!provider.enabled) {
     return disabledTranscriptionResult("provider_disabled", provider.id);
   }
-  if (provider.status !== "available") {
+  if (provider.status !== "ready") {
     return disabledTranscriptionResult("provider_unavailable", provider.id);
   }
 

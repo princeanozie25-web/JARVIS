@@ -34,7 +34,8 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("STT not configured yet.");
     expect(html).toContain("disabled-local-placeholder");
     expect(html).toContain("local-whisper-placeholder");
-    expect(html).toContain("not_installed");
+    expect(html).toContain("not installed");
+    expect(html).toContain("Runtime state: disabled");
     expect(html).toContain("local only, no network, no audio storage");
     expect(html).toContain("Disabled until text-to-speech is implemented.");
     expect(html).toContain("Desk Mic");

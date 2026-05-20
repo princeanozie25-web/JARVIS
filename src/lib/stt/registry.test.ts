@@ -27,9 +27,11 @@ describe("transcriptionProviders", () => {
       enabled: false,
       status: "not_installed",
       config: {
+        binaryPath: null,
         modelPath: null,
         device: "auto",
         language: null,
+        startupTimeoutMs: 5_000,
       },
       capabilities: {
         supportsStreaming: false,

@@ -30,9 +30,11 @@ export interface TranscriptionResult {
 }
 
 export type TranscriptionProviderStatus =
-  | "available"
-  | "unavailable"
-  | "not_installed";
+  | "disabled"
+  | "not_installed"
+  | "loading"
+  | "ready"
+  | "error";
 
 export interface TranscriptionProviderCapabilities {
   supportsStreaming: boolean;
@@ -43,9 +45,11 @@ export interface TranscriptionProviderCapabilities {
 }
 
 export interface LocalTranscriptionProviderConfig {
+  binaryPath: string | null;
   modelPath: string | null;
   device: "auto" | "cpu" | "gpu";
   language: string | null;
+  startupTimeoutMs: number;
 }
 
 export interface TranscriptionProvider {

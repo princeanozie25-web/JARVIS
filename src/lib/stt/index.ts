@@ -6,7 +6,17 @@ export { getDefaultTranscriptionProvider, transcribeWithGuard } from "./guard";
 export {
   localWhisperPlaceholderConfig,
   localWhisperPlaceholderProvider,
+  localWhisperProviderWithStatus,
 } from "./local-whisper-placeholder";
+export {
+  assertLocalOnly,
+  LocalWhisperRuntime,
+  localWhisperRuntimeCapabilities,
+  type LocalWhisperRuntimeConfig,
+  type LocalWhisperRuntimeHandle,
+  type LocalWhisperRuntimeOptions,
+  type LocalWhisperRuntimeStatus,
+} from "./local-whisper-runtime";
 export {
   transcriptionProviders,
   TranscriptionProviderRegistry,

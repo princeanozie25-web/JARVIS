@@ -12,11 +12,9 @@ import {
   type LocalAudioCaptureHandle,
   type AudioSessionState,
 } from "@/lib/audio";
-import {
-  initialTranscriptionState,
-  localWhisperPlaceholderProvider,
-  transcriptionProviders,
-} from "@/lib/stt";
+import { initialTranscriptionState } from "@/lib/stt/state";
+import { localWhisperPlaceholderProvider } from "@/lib/stt/local-whisper-placeholder";
+import { transcriptionProviders } from "@/lib/stt/registry";
 
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
@@ -28,6 +26,11 @@ export function VoiceControlPanel({
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
   const transcriptionState = initialTranscriptionState;
   const defaultTranscriptionProvider = transcriptionProviders.getDefault();
+  const localWhisperInstalled =
+    localWhisperPlaceholderProvider.status !== "not_installed";
+  const localWhisperRuntimeState = localWhisperPlaceholderProvider.enabled
+    ? localWhisperPlaceholderProvider.status
+    : "disabled";
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
@@ -437,7 +440,10 @@ export function VoiceControlPanel({
           </p>
           <p className="mt-1 text-xs text-gray-600">
             Local provider {localWhisperPlaceholderProvider.id}:{" "}
-            {localWhisperPlaceholderProvider.status}
+            {localWhisperInstalled ? "installed" : "not installed"}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Runtime state: {localWhisperRuntimeState}
           </p>
           <p className="mt-1 text-xs text-gray-600">
             local only, no network, no audio storage

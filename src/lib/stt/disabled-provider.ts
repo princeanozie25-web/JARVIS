@@ -3,7 +3,7 @@ import type { TranscriptionProvider, TranscriptionResult } from "./types";
 export const disabledTranscriptionProvider: TranscriptionProvider = {
   id: "disabled-local-placeholder",
   enabled: false,
-  status: "unavailable",
+  status: "disabled",
   capabilities: {
     supportsStreaming: false,
     supportsPartialResults: false,

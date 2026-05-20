@@ -14,7 +14,7 @@ describe("transcribeWithGuard", () => {
     const provider: TranscriptionProvider = {
       id: "disabled-test",
       enabled: false,
-      status: "unavailable",
+      status: "disabled",
       capabilities: {
         supportsStreaming: false,
         supportsPartialResults: false,
@@ -38,7 +38,7 @@ describe("transcribeWithGuard", () => {
     const provider: TranscriptionProvider = {
       id: "enabled-test",
       enabled: true,
-      status: "available",
+      status: "ready",
       capabilities: {
         supportsStreaming: false,
         supportsPartialResults: false,
