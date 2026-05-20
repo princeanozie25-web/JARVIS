@@ -10,6 +10,7 @@ import { VoiceSynthesisOrchestrationQueue } from "./synthesis-queue";
 import type {
   AssistantResponseStreamMetadataEvent,
   VoiceBargeInIntent,
+  VoiceBargeInState,
   VoiceOrchestrationTelemetryEvent,
 } from "./types";
 
@@ -219,6 +220,57 @@ function countEvents(
   eventType: VoiceOrchestrationTelemetryEvent["eventType"],
 ): number {
   return telemetry.filter((event) => event.eventType === eventType).length;
+}
+
+function expectNoForbiddenTelemetryKeys(
+  telemetry: VoiceOrchestrationTelemetryEvent[],
+): void {
+  for (const event of telemetry) {
+    expect(Object.keys(event)).not.toEqual(
+      expect.arrayContaining([
+        "transcript",
+        "spokenText",
+        "assistantBody",
+        "assistantResponseBody",
+        "audio",
+        "audioUrl",
+        "audioBlob",
+        "pcm",
+        "rawAudio",
+      ]),
+    );
+  }
+}
+
+const PHASE_4E_EVENT_TYPES = [
+  "voice_barge_in_intent_received",
+  "voice_barge_in_action_selected",
+  "voice_barge_in_noop",
+  "voice_barge_in_intent_rejected",
+  "voice_barge_in_state_transition",
+  "voice_barge_in_invalid_transition",
+  "voice_barge_in_terminal_noop",
+  "voice_barge_in_transition_failed",
+  "voice_turn_preemption_recorded",
+  "voice_turn_preemption_noop",
+  "voice_turn_preemption_rejected",
+  "voice_capture_rearm_requested",
+  "voice_capture_rearm_ready",
+  "voice_capture_rearm_blocked",
+  "voice_capture_rearm_failed",
+  "voice_capture_rearm_noop",
+] satisfies VoiceOrchestrationTelemetryEvent["eventType"][];
+
+function forceCoordinatorState(
+  coordinator: VoiceBargeInCoordinator,
+  sessionId: string,
+  state: VoiceBargeInState,
+): void {
+  (
+    coordinator as unknown as {
+      stateBySession: Map<string, VoiceBargeInState>;
+    }
+  ).stateBySession.set(sessionId, state);
 }
 
 describe("VoiceBargeInCoordinator", () => {
@@ -652,6 +704,46 @@ describe("VoiceBargeInCoordinator", () => {
     );
   });
 
+  it("rejects invalid transitions without terminal or re-arm work", async () => {
+    const { coordinator, telemetry, sessionId } = await createHarness();
+    forceCoordinatorState(coordinator, sessionId, "ready_for_capture");
+
+    const result = await coordinator.handleIntent(
+      intent(sessionId, {
+        id: "barge-in-invalid",
+        category: "user_started_new_turn",
+      }),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      intent: expect.objectContaining({ id: "barge-in-invalid" }),
+      reason: "invalid_transition",
+      actions: ["no_op"],
+      state: "ready_for_capture",
+    });
+    expect(coordinator.getPreemptionRecords(sessionId)).toEqual([]);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toEqual([
+      expect.objectContaining({
+        bargeInIntentId: "barge-in-invalid",
+        state: "blocked",
+        blockedReason: "invalid_transition",
+      }),
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_invalid_transition",
+        bargeInRejectionReason: "invalid_transition",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_blocked",
+        captureRearmBlockedReason: "invalid_transition",
+      }),
+    );
+  });
+
   it("keeps terminal state from producing new work", async () => {
     const { coordinator, pipeline, supervisor, telemetry, sessionId } =
       await createHarness();
@@ -705,6 +797,70 @@ describe("VoiceBargeInCoordinator", () => {
     );
   });
 
+  it("fails closed with metadata-only telemetry when preemption metadata collection throws", async () => {
+    const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+    const supervisor = new VoiceOrchestrationSupervisor({
+      newId: createIdGenerator("session"),
+      now: () => 1_000,
+    });
+    const started = await supervisor.startSession();
+    if (!started.ok) throw new Error("Expected voice session to start");
+    const coordinator = new VoiceBargeInCoordinator({
+      supervisor,
+      pipeline: {
+        cancelSession: async () => undefined,
+        interrupt: async () => undefined,
+        getPlaybackIntents: () => {
+          throw new Error("metadata_unavailable");
+        },
+        getChunkReadiness: () => [],
+      },
+      newId: createIdGenerator("preemption"),
+      now: () => 5_000,
+      emitTelemetry: (event) => {
+        telemetry.push(event);
+      },
+    });
+
+    const result = await coordinator.handleIntent(
+      intent(started.session.id, {
+        id: "barge-in-fail-closed",
+        category: "user_ptt_pressed_during_playback",
+      }),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      intent: expect.objectContaining({ id: "barge-in-fail-closed" }),
+      reason: "transition_failed",
+      actions: ["no_op"],
+      state: "failed",
+    });
+    expect(coordinator.getState(started.session.id)).toBe("failed");
+    expect(coordinator.getPreemptionRecords(started.session.id)).toEqual([]);
+    expect(
+      coordinator.getCaptureRearmResultRecords(started.session.id),
+    ).toEqual([
+      expect.objectContaining({
+        state: "failed",
+        blockedReason: "coordinator_failed",
+      }),
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_failed",
+        captureRearmBlockedReason: "coordinator_failed",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_transition_failed",
+        bargeInRejectionReason: "transition_failed",
+      }),
+    );
+    expectMetadataOnlyTelemetry(telemetry);
+  });
+
   it("captures only metadata for half-spoken turn preemption records", async () => {
     const { coordinator, pipeline, telemetry, sessionId } =
       await createHarness();
@@ -750,6 +906,87 @@ describe("VoiceBargeInCoordinator", () => {
     expect(serializedRearm).not.toContain("secret assistant body payload");
     expect(serializedRearm).not.toContain("secret audio payload");
     expectMetadataOnlyTelemetry(telemetry);
+  });
+
+  it("covers every Phase 4E telemetry event with metadata-only payloads", async () => {
+    const allTelemetry: VoiceOrchestrationTelemetryEvent[] = [];
+
+    const accepted = await createHarness();
+    await accepted.pipeline.ingest(chunkEvent(accepted.sessionId, 0));
+    await accepted.coordinator.handleIntent(
+      intent(accepted.sessionId, {
+        transcript: "secret transcript payload",
+        spokenText: "secret spoken payload",
+        assistantBody: "secret assistant body payload",
+        audio: "secret audio payload",
+      } as unknown as Partial<VoiceBargeInIntent>),
+    );
+    await accepted.coordinator.handleIntent(
+      intent(accepted.sessionId, { id: "barge-in-repeat" }),
+    );
+    allTelemetry.push(...accepted.telemetry);
+
+    const stale = await createHarness();
+    await stale.pipeline.completeSession(stale.sessionId);
+    await stale.supervisor.startSession();
+    await stale.coordinator.handleIntent(
+      intent(stale.sessionId, { id: "barge-in-stale" }),
+    );
+    allTelemetry.push(...stale.telemetry);
+
+    const invalid = await createHarness();
+    forceCoordinatorState(
+      invalid.coordinator,
+      invalid.sessionId,
+      "ready_for_capture",
+    );
+    await invalid.coordinator.handleIntent(
+      intent(invalid.sessionId, {
+        id: "barge-in-invalid-freeze",
+        category: "user_started_new_turn",
+      }),
+    );
+    allTelemetry.push(...invalid.telemetry);
+
+    const failedTelemetry: VoiceOrchestrationTelemetryEvent[] = [];
+    const supervisor = new VoiceOrchestrationSupervisor({
+      newId: createIdGenerator("session"),
+      now: () => 1_000,
+    });
+    const started = await supervisor.startSession();
+    if (!started.ok) throw new Error("Expected voice session to start");
+    const failed = new VoiceBargeInCoordinator({
+      supervisor,
+      pipeline: {
+        cancelSession: async () => undefined,
+        interrupt: async () => undefined,
+        getPlaybackIntents: () => {
+          throw new Error("metadata_unavailable");
+        },
+        getChunkReadiness: () => [],
+      },
+      newId: createIdGenerator("preemption"),
+      now: () => 5_000,
+      emitTelemetry: (event) => {
+        failedTelemetry.push(event);
+      },
+    });
+    await failed.handleIntent(
+      intent(started.session.id, { id: "barge-in-failed-freeze" }),
+    );
+    allTelemetry.push(...failedTelemetry);
+
+    const phase4EEventTypes = new Set<string>(PHASE_4E_EVENT_TYPES);
+    const emittedPhase4EEvents = new Set(
+      allTelemetry
+        .map((event) => event.eventType)
+        .filter((eventType) => phase4EEventTypes.has(eventType)),
+    );
+    expect(Array.from(emittedPhase4EEvents).sort()).toEqual(
+      [...PHASE_4E_EVENT_TYPES].sort(),
+    );
+    expectMetadataOnlyTelemetry(allTelemetry);
+    expectNoForbiddenTelemetryKeys(allTelemetry);
   });
 
   it("fails invalid in-flight transitions closed without creating new work", async () => {
@@ -817,17 +1054,23 @@ describe("VoiceBargeInCoordinator", () => {
   });
 
   it("does not introduce voice approval, autoplay, chat, runtime, Realtime, wake word, capture device, browser, or cloud wiring", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/lib/voice-streaming/barge-in-coordinator.ts"),
-      "utf8",
-    );
+    const source = [
+      "src/lib/voice-streaming/barge-in-coordinator.ts",
+      "src/lib/voice-streaming/types.ts",
+      "src/lib/voice-streaming/index.ts",
+    ]
+      .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
+      .join("\n");
+    const sourceWithoutSafetyFlags = source.replace(/canAutoplay/g, "");
 
     expect(source).not.toMatch(/voiceApproval|approval|approve/i);
     expect(source).not.toMatch(/wake\s*word|always[-_\s]?listening/i);
     expect(source).not.toMatch(
       /microphone|navigator|mediaDevices|keyboard|window\.|document\./i,
     );
-    expect(source).not.toMatch(/autoplay|HTMLAudioElement|\.play\(/i);
+    expect(sourceWithoutSafetyFlags).not.toMatch(
+      /autoplay|HTMLAudioElement|\.play\(|startPlayback|playbackStart/i,
+    );
     expect(source).not.toMatch(/\/api\/chat|submitChat|autoSubmit/i);
     expect(source).not.toMatch(/runtime-commands|runTool|toolRuntime/i);
     expect(source).not.toMatch(/OpenAI|chat\.completions|\/realtime/i);

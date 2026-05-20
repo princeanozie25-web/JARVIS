@@ -67,7 +67,9 @@ The playback sequencer produces sequencing intents only. It does not start playb
 
 Phase 4E may add library-only intent coordination on top of the Phase 4D pipeline. Phase 4E includes a metadata-only barge-in coordinator that accepts explicit interrupt intents, selects safe orchestration actions, and advances an internal state machine.
 
-Current Phase 4E status:
+Current Phase 4E status: complete and frozen.
+
+Frozen Phase 4E safety invariants:
 
 - accepts metadata-only interrupt/barge-in intents
 - maps intents to cancellation/interruption preparation actions
@@ -77,7 +79,19 @@ Current Phase 4E status:
 - guards in-flight barge-in terminal transitions so rapid repeated or mixed intents cannot duplicate pipeline cancellation/interruption calls
 - rejects invalid or terminal-state transitions as no-ops
 - calls only the Phase 4D pipeline boundary for cancellation or interruption
-- does not listen to microphones, keyboards, wake words, UI events, playback, chat, runtime commands, approvals, Realtime, or cloud APIs
+- emits only metadata-only telemetry for every Phase 4E lifecycle event
+- does not listen to microphones, keyboards, wake words, UI events, browser events, playback devices, chat, runtime commands, approvals, Realtime, or cloud APIs
+
+Phase 4E intent metadata may contain only:
+
+- barge-in intent ID
+- session ID
+- turn ID
+- intent category
+- stream ID
+- response ID
+- playback intent ID
+- created timestamp
 
 Phase 4E preemption records may contain only:
 
@@ -103,10 +117,14 @@ Phase 4E capture re-arm records may contain only:
 
 Capture re-arm coordination does not access microphones, keyboards, UI surfaces, browser device APIs, playback devices, chat submission, runtime commands, approvals, Realtime, or cloud APIs. It only produces records and telemetry that a future explicitly wired adapter may inspect.
 
-Future Phase 4E work may choose explicit, reviewable adapters for real synthesis or playback, but those adapters must preserve the Phase 4D/4E boundaries:
+## Phase 4F Handoff Points
+
+Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, or playback. Those adapters must preserve the Phase 4D/4E boundaries:
 
 - metadata-only telemetry
 - no implicit autoplay
+- no microphone access without explicit user action and permission handling
+- no keyboard or UI listeners inside the library layer
 - no command execution
 - no approval bypass
 - no voice approval path
