@@ -124,6 +124,18 @@ describe("LocalWhisperRuntime", () => {
     expect(shutdown).toHaveBeenCalledTimes(1);
   });
 
+  it("does not report ready without an execution launcher", async () => {
+    const runtime = new LocalWhisperRuntime({
+      config: enabledConfig,
+      fileExists: vi.fn().mockResolvedValue(true),
+    });
+
+    await expect(runtime.initialize()).resolves.toMatchObject({
+      status: "error",
+      message: "Local Whisper runtime launcher is not configured.",
+    });
+  });
+
   it("rejects capabilities that would break the local-only invariant", () => {
     expect(() =>
       assertLocalOnly({

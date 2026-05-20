@@ -81,13 +81,16 @@ export class LocalWhisperRuntime {
         return this.getStatus();
       }
 
-      if (this.opts.launchRuntime) {
-        this.handle = await launchRuntimeWithTimeoutCleanup(
-          this.opts.launchRuntime,
-          config,
-        );
+      if (!this.opts.launchRuntime) {
+        this.status = "error";
+        this.message = "Local Whisper runtime launcher is not configured.";
+        return this.getStatus();
       }
 
+      this.handle = await launchRuntimeWithTimeoutCleanup(
+        this.opts.launchRuntime,
+        config,
+      );
       this.status = "ready";
       this.message = "Local Whisper runtime is ready.";
       return this.getStatus();
