@@ -37,6 +37,14 @@ export interface SpeechSynthesisResult {
   errorMessage?: string;
 }
 
+export interface SpeechChunk {
+  id: string;
+  text: string;
+  index: number;
+  createdAt: number;
+  source: "assistant_prose";
+}
+
 export type SpeechProviderStatus =
   | "disabled"
   | "not_installed"

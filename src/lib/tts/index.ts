@@ -1,4 +1,12 @@
 export {
+  chunkAssistantProseText,
+  TtsSentenceChunker,
+  type SpeechChunkerAllowedResult,
+  type SpeechChunkerBlockedResult,
+  type SpeechChunkerOptions,
+  type SpeechChunkerResult,
+} from "./chunker";
+export {
   disabledSpeechProvider,
   disabledSpeechResult,
 } from "./disabled-provider";
@@ -26,6 +34,7 @@ export type {
   SpeechPlaybackState,
   SpeechPlaybackStateStatus,
   LocalSpeechProviderConfig,
+  SpeechChunk,
   SpeechProvider,
   SpeechProviderMetadata,
   SpeechProviderStatus,
