@@ -119,7 +119,34 @@ Capture re-arm coordination does not access microphones, keyboards, UI surfaces,
 
 ## Phase 4F Handoff Points
 
-Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, or playback. Those adapters must preserve the Phase 4D/4E boundaries:
+Phase 4F starts with a metadata-only runtime boundary coordinator. It accepts safe runtime lifecycle metadata and produces advisory records only. It cannot execute runtime commands, approve actions, bypass approvals, speak tool output, synthesize restricted content, or control runtime cancellation.
+
+Current Phase 4F status:
+
+- accepts metadata-only runtime boundary events for pending approvals, tool lifecycle, and runtime cancellation lifecycle
+- produces advisory-only metadata records
+- rejects voice approval attempts as metadata-only no-ops
+- treats runtime cancellation requests as advisory-only and does not stop tools
+- emits metadata-only boundary telemetry
+- does not import or call runtime command execution modules
+- does not import or call approval execution modules
+- does not synthesize, speak, persist, or emit tool output, file content, code blocks, personal context content, audit log content, transcripts, assistant body text, or audio data
+
+Phase 4F runtime boundary metadata may contain only:
+
+- boundary event ID
+- boundary event type
+- advisory ID
+- advisory action/state
+- session ID
+- turn ID
+- runtime call ID
+- approval request ID
+- tool name
+- timestamps
+- metadata-only rejection reason
+
+Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, or approval UI. Those adapters must preserve the Phase 4D/4E/4F boundaries:
 
 - metadata-only telemetry
 - no implicit autoplay
@@ -128,6 +155,7 @@ Future Phase 4F work may choose explicit, reviewable adapters for user-controlle
 - no command execution
 - no approval bypass
 - no voice approval path
+- no spoken tool output or restricted content
 - no wake word or always-listening behavior
 - explicit user-controlled wiring
 - terminal and stale-session guards at every async boundary

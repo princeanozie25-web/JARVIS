@@ -327,6 +327,74 @@ export interface VoiceCaptureRearmResultRecord {
   blockedReason?: VoiceCaptureRearmBlockedReason;
 }
 
+export type VoiceRuntimeBoundaryEventType =
+  | "runtime_pending_approval_detected"
+  | "runtime_tool_started"
+  | "runtime_tool_completed"
+  | "runtime_tool_failed"
+  | "runtime_cancel_requested"
+  | "runtime_cancel_denied"
+  | "runtime_cancel_acknowledged";
+
+export interface VoiceRuntimeBoundaryEvent {
+  id: string;
+  type: VoiceRuntimeBoundaryEventType;
+  sessionId: string;
+  createdAt?: number;
+  turnId?: string;
+  runtimeCallId?: string;
+  approvalRequestId?: string;
+  toolName?: string;
+  voiceTurnState?: VoiceTurnState;
+  voiceApprovalAttempted?: boolean;
+}
+
+export type VoiceRuntimeBoundaryAdvisoryAction =
+  | "surface_approval_required"
+  | "surface_tool_running"
+  | "surface_tool_completed"
+  | "surface_tool_failed"
+  | "request_runtime_cancel_advisory"
+  | "surface_runtime_cancel_denied"
+  | "surface_runtime_cancel_acknowledged"
+  | "reject_voice_approval"
+  | "no_op";
+
+export type VoiceRuntimeBoundaryAdvisoryState =
+  | "advisory"
+  | "rejected"
+  | "noop";
+
+export type VoiceRuntimeBoundaryRejectionReason = "voice_approval_rejected";
+
+export interface VoiceRuntimeBoundaryAdvisoryRecord {
+  id: string;
+  eventId: string;
+  eventType: VoiceRuntimeBoundaryEventType;
+  sessionId: string;
+  createdAt: number;
+  action: VoiceRuntimeBoundaryAdvisoryAction;
+  state: VoiceRuntimeBoundaryAdvisoryState;
+  turnId?: string;
+  runtimeCallId?: string;
+  approvalRequestId?: string;
+  toolName?: string;
+  reason?: VoiceRuntimeBoundaryRejectionReason;
+}
+
+export type VoiceRuntimeBoundaryCoordinatorResult =
+  | {
+      ok: true;
+      event: VoiceRuntimeBoundaryEvent;
+      advisory: VoiceRuntimeBoundaryAdvisoryRecord;
+    }
+  | {
+      ok: false;
+      event: VoiceRuntimeBoundaryEvent;
+      advisory: VoiceRuntimeBoundaryAdvisoryRecord;
+      reason: VoiceRuntimeBoundaryRejectionReason;
+    };
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -395,7 +463,11 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_capture_rearm_ready"
   | "voice_capture_rearm_blocked"
   | "voice_capture_rearm_failed"
-  | "voice_capture_rearm_noop";
+  | "voice_capture_rearm_noop"
+  | "voice_runtime_boundary_event_received"
+  | "voice_runtime_boundary_advisory_selected"
+  | "voice_runtime_boundary_voice_approval_rejected"
+  | "voice_runtime_boundary_noop";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -453,6 +525,15 @@ export interface VoiceOrchestrationTelemetryEvent {
   previousCaptureRearmState?: VoiceCaptureRearmState;
   nextCaptureRearmState?: VoiceCaptureRearmState;
   captureRearmBlockedReason?: VoiceCaptureRearmBlockedReason;
+  runtimeBoundaryEventId?: string;
+  runtimeBoundaryEventType?: VoiceRuntimeBoundaryEventType;
+  runtimeBoundaryAdvisoryId?: string;
+  runtimeBoundaryAction?: VoiceRuntimeBoundaryAdvisoryAction;
+  runtimeBoundaryState?: VoiceRuntimeBoundaryAdvisoryState;
+  runtimeBoundaryReason?: VoiceRuntimeBoundaryRejectionReason;
+  runtimeCallId?: string;
+  approvalRequestId?: string;
+  toolName?: string;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

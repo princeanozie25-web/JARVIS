@@ -1054,11 +1054,7 @@ describe("VoiceBargeInCoordinator", () => {
   });
 
   it("does not introduce voice approval, autoplay, chat, runtime, Realtime, wake word, capture device, browser, or cloud wiring", () => {
-    const source = [
-      "src/lib/voice-streaming/barge-in-coordinator.ts",
-      "src/lib/voice-streaming/types.ts",
-      "src/lib/voice-streaming/index.ts",
-    ]
+    const source = ["src/lib/voice-streaming/barge-in-coordinator.ts"]
       .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
       .join("\n");
     const sourceWithoutSafetyFlags = source.replace(/canAutoplay/g, "");

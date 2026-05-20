@@ -35,6 +35,10 @@ export {
   VoiceBargeInCoordinator,
   type VoiceBargeInCoordinatorOptions,
 } from "./barge-in-coordinator";
+export {
+  VoiceRuntimeBoundaryCoordinator,
+  type VoiceRuntimeBoundaryCoordinatorOptions,
+} from "./runtime-boundary-coordinator";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -61,6 +65,13 @@ export type {
   VoiceCaptureRearmIntentRecord,
   VoiceCaptureRearmResultRecord,
   VoiceCaptureRearmState,
+  VoiceRuntimeBoundaryAdvisoryAction,
+  VoiceRuntimeBoundaryAdvisoryRecord,
+  VoiceRuntimeBoundaryAdvisoryState,
+  VoiceRuntimeBoundaryCoordinatorResult,
+  VoiceRuntimeBoundaryEvent,
+  VoiceRuntimeBoundaryEventType,
+  VoiceRuntimeBoundaryRejectionReason,
   VoiceTurnPreemptionRecord,
   VoiceReadinessLatencyStage,
   VoicePlaybackSequenceIntent,

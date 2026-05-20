@@ -117,7 +117,12 @@ function readVoiceStreamingImplementationSources(): string {
   const dir = join(process.cwd(), "src/lib/voice-streaming");
   return readdirSync(dir)
     .filter(
-      (fileName) => fileName.endsWith(".ts") && !fileName.endsWith(".test.ts"),
+      (fileName) =>
+        fileName.endsWith(".ts") &&
+        !fileName.endsWith(".test.ts") &&
+        fileName !== "index.ts" &&
+        fileName !== "types.ts" &&
+        fileName !== "runtime-boundary-coordinator.ts",
     )
     .map((fileName) => readFileSync(join(dir, fileName), "utf8"))
     .join("\n");

@@ -187,7 +187,11 @@ export type TelemetryEventType =
   | "voice_capture_rearm_ready"
   | "voice_capture_rearm_blocked"
   | "voice_capture_rearm_failed"
-  | "voice_capture_rearm_noop";
+  | "voice_capture_rearm_noop"
+  | "voice_runtime_boundary_event_received"
+  | "voice_runtime_boundary_advisory_selected"
+  | "voice_runtime_boundary_voice_approval_rejected"
+  | "voice_runtime_boundary_noop";
 
 export interface TelemetryEvent {
   timestamp: number;
