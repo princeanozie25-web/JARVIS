@@ -1,5 +1,6 @@
 import type {
   LocalTranscriptionProviderConfig,
+  TranscriptionInput,
   TranscriptionProviderCapabilities,
   TranscriptionProviderStatus,
 } from "./types";
@@ -18,6 +19,16 @@ export interface LocalWhisperRuntimeStatus {
 
 export interface LocalWhisperRuntimeHandle {
   shutdown(): Promise<void>;
+  transcribe(
+    input: TranscriptionInput,
+    signal: AbortSignal,
+  ): Promise<LocalWhisperRuntimeTranscription>;
+}
+
+export interface LocalWhisperRuntimeTranscription {
+  text: string;
+  confidence?: number;
+  language?: string;
 }
 
 export interface LocalWhisperRuntimeOptions {
@@ -96,6 +107,38 @@ export class LocalWhisperRuntime {
     }
   }
 
+  async transcribe(
+    input: TranscriptionInput,
+    opts: { signal?: AbortSignal } = {},
+  ): Promise<LocalWhisperRuntimeTranscription> {
+    if (this.status !== "ready" || !this.handle) {
+      throw new Error("Local Whisper runtime is not ready.");
+    }
+    if (input.chunks.length === 0) {
+      throw new Error("Local Whisper transcription requires transient audio.");
+    }
+
+    assertLocalOnly(this.capabilities);
+    const executionAbort = new AbortController();
+    const relayAbort = () => executionAbort.abort();
+    opts.signal?.addEventListener("abort", relayAbort, { once: true });
+    if (opts.signal?.aborted) executionAbort.abort();
+
+    try {
+      return await withTimeout(
+        this.handle.transcribe(input, executionAbort.signal),
+        this.opts.config.executionTimeoutMs,
+        "Local Whisper transcription timed out.",
+        async () => {
+          executionAbort.abort();
+          await this.shutdown();
+        },
+      );
+    } finally {
+      opts.signal?.removeEventListener("abort", relayAbort);
+    }
+  }
+
   getStatus(): LocalWhisperRuntimeStatus {
     return {
       providerId: "local-whisper-placeholder",
@@ -171,7 +214,7 @@ async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
   message: string,
-  onTimeout?: () => void,
+  onTimeout?: () => void | Promise<void>,
 ): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -179,7 +222,7 @@ async function withTimeout<T>(
       promise,
       new Promise<never>((_, reject) => {
         timeout = setTimeout(() => {
-          onTimeout?.();
+          Promise.resolve(onTimeout?.()).catch(() => undefined);
           reject(new Error(message));
         }, timeoutMs);
       }),

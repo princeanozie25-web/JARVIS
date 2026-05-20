@@ -15,16 +15,21 @@ import {
 import { initialTranscriptionState } from "@/lib/stt/state";
 import { localWhisperPlaceholderProvider } from "@/lib/stt/local-whisper-placeholder";
 import { transcriptionProviders } from "@/lib/stt/registry";
-import type { VoiceTranscriptChatPayload } from "@/lib/stt/types";
+import type {
+  TranscriptionJob,
+  VoiceTranscriptChatPayload,
+} from "@/lib/stt/types";
 
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
+  transcriptionJob?: TranscriptionJob | null;
   transcriptDraftPayload?: VoiceTranscriptChatPayload | null;
   onVoiceDraftSubmitted?: (payload: VoiceTranscriptChatPayload) => void;
 }
 
 export function VoiceControlPanel({
   initialState = initialAudioSessionState,
+  transcriptionJob = null,
   transcriptDraftPayload = null,
   onVoiceDraftSubmitted,
 }: VoiceControlPanelProps) {
@@ -36,7 +41,9 @@ export function VoiceControlPanel({
   const localWhisperRuntimeState = localWhisperPlaceholderProvider.enabled
     ? localWhisperPlaceholderProvider.status
     : "disabled";
-  const activeTranscriptionJobLabel = "No active transcription job";
+  const activeTranscriptionJobLabel = transcriptionJob
+    ? `Transcription ${transcriptionJob.status}`
+    : "No active transcription job";
   const canSubmitTranscriptDraft = transcriptDraftPayload !== null;
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
@@ -455,6 +462,11 @@ export function VoiceControlPanel({
           <p className="mt-1 text-xs text-gray-600">
             {activeTranscriptionJobLabel}
           </p>
+          {transcriptionJob && (
+            <p className="mt-1 text-xs text-cyan-300">
+              Local processing only - review before sending.
+            </p>
+          )}
           <div className="mt-3 rounded-md border border-gray-900 bg-gray-950 p-3">
             <p className="text-xs font-semibold uppercase text-gray-500">
               Transcript draft

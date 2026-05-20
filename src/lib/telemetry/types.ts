@@ -108,7 +108,10 @@ export type TelemetryEventType =
   | "transcript_draft_created"
   | "transcript_draft_discarded"
   | "transcript_draft_submitted"
-  | "transcript_draft_rejected";
+  | "transcript_draft_rejected"
+  | "local_transcription_started"
+  | "local_transcription_completed"
+  | "local_transcription_failed";
 
 export interface TelemetryEvent {
   timestamp: number;

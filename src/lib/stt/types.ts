@@ -52,6 +52,11 @@ export interface LocalTranscriptionProviderConfig {
   device: "auto" | "cpu" | "gpu";
   language: string | null;
   startupTimeoutMs: number;
+  executionTimeoutMs: number;
+}
+
+export interface TranscriptionProviderRunOptions {
+  signal?: AbortSignal;
 }
 
 export interface TranscriptionProvider {
@@ -60,7 +65,10 @@ export interface TranscriptionProvider {
   readonly status: TranscriptionProviderStatus;
   readonly capabilities: TranscriptionProviderCapabilities;
   readonly config?: LocalTranscriptionProviderConfig;
-  transcribe(input: TranscriptionInput): Promise<TranscriptionResult>;
+  transcribe(
+    input: TranscriptionInput,
+    options?: TranscriptionProviderRunOptions,
+  ): Promise<TranscriptionResult>;
 }
 
 export type TranscriptionJobStatus =
@@ -96,6 +104,19 @@ export interface TranscriptionJobTelemetryEvent {
   providerId: string;
   status: TranscriptionJobStatus;
   source: TranscriptionJob["source"];
+  success: boolean;
+  durationMs?: number;
+  error?: string;
+}
+
+export type LocalTranscriptionTelemetryEventType =
+  | "local_transcription_started"
+  | "local_transcription_completed"
+  | "local_transcription_failed";
+
+export interface LocalTranscriptionTelemetryEvent {
+  eventType: LocalTranscriptionTelemetryEventType;
+  providerId: string;
   success: boolean;
   durationMs?: number;
   error?: string;

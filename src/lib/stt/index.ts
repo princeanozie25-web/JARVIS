@@ -23,6 +23,10 @@ export {
   localWhisperProviderWithStatus,
 } from "./local-whisper-placeholder";
 export {
+  createLocalWhisperTranscriptionProvider,
+  type LocalWhisperTranscriptionProviderOptions,
+} from "./local-whisper-provider";
+export {
   assertLocalOnly,
   LocalWhisperRuntime,
   localWhisperRuntimeCapabilities,
@@ -30,6 +34,7 @@ export {
   type LocalWhisperRuntimeHandle,
   type LocalWhisperRuntimeOptions,
   type LocalWhisperRuntimeStatus,
+  type LocalWhisperRuntimeTranscription,
 } from "./local-whisper-runtime";
 export {
   transcriptionProviders,
@@ -53,6 +58,8 @@ export type {
   TranscriptionJobStatus,
   TranscriptionJobTelemetryEvent,
   TranscriptionJobTelemetryEventType,
+  LocalTranscriptionTelemetryEvent,
+  LocalTranscriptionTelemetryEventType,
   VoiceTranscriptChatPayload,
   VoiceTranscriptDraft,
   VoiceTranscriptDraftStatus,

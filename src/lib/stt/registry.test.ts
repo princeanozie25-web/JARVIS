@@ -32,6 +32,7 @@ describe("transcriptionProviders", () => {
         device: "auto",
         language: null,
         startupTimeoutMs: 5_000,
+        executionTimeoutMs: 30_000,
       },
       capabilities: {
         supportsStreaming: false,

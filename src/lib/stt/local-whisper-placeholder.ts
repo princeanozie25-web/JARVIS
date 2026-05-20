@@ -11,6 +11,7 @@ export const localWhisperPlaceholderConfig: LocalTranscriptionProviderConfig = {
   device: "auto",
   language: null,
   startupTimeoutMs: 5_000,
+  executionTimeoutMs: 30_000,
 };
 
 export const localWhisperPlaceholderProvider: TranscriptionProvider = {

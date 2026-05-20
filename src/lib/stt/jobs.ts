@@ -13,6 +13,10 @@ export interface TranscriptionJobManagerOptions {
   emitTelemetry?: (
     event: TranscriptionJobTelemetryEvent,
   ) => void | Promise<void>;
+  onCompletedResult?: (input: {
+    job: TranscriptionJob;
+    result: TranscriptionResult;
+  }) => void | Promise<void>;
 }
 
 export interface StartTranscriptionJobInput {
@@ -24,6 +28,7 @@ export interface StartTranscriptionJobInput {
 interface ActiveTranscriptionJob {
   jobId: string;
   input: TranscriptionInput;
+  abortController: AbortController;
 }
 
 export class InMemoryTranscriptionJobManager {
@@ -43,7 +48,8 @@ export class InMemoryTranscriptionJobManager {
     }
 
     const job = this.createJob(input.provider.id, input.source);
-    this.active = { jobId: job.id, input: input.input };
+    const abortController = new AbortController();
+    this.active = { jobId: job.id, input: input.input, abortController };
 
     const guardFailure = getTranscriptionGuardFailure(input.provider);
     if (guardFailure) {
@@ -60,12 +66,17 @@ export class InMemoryTranscriptionJobManager {
     await this.emit("transcription_job_started", job, true);
 
     try {
-      const result = await transcribeWithGuard(input.provider, input.input);
+      const result = await transcribeWithGuard(input.provider, input.input, {
+        signal: abortController.signal,
+      });
       if (this.isCancelled(job)) {
         return { ...job };
       }
       const completed = result.status === "completed";
       this.applyResult(job, result);
+      if (completed) {
+        await this.opts.onCompletedResult?.({ job: { ...job }, result });
+      }
       await this.emit(
         completed ? "transcription_job_completed" : "transcription_job_failed",
         job,
@@ -93,6 +104,7 @@ export class InMemoryTranscriptionJobManager {
     if (!job || this.active?.jobId !== jobId) return job ? { ...job } : null;
 
     this.finishJob(job, "cancelled");
+    this.active.abortController.abort();
     this.clearActive(jobId);
     await this.emit("transcription_job_cancelled", job, false);
     return { ...job };

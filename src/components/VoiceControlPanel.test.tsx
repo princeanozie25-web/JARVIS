@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { AudioSessionState } from "@/lib/audio";
-import type { VoiceTranscriptChatPayload } from "@/lib/stt";
+import type { TranscriptionJob, VoiceTranscriptChatPayload } from "@/lib/stt";
 import { VoiceControlPanel } from "./VoiceControlPanel";
 
 const readyState: AudioSessionState = {
@@ -29,6 +29,15 @@ const transcriptDraftPayload: VoiceTranscriptChatPayload = {
   sourceDraftId: "draft-1",
   sourceJobId: "job-1",
   canApproveRuntimeActions: false,
+};
+
+const runningTranscriptionJob: TranscriptionJob = {
+  id: "job-1",
+  providerId: "local-whisper-placeholder",
+  status: "running",
+  createdAt: 1_000,
+  startedAt: 1_001,
+  source: "ptt_capture",
 };
 
 describe("VoiceControlPanel", () => {
@@ -103,5 +112,17 @@ describe("VoiceControlPanel", () => {
     expect(enabledHtml).toContain("Submit reviewed transcript");
     expect(enabledHtml).not.toContain("Reviewed voice draft");
     expect(enabledButton).not.toMatch(/\sdisabled(=|\s|>)/);
+  });
+
+  it("shows local transcription job state", () => {
+    const html = renderToStaticMarkup(
+      <VoiceControlPanel
+        initialState={readyState}
+        transcriptionJob={runningTranscriptionJob}
+      />,
+    );
+
+    expect(html).toContain("Transcription running");
+    expect(html).toContain("Local processing only - review before sending.");
   });
 });

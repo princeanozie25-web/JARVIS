@@ -9,11 +9,13 @@ import type {
 export async function transcribeWithGuard(
   provider: TranscriptionProvider,
   input: TranscriptionInput,
+  options?: { signal?: AbortSignal },
 ): Promise<TranscriptionResult> {
   const guardFailure = getTranscriptionGuardFailure(provider);
   if (guardFailure) return guardFailure;
 
-  return provider.transcribe(input);
+  if (!options) return provider.transcribe(input);
+  return provider.transcribe(input, options);
 }
 
 export function getDefaultTranscriptionProvider(): TranscriptionProvider {
