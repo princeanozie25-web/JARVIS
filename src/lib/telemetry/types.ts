@@ -144,7 +144,12 @@ export type TelemetryEventType =
   | "voice_synthesis_queue_item_dropped"
   | "voice_synthesis_queue_overflow"
   | "voice_synthesis_queue_cancelled"
-  | "voice_synthesis_queue_interrupted";
+  | "voice_synthesis_queue_interrupted"
+  | "voice_playback_sequence_intent_created"
+  | "voice_playback_sequence_item_dropped"
+  | "voice_playback_sequence_overflow"
+  | "voice_playback_sequence_cancelled"
+  | "voice_playback_sequence_interrupted";
 
 export interface TelemetryEvent {
   timestamp: number;

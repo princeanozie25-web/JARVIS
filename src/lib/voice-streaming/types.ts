@@ -132,6 +132,46 @@ export interface VoiceSynthesisQueueItem {
   updatedAt: number;
 }
 
+export type VoiceSynthesisQueueItemResult =
+  | {
+      type: "synthesis_ready";
+      item: VoiceSynthesisQueueItem;
+      synthesisResultId?: string;
+      createdAt?: number;
+    }
+  | {
+      type: "synthesis_failed";
+      item?: VoiceSynthesisQueueItem;
+      sessionId: string;
+      queueItemId?: string;
+      streamId?: string;
+      responseId?: string;
+      orchestrationChunkId?: string;
+      chunkIndex?: number;
+      error?: string;
+      createdAt?: number;
+    };
+
+export type VoicePlaybackSequenceIntentState =
+  | "sequenced"
+  | "cancelled"
+  | "interrupted";
+
+export interface VoicePlaybackSequenceIntent {
+  id: string;
+  sessionId: string;
+  synthesisQueueItemId: string;
+  streamId: string;
+  responseId?: string;
+  assistantResponseChunkId: string;
+  orchestrationChunkId: string;
+  chunkIndex: number;
+  synthesisResultId?: string;
+  state: VoicePlaybackSequenceIntentState;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -157,7 +197,12 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_synthesis_queue_item_dropped"
   | "voice_synthesis_queue_overflow"
   | "voice_synthesis_queue_cancelled"
-  | "voice_synthesis_queue_interrupted";
+  | "voice_synthesis_queue_interrupted"
+  | "voice_playback_sequence_intent_created"
+  | "voice_playback_sequence_item_dropped"
+  | "voice_playback_sequence_overflow"
+  | "voice_playback_sequence_cancelled"
+  | "voice_playback_sequence_interrupted";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
@@ -169,6 +214,7 @@ export interface VoiceOrchestrationTelemetryEvent {
   chunkId?: string;
   intentId?: string;
   queueItemId?: string;
+  playbackIntentId?: string;
   chunkIndex?: number;
   pendingIntentCount?: number;
   clearedIntentCount?: number;
@@ -176,6 +222,9 @@ export interface VoiceOrchestrationTelemetryEvent {
   pendingSynthesisItemCount?: number;
   clearedSynthesisItemCount?: number;
   maxPendingSynthesisItems?: number;
+  pendingPlaybackIntentCount?: number;
+  clearedPlaybackIntentCount?: number;
+  maxPendingPlaybackIntents?: number;
   durationMs?: number;
   error?: string;
 }

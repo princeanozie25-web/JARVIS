@@ -16,6 +16,13 @@ export {
   type VoiceSynthesisQueueDropReason,
   type VoiceSynthesisQueueResult,
 } from "./synthesis-queue";
+export {
+  VoicePlaybackSequencer,
+  type VoicePlaybackSequencerOptions,
+  type VoicePlaybackSequencingDropReason,
+  type VoicePlaybackSequencingInput,
+  type VoicePlaybackSequencingResult,
+} from "./playback-sequencer";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -26,7 +33,10 @@ export type {
   StreamingSpeechSession,
   VoiceOrchestrationTelemetryEvent,
   VoiceOrchestrationTelemetryEventType,
+  VoicePlaybackSequenceIntent,
+  VoicePlaybackSequenceIntentState,
   VoiceSynthesisQueueItem,
+  VoiceSynthesisQueueItemResult,
   VoiceSynthesisQueueItemState,
   VoiceStreamingCoordinationMetadata,
   VoiceTurnState,
