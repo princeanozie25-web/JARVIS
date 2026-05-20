@@ -164,7 +164,14 @@ export type TelemetryEventType =
   | "voice_realtime_pipeline_fanout_started"
   | "voice_realtime_pipeline_fanout_completed"
   | "voice_realtime_pipeline_fanout_noop"
-  | "voice_realtime_pipeline_terminal_noop";
+  | "voice_realtime_pipeline_terminal_started"
+  | "voice_realtime_pipeline_terminal_completed"
+  | "voice_realtime_pipeline_terminal_failed"
+  | "voice_realtime_pipeline_terminal_noop"
+  | "voice_realtime_chunk_readiness_changed"
+  | "voice_realtime_first_chunk_ready"
+  | "voice_realtime_chunk_readiness_timeout"
+  | "voice_realtime_stage_latency_marker";
 
 export interface TelemetryEvent {
   timestamp: number;

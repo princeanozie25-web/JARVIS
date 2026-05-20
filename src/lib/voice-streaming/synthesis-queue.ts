@@ -145,7 +145,7 @@ export class VoiceSynthesisOrchestrationQueue {
 
   clearPendingForTerminal(
     sessionId: string,
-    state: Extract<VoiceSynthesisQueueItemState, "cancelled" | "interrupted">,
+    state: Exclude<VoiceSynthesisQueueItemState, "queued">,
   ): number {
     return this.clearSessionItems(sessionId, state);
   }
@@ -187,7 +187,7 @@ export class VoiceSynthesisOrchestrationQueue {
 
   private clearSessionItems(
     sessionId: string,
-    state: Extract<VoiceSynthesisQueueItemState, "cancelled" | "interrupted">,
+    state: Exclude<VoiceSynthesisQueueItemState, "queued">,
   ): number {
     let cleared = 0;
     for (const item of this.pendingItems.values()) {

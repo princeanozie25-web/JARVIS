@@ -176,10 +176,7 @@ export class VoicePlaybackSequencer {
 
   clearPendingForTerminal(
     sessionId: string,
-    state: Extract<
-      VoicePlaybackSequenceIntentState,
-      "cancelled" | "interrupted"
-    >,
+    state: Exclude<VoicePlaybackSequenceIntentState, "sequenced">,
   ): number {
     return this.clearSessionIntents(sessionId, state);
   }
@@ -223,10 +220,7 @@ export class VoicePlaybackSequencer {
 
   private clearSessionIntents(
     sessionId: string,
-    state: Extract<
-      VoicePlaybackSequenceIntentState,
-      "cancelled" | "interrupted"
-    >,
+    state: Exclude<VoicePlaybackSequenceIntentState, "sequenced">,
   ): number {
     let cleared = 0;
     for (const intent of this.pendingIntents.values()) {

@@ -21,6 +21,8 @@ async function createHarness(
     maxScheduledIntents?: number;
     maxSynthesisItems?: number;
     maxPlaybackIntents?: number;
+    now?: () => number;
+    readinessTimeoutMs?: number;
   } = {},
 ) {
   const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
@@ -60,6 +62,8 @@ async function createHarness(
     scheduler,
     synthesisQueue,
     playbackSequencer,
+    now: options.now,
+    readinessTimeoutMs: options.readinessTimeoutMs,
     emitTelemetry: (event) => {
       telemetry.push(event);
     },
@@ -139,6 +143,152 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
         pipelineStage: "playback_sequence",
       }),
     );
+  });
+
+  it("tracks chunk readiness and latency metadata across pipeline stages", async () => {
+    const { pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    expect(pipeline.getChunkReadiness(sessionId)).toEqual([
+      expect.objectContaining({
+        sessionId,
+        chunkIndex: 0,
+        state: "ready_to_play",
+        terminal: false,
+        blocked: false,
+        firstReady: true,
+        timestamps: expect.objectContaining({
+          scheduledAt: 2_000,
+          queuedAt: 3_000,
+          synthesizedAt: 4_000,
+          readyToPlayAt: 4_000,
+        }),
+      }),
+    ]);
+    expect(pipeline.getFirstReadyChunk(sessionId)).toEqual(
+      expect.objectContaining({
+        chunkIndex: 0,
+        state: "ready_to_play",
+        firstReady: true,
+      }),
+    );
+    expect(supervisor.getState()).toMatchObject({ canAutoplay: false });
+    expect(
+      telemetry
+        .filter(
+          (event) =>
+            event.eventType === "voice_realtime_chunk_readiness_changed",
+        )
+        .map((event) => event.readinessState),
+    ).toEqual(["scheduled", "queued", "synthesized", "ready_to_play"]);
+    expect(
+      telemetry
+        .filter(
+          (event) => event.eventType === "voice_realtime_stage_latency_marker",
+        )
+        .map((event) => [event.latencyStage, event.latencyMs]),
+    ).toEqual([
+      ["scheduled", 0],
+      ["queued", 1_000],
+      ["synthesized", 1_000],
+      ["ready_to_play", 0],
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_realtime_first_chunk_ready",
+        chunkIndex: 0,
+        readinessState: "ready_to_play",
+        firstReady: true,
+      }),
+    );
+  });
+
+  it("tracks earliest ready chunk deterministically without autoplay", async () => {
+    const { pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+
+    await pipeline.ingest(chunkEvent(sessionId, 2));
+
+    expect(
+      pipeline
+        .getChunkReadiness(sessionId)
+        .map((record) => [record.chunkIndex, record.state]),
+    ).toEqual([
+      [0, "blocked"],
+      [1, "blocked"],
+      [2, "ready_to_play"],
+    ]);
+    expect(pipeline.getFirstReadyChunk(sessionId)).toMatchObject({
+      chunkIndex: 2,
+      firstReady: true,
+    });
+
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    expect(
+      pipeline
+        .getChunkReadiness(sessionId)
+        .map((record) => [record.chunkIndex, record.state, record.firstReady]),
+    ).toEqual([
+      [0, "ready_to_play", true],
+      [1, "blocked", false],
+      [2, "ready_to_play", false],
+    ]);
+    expect(pipeline.getFirstReadyChunk(sessionId)).toMatchObject({
+      chunkIndex: 0,
+      firstReady: true,
+    });
+    expect(supervisor.getState()).toMatchObject({ canAutoplay: false });
+    expect(
+      telemetry
+        .filter(
+          (event) => event.eventType === "voice_realtime_first_chunk_ready",
+        )
+        .map((event) => event.chunkIndex),
+    ).toEqual([2, 0]);
+  });
+
+  it("detects readiness starvation only when manually checked", async () => {
+    const now = 1_000;
+    const { pipeline, telemetry, sessionId } = await createHarness({
+      now: () => now,
+      readinessTimeoutMs: 500,
+    });
+
+    await pipeline.ingest(chunkEvent(sessionId, 2));
+    expect(await pipeline.detectReadinessTimeouts(sessionId, 1_200)).toEqual(
+      [],
+    );
+
+    const timedOut = await pipeline.detectReadinessTimeouts(sessionId, 1_600);
+    const repeated = await pipeline.detectReadinessTimeouts(sessionId, 1_700);
+
+    expect(timedOut.map((record) => record.chunkIndex)).toEqual([0, 1]);
+    expect(repeated).toEqual([]);
+    expect(
+      telemetry.filter(
+        (event) => event.eventType === "voice_realtime_chunk_readiness_timeout",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        chunkIndex: 0,
+        readinessState: "blocked",
+        readinessTimeoutMs: 500,
+        starvationAgeMs: 600,
+      }),
+      expect.objectContaining({
+        chunkIndex: 1,
+        readinessState: "blocked",
+        readinessTimeoutMs: 500,
+        starvationAgeMs: 600,
+      }),
+    ]);
+    expect(JSON.stringify(telemetry)).not.toContain("transcript");
+    expect(JSON.stringify(telemetry)).not.toContain("spoken");
+    expect(JSON.stringify(telemetry)).not.toContain("assistant body");
+    expect(JSON.stringify(telemetry)).not.toContain("audio payload");
   });
 
   it("fans cancellation out across all stages", async () => {
@@ -316,6 +466,91 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
         error: "overflow",
       }),
     );
+  });
+
+  it("fails closed and clears pending work when a stage fails", async () => {
+    const cases = [
+      {
+        options: { maxScheduledIntents: 1 },
+        expected: {
+          stage: "scheduler",
+          reason: "overflow",
+          failureClass: "scheduler",
+          failureReason: "scheduler_overflow",
+          clearedIntentCount: 1,
+          clearedSynthesisItemCount: 1,
+          clearedPlaybackIntentCount: 1,
+        },
+      },
+      {
+        options: { maxSynthesisItems: 1 },
+        expected: {
+          stage: "synthesis_queue",
+          reason: "overflow",
+          failureClass: "synthesis_queue",
+          failureReason: "synthesis_queue_overflow",
+          clearedIntentCount: 2,
+          clearedSynthesisItemCount: 1,
+          clearedPlaybackIntentCount: 1,
+        },
+      },
+      {
+        options: { maxPlaybackIntents: 1 },
+        expected: {
+          stage: "playback_sequence",
+          reason: "overflow",
+          failureClass: "playback_sequence",
+          failureReason: "playback_sequence_overflow",
+          clearedIntentCount: 2,
+          clearedSynthesisItemCount: 2,
+          clearedPlaybackIntentCount: 1,
+        },
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const {
+        pipeline,
+        scheduler,
+        synthesisQueue,
+        playbackSequencer,
+        supervisor,
+        telemetry,
+        sessionId,
+      } = await createHarness(testCase.options);
+      await pipeline.ingest(chunkEvent(sessionId, 0));
+
+      expect(await pipeline.ingest(chunkEvent(sessionId, 1))).toEqual({
+        ok: false,
+        stage: testCase.expected.stage,
+        reason: testCase.expected.reason,
+      });
+      expect(supervisor.getSession(sessionId)).toMatchObject({
+        state: "failed",
+        active: false,
+      });
+      expect(scheduler.getPendingIntents(sessionId)).toEqual([]);
+      expect(synthesisQueue.getPendingItems(sessionId)).toEqual([]);
+      expect(playbackSequencer.getPendingIntents(sessionId)).toEqual([]);
+      expect(
+        pipeline
+          .getChunkReadiness(sessionId)
+          .every((record) => record.state === "terminal"),
+      ).toBe(true);
+      expect(telemetry).toContainEqual(
+        expect.objectContaining({
+          eventType: "voice_realtime_pipeline_terminal_completed",
+          terminalAction: "fail",
+          failureClass: testCase.expected.failureClass,
+          failureReason: testCase.expected.failureReason,
+          clearedIntentCount: testCase.expected.clearedIntentCount,
+          clearedSynthesisItemCount:
+            testCase.expected.clearedSynthesisItemCount,
+          clearedPlaybackIntentCount:
+            testCase.expected.clearedPlaybackIntentCount,
+        }),
+      );
+    }
   });
 
   it("drops duplicate chunks before they create duplicate downstream work", async () => {
@@ -626,6 +861,61 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     }
   });
 
+  it("rejects late work after every terminal lifecycle state", async () => {
+    for (const terminalAction of [
+      "complete",
+      "fail",
+      "cancel",
+      "interrupt",
+    ] as const) {
+      const {
+        scheduler,
+        synthesisQueue,
+        playbackSequencer,
+        pipeline,
+        sessionId,
+      } = await createHarness();
+      const scheduled = await scheduler.ingest(chunkEvent(sessionId, 0));
+      if (!scheduled.ok || !scheduled.intent) {
+        throw new Error("Expected scheduled intent");
+      }
+      const queued = await synthesisQueue.enqueue(scheduled.intent);
+      if (!queued.ok) throw new Error("Expected synthesis item");
+
+      if (terminalAction === "complete") {
+        await pipeline.completeSession(sessionId);
+      } else if (terminalAction === "fail") {
+        await pipeline.failSession(sessionId);
+      } else if (terminalAction === "cancel") {
+        await pipeline.cancelSession(sessionId);
+      } else {
+        await pipeline.interrupt(sessionId);
+      }
+
+      expect(await pipeline.ingest(chunkEvent(sessionId, 1))).toEqual({
+        ok: false,
+        stage: "scheduler",
+        reason: "stale_turn",
+      });
+      expect(await scheduler.ingest(chunkEvent(sessionId, 2))).toEqual({
+        ok: false,
+        reason: "stale_turn",
+      });
+      expect(await synthesisQueue.enqueue(scheduled.intent)).toEqual({
+        ok: false,
+        reason: "stale_turn",
+      });
+      expect(
+        await playbackSequencer.sequence({
+          type: "synthesis_ready",
+          item: queued.item,
+          synthesisResultId: "late-result",
+        }),
+      ).toEqual({ ok: false, reason: "stale_turn" });
+      expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    }
+  });
+
   it("treats repeated terminal calls as idempotent no-ops", async () => {
     const cancelled = await createHarness();
     await cancelled.pipeline.ingest(chunkEvent(cancelled.sessionId, 0));
@@ -709,10 +999,50 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
       ),
     ).toEqual([expect.objectContaining({ terminalAction: "complete" })]);
     expect(
+      completed.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_terminal_started",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "complete" })]);
+    expect(
+      completed.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_terminal_completed",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "complete",
+        clearedIntentCount: 1,
+        clearedSynthesisItemCount: 1,
+        clearedPlaybackIntentCount: 1,
+      }),
+    ]);
+    expect(
       failed.telemetry.filter(
         (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
       ),
     ).toEqual([expect.objectContaining({ terminalAction: "fail" })]);
+    expect(
+      failed.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_terminal_started",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "fail" })]);
+    expect(
+      failed.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_terminal_completed",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "fail",
+        failureClass: "terminal_lifecycle",
+        failureReason: "pipeline_failed",
+        clearedIntentCount: 1,
+        clearedSynthesisItemCount: 1,
+        clearedPlaybackIntentCount: 1,
+      }),
+    ]);
   });
 
   it("keeps transcript, spoken, assistant body, and audio payloads out of telemetry", async () => {

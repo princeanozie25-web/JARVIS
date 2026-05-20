@@ -2,6 +2,7 @@ import type { VoiceOrchestrationSupervisor } from "./supervisor";
 import type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
+  ChunkSchedulingIntentState,
   VoiceOrchestrationTelemetryEvent,
   VoiceTurnState,
 } from "./types";
@@ -121,7 +122,7 @@ export class VoiceResponseChunkScheduler {
 
   clearPendingForTerminal(
     sessionId: string,
-    state: "cancelled" | "interrupted",
+    state: Exclude<ChunkSchedulingIntentState, "scheduled">,
   ): number {
     return this.clearSessionIntents(sessionId, state);
   }
@@ -326,7 +327,7 @@ export class VoiceResponseChunkScheduler {
 
   private clearSessionIntents(
     sessionId: string,
-    state: "cancelled" | "interrupted",
+    state: Exclude<ChunkSchedulingIntentState, "scheduled">,
   ): number {
     let cleared = 0;
     for (const intent of this.pendingIntents.values()) {

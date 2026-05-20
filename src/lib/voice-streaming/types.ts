@@ -97,6 +97,8 @@ export type AssistantResponseStreamMetadataEvent =
 
 export type ChunkSchedulingIntentState =
   | "scheduled"
+  | "completed"
+  | "failed"
   | "cancelled"
   | "interrupted";
 
@@ -115,6 +117,8 @@ export interface ChunkSchedulingIntent {
 
 export type VoiceSynthesisQueueItemState =
   | "queued"
+  | "completed"
+  | "failed"
   | "cancelled"
   | "interrupted";
 
@@ -154,6 +158,8 @@ export type VoiceSynthesisQueueItemResult =
 
 export type VoicePlaybackSequenceIntentState =
   | "sequenced"
+  | "completed"
+  | "failed"
   | "cancelled"
   | "interrupted";
 
@@ -170,6 +176,49 @@ export interface VoicePlaybackSequenceIntent {
   state: VoicePlaybackSequenceIntentState;
   createdAt: number;
   updatedAt: number;
+}
+
+export type VoiceChunkReadinessState =
+  | "scheduled"
+  | "queued"
+  | "synthesized"
+  | "ready_to_play"
+  | "blocked"
+  | "terminal";
+
+export type VoiceReadinessLatencyStage =
+  | "scheduled"
+  | "queued"
+  | "synthesized"
+  | "ready_to_play"
+  | "blocked"
+  | "terminal";
+
+export interface VoiceChunkReadinessTimestamps {
+  scheduledAt?: number;
+  queuedAt?: number;
+  synthesizedAt?: number;
+  readyToPlayAt?: number;
+  blockedAt?: number;
+  terminalAt?: number;
+  lastUpdatedAt: number;
+}
+
+export interface VoiceChunkReadinessRecord {
+  sessionId: string;
+  streamId?: string;
+  responseId?: string;
+  assistantResponseChunkId?: string;
+  orchestrationChunkId?: string;
+  schedulingIntentId?: string;
+  synthesisQueueItemId?: string;
+  playbackIntentId?: string;
+  chunkIndex: number;
+  state: VoiceChunkReadinessState;
+  terminal: boolean;
+  blocked: boolean;
+  firstReady: boolean;
+  timestamps: VoiceChunkReadinessTimestamps;
 }
 
 export interface OrchestrationState {
@@ -217,7 +266,38 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_realtime_pipeline_fanout_started"
   | "voice_realtime_pipeline_fanout_completed"
   | "voice_realtime_pipeline_fanout_noop"
-  | "voice_realtime_pipeline_terminal_noop";
+  | "voice_realtime_pipeline_terminal_started"
+  | "voice_realtime_pipeline_terminal_completed"
+  | "voice_realtime_pipeline_terminal_failed"
+  | "voice_realtime_pipeline_terminal_noop"
+  | "voice_realtime_chunk_readiness_changed"
+  | "voice_realtime_first_chunk_ready"
+  | "voice_realtime_chunk_readiness_timeout"
+  | "voice_realtime_stage_latency_marker";
+
+export type VoiceOrchestrationTerminalAction =
+  | "cancel"
+  | "interrupt"
+  | "complete"
+  | "fail";
+
+export type VoiceOrchestrationFailureClass =
+  | "metadata_stream"
+  | "scheduler"
+  | "synthesis_queue"
+  | "playback_sequence"
+  | "terminal_lifecycle";
+
+export type VoiceOrchestrationFailureReason =
+  | "response_failed"
+  | "pipeline_failed"
+  | "scheduler_overflow"
+  | "synthesis_queue_overflow"
+  | "playback_sequence_overflow"
+  | "scheduler_stage_failed"
+  | "synthesis_queue_stage_failed"
+  | "playback_sequence_stage_failed"
+  | "terminal_transition_failed";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
@@ -225,7 +305,12 @@ export interface VoiceOrchestrationTelemetryEvent {
   state: VoiceTurnState;
   success: boolean;
   pipelineStage?: "scheduler" | "synthesis_queue" | "playback_sequence";
-  terminalAction?: "cancel" | "interrupt" | "complete" | "fail";
+  terminalAction?: VoiceOrchestrationTerminalAction;
+  failureClass?: VoiceOrchestrationFailureClass;
+  failureReason?: VoiceOrchestrationFailureReason;
+  readinessState?: VoiceChunkReadinessState;
+  previousReadinessState?: VoiceChunkReadinessState;
+  latencyStage?: VoiceReadinessLatencyStage;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;
@@ -244,6 +329,18 @@ export interface VoiceOrchestrationTelemetryEvent {
   pendingPlaybackIntentCount?: number;
   clearedPlaybackIntentCount?: number;
   maxPendingPlaybackIntents?: number;
+  scheduledAt?: number;
+  queuedAt?: number;
+  synthesizedAt?: number;
+  readyToPlayAt?: number;
+  blockedAt?: number;
+  terminalAt?: number;
+  stageStartedAt?: number;
+  stageCompletedAt?: number;
+  latencyMs?: number;
+  readinessTimeoutMs?: number;
+  starvationAgeMs?: number;
+  firstReady?: boolean;
   durationMs?: number;
   error?: string;
 }
