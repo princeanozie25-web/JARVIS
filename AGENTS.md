@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 5:38am GMT+1
+# [jarvis] recent context, 2026-05-20 5:47am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (21,747t read) | 2,031,864t work | 99% savings
+Stats: 50 obs (22,625t read) | 1,871,089t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,14 +25,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 20, 2026
 
-609 4:50a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
 614 4:52a 🔵 Phase 3.75 Streaming Infrastructure Already Fully Implemented
 615 " 🟣 SSE Encoder Upgraded to Emit Named Event Fields
 616 " 🟣 OpenAI Provider Stream Tests Added
 617 " 🔵 StreamEvent Union Extends Beyond Phase 3.75 Spec — Tool-Call Streaming Already Live
 618 " 🔵 AbortController Double-Bridging Pattern in /api/chat Route
-619 " 🔵 time_to_first_token_ms Has a Dedicated Telemetry Column — No Notes Fallback Needed
-620 " 🔵 Git Status Shows Only AGENTS.md and Architecture Doc Modified
 621 4:53a ✅ Full Test Suite Passes — 605 Tests Across 78 Files
 622 4:54a 🔴 OpenAI Test Config Isolation Improved via vi.mock Instead of process.env Mutation
 623 " ✅ Production Build Clean — Known Turbopack Warning on workspace.ts
@@ -75,6 +72,9 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 660 " ✅ Phase 4A-3 Final Build & Test Verification: All Green
 661 5:32a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated
 662 5:33a 🟣 STT Provider Scaffold (src/lib/stt) Created as Disabled Placeholder
+663 5:38a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Objective Defined
+664 5:39a 🟣 STT Provider Type System Extended with Capabilities and Registry
+665 5:46a ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Plan
 
-Access 2032k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1871k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

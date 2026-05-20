@@ -74,6 +74,33 @@ describe("LocalWhisperRuntime", () => {
     expect(startupAborted).toBe(true);
   });
 
+  it("shuts down a handle that resolves after startup timeout", async () => {
+    let resolveLateHandle:
+      | ((handle: LocalWhisperRuntimeHandle) => void)
+      | undefined;
+    const lateShutdown = vi.fn().mockResolvedValue(undefined);
+    const runtime = new LocalWhisperRuntime({
+      config: enabledConfig,
+      fileExists: vi.fn().mockResolvedValue(true),
+      launchRuntime: vi.fn(
+        () =>
+          new Promise<LocalWhisperRuntimeHandle>((resolve) => {
+            resolveLateHandle = resolve;
+          }),
+      ),
+    });
+
+    await expect(runtime.initialize()).resolves.toMatchObject({
+      status: "error",
+      message: "Local Whisper startup timed out.",
+    });
+
+    resolveLateHandle?.({ shutdown: lateShutdown });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(lateShutdown).toHaveBeenCalledTimes(1);
+  });
+
   it("shuts down an initialized runtime handle", async () => {
     const shutdown = vi.fn().mockResolvedValue(undefined);
     const runtime = new LocalWhisperRuntime({

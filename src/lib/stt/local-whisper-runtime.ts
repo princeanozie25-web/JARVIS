@@ -71,12 +71,9 @@ export class LocalWhisperRuntime {
       }
 
       if (this.opts.launchRuntime) {
-        const startupAbort = new AbortController();
-        this.handle = await withTimeout(
-          this.opts.launchRuntime(config, startupAbort.signal),
-          config.startupTimeoutMs,
-          "Local Whisper startup timed out.",
-          () => startupAbort.abort(),
+        this.handle = await launchRuntimeWithTimeoutCleanup(
+          this.opts.launchRuntime,
+          config,
         );
       }
 
@@ -189,5 +186,48 @@ async function withTimeout<T>(
     ]);
   } finally {
     if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function launchRuntimeWithTimeoutCleanup(
+  launchRuntime: (
+    config: LocalWhisperRuntimeConfig,
+    signal: AbortSignal,
+  ) => Promise<LocalWhisperRuntimeHandle>,
+  config: LocalWhisperRuntimeConfig,
+): Promise<LocalWhisperRuntimeHandle> {
+  const startupAbort = new AbortController();
+  let abandoned = false;
+  const launched = launchRuntime(config, startupAbort.signal);
+
+  launched
+    .then(async (handle) => {
+      if (abandoned) {
+        try {
+          await handle.shutdown();
+        } catch {
+          // A late startup handle is already abandoned; shutdown is best-effort
+          // so cleanup cannot create a second unhandled failure path.
+        }
+      }
+    })
+    .catch(() => {
+      // initialize() reports the startup failure; this sidecar only prevents
+      // late handles from outliving a timed-out startup attempt.
+    });
+
+  try {
+    return await withTimeout(
+      launched,
+      config.startupTimeoutMs,
+      "Local Whisper startup timed out.",
+      () => {
+        abandoned = true;
+        startupAbort.abort();
+      },
+    );
+  } catch (error) {
+    abandoned = true;
+    throw error;
   }
 }
