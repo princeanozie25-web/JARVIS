@@ -61,6 +61,44 @@ export interface TranscriptionProvider {
   transcribe(input: TranscriptionInput): Promise<TranscriptionResult>;
 }
 
+export type TranscriptionJobStatus =
+  | "queued"
+  | "rejected"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface TranscriptionJob {
+  id: string;
+  providerId: string;
+  status: TranscriptionJobStatus;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  durationMs?: number;
+  source: "ptt_capture";
+  error?: string;
+}
+
+export type TranscriptionJobTelemetryEventType =
+  | "transcription_job_rejected"
+  | "transcription_job_started"
+  | "transcription_job_completed"
+  | "transcription_job_failed"
+  | "transcription_job_cancelled";
+
+export interface TranscriptionJobTelemetryEvent {
+  eventType: TranscriptionJobTelemetryEventType;
+  jobId: string;
+  providerId: string;
+  status: TranscriptionJobStatus;
+  source: TranscriptionJob["source"];
+  success: boolean;
+  durationMs?: number;
+  error?: string;
+}
+
 export interface TranscriptionState {
   status: TranscriptionStatus;
   providerId: string | null;

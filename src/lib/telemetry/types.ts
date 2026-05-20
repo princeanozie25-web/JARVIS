@@ -99,7 +99,12 @@ export type TelemetryEventType =
   | "ptt_stopped"
   | "audio_capture_started"
   | "audio_capture_stopped"
-  | "audio_capture_error";
+  | "audio_capture_error"
+  | "transcription_job_rejected"
+  | "transcription_job_started"
+  | "transcription_job_completed"
+  | "transcription_job_failed"
+  | "transcription_job_cancelled";
 
 export interface TelemetryEvent {
   timestamp: number;

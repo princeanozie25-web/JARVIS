@@ -31,6 +31,7 @@ export function VoiceControlPanel({
   const localWhisperRuntimeState = localWhisperPlaceholderProvider.enabled
     ? localWhisperPlaceholderProvider.status
     : "disabled";
+  const activeTranscriptionJobLabel = "No active transcription job";
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
@@ -444,6 +445,9 @@ export function VoiceControlPanel({
           </p>
           <p className="mt-1 text-xs text-gray-600">
             Runtime state: {localWhisperRuntimeState}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            {activeTranscriptionJobLabel}
           </p>
           <p className="mt-1 text-xs text-gray-600">
             local only, no network, no audio storage

@@ -2,7 +2,16 @@ export {
   disabledTranscriptionProvider,
   disabledTranscriptionResult,
 } from "./disabled-provider";
-export { getDefaultTranscriptionProvider, transcribeWithGuard } from "./guard";
+export {
+  getDefaultTranscriptionProvider,
+  getTranscriptionGuardFailure,
+  transcribeWithGuard,
+} from "./guard";
+export {
+  InMemoryTranscriptionJobManager,
+  type StartTranscriptionJobInput,
+  type TranscriptionJobManagerOptions,
+} from "./jobs";
 export {
   localWhisperPlaceholderConfig,
   localWhisperPlaceholderProvider,
@@ -35,4 +44,8 @@ export type {
   TranscriptionResult,
   TranscriptionState,
   TranscriptionStatus,
+  TranscriptionJob,
+  TranscriptionJobStatus,
+  TranscriptionJobTelemetryEvent,
+  TranscriptionJobTelemetryEventType,
 } from "./types";
