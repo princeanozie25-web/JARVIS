@@ -61,6 +61,7 @@ export class VoiceBargeInCoordinator {
     string,
     VoiceCaptureRearmResultRecord
   >();
+  private readonly terminalTransitionInFlight = new Set<string>();
 
   constructor(private readonly opts: VoiceBargeInCoordinatorOptions) {}
 
@@ -69,17 +70,21 @@ export class VoiceBargeInCoordinator {
   ): Promise<VoiceBargeInCoordinatorResult> {
     const session = this.opts.supervisor.getSession(intent.sessionId);
     const currentState = this.getState(intent.sessionId);
+    const rejection = this.getRejectionReason(
+      intent,
+      currentState,
+      session?.state,
+    );
+    const ownsTerminalTransition = rejection === null;
+    if (ownsTerminalTransition) {
+      this.terminalTransitionInFlight.add(intent.sessionId);
+    }
 
     await this.emit(intent, "voice_barge_in_intent_received", true, {
       state: session?.state ?? "failed",
       bargeInState: currentState,
     });
 
-    const rejection = this.getRejectionReason(
-      intent,
-      currentState,
-      session?.state,
-    );
     if (rejection) {
       await this.rejectIntent(intent, rejection, session?.state, currentState);
       await this.handleRejectedPreemption(
@@ -131,6 +136,10 @@ export class VoiceBargeInCoordinator {
         actions: ["no_op"],
         state: "failed",
       };
+    } finally {
+      if (ownsTerminalTransition) {
+        this.terminalTransitionInFlight.delete(intent.sessionId);
+      }
     }
 
     return {
@@ -227,6 +236,9 @@ export class VoiceBargeInCoordinator {
     sessionState: VoiceTurnState | undefined,
   ): VoiceBargeInRejectionReason | null {
     if (TERMINAL_BARGE_IN_STATES.has(currentState)) return "state_terminal";
+    if (this.terminalTransitionInFlight.has(intent.sessionId)) {
+      return "terminal_transition_in_flight";
+    }
     if (!isValidIntentFromState(intent, currentState)) {
       return "invalid_transition";
     }
@@ -326,6 +338,16 @@ export class VoiceBargeInCoordinator {
           bargeInRejectionReason: reason,
         },
       );
+      return;
+    }
+
+    if (reason === "terminal_transition_in_flight") {
+      await this.emit(intent, "voice_turn_preemption_noop", true, {
+        state,
+        turnId: preemptionTurnId(intent),
+        preemptionReason: intent.category,
+        bargeInRejectionReason: reason,
+      });
       return;
     }
 
@@ -436,6 +458,16 @@ export class VoiceBargeInCoordinator {
           captureRearmBlockedReason: reason,
         },
       );
+      return;
+    }
+
+    if (reason === "terminal_transition_in_flight") {
+      await this.emit(intent, "voice_capture_rearm_noop", true, {
+        state,
+        turnId,
+        captureRearmState: this.getCaptureRearmState(turnId),
+        captureRearmBlockedReason: reason,
+      });
       return;
     }
 

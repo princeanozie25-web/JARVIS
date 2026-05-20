@@ -261,6 +261,7 @@ export type VoiceBargeInRejectionReason =
   | "stale_turn"
   | "session_terminal"
   | "state_terminal"
+  | "terminal_transition_in_flight"
   | "invalid_transition"
   | "transition_failed";
 

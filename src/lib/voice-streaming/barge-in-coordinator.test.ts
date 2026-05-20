@@ -120,6 +120,107 @@ function createDeferred() {
   return { promise, resolve };
 }
 
+async function createPendingPipelineHarness() {
+  const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
+  const emitTelemetry = (event: VoiceOrchestrationTelemetryEvent) => {
+    telemetry.push(event);
+  };
+  const supervisor = new VoiceOrchestrationSupervisor({
+    newId: createIdGenerator("session"),
+    now: () => 1_000,
+    emitTelemetry,
+  });
+  const started = await supervisor.startSession();
+  if (!started.ok) throw new Error("Expected voice session to start");
+
+  const interruptStarted = createDeferred();
+  const cancelStarted = createDeferred();
+  const releaseTerminal = createDeferred();
+  let interruptCalls = 0;
+  let cancelCalls = 0;
+  const pipeline = {
+    cancelSession: async (sessionId: string) => {
+      cancelCalls += 1;
+      cancelStarted.resolve();
+      await releaseTerminal.promise;
+      await supervisor.cancelSession(sessionId);
+    },
+    interrupt: async (sessionId: string) => {
+      interruptCalls += 1;
+      interruptStarted.resolve();
+      await releaseTerminal.promise;
+      await supervisor.interrupt(sessionId);
+    },
+    getPlaybackIntents: () =>
+      [
+        {
+          id: "playback-1",
+          sessionId: started.session.id,
+          synthesisQueueItemId: "synthesis-1",
+          streamId: "stream-1",
+          responseId: "response-1",
+          assistantResponseChunkId: "assistant-chunk-0",
+          orchestrationChunkId: "chunk-0",
+          chunkIndex: 0,
+          state: "sequenced",
+          createdAt: 4_000,
+          updatedAt: 4_000,
+        },
+      ] as ReturnType<VoiceRealtimeOrchestrationPipeline["getPlaybackIntents"]>,
+    getChunkReadiness: () =>
+      [
+        {
+          sessionId: started.session.id,
+          streamId: "stream-1",
+          responseId: "response-1",
+          assistantResponseChunkId: "assistant-chunk-0",
+          orchestrationChunkId: "chunk-0",
+          schedulingIntentId: "intent-1",
+          synthesisQueueItemId: "synthesis-1",
+          playbackIntentId: "playback-1",
+          chunkIndex: 0,
+          state: "ready_to_play",
+          terminal: false,
+          blocked: false,
+          firstReady: true,
+          timestamps: {
+            scheduledAt: 2_000,
+            queuedAt: 3_000,
+            synthesizedAt: 4_000,
+            readyToPlayAt: 4_000,
+            lastUpdatedAt: 4_000,
+          },
+        },
+      ] as ReturnType<VoiceRealtimeOrchestrationPipeline["getChunkReadiness"]>,
+  };
+  const coordinator = new VoiceBargeInCoordinator({
+    supervisor,
+    pipeline,
+    newId: createIdGenerator("preemption"),
+    now: () => 5_000,
+    emitTelemetry,
+  });
+
+  return {
+    coordinator,
+    supervisor,
+    telemetry,
+    sessionId: started.session.id,
+    interruptStarted,
+    cancelStarted,
+    releaseTerminal,
+    getInterruptCalls: () => interruptCalls,
+    getCancelCalls: () => cancelCalls,
+  };
+}
+
+function countEvents(
+  telemetry: VoiceOrchestrationTelemetryEvent[],
+  eventType: VoiceOrchestrationTelemetryEvent["eventType"],
+): number {
+  return telemetry.filter((event) => event.eventType === eventType).length;
+}
+
 describe("VoiceBargeInCoordinator", () => {
   it("maps PTT during playback to safe cancellation and new-capture prep actions", async () => {
     const { coordinator, pipeline, supervisor, telemetry, sessionId } =
@@ -425,6 +526,132 @@ describe("VoiceBargeInCoordinator", () => {
     );
   });
 
+  it("deduplicates a rapid repeated interrupt burst while terminal work is pending", async () => {
+    const {
+      coordinator,
+      supervisor,
+      telemetry,
+      sessionId,
+      interruptStarted,
+      releaseTerminal,
+      getInterruptCalls,
+      getCancelCalls,
+    } = await createPendingPipelineHarness();
+
+    const burst = Array.from({ length: 12 }, (_, index) =>
+      coordinator.handleIntent(
+        intent(sessionId, {
+          id: `barge-in-${index + 1}`,
+          category: "user_ptt_pressed_during_playback",
+        }),
+      ),
+    );
+    await interruptStarted.promise;
+    releaseTerminal.resolve();
+    const results = await Promise.all(burst);
+
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.filter((result) => !result.ok)).toHaveLength(11);
+    expect(
+      results
+        .filter((result) => !result.ok)
+        .map((result) => (result.ok ? "" : result.reason)),
+    ).toEqual(Array(11).fill("terminal_transition_in_flight"));
+    expect(getInterruptCalls()).toBe(1);
+    expect(getCancelCalls()).toBe(0);
+    expect(supervisor.getSession(sessionId)).toMatchObject({
+      state: "interrupted",
+      active: false,
+    });
+    expect(coordinator.getPreemptionRecords(sessionId)).toHaveLength(1);
+    expect(coordinator.getCaptureRearmIntentRecords(sessionId)).toHaveLength(1);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toHaveLength(1);
+    expect(countEvents(telemetry, "voice_turn_preemption_recorded")).toBe(1);
+    expect(countEvents(telemetry, "voice_capture_rearm_ready")).toBe(1);
+    expect(countEvents(telemetry, "voice_barge_in_action_selected")).toBe(4);
+    expect(countEvents(telemetry, "voice_barge_in_noop")).toBe(11);
+    expectMetadataOnlyTelemetry(telemetry);
+  });
+
+  it("rejects mixed barge-in intents during a pending pipeline interrupt without duplicate terminal calls", async () => {
+    const {
+      coordinator,
+      telemetry,
+      sessionId,
+      interruptStarted,
+      releaseTerminal,
+      getInterruptCalls,
+      getCancelCalls,
+    } = await createPendingPipelineHarness();
+
+    const accepted = coordinator.handleIntent(
+      intent(sessionId, {
+        id: "barge-in-accepted",
+        category: "user_ptt_pressed_during_playback",
+      }),
+    );
+    await interruptStarted.promise;
+
+    const mixed = await Promise.all([
+      coordinator.handleIntent(
+        intent(sessionId, {
+          id: "barge-in-stop",
+          category: "user_requested_stop",
+        }),
+      ),
+      coordinator.handleIntent(
+        intent(sessionId, {
+          id: "barge-in-new-turn",
+          category: "user_started_new_turn",
+        }),
+      ),
+      coordinator.handleIntent(
+        intent(sessionId, {
+          id: "barge-in-playback-preempted",
+          category: "playback_preempted",
+        }),
+      ),
+    ]);
+
+    expect(mixed).toEqual([
+      expect.objectContaining({
+        ok: false,
+        reason: "terminal_transition_in_flight",
+        actions: ["no_op"],
+      }),
+      expect.objectContaining({
+        ok: false,
+        reason: "terminal_transition_in_flight",
+        actions: ["no_op"],
+      }),
+      expect.objectContaining({
+        ok: false,
+        reason: "terminal_transition_in_flight",
+        actions: ["no_op"],
+      }),
+    ]);
+    expect(getInterruptCalls()).toBe(1);
+    expect(getCancelCalls()).toBe(0);
+
+    releaseTerminal.resolve();
+    await expect(accepted).resolves.toMatchObject({ ok: true });
+
+    expect(coordinator.getPreemptionRecords(sessionId)).toEqual([
+      expect.objectContaining({ reason: "user_ptt_pressed_during_playback" }),
+    ]);
+    expect(coordinator.getPreemptionRecords(sessionId)).toHaveLength(1);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toHaveLength(1);
+    expect(countEvents(telemetry, "voice_turn_preemption_recorded")).toBe(1);
+    expect(countEvents(telemetry, "voice_capture_rearm_ready")).toBe(1);
+    expect(countEvents(telemetry, "voice_barge_in_noop")).toBe(3);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_barge_in_intent_rejected",
+        bargeInRejectionReason: "terminal_transition_in_flight",
+      }),
+    );
+  });
+
   it("keeps terminal state from producing new work", async () => {
     const { coordinator, pipeline, supervisor, telemetry, sessionId } =
       await createHarness();
@@ -575,15 +802,15 @@ describe("VoiceBargeInCoordinator", () => {
         id: "barge-in-2",
         category: "user_started_new_turn",
       }),
-      reason: "invalid_transition",
+      reason: "terminal_transition_in_flight",
       actions: ["no_op"],
       state: "ready_for_capture",
     });
     expect(completed).toMatchObject({ ok: true, state: "completed" });
     expect(telemetry).toContainEqual(
       expect.objectContaining({
-        eventType: "voice_barge_in_invalid_transition",
-        bargeInRejectionReason: "invalid_transition",
+        eventType: "voice_barge_in_intent_rejected",
+        bargeInRejectionReason: "terminal_transition_in_flight",
         bargeInState: "ready_for_capture",
       }),
     );

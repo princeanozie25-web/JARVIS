@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:34pm GMT+1
+# [jarvis] recent context, 2026-05-20 11:39pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23,358t read) | 1,147,011t work | 98% savings
+Stats: 50 obs (23,641t read) | 1,085,407t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,9 +26,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-712 8:15p 🔵 JARVIS TTS Module Architecture: Types, Safety Policy, and StreamEvent Integration
 717 8:17p 🔵 TtsSentenceChunker Confirmed Isolated: No Wiring to App, Components, or Chat Pipeline
-718 " 🟣 Two Additional Hardening Tests Added: Split Deltas and Sticky Block State
 719 8:34p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
 720 " 🟣 TtsSentenceChunker Implemented for Phase 4C-4 TTS Pipeline
 721 " 🟣 Phase 4C-4 Verification: 698 Tests Passing, TypeScript Clean, Build Clean
@@ -76,6 +74,8 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 763 11:32p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
 764 11:33p 🟣 Phase 4E: Turn Preemption Records Added to VoiceBargeInCoordinator
 765 " 🟣 Phase 4E Turn Preemption: All Validation Gates Pass — 789 Tests, Clean Lint, Clean Build
+766 11:36p 🟣 Phase 4E: Capture Rearm Intent/Result Types and Telemetry Events Added to types.ts
+767 " 🟣 Phase 4E: Capture Rearm Lifecycle Implemented in VoiceBargeInCoordinator
 
-Access 1147k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1085k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

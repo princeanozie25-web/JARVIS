@@ -74,6 +74,7 @@ Current Phase 4E status:
 - tracks metadata-only states from `idle` through cancellation, pending-work clearing, optional capture preparation, and terminal completion/failure
 - records terminal, idempotent half-spoken/preemption metadata for accepted interrupted turns
 - records metadata-only new-capture re-arm intent/result records after accepted intents that explicitly prepare capture
+- guards in-flight barge-in terminal transitions so rapid repeated or mixed intents cannot duplicate pipeline cancellation/interruption calls
 - rejects invalid or terminal-state transitions as no-ops
 - calls only the Phase 4D pipeline boundary for cancellation or interruption
 - does not listen to microphones, keyboards, wake words, UI events, playback, chat, runtime commands, approvals, Realtime, or cloud APIs
