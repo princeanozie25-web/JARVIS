@@ -31,7 +31,8 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("Push-to-talk lifecycle only");
     expect(html).toContain("Hold to Talk");
     expect(html).toContain("VU placeholder");
-    expect(html).toContain("Disabled until speech-to-text is implemented.");
+    expect(html).toContain("STT not configured yet.");
+    expect(html).toContain("disabled-local-placeholder");
     expect(html).toContain("Disabled until text-to-speech is implemented.");
     expect(html).toContain("Desk Mic");
     expect(html).toContain("Desk Speaker");

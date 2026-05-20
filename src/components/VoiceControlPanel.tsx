@@ -12,6 +12,10 @@ import {
   type LocalAudioCaptureHandle,
   type AudioSessionState,
 } from "@/lib/audio";
+import {
+  disabledTranscriptionProvider,
+  initialTranscriptionState,
+} from "@/lib/stt";
 
 export interface VoiceControlPanelProps {
   initialState?: AudioSessionState;
@@ -21,6 +25,7 @@ export function VoiceControlPanel({
   initialState = initialAudioSessionState,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
+  const transcriptionState = initialTranscriptionState;
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
   const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
@@ -423,8 +428,10 @@ export function VoiceControlPanel({
           <h3 className="text-xs font-semibold uppercase text-gray-500">
             Transcript
           </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Disabled until speech-to-text is implemented.
+          <p className="mt-2 text-sm text-gray-500">STT not configured yet.</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Provider {disabledTranscriptionProvider.id}:{" "}
+            {transcriptionState.status}
           </p>
         </div>
         <div className="rounded-md border border-gray-800 bg-black p-3 opacity-60">

@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 5:27am GMT+1
+# [jarvis] recent context, 2026-05-20 5:29am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20,741t read) | 2,202,056t work | 99% savings
+Stats: 50 obs (20,746t read) | 2,114,009t work | 99% savings
 
 ### May 16, 2026
 
@@ -29,7 +29,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 602 " 🟣 Full Runtime Command REST API Implemented with 6 New Route Endpoints
 603 " 🔴 vitest.config.ts Created to Fix @/ Path Alias Resolution in Tests
 604 " 🔴 server-only Package Must Be Mocked in Vitest to Test Next.js Server Routes
-605 " 🟣 Runtime Command API Integration Tests: 11 Cases Covering Full Lifecycle
 
 ### May 20, 2026
 
@@ -78,6 +77,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 651 " 🔵 Full Test Suite and Production Build Pass After Phase 3.75 Audio Changes
 652 " 🔵 node_repl Kernel Crashes with EPERM on C:\Users\princ\AppData lstat in This Environment
 653 " ✅ Phase 3.75 Git Status — Final File Set
+654 5:28a 🔵 JARVIS Phase 4A-3: Voice Capture Audit Scope Defined
 
-Access 2202k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2114k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
