@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:28pm GMT+1
+# [jarvis] recent context, 2026-05-20 11:34pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,393t read) | 1,185,221t work | 98% savings
+Stats: 50 obs (23,358t read) | 1,147,011t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,13 +26,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-709 8:08p 🔵 JARVIS TTS Layer Pre-Flight Audit — Infrastructure Confirmed Clean
-711 8:14p ⚖️ JARVIS Phase 4C-5: TTS Sentence Chunker Audit Scope Defined
 712 8:15p 🔵 JARVIS TTS Module Architecture: Types, Safety Policy, and StreamEvent Integration
-713 " 🟣 TtsSentenceChunker Implemented: Streaming Text-to-Speech Sentence Chunker
-714 " 🔴 findTerminalBoundary Replaced with findFlushBoundary to Correctly Enforce minChunkChars
-715 " 🟣 TtsSentenceChunker Test Suite: 9 Tests Covering All Audit Checklist Items
-716 " ✅ Phase 4C-5 Audit Complete: All Checks Green, No Synthesis or Playback Wiring Added
 717 8:17p 🔵 TtsSentenceChunker Confirmed Isolated: No Wiring to App, Components, or Chat Pipeline
 718 " 🟣 Two Additional Hardening Tests Added: Split Deltas and Sticky Block State
 719 8:34p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
@@ -76,6 +70,12 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 757 " 🟣 Barge-In Coordinator Test Suite Added with Safety Assertion Coverage
 758 11:28p 🔵 JARVIS Phase 4D Voice Streaming — Current State Before Metadata Ingestion Slice
 759 " 🟣 JARVIS Phase 4D — Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
+760 11:29p 🟣 JARVIS Phase 4E — VoiceBargeInCoordinator Rewritten With Internal State Machine
+761 " 🟣 JARVIS Phase 4E — Barge-In Coordinator State Machine Tests Including In-Flight Concurrency
+762 " 🟣 JARVIS Phase 4E — All CI Gates Pass: 788 Tests, Clean TypeScript, Lint, and Build
+763 11:32p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
+764 11:33p 🟣 Phase 4E: Turn Preemption Records Added to VoiceBargeInCoordinator
+765 " 🟣 Phase 4E Turn Preemption: All Validation Gates Pass — 789 Tests, Clean Lint, Clean Build
 
-Access 1185k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1147k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

@@ -73,6 +73,7 @@ Current Phase 4E status:
 - maps intents to cancellation/interruption preparation actions
 - tracks metadata-only states from `idle` through cancellation, pending-work clearing, optional capture preparation, and terminal completion/failure
 - records terminal, idempotent half-spoken/preemption metadata for accepted interrupted turns
+- records metadata-only new-capture re-arm intent/result records after accepted intents that explicitly prepare capture
 - rejects invalid or terminal-state transitions as no-ops
 - calls only the Phase 4D pipeline boundary for cancellation or interruption
 - does not listen to microphones, keyboards, wake words, UI events, playback, chat, runtime commands, approvals, Realtime, or cloud APIs
@@ -88,6 +89,18 @@ Phase 4E preemption records may contain only:
 - interrupt/preemption reason category
 
 Preemption records must not contain transcript text, spoken text, assistant response body text, audio URLs, audio blobs, PCM data, raw audio, chat payloads, runtime command payloads, or approval execution payloads.
+
+Phase 4E capture re-arm records may contain only:
+
+- session ID
+- turn ID
+- barge-in intent ID
+- re-arm state
+- request/completion timestamps
+- interrupt/preemption reason category
+- metadata-only blocked reason
+
+Capture re-arm coordination does not access microphones, keyboards, UI surfaces, browser device APIs, playback devices, chat submission, runtime commands, approvals, Realtime, or cloud APIs. It only produces records and telemetry that a future explicitly wired adapter may inspect.
 
 Future Phase 4E work may choose explicit, reviewable adapters for real synthesis or playback, but those adapters must preserve the Phase 4D/4E boundaries:
 

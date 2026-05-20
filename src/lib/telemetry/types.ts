@@ -182,7 +182,12 @@ export type TelemetryEventType =
   | "voice_barge_in_transition_failed"
   | "voice_turn_preemption_recorded"
   | "voice_turn_preemption_noop"
-  | "voice_turn_preemption_rejected";
+  | "voice_turn_preemption_rejected"
+  | "voice_capture_rearm_requested"
+  | "voice_capture_rearm_ready"
+  | "voice_capture_rearm_blocked"
+  | "voice_capture_rearm_failed"
+  | "voice_capture_rearm_noop";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -290,6 +290,42 @@ export interface VoiceTurnPreemptionRecord {
   reason: VoiceBargeInIntentCategory;
 }
 
+export type VoiceCaptureRearmState =
+  | "not_requested"
+  | "requested"
+  | "clearing_previous_turn"
+  | "ready_for_new_capture"
+  | "blocked"
+  | "failed";
+
+export type VoiceCaptureRearmBlockedReason =
+  | "not_requested"
+  | "state_terminal"
+  | "coordinator_failed"
+  | VoiceBargeInRejectionReason;
+
+export interface VoiceCaptureRearmIntentRecord {
+  id: string;
+  sessionId: string;
+  turnId: string;
+  bargeInIntentId: string;
+  reason: VoiceBargeInIntentCategory;
+  state: VoiceCaptureRearmState;
+  requestedAt: number;
+}
+
+export interface VoiceCaptureRearmResultRecord {
+  id: string;
+  intentId: string;
+  sessionId: string;
+  turnId: string;
+  bargeInIntentId: string;
+  reason: VoiceBargeInIntentCategory;
+  state: VoiceCaptureRearmState;
+  completedAt: number;
+  blockedReason?: VoiceCaptureRearmBlockedReason;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -353,7 +389,12 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_barge_in_transition_failed"
   | "voice_turn_preemption_recorded"
   | "voice_turn_preemption_noop"
-  | "voice_turn_preemption_rejected";
+  | "voice_turn_preemption_rejected"
+  | "voice_capture_rearm_requested"
+  | "voice_capture_rearm_ready"
+  | "voice_capture_rearm_blocked"
+  | "voice_capture_rearm_failed"
+  | "voice_capture_rearm_noop";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -405,6 +446,12 @@ export interface VoiceOrchestrationTelemetryEvent {
   lastSequencedChunkIndex?: number;
   pendingChunkCount?: number;
   preemptionReason?: VoiceBargeInIntentCategory;
+  captureRearmIntentId?: string;
+  captureRearmResultId?: string;
+  captureRearmState?: VoiceCaptureRearmState;
+  previousCaptureRearmState?: VoiceCaptureRearmState;
+  nextCaptureRearmState?: VoiceCaptureRearmState;
+  captureRearmBlockedReason?: VoiceCaptureRearmBlockedReason;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

@@ -183,6 +183,29 @@ describe("VoiceBargeInCoordinator", () => {
         reason: "user_ptt_pressed_during_playback",
       },
     ]);
+    expect(coordinator.getCaptureRearmIntentRecords(sessionId)).toEqual([
+      {
+        id: "preemption-2",
+        sessionId,
+        turnId: "turn-1",
+        bargeInIntentId: "barge-in-1",
+        reason: "user_ptt_pressed_during_playback",
+        state: "ready_for_new_capture",
+        requestedAt: 5_000,
+      },
+    ]);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toEqual([
+      {
+        id: "preemption-3",
+        intentId: "preemption-2",
+        sessionId,
+        turnId: "turn-1",
+        bargeInIntentId: "barge-in-1",
+        reason: "user_ptt_pressed_during_playback",
+        state: "ready_for_new_capture",
+        completedAt: 5_000,
+      },
+    ]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_intent_received",
@@ -206,7 +229,53 @@ describe("VoiceBargeInCoordinator", () => {
         preemptionReason: "user_ptt_pressed_during_playback",
       }),
     );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_requested",
+        captureRearmIntentId: "preemption-2",
+        captureRearmState: "requested",
+        nextCaptureRearmState: "requested",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_ready",
+        captureRearmIntentId: "preemption-2",
+        captureRearmResultId: "preemption-3",
+        captureRearmState: "ready_for_new_capture",
+      }),
+    );
     expectMetadataOnlyTelemetry(telemetry);
+  });
+
+  it("allows accepted new-turn barge-in to request safe re-arm metadata", async () => {
+    const { coordinator, pipeline, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.ingest(chunkEvent(sessionId, 0));
+
+    const result = await coordinator.handleIntent(
+      intent(sessionId, { category: "user_started_new_turn" }),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      actions: expect.arrayContaining(["prepare_for_new_capture"]),
+    });
+    expect(coordinator.getCaptureRearmState("turn-1")).toBe(
+      "ready_for_new_capture",
+    );
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toEqual([
+      expect.objectContaining({
+        reason: "user_started_new_turn",
+        state: "ready_for_new_capture",
+      }),
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_ready",
+        captureRearmState: "ready_for_new_capture",
+      }),
+    );
   });
 
   it("maps stop intent to safe pipeline cancellation actions", async () => {
@@ -248,6 +317,8 @@ describe("VoiceBargeInCoordinator", () => {
         pendingChunkCount: 1,
       }),
     ]);
+    expect(coordinator.getCaptureRearmIntentRecords(sessionId)).toEqual([]);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toEqual([]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_action_selected",
@@ -328,10 +399,18 @@ describe("VoiceBargeInCoordinator", () => {
       active: false,
     });
     expect(coordinator.getPreemptionRecords(sessionId)).toHaveLength(1);
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toHaveLength(1);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_turn_preemption_noop",
         preemptionRecordId: "preemption-1",
+        bargeInIntentId: "barge-in-2",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_noop",
+        captureRearmResultId: "preemption-3",
         bargeInIntentId: "barge-in-2",
       }),
     );
@@ -377,10 +456,24 @@ describe("VoiceBargeInCoordinator", () => {
       active: false,
     });
     expect(coordinator.getState(sessionId)).toBe("completed");
+    expect(coordinator.getCaptureRearmResultRecords(sessionId)).toEqual([
+      expect.objectContaining({
+        bargeInIntentId: "barge-in-2",
+        state: "blocked",
+        blockedReason: "state_terminal",
+      }),
+    ]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
         eventType: "voice_barge_in_terminal_noop",
         bargeInRejectionReason: "state_terminal",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_capture_rearm_blocked",
+        captureRearmState: "blocked",
+        captureRearmBlockedReason: "state_terminal",
       }),
     );
   });
@@ -422,6 +515,13 @@ describe("VoiceBargeInCoordinator", () => {
     expect(serializedRecords).not.toContain("secret spoken payload");
     expect(serializedRecords).not.toContain("secret assistant body payload");
     expect(serializedRecords).not.toContain("secret audio payload");
+    const serializedRearm = JSON.stringify(
+      coordinator.getCaptureRearmResultRecords(sessionId),
+    );
+    expect(serializedRearm).not.toContain("secret transcript payload");
+    expect(serializedRearm).not.toContain("secret spoken payload");
+    expect(serializedRearm).not.toContain("secret assistant body payload");
+    expect(serializedRearm).not.toContain("secret audio payload");
     expectMetadataOnlyTelemetry(telemetry);
   });
 
@@ -489,7 +589,7 @@ describe("VoiceBargeInCoordinator", () => {
     );
   });
 
-  it("does not introduce voice approval, autoplay, chat, runtime, Realtime, wake word, or cloud wiring", () => {
+  it("does not introduce voice approval, autoplay, chat, runtime, Realtime, wake word, capture device, browser, or cloud wiring", () => {
     const source = readFileSync(
       join(process.cwd(), "src/lib/voice-streaming/barge-in-coordinator.ts"),
       "utf8",
@@ -497,7 +597,9 @@ describe("VoiceBargeInCoordinator", () => {
 
     expect(source).not.toMatch(/voiceApproval|approval|approve/i);
     expect(source).not.toMatch(/wake\s*word|always[-_\s]?listening/i);
-    expect(source).not.toMatch(/microphone|navigator\.mediaDevices|keyboard/i);
+    expect(source).not.toMatch(
+      /microphone|navigator|mediaDevices|keyboard|window\.|document\./i,
+    );
     expect(source).not.toMatch(/autoplay|HTMLAudioElement|\.play\(/i);
     expect(source).not.toMatch(/\/api\/chat|submitChat|autoSubmit/i);
     expect(source).not.toMatch(/runtime-commands|runTool|toolRuntime/i);

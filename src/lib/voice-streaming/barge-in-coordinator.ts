@@ -6,6 +6,10 @@ import type {
   VoiceBargeInIntent,
   VoiceBargeInRejectionReason,
   VoiceBargeInState,
+  VoiceCaptureRearmBlockedReason,
+  VoiceCaptureRearmIntentRecord,
+  VoiceCaptureRearmResultRecord,
+  VoiceCaptureRearmState,
   VoiceChunkReadinessRecord,
   VoiceOrchestrationTelemetryEvent,
   VoiceTurnPreemptionRecord,
@@ -49,6 +53,14 @@ export class VoiceBargeInCoordinator {
     string,
     VoiceTurnPreemptionRecord
   >();
+  private readonly captureRearmIntentByTurn = new Map<
+    string,
+    VoiceCaptureRearmIntentRecord
+  >();
+  private readonly captureRearmResultByTurn = new Map<
+    string,
+    VoiceCaptureRearmResultRecord
+  >();
 
   constructor(private readonly opts: VoiceBargeInCoordinatorOptions) {}
 
@@ -75,6 +87,11 @@ export class VoiceBargeInCoordinator {
         rejection,
         session?.state ?? "failed",
       );
+      await this.handleRejectedCaptureRearm(
+        intent,
+        rejection,
+        session?.state ?? "failed",
+      );
       return {
         ok: false,
         intent: copyIntent(intent),
@@ -88,6 +105,13 @@ export class VoiceBargeInCoordinator {
     try {
       await this.runTransitionPlan(intent, plan, session?.state ?? "failed");
     } catch {
+      if (intentPreparesNewCapture(intent)) {
+        await this.failCaptureRearm(
+          intent,
+          session?.state ?? "failed",
+          "coordinator_failed",
+        );
+      }
       await this.transitionState(
         intent,
         this.getState(intent.sessionId),
@@ -134,6 +158,34 @@ export class VoiceBargeInCoordinator {
     return record ? copyPreemptionRecord(record) : null;
   }
 
+  getCaptureRearmIntentRecords(
+    sessionId?: string,
+  ): VoiceCaptureRearmIntentRecord[] {
+    return Array.from(this.captureRearmIntentByTurn.values())
+      .filter(
+        (record) => sessionId === undefined || record.sessionId === sessionId,
+      )
+      .map(copyCaptureRearmIntentRecord);
+  }
+
+  getCaptureRearmResultRecords(
+    sessionId?: string,
+  ): VoiceCaptureRearmResultRecord[] {
+    return Array.from(this.captureRearmResultByTurn.values())
+      .filter(
+        (record) => sessionId === undefined || record.sessionId === sessionId,
+      )
+      .map(copyCaptureRearmResultRecord);
+  }
+
+  getCaptureRearmState(turnId: string): VoiceCaptureRearmState {
+    return (
+      this.captureRearmResultByTurn.get(turnId)?.state ??
+      this.captureRearmIntentByTurn.get(turnId)?.state ??
+      "not_requested"
+    );
+  }
+
   private async runTransitionPlan(
     intent: VoiceBargeInIntent,
     plan: BargeInTransitionPlan,
@@ -150,6 +202,9 @@ export class VoiceBargeInCoordinator {
     }
 
     await this.recordPreemption(intent, turnState);
+    if (plan.actions.includes("prepare_for_new_capture")) {
+      await this.requestCaptureRearm(intent, turnState);
+    }
 
     if (plan.terminalMethod === "cancel") {
       await this.opts.pipeline.cancelSession(intent.sessionId);
@@ -282,6 +337,191 @@ export class VoiceBargeInCoordinator {
     });
   }
 
+  private async requestCaptureRearm(
+    intent: VoiceBargeInIntent,
+    state: VoiceTurnState,
+  ): Promise<VoiceCaptureRearmResultRecord> {
+    const turnId = preemptionTurnId(intent);
+    const existing = this.captureRearmResultByTurn.get(turnId);
+    if (existing) {
+      await this.emitCaptureRearmResult(
+        intent,
+        "voice_capture_rearm_noop",
+        existing,
+        {
+          state,
+          success: true,
+        },
+      );
+      return copyCaptureRearmResultRecord(existing);
+    }
+
+    const currentState = this.getState(intent.sessionId);
+    if (TERMINAL_BARGE_IN_STATES.has(currentState)) {
+      return this.blockCaptureRearm(
+        intent,
+        state,
+        "state_terminal",
+        "not_requested",
+      );
+    }
+
+    const requestedAt = this.now();
+    const request: VoiceCaptureRearmIntentRecord = {
+      id: this.newId(),
+      sessionId: intent.sessionId,
+      turnId,
+      bargeInIntentId: intent.id,
+      reason: intent.category,
+      state: "requested",
+      requestedAt,
+    };
+    this.captureRearmIntentByTurn.set(turnId, request);
+    await this.emitCaptureRearmRequest(intent, request, {
+      state,
+      previousCaptureRearmState: "not_requested",
+      nextCaptureRearmState: "requested",
+    });
+
+    request.state = "clearing_previous_turn";
+    await this.emitCaptureRearmRequest(intent, request, {
+      state,
+      previousCaptureRearmState: "requested",
+      nextCaptureRearmState: "clearing_previous_turn",
+    });
+
+    request.state = "ready_for_new_capture";
+    const result: VoiceCaptureRearmResultRecord = {
+      id: this.newId(),
+      intentId: request.id,
+      sessionId: intent.sessionId,
+      turnId,
+      bargeInIntentId: intent.id,
+      reason: intent.category,
+      state: "ready_for_new_capture",
+      completedAt: this.now(),
+    };
+    this.captureRearmResultByTurn.set(turnId, result);
+    await this.emitCaptureRearmResult(
+      intent,
+      "voice_capture_rearm_ready",
+      result,
+      {
+        state,
+        success: true,
+        previousCaptureRearmState: "clearing_previous_turn",
+        nextCaptureRearmState: "ready_for_new_capture",
+      },
+    );
+    return copyCaptureRearmResultRecord(result);
+  }
+
+  private async handleRejectedCaptureRearm(
+    intent: VoiceBargeInIntent,
+    reason: VoiceBargeInRejectionReason,
+    state: VoiceTurnState,
+  ): Promise<void> {
+    if (!intentPreparesNewCapture(intent)) return;
+
+    const turnId = preemptionTurnId(intent);
+    const existing = this.captureRearmResultByTurn.get(turnId);
+    if (existing) {
+      await this.emitCaptureRearmResult(
+        intent,
+        "voice_capture_rearm_noop",
+        existing,
+        {
+          state,
+          success: true,
+          captureRearmBlockedReason: reason,
+        },
+      );
+      return;
+    }
+
+    await this.blockCaptureRearm(
+      intent,
+      state,
+      reason,
+      this.getCaptureRearmState(turnId),
+    );
+  }
+
+  private async blockCaptureRearm(
+    intent: VoiceBargeInIntent,
+    state: VoiceTurnState,
+    reason: VoiceCaptureRearmBlockedReason,
+    previousState: VoiceCaptureRearmState,
+  ): Promise<VoiceCaptureRearmResultRecord> {
+    const turnId = preemptionTurnId(intent);
+    const fallbackIntentId = this.newId();
+    const result: VoiceCaptureRearmResultRecord = {
+      id: this.newId(),
+      intentId:
+        this.captureRearmIntentByTurn.get(turnId)?.id ?? fallbackIntentId,
+      sessionId: intent.sessionId,
+      turnId,
+      bargeInIntentId: intent.id,
+      reason: intent.category,
+      state: "blocked",
+      completedAt: this.now(),
+      blockedReason: reason,
+    };
+    this.captureRearmResultByTurn.set(turnId, result);
+    await this.emitCaptureRearmResult(
+      intent,
+      "voice_capture_rearm_blocked",
+      result,
+      {
+        state,
+        success: false,
+        previousCaptureRearmState: previousState,
+        nextCaptureRearmState: "blocked",
+        captureRearmBlockedReason: reason,
+      },
+    );
+    return copyCaptureRearmResultRecord(result);
+  }
+
+  private async failCaptureRearm(
+    intent: VoiceBargeInIntent,
+    state: VoiceTurnState,
+    reason: VoiceCaptureRearmBlockedReason,
+  ): Promise<VoiceCaptureRearmResultRecord> {
+    const turnId = preemptionTurnId(intent);
+    const existing = this.captureRearmResultByTurn.get(turnId);
+    if (existing) return copyCaptureRearmResultRecord(existing);
+
+    const fallbackIntentId = this.newId();
+    const previousState = this.getCaptureRearmState(turnId);
+    const result: VoiceCaptureRearmResultRecord = {
+      id: this.newId(),
+      intentId:
+        this.captureRearmIntentByTurn.get(turnId)?.id ?? fallbackIntentId,
+      sessionId: intent.sessionId,
+      turnId,
+      bargeInIntentId: intent.id,
+      reason: intent.category,
+      state: "failed",
+      completedAt: this.now(),
+      blockedReason: reason,
+    };
+    this.captureRearmResultByTurn.set(turnId, result);
+    await this.emitCaptureRearmResult(
+      intent,
+      "voice_capture_rearm_failed",
+      result,
+      {
+        state,
+        success: false,
+        previousCaptureRearmState: previousState,
+        nextCaptureRearmState: "failed",
+        captureRearmBlockedReason: reason,
+      },
+    );
+    return copyCaptureRearmResultRecord(result);
+  }
+
   private async transitionState(
     intent: VoiceBargeInIntent,
     previousState: VoiceBargeInState,
@@ -338,6 +578,46 @@ export class VoiceBargeInCoordinator {
       pendingChunkCount: record.pendingChunkCount,
       preemptionReason: record.reason,
       bargeInRejectionReason: fields.bargeInRejectionReason,
+    });
+  }
+
+  private async emitCaptureRearmRequest(
+    intent: VoiceBargeInIntent,
+    record: VoiceCaptureRearmIntentRecord,
+    fields: Partial<VoiceOrchestrationTelemetryEvent>,
+  ): Promise<void> {
+    await this.emit(intent, "voice_capture_rearm_requested", true, {
+      state: fields.state ?? "failed",
+      captureRearmIntentId: record.id,
+      turnId: record.turnId,
+      captureRearmState: record.state,
+      previousCaptureRearmState: fields.previousCaptureRearmState,
+      nextCaptureRearmState: fields.nextCaptureRearmState,
+    });
+  }
+
+  private async emitCaptureRearmResult(
+    intent: VoiceBargeInIntent,
+    eventType: Extract<
+      VoiceOrchestrationTelemetryEvent["eventType"],
+      | "voice_capture_rearm_ready"
+      | "voice_capture_rearm_blocked"
+      | "voice_capture_rearm_failed"
+      | "voice_capture_rearm_noop"
+    >,
+    record: VoiceCaptureRearmResultRecord,
+    fields: Partial<VoiceOrchestrationTelemetryEvent>,
+  ): Promise<void> {
+    await this.emit(intent, eventType, fields.success ?? true, {
+      state: fields.state ?? "failed",
+      captureRearmIntentId: record.intentId,
+      captureRearmResultId: record.id,
+      turnId: record.turnId,
+      captureRearmState: record.state,
+      previousCaptureRearmState: fields.previousCaptureRearmState,
+      nextCaptureRearmState: fields.nextCaptureRearmState,
+      captureRearmBlockedReason:
+        fields.captureRearmBlockedReason ?? record.blockedReason,
     });
   }
 
@@ -440,8 +720,27 @@ function copyPreemptionRecord(
   return { ...record };
 }
 
+function copyCaptureRearmIntentRecord(
+  record: VoiceCaptureRearmIntentRecord,
+): VoiceCaptureRearmIntentRecord {
+  return { ...record };
+}
+
+function copyCaptureRearmResultRecord(
+  record: VoiceCaptureRearmResultRecord,
+): VoiceCaptureRearmResultRecord {
+  return { ...record };
+}
+
 function preemptionTurnId(intent: VoiceBargeInIntent): string {
   return intent.turnId ?? intent.sessionId;
+}
+
+function intentPreparesNewCapture(intent: VoiceBargeInIntent): boolean {
+  return (
+    intent.category === "user_ptt_pressed_during_playback" ||
+    intent.category === "user_started_new_turn"
+  );
 }
 
 function isReadyForPlayback(record: VoiceChunkReadinessRecord): boolean {
