@@ -117,15 +117,22 @@ describe("InMemorySpeechQueueManager", () => {
     const { manager, telemetry } = createManager();
     const completed = expectEnqueued(manager.enqueue(chunk("chunk-1")));
     const cancelled = expectEnqueued(manager.enqueue(chunk("chunk-2")));
-    const queued = expectEnqueued(manager.enqueue(chunk("chunk-3")));
+    const failed = expectEnqueued(manager.enqueue(chunk("chunk-3")));
+    const queued = expectEnqueued(manager.enqueue(chunk("chunk-4")));
 
     manager.startNext();
     manager.complete(completed.id);
     manager.cancelItem(cancelled.id);
+    manager.fail(failed.id, "do not leak this failure text");
 
     expect(manager.clearCompleted()).toBe(1);
     expect(manager.listItems()).toEqual([
       expect.objectContaining({ id: cancelled.id, status: "cancelled" }),
+      expect.objectContaining({
+        id: failed.id,
+        status: "failed",
+        error: "queue_item_failed",
+      }),
       expect.objectContaining({ id: queued.id, status: "queued" }),
     ]);
     expect(telemetry).toContainEqual({

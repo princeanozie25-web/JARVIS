@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 8:47pm GMT+1
+# [jarvis] recent context, 2026-05-20 8:57pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,541t read) | 1,564,827t work | 99% savings
+Stats: 50 obs (22,572t read) | 1,383,517t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,9 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-672 6:23p 🟣 VoiceControlPanel Wired to Real Transcription Job and Draft Managers
-673 " 🟣 New manual-voice-flow.ts Guard Module for Local STT Readiness
-676 6:31p ⚖️ JARVIS Phase 4B-13: Manual Local STT Flow Audit Initiated
 677 7:15p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Initiated
 678 7:16p 🔵 JARVIS Pre-Phase-3.75 Codebase Survey: Existing STT and Voice Infrastructure
 679 " 🔄 VoiceControlPanel: cancelActiveTranscription Extracted to useCallback
@@ -76,6 +73,9 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 721 " 🟣 Phase 4C-4 Verification: 698 Tests Passing, TypeScript Clean, Build Clean
 722 8:35p 🔵 STT InMemoryTranscriptionJobManager Used as Architectural Pattern for TTS Queue
 723 " 🟣 SpeechQueue Types Added to TTS Type System
+724 8:47p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Assigned
+725 " 🟣 InMemorySpeechQueueManager Implemented with Safety Gating and Telemetry
+726 " 🔵 Phase 3.75 Streaming Tasks Not Yet Started — TTS Queue Work Done Instead
 
-Access 1565k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1384k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
