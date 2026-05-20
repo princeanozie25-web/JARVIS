@@ -13,11 +13,13 @@ function createIdGenerator(prefix: string) {
   return () => `${prefix}-${next++}`;
 }
 
-function createHarness() {
+function createHarness(activeSessionId?: string | null) {
   const telemetry: VoiceOrchestrationTelemetryEvent[] = [];
   const coordinator = new VoiceRuntimeBoundaryCoordinator({
     newId: createIdGenerator("runtime-advisory"),
     now: () => 6_000,
+    getActiveSessionId:
+      activeSessionId === undefined ? undefined : () => activeSessionId,
     emitTelemetry: (event) => {
       telemetry.push(event);
     },
@@ -103,12 +105,14 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
         sessionId: "session-1",
         createdAt: 6_000,
         action: "surface_approval_required",
-        state: "advisory",
+        state: "waiting_for_on_screen_confirmation",
+        operationId: "runtime-call-1",
         turnId: "turn-1",
         runtimeCallId: "runtime-call-1",
         approvalRequestId: "approval-request-1",
         toolName: "safe_tool_name",
         reason: undefined,
+        orderingIssue: undefined,
       },
     });
     expect(telemetry).toContainEqual(
@@ -121,6 +125,14 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
       expect.objectContaining({
         eventType: "voice_runtime_boundary_advisory_selected",
         runtimeBoundaryAction: "surface_approval_required",
+        runtimeBoundaryState: "waiting_for_on_screen_confirmation",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_lifecycle_state_changed",
+        previousRuntimeBoundaryState: "observed",
+        nextRuntimeBoundaryState: "waiting_for_on_screen_confirmation",
       }),
     );
     expectMetadataOnly(coordinator.getAdvisories("session-1"), telemetry);
@@ -256,7 +268,7 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
       ok: true,
       advisory: {
         action: "no_op",
-        state: "noop",
+        state: "no_op",
       },
     });
     expect(coordinator.getVoiceApprovalRefusals()).toHaveLength(1);
@@ -265,6 +277,12 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
         eventType: "voice_runtime_boundary_voice_approval_noop",
         voiceApprovalAttemptCategory: "spoken_confirm",
         voiceApprovalRefusalAction: "no_op",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_duplicate_noop",
+        runtimeBoundaryOrderingIssue: "duplicate",
       }),
     );
   });
@@ -287,14 +305,14 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
       ok: true,
       advisory: {
         action: "request_runtime_cancel_advisory",
-        state: "advisory",
+        state: "advisory_created",
       },
     });
     expect(repeated).toMatchObject({
       ok: true,
       advisory: {
         action: "no_op",
-        state: "noop",
+        state: "no_op",
       },
     });
     expect(coordinator.getAdvisories("session-1")).toEqual([
@@ -304,8 +322,9 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
     ]);
     expect(telemetry).toContainEqual(
       expect.objectContaining({
-        eventType: "voice_runtime_boundary_noop",
+        eventType: "voice_runtime_boundary_duplicate_noop",
         runtimeBoundaryAction: "no_op",
+        runtimeBoundaryOrderingIssue: "duplicate",
       }),
     );
   });
@@ -314,38 +333,203 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
     const { coordinator, telemetry } = createHarness();
 
     const eventTypes: Array<
-      [VoiceRuntimeBoundaryEvent["type"], string, string]
+      [VoiceRuntimeBoundaryEvent["type"], string, string, string]
     > = [
-      ["runtime_tool_started", "surface_tool_running", "runtime-event-started"],
+      [
+        "runtime_tool_started",
+        "surface_tool_running",
+        "runtime-event-started",
+        "advisory_created",
+      ],
       [
         "runtime_tool_completed",
         "surface_tool_completed",
         "runtime-event-completed",
+        "completed_metadata_only",
       ],
-      ["runtime_tool_failed", "surface_tool_failed", "runtime-event-failed"],
+      [
+        "runtime_tool_failed",
+        "surface_tool_failed",
+        "runtime-event-failed",
+        "failed_metadata_only",
+      ],
       [
         "runtime_cancel_denied",
         "surface_runtime_cancel_denied",
         "runtime-event-cancel-denied",
+        "denied_metadata_only",
       ],
       [
         "runtime_cancel_acknowledged",
         "surface_runtime_cancel_acknowledged",
         "runtime-event-cancel-acknowledged",
+        "acknowledged_metadata_only",
       ],
     ];
 
-    for (const [type, action, id] of eventTypes) {
+    for (const [type, action, id, state] of eventTypes) {
       await expect(
         coordinator.handleEvent(boundaryEvent({ id, type })),
       ).resolves.toMatchObject({
         ok: true,
-        advisory: { action, state: "advisory" },
+        advisory: { action, state },
       });
     }
 
     expect(coordinator.getAdvisories("session-1")).toHaveLength(5);
     expectMetadataOnly(coordinator.getAdvisories(), telemetry);
+  });
+
+  it("orders normal tool lifecycle metadata deterministically per runtime operation", async () => {
+    const { coordinator, telemetry } = createHarness();
+
+    await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-started",
+        type: "runtime_tool_started",
+        runtimeCallId: "runtime-call-ordered",
+      }),
+    );
+    await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-completed",
+        type: "runtime_tool_completed",
+        runtimeCallId: "runtime-call-ordered",
+      }),
+    );
+
+    expect(coordinator.getAdvisories("session-1")).toEqual([
+      expect.objectContaining({
+        operationId: "runtime-call-ordered",
+        eventType: "runtime_tool_started",
+        state: "advisory_created",
+      }),
+      expect.objectContaining({
+        operationId: "runtime-call-ordered",
+        eventType: "runtime_tool_completed",
+        state: "completed_metadata_only",
+      }),
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_lifecycle_state_changed",
+        previousRuntimeBoundaryState: "advisory_created",
+        nextRuntimeBoundaryState: "completed_metadata_only",
+      }),
+    );
+  });
+
+  it("suppresses duplicate lifecycle events by runtime operation and type", async () => {
+    const { coordinator, telemetry } = createHarness();
+
+    const first = await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-started-1",
+        type: "runtime_tool_started",
+        runtimeCallId: "runtime-call-duplicate",
+      }),
+    );
+    const duplicate = await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-started-2",
+        type: "runtime_tool_started",
+        runtimeCallId: "runtime-call-duplicate",
+      }),
+    );
+
+    expect(first).toMatchObject({
+      ok: true,
+      advisory: { state: "advisory_created" },
+    });
+    expect(duplicate).toMatchObject({
+      ok: true,
+      advisory: {
+        action: "no_op",
+        state: "no_op",
+        orderingIssue: "duplicate",
+      },
+    });
+    expect(coordinator.getAdvisories("session-1")).toHaveLength(1);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_duplicate_noop",
+        runtimeBoundaryOrderingIssue: "duplicate",
+      }),
+    );
+  });
+
+  it("observes out-of-order lifecycle events without execution side effects", async () => {
+    const { coordinator, telemetry } = createHarness();
+
+    const completedFirst = await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-completed-first",
+        type: "runtime_tool_completed",
+        runtimeCallId: "runtime-call-out-of-order",
+      }),
+    );
+    const cancelAckFirst = await coordinator.handleEvent(
+      boundaryEvent({
+        id: "runtime-event-cancel-ack-first",
+        type: "runtime_cancel_acknowledged",
+        runtimeCallId: "runtime-call-cancel-out-of-order",
+      }),
+    );
+
+    expect(completedFirst).toMatchObject({
+      ok: true,
+      advisory: {
+        state: "completed_metadata_only",
+        orderingIssue: "out_of_order",
+      },
+    });
+    expect(cancelAckFirst).toMatchObject({
+      ok: true,
+      advisory: {
+        state: "acknowledged_metadata_only",
+        orderingIssue: "out_of_order",
+      },
+    });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_out_of_order_observed",
+        runtimeBoundaryOrderingIssue: "out_of_order",
+        success: false,
+      }),
+    );
+    expectMetadataOnly(coordinator.getAdvisories(), telemetry);
+  });
+
+  it("rejects stale non-active session events", async () => {
+    const { coordinator, telemetry } = createHarness("active-session");
+
+    const result = await coordinator.handleEvent(
+      boundaryEvent({
+        sessionId: "stale-session",
+        id: "runtime-event-stale",
+        type: "runtime_tool_started",
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "stale_session_rejected",
+      advisory: {
+        action: "no_op",
+        state: "rejected",
+        reason: "stale_session_rejected",
+        orderingIssue: "stale_session",
+      },
+    });
+    expect(coordinator.getAdvisories()).toEqual([]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_runtime_boundary_stale_rejected",
+        runtimeBoundaryReason: "stale_session_rejected",
+        runtimeBoundaryOrderingIssue: "stale_session",
+        success: false,
+      }),
+    );
   });
 
   it("does not import runtime or approval execution modules", () => {

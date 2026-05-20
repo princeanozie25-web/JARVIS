@@ -363,11 +363,24 @@ export type VoiceRuntimeBoundaryAdvisoryAction =
   | "no_op";
 
 export type VoiceRuntimeBoundaryAdvisoryState =
-  | "advisory"
+  | "observed"
+  | "advisory_created"
+  | "waiting_for_on_screen_confirmation"
+  | "acknowledged_metadata_only"
+  | "denied_metadata_only"
+  | "completed_metadata_only"
+  | "failed_metadata_only"
   | "rejected"
-  | "noop";
+  | "no_op";
 
-export type VoiceRuntimeBoundaryRejectionReason = "voice_approval_rejected";
+export type VoiceRuntimeBoundaryRejectionReason =
+  | "voice_approval_rejected"
+  | "stale_session_rejected";
+
+export type VoiceRuntimeBoundaryOrderingIssue =
+  | "duplicate"
+  | "out_of_order"
+  | "stale_session";
 
 export type VoiceApprovalAttemptCategory =
   | "spoken_yes"
@@ -403,11 +416,13 @@ export interface VoiceRuntimeBoundaryAdvisoryRecord {
   createdAt: number;
   action: VoiceRuntimeBoundaryAdvisoryAction;
   state: VoiceRuntimeBoundaryAdvisoryState;
+  operationId: string;
   turnId?: string;
   runtimeCallId?: string;
   approvalRequestId?: string;
   toolName?: string;
   reason?: VoiceRuntimeBoundaryRejectionReason;
+  orderingIssue?: VoiceRuntimeBoundaryOrderingIssue;
 }
 
 export type VoiceRuntimeBoundaryCoordinatorResult =
@@ -544,6 +559,10 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_runtime_boundary_voice_approval_attempt_received"
   | "voice_runtime_boundary_on_screen_confirmation_required"
   | "voice_runtime_boundary_voice_approval_noop"
+  | "voice_runtime_boundary_lifecycle_state_changed"
+  | "voice_runtime_boundary_duplicate_noop"
+  | "voice_runtime_boundary_stale_rejected"
+  | "voice_runtime_boundary_out_of_order_observed"
   | "voice_restricted_content_descriptor_received"
   | "voice_restricted_content_allowed"
   | "voice_restricted_content_blocked"
@@ -610,7 +629,11 @@ export interface VoiceOrchestrationTelemetryEvent {
   runtimeBoundaryAdvisoryId?: string;
   runtimeBoundaryAction?: VoiceRuntimeBoundaryAdvisoryAction;
   runtimeBoundaryState?: VoiceRuntimeBoundaryAdvisoryState;
+  previousRuntimeBoundaryState?: VoiceRuntimeBoundaryAdvisoryState;
+  nextRuntimeBoundaryState?: VoiceRuntimeBoundaryAdvisoryState;
   runtimeBoundaryReason?: VoiceRuntimeBoundaryRejectionReason;
+  runtimeBoundaryOperationId?: string;
+  runtimeBoundaryOrderingIssue?: VoiceRuntimeBoundaryOrderingIssue;
   voiceApprovalAttemptCategory?: VoiceApprovalAttemptCategory;
   voiceApprovalRefusalId?: string;
   voiceApprovalRefusalAction?: VoiceApprovalRefusalAction;

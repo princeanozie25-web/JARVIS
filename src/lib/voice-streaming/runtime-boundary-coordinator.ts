@@ -7,12 +7,15 @@ import type {
   VoiceRuntimeBoundaryAdvisoryState,
   VoiceRuntimeBoundaryCoordinatorResult,
   VoiceRuntimeBoundaryEvent,
+  VoiceRuntimeBoundaryEventType,
+  VoiceRuntimeBoundaryOrderingIssue,
   VoiceRuntimeBoundaryRejectionReason,
 } from "./types";
 
 export interface VoiceRuntimeBoundaryCoordinatorOptions {
   now?: () => number;
   newId?: () => string;
+  getActiveSessionId?: () => string | null;
   emitTelemetry?: (
     event: VoiceOrchestrationTelemetryEvent,
   ) => void | Promise<void>;
@@ -27,6 +30,14 @@ export class VoiceRuntimeBoundaryCoordinator {
     string,
     VoiceApprovalRefusalRecord
   >();
+  private readonly stateByOperationId = new Map<
+    string,
+    VoiceRuntimeBoundaryAdvisoryState
+  >();
+  private readonly seenTypesByOperationId = new Map<
+    string,
+    Set<VoiceRuntimeBoundaryEventType>
+  >();
 
   constructor(private readonly opts: VoiceRuntimeBoundaryCoordinatorOptions) {}
 
@@ -36,14 +47,43 @@ export class VoiceRuntimeBoundaryCoordinator {
     const safeEvent = copyRuntimeBoundaryEvent(event);
     await this.emit(safeEvent, "voice_runtime_boundary_event_received", true);
 
-    const existing = this.advisoryByEventId.get(safeEvent.id);
-    if (existing) {
+    if (!this.isActiveSession(safeEvent)) {
+      const advisory = this.createAdvisory(
+        safeEvent,
+        "no_op",
+        "rejected",
+        "stale_session_rejected",
+        "stale_session",
+      );
+      await this.emitAdvisory(
+        safeEvent,
+        "voice_runtime_boundary_stale_rejected",
+        advisory,
+        false,
+      );
+      return {
+        ok: false,
+        event: safeEvent,
+        advisory,
+        reason: "stale_session_rejected",
+      };
+    }
+
+    const duplicate = this.findDuplicate(safeEvent);
+    if (duplicate) {
       await this.emitApprovalAttemptNoop(safeEvent);
       const noop = this.createAdvisory(
         safeEvent,
         "no_op",
-        "noop",
-        existing.reason,
+        "no_op",
+        duplicate.reason,
+        "duplicate",
+      );
+      await this.emitAdvisory(
+        safeEvent,
+        "voice_runtime_boundary_duplicate_noop",
+        noop,
+        true,
       );
       await this.emitAdvisory(
         safeEvent,
@@ -52,6 +92,27 @@ export class VoiceRuntimeBoundaryCoordinator {
         true,
       );
       return { ok: true, event: safeEvent, advisory: noop };
+    }
+
+    const operationId = operationIdForEvent(safeEvent);
+    const previousState =
+      this.stateByOperationId.get(operationId) ?? "observed";
+    const orderingIssue = this.detectOrderingIssue(safeEvent);
+
+    if (orderingIssue === "out_of_order") {
+      const observed = this.createAdvisory(
+        safeEvent,
+        advisoryActionForEvent(safeEvent),
+        previousState,
+        undefined,
+        orderingIssue,
+      );
+      await this.emitAdvisory(
+        safeEvent,
+        "voice_runtime_boundary_out_of_order_observed",
+        observed,
+        false,
+      );
     }
 
     if (isVoiceApprovalAttempt(safeEvent)) {
@@ -63,6 +124,7 @@ export class VoiceRuntimeBoundaryCoordinator {
         false,
         {
           voiceApprovalAttemptCategory: category,
+          runtimeBoundaryOperationId: operationId,
         },
       );
       const refusal = this.createApprovalRefusal(safeEvent, category);
@@ -72,8 +134,9 @@ export class VoiceRuntimeBoundaryCoordinator {
         "require_on_screen_confirmation",
         "rejected",
         "voice_approval_rejected",
+        orderingIssue,
       );
-      this.advisoryByEventId.set(safeEvent.id, advisory);
+      this.storeAdvisory(safeEvent, advisory);
       await this.emitApprovalRefusal(safeEvent, refusal);
       await this.emitAdvisory(
         safeEvent,
@@ -81,6 +144,7 @@ export class VoiceRuntimeBoundaryCoordinator {
         advisory,
         false,
       );
+      await this.emitLifecycleStateChanged(safeEvent, advisory, previousState);
       return {
         ok: false,
         event: safeEvent,
@@ -92,15 +156,18 @@ export class VoiceRuntimeBoundaryCoordinator {
     const advisory = this.createAdvisory(
       safeEvent,
       advisoryActionForEvent(safeEvent),
-      "advisory",
+      advisoryStateForEvent(safeEvent),
+      undefined,
+      orderingIssue,
     );
-    this.advisoryByEventId.set(safeEvent.id, advisory);
+    this.storeAdvisory(safeEvent, advisory);
     await this.emitAdvisory(
       safeEvent,
       "voice_runtime_boundary_advisory_selected",
       advisory,
       true,
     );
+    await this.emitLifecycleStateChanged(safeEvent, advisory, previousState);
     return { ok: true, event: safeEvent, advisory };
   }
 
@@ -109,6 +176,7 @@ export class VoiceRuntimeBoundaryCoordinator {
       .filter(
         (record) => sessionId === undefined || record.sessionId === sessionId,
       )
+      .sort(compareAdvisoryRecords)
       .map(copyAdvisoryRecord);
   }
 
@@ -120,11 +188,24 @@ export class VoiceRuntimeBoundaryCoordinator {
       .map(copyApprovalRefusalRecord);
   }
 
+  private storeAdvisory(
+    event: VoiceRuntimeBoundaryEvent,
+    advisory: VoiceRuntimeBoundaryAdvisoryRecord,
+  ): void {
+    this.advisoryByEventId.set(event.id, advisory);
+    this.stateByOperationId.set(advisory.operationId, advisory.state);
+    const seenTypes =
+      this.seenTypesByOperationId.get(advisory.operationId) ?? new Set();
+    seenTypes.add(event.type);
+    this.seenTypesByOperationId.set(advisory.operationId, seenTypes);
+  }
+
   private createAdvisory(
     event: VoiceRuntimeBoundaryEvent,
     action: VoiceRuntimeBoundaryAdvisoryAction,
     state: VoiceRuntimeBoundaryAdvisoryState,
     reason?: VoiceRuntimeBoundaryRejectionReason,
+    orderingIssue?: VoiceRuntimeBoundaryOrderingIssue,
   ): VoiceRuntimeBoundaryAdvisoryRecord {
     return {
       id: this.newId(),
@@ -134,11 +215,13 @@ export class VoiceRuntimeBoundaryCoordinator {
       createdAt: this.now(),
       action,
       state,
+      operationId: operationIdForEvent(event),
       turnId: event.turnId,
       runtimeCallId: event.runtimeCallId,
       approvalRequestId: event.approvalRequestId,
       toolName: event.toolName,
       reason,
+      orderingIssue,
     };
   }
 
@@ -160,6 +243,48 @@ export class VoiceRuntimeBoundaryCoordinator {
     };
   }
 
+  private findDuplicate(
+    event: VoiceRuntimeBoundaryEvent,
+  ): VoiceRuntimeBoundaryAdvisoryRecord | undefined {
+    const existing = this.advisoryByEventId.get(event.id);
+    if (existing) return existing;
+    const seenTypes = this.seenTypesByOperationId.get(
+      operationIdForEvent(event),
+    );
+    if (!seenTypes?.has(event.type)) return undefined;
+    return this.createAdvisory(event, "no_op", "no_op", undefined, "duplicate");
+  }
+
+  private detectOrderingIssue(
+    event: VoiceRuntimeBoundaryEvent,
+  ): VoiceRuntimeBoundaryOrderingIssue | undefined {
+    const seenTypes = this.seenTypesByOperationId.get(
+      operationIdForEvent(event),
+    );
+    if (
+      (event.type === "runtime_tool_completed" ||
+        event.type === "runtime_tool_failed") &&
+      !seenTypes?.has("runtime_tool_started")
+    ) {
+      return "out_of_order";
+    }
+    if (
+      (event.type === "runtime_cancel_acknowledged" ||
+        event.type === "runtime_cancel_denied") &&
+      !seenTypes?.has("runtime_cancel_requested")
+    ) {
+      return "out_of_order";
+    }
+    return undefined;
+  }
+
+  private isActiveSession(event: VoiceRuntimeBoundaryEvent): boolean {
+    const activeSessionId = this.opts.getActiveSessionId?.();
+    return activeSessionId === undefined || activeSessionId === null
+      ? true
+      : activeSessionId === event.sessionId;
+  }
+
   private async emitApprovalRefusal(
     event: VoiceRuntimeBoundaryEvent,
     refusal: VoiceApprovalRefusalRecord,
@@ -173,6 +298,7 @@ export class VoiceRuntimeBoundaryCoordinator {
         voiceApprovalRefusalId: refusal.id,
         voiceApprovalRefusalAction: refusal.action,
         runtimeBoundaryReason: refusal.reason,
+        runtimeBoundaryOperationId: operationIdForEvent(event),
       },
     );
   }
@@ -186,6 +312,8 @@ export class VoiceRuntimeBoundaryCoordinator {
         event.voiceApprovalAttemptCategory ?? "ambiguous_voice_response",
       voiceApprovalRefusalAction: "no_op",
       runtimeBoundaryReason: "voice_approval_rejected",
+      runtimeBoundaryOperationId: operationIdForEvent(event),
+      runtimeBoundaryOrderingIssue: "duplicate",
     });
   }
 
@@ -200,7 +328,31 @@ export class VoiceRuntimeBoundaryCoordinator {
       runtimeBoundaryAction: advisory.action,
       runtimeBoundaryState: advisory.state,
       runtimeBoundaryReason: advisory.reason,
+      runtimeBoundaryOperationId: advisory.operationId,
+      runtimeBoundaryOrderingIssue: advisory.orderingIssue,
     });
+  }
+
+  private async emitLifecycleStateChanged(
+    event: VoiceRuntimeBoundaryEvent,
+    advisory: VoiceRuntimeBoundaryAdvisoryRecord,
+    previousState: VoiceRuntimeBoundaryAdvisoryState,
+  ): Promise<void> {
+    await this.emit(
+      event,
+      "voice_runtime_boundary_lifecycle_state_changed",
+      advisory.state !== "rejected",
+      {
+        runtimeBoundaryAdvisoryId: advisory.id,
+        runtimeBoundaryAction: advisory.action,
+        previousRuntimeBoundaryState: previousState,
+        nextRuntimeBoundaryState: advisory.state,
+        runtimeBoundaryState: advisory.state,
+        runtimeBoundaryReason: advisory.reason,
+        runtimeBoundaryOperationId: advisory.operationId,
+        runtimeBoundaryOrderingIssue: advisory.orderingIssue,
+      },
+    );
   }
 
   private async emit(
@@ -217,6 +369,7 @@ export class VoiceRuntimeBoundaryCoordinator {
       turnId: event.turnId,
       runtimeBoundaryEventId: event.id,
       runtimeBoundaryEventType: event.type,
+      runtimeBoundaryOperationId: operationIdForEvent(event),
       runtimeCallId: event.runtimeCallId,
       toolName: event.toolName,
       ...fields,
@@ -248,6 +401,56 @@ function advisoryActionForEvent(
     return "surface_runtime_cancel_denied";
   }
   return "surface_runtime_cancel_acknowledged";
+}
+
+function advisoryStateForEvent(
+  event: VoiceRuntimeBoundaryEvent,
+): VoiceRuntimeBoundaryAdvisoryState {
+  if (event.type === "runtime_pending_approval_detected") {
+    return "waiting_for_on_screen_confirmation";
+  }
+  if (event.type === "runtime_tool_completed") {
+    return "completed_metadata_only";
+  }
+  if (event.type === "runtime_tool_failed") return "failed_metadata_only";
+  if (event.type === "runtime_cancel_denied") return "denied_metadata_only";
+  if (event.type === "runtime_cancel_acknowledged") {
+    return "acknowledged_metadata_only";
+  }
+  return "advisory_created";
+}
+
+function operationIdForEvent(event: VoiceRuntimeBoundaryEvent): string {
+  return (
+    event.runtimeCallId ??
+    event.approvalRequestId ??
+    event.voiceApprovalAttemptId ??
+    `${event.sessionId}:${event.id}`
+  );
+}
+
+function lifecycleRank(record: VoiceRuntimeBoundaryAdvisoryRecord): number {
+  if (record.eventType === "runtime_pending_approval_detected") return 10;
+  if (record.eventType === "runtime_tool_started") return 20;
+  if (record.eventType === "runtime_cancel_requested") return 20;
+  if (record.eventType === "runtime_tool_completed") return 30;
+  if (record.eventType === "runtime_tool_failed") return 30;
+  if (record.eventType === "runtime_cancel_denied") return 30;
+  if (record.eventType === "runtime_cancel_acknowledged") return 30;
+  return 99;
+}
+
+function compareAdvisoryRecords(
+  left: VoiceRuntimeBoundaryAdvisoryRecord,
+  right: VoiceRuntimeBoundaryAdvisoryRecord,
+): number {
+  return (
+    left.sessionId.localeCompare(right.sessionId) ||
+    left.operationId.localeCompare(right.operationId) ||
+    lifecycleRank(left) - lifecycleRank(right) ||
+    left.createdAt - right.createdAt ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 function copyRuntimeBoundaryEvent(

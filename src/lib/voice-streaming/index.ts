@@ -78,6 +78,7 @@ export type {
   VoiceRuntimeBoundaryCoordinatorResult,
   VoiceRuntimeBoundaryEvent,
   VoiceRuntimeBoundaryEventType,
+  VoiceRuntimeBoundaryOrderingIssue,
   VoiceRuntimeBoundaryRejectionReason,
   VoiceTurnPreemptionRecord,
   VoiceReadinessLatencyStage,

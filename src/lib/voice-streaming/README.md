@@ -125,6 +125,10 @@ Current Phase 4F status:
 
 - accepts metadata-only runtime boundary events for pending approvals, tool lifecycle, and runtime cancellation lifecycle
 - produces advisory-only metadata records
+- tracks advisory lifecycle states from observation through on-screen-confirmation wait, metadata-only acknowledgement/denial/completion/failure, rejection, and no-op
+- orders runtime/tool lifecycle metadata deterministically per runtime operation ID
+- suppresses duplicate lifecycle events and marks completed/failed/cancel-ack events that arrive before their prerequisite metadata as out-of-order observations
+- rejects stale/non-active session runtime boundary events when active-session ownership is provided
 - rejects voice approval attempts as refusal records and requires on-screen confirmation
 - rejects spoken yes/confirm/approve, inferred consent, ambiguous voice responses, and replayed voice responses
 - treats runtime cancellation requests as advisory-only and does not stop tools
@@ -141,6 +145,8 @@ Phase 4F runtime boundary metadata may contain only:
 - boundary event type
 - advisory ID
 - advisory action/state
+- advisory lifecycle ordering issue
+- runtime operation ID
 - session ID
 - turn ID
 - runtime call ID
