@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 8:57pm GMT+1
+# [jarvis] recent context, 2026-05-20 9:03pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,572t read) | 1,383,517t work | 98% savings
+Stats: 50 obs (22,295t read) | 1,312,450t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,10 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-677 7:15p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Initiated
-678 7:16p 🔵 JARVIS Pre-Phase-3.75 Codebase Survey: Existing STT and Voice Infrastructure
-679 " 🔄 VoiceControlPanel: cancelActiveTranscription Extracted to useCallback
-680 7:17p 🔵 Phase 3.75 Pre-Implementation State: VoiceControlPanel Refactor Committed, Codebase Clean
 681 7:18p 🔵 VoiceControlPanel Refactor Committed; Only AGENTS.md Remains Staged
 682 7:31p ⚖️ Phase 4B-13: Manual Local STT Flow Audit Scoped
 683 7:32p 🔵 Phase 4B-13 Audit: Manual Local STT Flow Verified Clean — No P0/P1 Issues Found
@@ -76,6 +72,10 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 724 8:47p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Assigned
 725 " 🟣 InMemorySpeechQueueManager Implemented with Safety Gating and Telemetry
 726 " 🔵 Phase 3.75 Streaming Tasks Not Yet Started — TTS Queue Work Done Instead
+727 8:57p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated for JARVIS
+728 8:58p 🔵 JARVIS TTS Queue Scaffold Exists with Safety Policy Integration
+729 " 🔵 TelemetryEvent Schema Already Has time_to_first_token_ms Field
+730 " 🔵 Full JARVIS Test Suite at 706 Tests All Passing; Build Succeeds with One Pre-existing Warning
 
-Access 1384k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1312k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

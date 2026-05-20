@@ -17,9 +17,21 @@ export {
   localTtsProviderWithStatus,
 } from "./local-placeholder";
 export {
+  createLocalTtsSynthesisProvider,
+  speechInputFromChunk,
+  synthesizeQueuedSpeechItem,
+  type LocalTtsSynthesisProviderOptions,
+  type LocalTtsSynthesisTelemetryEvent,
+  type LocalTtsSynthesisTelemetryEventType,
+  type SynthesizeQueueItemResult,
+} from "./local-synthesis-provider";
+export {
   assertLocalSpeechOnly,
   LocalTtsRuntime,
   localTtsRuntimeMetadata,
+  type LocalTtsSynthesisHandle,
+  type LocalTtsSynthesisOutput,
+  type LocalTtsSynthesisRequest,
   type LocalTtsRuntimeConfig,
   type LocalTtsRuntimeHandle,
   type LocalTtsRuntimeOptions,
@@ -40,6 +52,7 @@ export type {
   SpeechPlaybackState,
   SpeechPlaybackStateStatus,
   LocalSpeechProviderConfig,
+  SpeechAudioResult,
   SpeechChunk,
   SpeechQueueItem,
   SpeechQueueItemStatus,
@@ -53,4 +66,5 @@ export type {
   SpeechSynthesisRefusalReason,
   SpeechSynthesisResult,
   SpeechSynthesisResultStatus,
+  SpeechSynthesisRunOptions,
 } from "./types";

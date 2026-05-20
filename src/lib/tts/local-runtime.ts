@@ -20,6 +20,28 @@ export interface LocalTtsRuntimeHandle {
   shutdown(): Promise<void>;
 }
 
+export interface LocalTtsSynthesisRequest {
+  text: string;
+  speakerId: string | null;
+  sampleRate: number | null;
+  voiceId?: string;
+  language?: string;
+}
+
+export interface LocalTtsSynthesisOutput {
+  data: Uint8Array;
+  mimeType: string;
+  durationMs?: number;
+  sampleRate?: number;
+}
+
+export interface LocalTtsSynthesisHandle extends LocalTtsRuntimeHandle {
+  synthesize(
+    input: LocalTtsSynthesisRequest,
+    options?: { signal?: AbortSignal },
+  ): Promise<LocalTtsSynthesisOutput>;
+}
+
 export interface LocalTtsRuntimeOptions {
   config: LocalTtsRuntimeConfig;
   metadata?: SpeechProviderMetadata;

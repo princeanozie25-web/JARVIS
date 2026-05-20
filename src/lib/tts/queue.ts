@@ -93,6 +93,16 @@ export class InMemorySpeechQueueManager {
     return this.finishItem(itemId, "completed");
   }
 
+  markReady(itemId: string): SpeechQueueItem | null {
+    const item = this.items.get(itemId);
+    if (!item) return null;
+    if (TERMINAL_STATUSES.has(item.status)) return copyItem(item);
+
+    item.status = "ready";
+    item.completedAt = this.now();
+    return copyItem(item);
+  }
+
   fail(itemId: string, error: string): SpeechQueueItem | null {
     return this.finishItem(itemId, "failed", sanitizeQueueError(error));
   }
