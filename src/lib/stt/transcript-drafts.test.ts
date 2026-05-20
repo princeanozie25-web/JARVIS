@@ -157,6 +157,31 @@ describe("InMemoryVoiceTranscriptDraftManager", () => {
     ]);
   });
 
+  it("rejects a draft edited down to whitespace at submit time", async () => {
+    const { manager, telemetry } = createManager();
+    await manager.createDraft({
+      result: completedResult,
+      sourceJobId: "job-1",
+    });
+    await manager.editDraft("   ");
+
+    await expect(manager.submitDraft()).resolves.toBeNull();
+
+    expect(manager.getDraft()).toMatchObject({
+      id: "draft-1",
+      text: "   ",
+      status: "draft",
+    });
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "transcript_draft_rejected",
+        draftId: "draft-1",
+        reason: "empty_transcript",
+        success: false,
+      }),
+    );
+  });
+
   it("keeps transcript text out of telemetry", async () => {
     const { manager, telemetry } = createManager();
     await manager.createDraft({

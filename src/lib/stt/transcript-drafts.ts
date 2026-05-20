@@ -111,6 +111,19 @@ export class InMemoryVoiceTranscriptDraftManager {
       return null;
     }
 
+    const text = this.draft.text.trim();
+    if (!text) {
+      await this.emit({
+        eventType: "transcript_draft_rejected",
+        draftId: this.draft.id,
+        sourceJobId: this.draft.sourceJobId,
+        status: this.draft.status,
+        success: false,
+        reason: "empty_transcript",
+      });
+      return null;
+    }
+
     const submitted: VoiceTranscriptDraft = {
       ...this.draft,
       status: "submitted",
@@ -126,7 +139,7 @@ export class InMemoryVoiceTranscriptDraftManager {
     return {
       target: "chat_input",
       source: "voice",
-      text: submitted.text,
+      text,
       sourceDraftId: submitted.id,
       sourceJobId: submitted.sourceJobId,
       canApproveRuntimeActions: false,
