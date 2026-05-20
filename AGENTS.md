@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 7:54pm GMT+1
+# [jarvis] recent context, 2026-05-20 7:58pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,469t read) | 2,140,298t work | 99% savings
+Stats: 50 obs (22,836t read) | 1,950,895t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,16 +25,8 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 20, 2026
 
-641 5:22a ⚖️ Phase 3.75 Streaming Runtime Modernisation — Architectural Scope
-642 " 🟣 Typed StreamEvent Union Replaces Plain String Stream Shape
 646 5:23a 🟣 LocalAudioCaptureHandle API Replaces Raw MediaStream in VoiceControlPanel
 647 " 🟣 New Audio Capture Module with Transient Analyser Buffer (capture.ts + capture.test.ts)
-648 " 🔴 TypeScript TS2352 Error Fixed in capture.ts AudioContext Cast
-649 " 🟣 AudioSessionState Extended with Capture Session Tracking Fields
-650 " 🟣 Audio Telemetry Route Extended with Capture Lifecycle Event Types
-651 " 🔵 Full Test Suite and Production Build Pass After Phase 3.75 Audio Changes
-652 " 🔵 node_repl Kernel Crashes with EPERM on C:\Users\princ\AppData lstat in This Environment
-653 " ✅ Phase 3.75 Git Status — Final File Set
 654 5:28a 🔵 JARVIS Phase 4A-3: Voice Capture Audit Scope Defined
 655 5:29a 🔵 JARVIS Audio Capture Stack: Safety Invariants Audit Results
 656 " 🔴 PTT Race Condition Fixed with AbortSignal on startLocalAudioCapture
@@ -76,6 +68,14 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 691 " 🟣 TTS Scaffold Module Created at src/lib/tts/
 692 " ✅ VoiceControlPanel Speaker Section Updated to Show TTS Provider State
 693 " 🔵 JARVIS Full Test Suite at 96 Files / 679 Tests All Passing
+694 7:55p 🔵 JARVIS Phase 4C-1: TTS Scaffold Audit Initiated
+695 7:56p 🔵 JARVIS TTS Types: Full Type System Confirmed Safe
+696 7:57p 🔵 JARVIS TTS Providers: Disabled and Local Placeholder Confirmed Safe
+697 " 🔵 JARVIS TTS Registry: Default Provider is "disabled", Unknown Lookup Throws
+698 " 🔵 JARVIS TTS Safety Policy: Multi-Layer Block Logic Confirmed
+699 " 🔵 JARVIS VoiceControlPanel Speaker Panel: TTS Disabled State Rendered Correctly
+700 " 🟣 TTS Safety Policy Tests Hardened: Two New personal_context Block Cases Added
+701 " 🔵 JARVIS Phase 4C-1 TTS Audit: All Checks Pass, No Prohibited Paths Found
 
-Access 2140k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1951k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

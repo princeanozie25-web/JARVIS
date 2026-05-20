@@ -66,6 +66,7 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain(
       "Local provider local-tts-placeholder: not_installed",
     );
+    expect(html).toContain("Runtime state: disabled");
     expect(html).toContain(
       "Playback unavailable until a reviewed TTS provider is configured.",
     );

@@ -3,9 +3,20 @@ export {
   disabledSpeechResult,
 } from "./disabled-provider";
 export {
+  localTtsPlaceholderConfig,
   localTtsPlaceholderProvider,
+  localTtsProviderFromRuntimeStatus,
   localTtsProviderWithStatus,
 } from "./local-placeholder";
+export {
+  assertLocalSpeechOnly,
+  LocalTtsRuntime,
+  localTtsRuntimeMetadata,
+  type LocalTtsRuntimeConfig,
+  type LocalTtsRuntimeHandle,
+  type LocalTtsRuntimeOptions,
+  type LocalTtsRuntimeStatus,
+} from "./local-runtime";
 export { SpeechProviderRegistry, speechProviders } from "./registry";
 export {
   evaluateSpeechSafetyPolicy,
@@ -14,6 +25,7 @@ export {
 export type {
   SpeechPlaybackState,
   SpeechPlaybackStateStatus,
+  LocalSpeechProviderConfig,
   SpeechProvider,
   SpeechProviderMetadata,
   SpeechProviderStatus,

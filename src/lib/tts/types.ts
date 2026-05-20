@@ -40,6 +40,7 @@ export interface SpeechSynthesisResult {
 export type SpeechProviderStatus =
   | "disabled"
   | "not_installed"
+  | "loading"
   | "unavailable"
   | "ready"
   | "error";
@@ -56,7 +57,16 @@ export interface SpeechProvider {
   readonly enabled: boolean;
   readonly status: SpeechProviderStatus;
   readonly metadata: SpeechProviderMetadata;
+  readonly config?: LocalSpeechProviderConfig;
   synthesize(input: SpeechSynthesisInput): Promise<SpeechSynthesisResult>;
+}
+
+export interface LocalSpeechProviderConfig {
+  binaryPath: string | null;
+  voiceModelPath: string | null;
+  speakerId: string | null;
+  sampleRate: number | null;
+  startupTimeoutMs: number;
 }
 
 export type SpeechPlaybackStateStatus =

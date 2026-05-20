@@ -19,7 +19,8 @@ import { transcriptionProviders } from "@/lib/stt/registry";
 import { getManualTranscriptionStartBlockReason } from "@/lib/stt/manual-voice-flow";
 import { InMemoryTranscriptionJobManager } from "@/lib/stt/jobs";
 import { InMemoryVoiceTranscriptDraftManager } from "@/lib/stt/transcript-drafts";
-import { localTtsPlaceholderProvider, speechProviders } from "@/lib/tts";
+import { localTtsPlaceholderProvider } from "@/lib/tts/local-placeholder";
+import { speechProviders } from "@/lib/tts/registry";
 import type {
   TranscriptionInput,
   TranscriptionJob,
@@ -55,6 +56,9 @@ export function VoiceControlPanel({
   const transcriptionState = initialTranscriptionState;
   const defaultTranscriptionProvider = transcriptionProviders.getDefault();
   const defaultSpeechProvider = speechProviders.getDefault();
+  const localTtsRuntimeState = localTtsPlaceholderProvider.enabled
+    ? localTtsPlaceholderProvider.status
+    : "disabled";
   const activeTranscriptionJob = transcriptionJob ?? localTranscriptionJob;
   const localWhisperInstalled =
     transcriptionProvider.status !== "not_installed";
@@ -696,6 +700,9 @@ export function VoiceControlPanel({
           <p className="mt-1 text-xs text-gray-600">
             Local provider {localTtsPlaceholderProvider.id}:{" "}
             {localTtsPlaceholderProvider.status}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Runtime state: {localTtsRuntimeState}
           </p>
           <p className="mt-1 text-xs text-gray-600">
             local only, no network, no audio storage

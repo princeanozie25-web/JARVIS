@@ -18,6 +18,13 @@ describe("speechProviders", () => {
     expect(localTtsPlaceholderProvider).toMatchObject({
       enabled: false,
       status: "not_installed",
+      config: {
+        binaryPath: null,
+        voiceModelPath: null,
+        speakerId: null,
+        sampleRate: null,
+        startupTimeoutMs: 5_000,
+      },
       metadata: {
         runsLocally: true,
         requiresNetwork: false,
