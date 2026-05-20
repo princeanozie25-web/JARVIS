@@ -92,7 +92,11 @@ export type TelemetryEventType =
   | "runtime_api_request"
   | "runtime_api_denied"
   | "runtime_workspace_resolved"
-  | "runtime_workspace_denied";
+  | "runtime_workspace_denied"
+  | "mic_permission_granted"
+  | "mic_permission_denied"
+  | "ptt_started"
+  | "ptt_stopped";
 
 export interface TelemetryEvent {
   timestamp: number;

@@ -26,6 +26,7 @@ import {
 import { RollbackStatusPanel } from "@/components/RollbackStatusPanel";
 import { RuntimeCommandPanel } from "@/components/RuntimeCommandPanel";
 import { TimelineIndexPanel } from "@/components/TimelineIndexPanel";
+import { VoiceControlPanel } from "@/components/VoiceControlPanel";
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from "@/lib/chat/schema";
 import type {
   ApiApprovalDecision,
@@ -1251,6 +1252,8 @@ export default function Home() {
       </section>
 
       <RuntimeCommandPanel />
+
+      <VoiceControlPanel />
 
       <MemoryInspectorPanel
         memories={memories}
