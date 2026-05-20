@@ -184,6 +184,10 @@ export class VoiceRealtimeOrchestrationPipeline {
     if (!scheduled.intent) {
       return { ok: true };
     }
+    const staleAfterScheduling = this.getStaleEventReason(event.sessionId);
+    if (staleAfterScheduling) {
+      return this.drop(event, "scheduler", staleAfterScheduling, true);
+    }
     await this.blockSkippedChunkIndexes(event);
     await this.updateReadiness({
       sessionId: scheduled.intent.sessionId,
@@ -200,6 +204,10 @@ export class VoiceRealtimeOrchestrationPipeline {
     const queued = await this.opts.synthesisQueue.enqueue(scheduled.intent);
     if (!queued.ok) {
       return this.drop(event, "synthesis_queue", queued.reason);
+    }
+    const staleAfterQueueing = this.getStaleEventReason(event.sessionId);
+    if (staleAfterQueueing) {
+      return this.drop(event, "synthesis_queue", staleAfterQueueing, true);
     }
     await this.updateReadiness({
       sessionId: queued.item.sessionId,
@@ -221,6 +229,10 @@ export class VoiceRealtimeOrchestrationPipeline {
     });
     if (!sequenced.ok) {
       return this.drop(event, "playback_sequence", sequenced.reason);
+    }
+    const staleAfterSequencing = this.getStaleEventReason(event.sessionId);
+    if (staleAfterSequencing) {
+      return this.drop(event, "playback_sequence", staleAfterSequencing, true);
     }
     await this.updateReadiness({
       sessionId: queued.item.sessionId,
