@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 6:30pm GMT+1
+# [jarvis] recent context, 2026-05-20 7:16pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23,623t read) | 2,130,991t work | 99% savings
+Stats: 50 obs (23,550t read) | 2,016,813t work | 99% savings
 
 ### May 16, 2026
 
@@ -27,8 +27,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 626 4:59a 🔵 JARVIS Streaming Architecture: Single Canonical StreamEvent Type, Dual Streaming Protocols
 627 " 🔵 AbortSignal Propagation and First-Token Telemetry: Full Chain Confirmed Clean
-628 " 🔴 SSE Parser: Added Event-Name/JSON-Type Cross-Validation to parseSseEvents
-629 " 🔵 Phase 3.75B Audit Verdict: PASS — No Architectural Drift, No Prohibited Capabilities
 630 5:05a ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Planned
 631 5:06a 🟣 JARVIS Audio Infrastructure Module Created (src/lib/audio/)
 632 " 🟣 VoiceControlPanel Component Added — Push-to-Talk Scaffold Only
@@ -76,6 +74,8 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 673 " 🟣 New manual-voice-flow.ts Guard Module for Local STT Readiness
 674 " 🟣 Cancellation-Safety Test Added to InMemoryTranscriptionJobManager
 675 " 🔵 Phase 3.75 Streaming Changes Not Yet Started — Session Implemented Voice Panel STT Integration Instead
+676 6:31p ⚖️ JARVIS Phase 4B-13: Manual Local STT Flow Audit Initiated
+677 7:15p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Initiated
 
-Access 2131k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2017k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
