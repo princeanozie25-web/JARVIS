@@ -233,4 +233,30 @@ describe("InMemoryTranscriptionJobManager", () => {
     expect(serialized).not.toContain("0.123");
     expect(serialized).not.toContain("secret transcript text");
   });
+
+  it("sanitizes provider failure messages before telemetry emission", async () => {
+    const { manager, telemetry } = createManager();
+    await expect(
+      manager.startJob({
+        provider: createProvider({
+          transcribe: vi
+            .fn()
+            .mockRejectedValue(new Error("secret transcript text in failure")),
+        }),
+        input: transientInput,
+        source: "ptt_capture",
+      }),
+    ).resolves.toMatchObject({
+      status: "failed",
+      error: "secret transcript text in failure",
+    });
+
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "transcription_job_failed",
+        error: "transcription_failed",
+      }),
+    );
+    expect(JSON.stringify(telemetry)).not.toContain("secret transcript text");
+  });
 });

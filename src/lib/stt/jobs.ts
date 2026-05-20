@@ -183,7 +183,7 @@ export class InMemoryTranscriptionJobManager {
       source: job.source,
       success,
       durationMs: job.durationMs,
-      error: job.error,
+      error: telemetryError(eventType, job.error),
     });
   }
 
@@ -194,4 +194,27 @@ export class InMemoryTranscriptionJobManager {
   private newId(): string {
     return this.opts.newId?.() ?? globalThis.crypto.randomUUID();
   }
+}
+
+function telemetryError(
+  eventType: TranscriptionJobTelemetryEvent["eventType"],
+  error: string | undefined,
+): string | undefined {
+  if (!error) return undefined;
+  if (
+    error === "provider_disabled" ||
+    error === "provider_unavailable" ||
+    error === "not_configured" ||
+    error === "not_installed" ||
+    error === "transcription_failed"
+  ) {
+    return error;
+  }
+  if (eventType === "transcription_job_rejected") {
+    return "active_job_exists";
+  }
+  if (eventType === "transcription_job_cancelled") {
+    return "job_cancelled";
+  }
+  return "transcription_failed";
 }
