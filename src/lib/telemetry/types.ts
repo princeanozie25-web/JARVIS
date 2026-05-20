@@ -126,7 +126,12 @@ export type TelemetryEventType =
   | "tts_playback_cancelled"
   | "demo_tts_prepare_started"
   | "demo_tts_prepare_completed"
-  | "demo_tts_prepare_failed";
+  | "demo_tts_prepare_failed"
+  | "voice_session_started"
+  | "voice_session_cancelled"
+  | "voice_session_completed"
+  | "voice_session_failed"
+  | "voice_orchestration_interrupted";
 
 export interface TelemetryEvent {
   timestamp: number;
