@@ -8,6 +8,9 @@ const AudioTelemetrySchema = z.object({
     "mic_permission_denied",
     "ptt_started",
     "ptt_stopped",
+    "audio_capture_started",
+    "audio_capture_stopped",
+    "audio_capture_error",
   ]),
   status: z.enum([
     "idle",
@@ -44,7 +47,9 @@ export async function POST(req: Request) {
   recordEvent({
     event_type: input.eventType,
     success:
-      input.eventType !== "mic_permission_denied" && input.status !== "error",
+      input.eventType !== "mic_permission_denied" &&
+      input.eventType !== "audio_capture_error" &&
+      input.status !== "error",
     notes: [
       `audio_status=${input.status}`,
       input.selectedInputDeviceId

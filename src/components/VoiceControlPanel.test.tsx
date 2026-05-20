@@ -10,6 +10,11 @@ const readyState: AudioSessionState = {
   selectedOutputDeviceId: "",
   pushToTalkActive: false,
   captureStartedAt: null,
+  activeCaptureSessionId: null,
+  captureDurationMs: 0,
+  captureSampleRate: null,
+  streamActive: false,
+  vuLevel: 0,
   inputDevices: [{ kind: "audioinput", deviceId: "mic-1", label: "Desk Mic" }],
   outputDevices: [
     { kind: "audiooutput", deviceId: "speaker-1", label: "Desk Speaker" },
@@ -40,12 +45,19 @@ describe("VoiceControlPanel", () => {
           status: "recording",
           pushToTalkActive: true,
           captureStartedAt: 1_000,
+          activeCaptureSessionId: "capture-1",
+          captureDurationMs: 125,
+          captureSampleRate: 48_000,
+          streamActive: true,
+          vuLevel: 0.7,
         }}
       />,
     );
 
     expect(html).toContain("Mic recording");
     expect(html).toContain("Mic active");
+    expect(html).toContain("capture-1");
+    expect(html).toContain("48000Hz");
     expect(html).toContain('aria-pressed="true"');
   });
 });

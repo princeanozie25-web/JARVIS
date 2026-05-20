@@ -25,16 +25,38 @@ export interface AudioSessionState {
   selectedOutputDeviceId: string;
   pushToTalkActive: boolean;
   captureStartedAt: number | null;
+  activeCaptureSessionId: string | null;
+  captureDurationMs: number;
+  captureSampleRate: number | null;
+  streamActive: boolean;
+  vuLevel: number;
   inputDevices: AudioDeviceOption[];
   outputDevices: AudioDeviceOption[];
   errorMessage?: string;
+}
+
+export interface TransientAudioChunk {
+  sessionId: string;
+  capturedAt: number;
+  sampleRate: number | null;
+  pcm: Float32Array;
+}
+
+export interface AudioCaptureSessionMetadata {
+  id: string;
+  startedAt: number;
+  sampleRate: number | null;
+  streamActive: boolean;
 }
 
 export type AudioTelemetryEventType =
   | "mic_permission_granted"
   | "mic_permission_denied"
   | "ptt_started"
-  | "ptt_stopped";
+  | "ptt_stopped"
+  | "audio_capture_started"
+  | "audio_capture_stopped"
+  | "audio_capture_error";
 
 export interface AudioTelemetryEvent {
   eventType: AudioTelemetryEventType;

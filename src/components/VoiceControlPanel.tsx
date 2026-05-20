@@ -7,8 +7,9 @@ import {
   listAudioDevices,
   recordAudioTelemetry,
   requestMicrophonePermission,
-  stopMediaStream,
+  startLocalAudioCapture,
   subscribeToAudioDeviceChanges,
+  type LocalAudioCaptureHandle,
   type AudioSessionState,
 } from "@/lib/audio";
 
@@ -20,7 +21,9 @@ export function VoiceControlPanel({
   initialState = initialAudioSessionState,
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
-  const streamRef = useRef<MediaStream | undefined>(undefined);
+  const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
+  const captureStartingRef = useRef(false);
+  const pttHeldRef = useRef(false);
   const stateRef = useRef(state);
 
   useEffect(() => {
@@ -42,19 +45,95 @@ export function VoiceControlPanel({
     }
   }, []);
 
+  const stopActiveCapture = useCallback(
+    async (reason: "release" | "devicechange" | "visibility" | "unmount") => {
+      const capture = captureRef.current;
+      if (!capture) return;
+      pttHeldRef.current = false;
+      captureRef.current = null;
+      const stoppedAt = Date.now();
+      const result = await capture.stop(stoppedAt);
+      dispatch({ type: "ptt_stopped", stoppedAt });
+      stateRef.current = {
+        ...stateRef.current,
+        status: "ready",
+        pushToTalkActive: false,
+        activeCaptureSessionId: null,
+        captureStartedAt: null,
+        captureDurationMs: result.durationMs,
+        streamActive: false,
+        vuLevel: 0,
+      };
+      await recordAudioTelemetry({
+        eventType: "audio_capture_stopped",
+        status: "ready",
+        selectedInputDeviceId: stateRef.current.selectedInputDeviceId,
+        selectedOutputDeviceId: stateRef.current.selectedOutputDeviceId,
+        notes: `capture_session_id=${capture.metadata.id} duration_ms=${result.durationMs} transient_chunks=${result.chunkCount} reason=${reason}`,
+      });
+      await recordAudioTelemetry({
+        eventType: "ptt_stopped",
+        status: "ready",
+        selectedInputDeviceId: stateRef.current.selectedInputDeviceId,
+        selectedOutputDeviceId: stateRef.current.selectedOutputDeviceId,
+        notes: `duration_ms=${result.durationMs} reason=${reason}`,
+      });
+    },
+    [],
+  );
+
+  const failActiveCapture = useCallback(async (message: string) => {
+    const capture = captureRef.current;
+    pttHeldRef.current = false;
+    captureRef.current = null;
+    await capture?.stop();
+    dispatch({ type: "capture_error", message });
+    stateRef.current = {
+      ...stateRef.current,
+      status: "error",
+      pushToTalkActive: false,
+      activeCaptureSessionId: null,
+      captureStartedAt: null,
+      streamActive: false,
+      vuLevel: 0,
+      errorMessage: message,
+    };
+    await recordAudioTelemetry({
+      eventType: "audio_capture_error",
+      status: "error",
+      selectedInputDeviceId: stateRef.current.selectedInputDeviceId,
+      selectedOutputDeviceId: stateRef.current.selectedOutputDeviceId,
+      notes: message,
+    });
+  }, []);
+
   useEffect(() => {
     void refreshDevices();
     return subscribeToAudioDeviceChanges(() => {
+      if (stateRef.current.status === "recording") {
+        void failActiveCapture("Audio input changed during capture.");
+      }
       void refreshDevices();
     });
-  }, [refreshDevices]);
+  }, [failActiveCapture, refreshDevices]);
 
   useEffect(() => {
     return () => {
-      stopMediaStream(streamRef.current);
-      streamRef.current = undefined;
+      void stopActiveCapture("unmount");
     };
-  }, []);
+  }, [stopActiveCapture]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        void stopActiveCapture("visibility");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [stopActiveCapture]);
 
   async function requestPermission() {
     dispatch({ type: "permission_request_started" });
@@ -81,55 +160,84 @@ export function VoiceControlPanel({
 
   async function startPushToTalk() {
     const current = stateRef.current;
+    if (captureRef.current || captureStartingRef.current) return;
     if (
       current.microphonePermissionStatus !== "granted" ||
       (current.status !== "idle" && current.status !== "ready")
     ) {
       return;
     }
-    const startedAt = Date.now();
-    dispatch({ type: "ptt_started", startedAt });
-    stateRef.current = {
-      ...current,
-      status: "recording",
-      pushToTalkActive: true,
-      captureStartedAt: startedAt,
-      errorMessage: undefined,
-    };
-    await recordAudioTelemetry({
-      eventType: "ptt_started",
-      status: "recording",
-      selectedInputDeviceId: current.selectedInputDeviceId,
-      selectedOutputDeviceId: current.selectedOutputDeviceId,
-    });
+    captureStartingRef.current = true;
+    try {
+      const capture = await startLocalAudioCapture({
+        deviceId: current.selectedInputDeviceId || undefined,
+        onVu(update) {
+          dispatch({ type: "capture_vu_updated", ...update });
+        },
+        onEnded(reason) {
+          void failActiveCapture(reason);
+        },
+      });
+      captureRef.current = capture;
+      await recordAudioTelemetry({
+        eventType: "audio_capture_started",
+        status: "recording",
+        selectedInputDeviceId: current.selectedInputDeviceId,
+        selectedOutputDeviceId: current.selectedOutputDeviceId,
+        notes: `capture_session_id=${capture.metadata.id} sample_rate=${capture.metadata.sampleRate ?? "unknown"}`,
+      });
+      if (!pttHeldRef.current) {
+        await stopActiveCapture("release");
+        return;
+      }
+      dispatch({
+        type: "ptt_started",
+        captureSessionId: capture.metadata.id,
+        startedAt: capture.metadata.startedAt,
+        sampleRate: capture.metadata.sampleRate,
+        streamActive: capture.metadata.streamActive,
+      });
+      stateRef.current = {
+        ...current,
+        status: "recording",
+        pushToTalkActive: true,
+        activeCaptureSessionId: capture.metadata.id,
+        captureStartedAt: capture.metadata.startedAt,
+        captureDurationMs: 0,
+        captureSampleRate: capture.metadata.sampleRate,
+        streamActive: capture.metadata.streamActive,
+        vuLevel: 0,
+        errorMessage: undefined,
+      };
+      await recordAudioTelemetry({
+        eventType: "ptt_started",
+        status: "recording",
+        selectedInputDeviceId: current.selectedInputDeviceId,
+        selectedOutputDeviceId: current.selectedOutputDeviceId,
+        notes: `capture_session_id=${capture.metadata.id}`,
+      });
+    } catch (error) {
+      await failActiveCapture(
+        error instanceof Error
+          ? error.message
+          : "Audio capture could not be started.",
+      );
+    } finally {
+      captureStartingRef.current = false;
+    }
   }
 
   async function stopPushToTalk() {
-    const current = stateRef.current;
-    if (current.status !== "recording") return;
-    dispatch({ type: "ptt_stopped" });
-    stateRef.current = {
-      ...current,
-      status: "ready",
-      pushToTalkActive: false,
-      captureStartedAt: null,
-    };
-    await recordAudioTelemetry({
-      eventType: "ptt_stopped",
-      status: "ready",
-      selectedInputDeviceId: current.selectedInputDeviceId,
-      selectedOutputDeviceId: current.selectedOutputDeviceId,
-      notes:
-        current.captureStartedAt === null
-          ? undefined
-          : `duration_ms=${Date.now() - current.captureStartedAt}`,
-    });
+    await stopActiveCapture("release");
   }
 
   const canRecord =
     state.microphonePermissionStatus === "granted" &&
     (state.status === "idle" || state.status === "ready");
   const isRecording = state.status === "recording";
+  const vuBars = [0.3, 0.55, 0.8, 1, 0.7, 0.45, 0.25].map((scale) =>
+    isRecording ? Math.max(6, Math.round(state.vuLevel * 48 * scale)) : 6,
+  );
 
   return (
     <section className="w-full max-w-3xl mt-4 rounded-lg border border-gray-800 bg-gray-950 p-4 text-gray-100">
@@ -216,24 +324,29 @@ export function VoiceControlPanel({
           aria-pressed={isRecording}
           disabled={!canRecord && !isRecording}
           onPointerDown={(event) => {
+            pttHeldRef.current = true;
             event.currentTarget.setPointerCapture(event.pointerId);
             void startPushToTalk();
           }}
           onPointerUp={(event) => {
+            pttHeldRef.current = false;
             event.currentTarget.releasePointerCapture(event.pointerId);
             void stopPushToTalk();
           }}
           onPointerCancel={() => {
+            pttHeldRef.current = false;
             void stopPushToTalk();
           }}
           onKeyDown={(event) => {
             if (event.repeat || event.code !== "Space") return;
             event.preventDefault();
+            pttHeldRef.current = true;
             void startPushToTalk();
           }}
           onKeyUp={(event) => {
             if (event.code !== "Space") return;
             event.preventDefault();
+            pttHeldRef.current = false;
             void stopPushToTalk();
           }}
           className={`rounded-md px-4 py-2 text-sm font-semibold ${
@@ -268,7 +381,7 @@ export function VoiceControlPanel({
           <span>{state.pushToTalkActive ? "Mic active" : "Mic inactive"}</span>
         </div>
         <div className="flex h-12 items-end gap-1" aria-hidden="true">
-          {[20, 34, 48, 28, 40, 24, 16].map((height, index) => (
+          {vuBars.map((height, index) => (
             <div
               key={index}
               className={`w-4 rounded-sm ${
@@ -278,6 +391,12 @@ export function VoiceControlPanel({
             />
           ))}
         </div>
+        <p className="mt-2 text-xs text-gray-500">
+          {state.activeCaptureSessionId
+            ? `session ${state.activeCaptureSessionId} · ${state.captureDurationMs}ms · ${state.captureSampleRate ?? "unknown"}Hz`
+            : "No active capture session"}
+          {state.streamActive ? " · stream active" : ""}
+        </p>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">

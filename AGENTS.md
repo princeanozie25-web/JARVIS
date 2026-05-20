@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 4:59am GMT+1
+# [jarvis] recent context, 2026-05-20 5:13am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (17,920t read) | 2,354,194t work | 99% savings
+Stats: 50 obs (18,717t read) | 2,244,280t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,21 +25,10 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 19, 2026
 
-569 9:28p ⚖️ JARVIS Phase 3A Scope Definition: Vault Foundation + Memory Schema
-575 9:29p 🔵 JARVIS Telemetry Schema Already Contains Memory + Advanced Event Types Pre-Phase 3A
-576 " 🟣 RuntimeExecutionController: AbortSignal Lifecycle Management for Runtime Commands
-577 " 🟣 RuntimeExecutionController Test Suite: 5 Tests Covering All Cancellation Paths
-578 " 🔵 All 549 Tests Pass + Clean TypeScript and ESLint After Runtime Controller Addition
-579 9:39p 🟣 JARVIS Phase 3A: Vault Foundation + Memory Schema Initiated
-580 9:40p 🔵 JARVIS Phase 2 Runtime Command Infrastructure — Pre-Phase-3A Codebase Scan
-581 " 🟣 RuntimeCommandExecutor Implemented with Safe spawn() Execution Layer
-582 " 🔴 Three Bugs Fixed During RuntimeCommandExecutor Integration
-583 " 🟣 RuntimeCommandExecutor Test Suite Added with Fake Process Infrastructure
 584 9:46p ⚖️ JARVIS Phase 3A Scope Locked: Vault Foundation + Memory Schema Only
 585 " 🟣 JARVIS Phase 3A: Obsidian Vault Scaffold Auto-Creation
 586 " 🟣 JARVIS Phase 3A: SQLite Memory Schema — Four New Tables
 587 " 🟣 JARVIS Phase 3A: memory.note Registered as Phase 2-Compatible Tool
-588 " 🟣 JARVIS Phase 3A: Read-Only Memory Inspector Panel Added
 589 9:47p 🔵 JARVIS Phase 2 Runtime Command Architecture: Read-Only Executor with Full Safety Pipeline
 590 " 🟣 RuntimeStreamEvent System Added to Executor: AsyncIterable + EventEmitter Dual Surface
 591 " 🔴 finishCancelled Double-Settlement Race Fixed with Early settled Guard
@@ -78,6 +67,17 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 623 " ✅ Production Build Clean — Known Turbopack Warning on workspace.ts
 624 " ✅ Phase 3.75 Final Deliverable State
 625 4:58a ⚖️ JARVIS Phase 3.75B — Streaming Runtime Safety Audit Initiated
+626 4:59a 🔵 JARVIS Streaming Architecture: Single Canonical StreamEvent Type, Dual Streaming Protocols
+627 " 🔵 AbortSignal Propagation and First-Token Telemetry: Full Chain Confirmed Clean
+628 " 🔴 SSE Parser: Added Event-Name/JSON-Type Cross-Validation to parseSseEvents
+629 " 🔵 Phase 3.75B Audit Verdict: PASS — No Architectural Drift, No Prohibited Capabilities
+630 5:05a ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Planned
+631 5:06a 🟣 JARVIS Audio Infrastructure Module Created (src/lib/audio/)
+632 " 🟣 VoiceControlPanel Component Added — Push-to-Talk Scaffold Only
+633 " 🟣 Audio Telemetry API Endpoint Added — /api/audio/telemetry
+634 " 🟣 Audio Module Unit Tests Added — 16 Tests All Passing
+635 " 🔴 TypeScript Error Fixed in devices.ts — MediaDeviceKind Assignability
+636 " 🔴 ESLint react-hooks/refs Violation Fixed in VoiceControlPanel
 
-Access 2354k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2244k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

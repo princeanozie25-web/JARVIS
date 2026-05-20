@@ -11,6 +11,11 @@ export const initialAudioSessionState: AudioSessionState = {
   selectedOutputDeviceId: "",
   pushToTalkActive: false,
   captureStartedAt: null,
+  activeCaptureSessionId: null,
+  captureDurationMs: 0,
+  captureSampleRate: null,
+  streamActive: false,
+  vuLevel: 0,
   inputDevices: [],
   outputDevices: [],
 };
@@ -29,8 +34,16 @@ export type AudioSessionAction =
     }
   | { type: "input_selected"; deviceId: string }
   | { type: "output_selected"; deviceId: string }
-  | { type: "ptt_started"; startedAt: number }
-  | { type: "ptt_stopped" }
+  | {
+      type: "ptt_started";
+      captureSessionId: string;
+      startedAt: number;
+      sampleRate: number | null;
+      streamActive: boolean;
+    }
+  | { type: "ptt_stopped"; stoppedAt: number }
+  | { type: "capture_vu_updated"; vuLevel: number; durationMs: number }
+  | { type: "capture_error"; message: string }
   | { type: "error"; message: string }
   | { type: "reset" };
 
@@ -61,6 +74,9 @@ export function audioSessionReducer(
         microphonePermissionStatus: action.permissionStatus,
         pushToTalkActive: false,
         captureStartedAt: null,
+        activeCaptureSessionId: null,
+        streamActive: false,
+        vuLevel: 0,
         errorMessage: action.errorMessage,
       };
 
@@ -91,7 +107,12 @@ export function audioSessionReducer(
         ...state,
         status: "recording",
         pushToTalkActive: true,
+        activeCaptureSessionId: action.captureSessionId,
         captureStartedAt: action.startedAt,
+        captureDurationMs: 0,
+        captureSampleRate: action.sampleRate,
+        streamActive: action.streamActive,
+        vuLevel: 0,
         errorMessage: undefined,
       };
 
@@ -101,7 +122,34 @@ export function audioSessionReducer(
         ...state,
         status: "ready",
         pushToTalkActive: false,
+        activeCaptureSessionId: null,
+        captureDurationMs:
+          state.captureStartedAt === null
+            ? state.captureDurationMs
+            : Math.max(0, action.stoppedAt - state.captureStartedAt),
         captureStartedAt: null,
+        streamActive: false,
+        vuLevel: 0,
+      };
+
+    case "capture_vu_updated":
+      if (state.status !== "recording") return state;
+      return {
+        ...state,
+        captureDurationMs: Math.max(0, action.durationMs),
+        vuLevel: Math.min(Math.max(action.vuLevel, 0), 1),
+      };
+
+    case "capture_error":
+      return {
+        ...state,
+        status: "error",
+        pushToTalkActive: false,
+        activeCaptureSessionId: null,
+        captureStartedAt: null,
+        streamActive: false,
+        vuLevel: 0,
+        errorMessage: action.message,
       };
 
     case "error":
@@ -110,6 +158,9 @@ export function audioSessionReducer(
         status: "error",
         pushToTalkActive: false,
         captureStartedAt: null,
+        activeCaptureSessionId: null,
+        streamActive: false,
+        vuLevel: 0,
         errorMessage: action.message,
       };
 

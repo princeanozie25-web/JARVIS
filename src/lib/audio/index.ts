@@ -1,4 +1,13 @@
 export {
+  createLocalAudioCaptureHandle,
+  startLocalAudioCapture,
+  type AudioAnalyserLike,
+  type AudioContextLike,
+  type AudioSourceLike,
+  type LocalAudioCaptureHandle,
+  type StartLocalAudioCaptureOptions,
+} from "./capture";
+export {
   getBrowserAudioMediaDevices,
   listAudioDevices,
   requestMicrophonePermission,
@@ -17,5 +26,7 @@ export type {
   AudioSessionStatus,
   AudioTelemetryEvent,
   AudioTelemetryEventType,
+  AudioCaptureSessionMetadata,
   MicrophonePermissionStatus,
+  TransientAudioChunk,
 } from "./types";

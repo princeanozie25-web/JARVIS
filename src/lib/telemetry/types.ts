@@ -96,7 +96,10 @@ export type TelemetryEventType =
   | "mic_permission_granted"
   | "mic_permission_denied"
   | "ptt_started"
-  | "ptt_stopped";
+  | "ptt_stopped"
+  | "audio_capture_started"
+  | "audio_capture_stopped"
+  | "audio_capture_error";
 
 export interface TelemetryEvent {
   timestamp: number;
