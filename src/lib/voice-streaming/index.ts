@@ -10,6 +10,12 @@ export {
   type ChunkSchedulingDropReason,
   type VoiceResponseChunkSchedulerOptions,
 } from "./scheduler";
+export {
+  VoiceSynthesisOrchestrationQueue,
+  type VoiceSynthesisOrchestrationQueueOptions,
+  type VoiceSynthesisQueueDropReason,
+  type VoiceSynthesisQueueResult,
+} from "./synthesis-queue";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -20,6 +26,8 @@ export type {
   StreamingSpeechSession,
   VoiceOrchestrationTelemetryEvent,
   VoiceOrchestrationTelemetryEventType,
+  VoiceSynthesisQueueItem,
+  VoiceSynthesisQueueItemState,
   VoiceStreamingCoordinationMetadata,
   VoiceTurnState,
 } from "./types";

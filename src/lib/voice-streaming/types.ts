@@ -113,6 +113,25 @@ export interface ChunkSchedulingIntent {
   updatedAt: number;
 }
 
+export type VoiceSynthesisQueueItemState =
+  | "queued"
+  | "cancelled"
+  | "interrupted";
+
+export interface VoiceSynthesisQueueItem {
+  id: string;
+  sessionId: string;
+  schedulingIntentId: string;
+  streamId: string;
+  responseId?: string;
+  assistantResponseChunkId: string;
+  orchestrationChunkId: string;
+  chunkIndex: number;
+  state: VoiceSynthesisQueueItemState;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -133,7 +152,12 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_response_chunk_schedule_dropped"
   | "voice_response_chunk_schedule_overflow"
   | "voice_response_chunk_scheduling_cancelled"
-  | "voice_response_chunk_scheduling_interrupted";
+  | "voice_response_chunk_scheduling_interrupted"
+  | "voice_synthesis_queue_item_enqueued"
+  | "voice_synthesis_queue_item_dropped"
+  | "voice_synthesis_queue_overflow"
+  | "voice_synthesis_queue_cancelled"
+  | "voice_synthesis_queue_interrupted";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
@@ -144,10 +168,14 @@ export interface VoiceOrchestrationTelemetryEvent {
   responseId?: string;
   chunkId?: string;
   intentId?: string;
+  queueItemId?: string;
   chunkIndex?: number;
   pendingIntentCount?: number;
   clearedIntentCount?: number;
   maxPendingIntents?: number;
+  pendingSynthesisItemCount?: number;
+  clearedSynthesisItemCount?: number;
+  maxPendingSynthesisItems?: number;
   durationMs?: number;
   error?: string;
 }

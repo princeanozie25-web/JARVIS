@@ -139,7 +139,12 @@ export type TelemetryEventType =
   | "voice_response_chunk_schedule_dropped"
   | "voice_response_chunk_schedule_overflow"
   | "voice_response_chunk_scheduling_cancelled"
-  | "voice_response_chunk_scheduling_interrupted";
+  | "voice_response_chunk_scheduling_interrupted"
+  | "voice_synthesis_queue_item_enqueued"
+  | "voice_synthesis_queue_item_dropped"
+  | "voice_synthesis_queue_overflow"
+  | "voice_synthesis_queue_cancelled"
+  | "voice_synthesis_queue_interrupted";
 
 export interface TelemetryEvent {
   timestamp: number;
