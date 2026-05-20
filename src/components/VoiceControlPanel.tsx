@@ -19,6 +19,7 @@ import { transcriptionProviders } from "@/lib/stt/registry";
 import { getManualTranscriptionStartBlockReason } from "@/lib/stt/manual-voice-flow";
 import { InMemoryTranscriptionJobManager } from "@/lib/stt/jobs";
 import { InMemoryVoiceTranscriptDraftManager } from "@/lib/stt/transcript-drafts";
+import { localTtsPlaceholderProvider, speechProviders } from "@/lib/tts";
 import type {
   TranscriptionInput,
   TranscriptionJob,
@@ -53,6 +54,7 @@ export function VoiceControlPanel({
   );
   const transcriptionState = initialTranscriptionState;
   const defaultTranscriptionProvider = transcriptionProviders.getDefault();
+  const defaultSpeechProvider = speechProviders.getDefault();
   const activeTranscriptionJob = transcriptionJob ?? localTranscriptionJob;
   const localWhisperInstalled =
     transcriptionProvider.status !== "not_installed";
@@ -685,7 +687,21 @@ export function VoiceControlPanel({
             Speaker
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            Disabled until text-to-speech is implemented.
+            TTS disabled/not configured.
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Default provider {defaultSpeechProvider.id}:{" "}
+            {defaultSpeechProvider.status}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Local provider {localTtsPlaceholderProvider.id}:{" "}
+            {localTtsPlaceholderProvider.status}
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            local only, no network, no audio storage
+          </p>
+          <p className="mt-2 text-xs text-gray-600">
+            Playback unavailable until a reviewed TTS provider is configured.
           </p>
         </div>
       </div>

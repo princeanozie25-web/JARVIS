@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 7:16pm GMT+1
+# [jarvis] recent context, 2026-05-20 7:32pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23,550t read) | 2,016,813t work | 99% savings
+Stats: 50 obs (23,199t read) | 1,917,689t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,15 +25,10 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 20, 2026
 
-626 4:59a 🔵 JARVIS Streaming Architecture: Single Canonical StreamEvent Type, Dual Streaming Protocols
-627 " 🔵 AbortSignal Propagation and First-Token Telemetry: Full Chain Confirmed Clean
-630 5:05a ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Planned
 631 5:06a 🟣 JARVIS Audio Infrastructure Module Created (src/lib/audio/)
 632 " 🟣 VoiceControlPanel Component Added — Push-to-Talk Scaffold Only
 633 " 🟣 Audio Telemetry API Endpoint Added — /api/audio/telemetry
 634 " 🟣 Audio Module Unit Tests Added — 16 Tests All Passing
-635 " 🔴 TypeScript Error Fixed in devices.ts — MediaDeviceKind Assignability
-636 " 🔴 ESLint react-hooks/refs Violation Fixed in VoiceControlPanel
 637 5:13a 🟣 JARVIS Phase 4A-2: Safe Local Audio Capture Layer Initiated
 638 5:14a 🟣 New `src/lib/audio/capture.ts` — Core In-Memory Audio Capture Engine
 639 " 🟣 Extended Audio Type System with Capture Session Metadata and TransientAudioChunk
@@ -76,6 +71,11 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 675 " 🔵 Phase 3.75 Streaming Changes Not Yet Started — Session Implemented Voice Panel STT Integration Instead
 676 6:31p ⚖️ JARVIS Phase 4B-13: Manual Local STT Flow Audit Initiated
 677 7:15p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Initiated
+678 7:16p 🔵 JARVIS Pre-Phase-3.75 Codebase Survey: Existing STT and Voice Infrastructure
+679 " 🔄 VoiceControlPanel: cancelActiveTranscription Extracted to useCallback
+680 7:17p 🔵 Phase 3.75 Pre-Implementation State: VoiceControlPanel Refactor Committed, Codebase Clean
+681 7:18p 🔵 VoiceControlPanel Refactor Committed; Only AGENTS.md Remains Staged
+682 7:31p ⚖️ Phase 4B-13: Manual Local STT Flow Audit Scoped
 
-Access 2017k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1918k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

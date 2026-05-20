@@ -61,7 +61,14 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("Voice transcript must be reviewed before sending.");
     expect(html).toContain("Submit reviewed transcript");
     expect(html).toContain("local only, no network, no audio storage");
-    expect(html).toContain("Disabled until text-to-speech is implemented.");
+    expect(html).toContain("TTS disabled/not configured.");
+    expect(html).toContain("Default provider disabled: disabled");
+    expect(html).toContain(
+      "Local provider local-tts-placeholder: not_installed",
+    );
+    expect(html).toContain(
+      "Playback unavailable until a reviewed TTS provider is configured.",
+    );
     expect(html).toContain("Desk Mic");
     expect(html).toContain("Desk Speaker");
   });
