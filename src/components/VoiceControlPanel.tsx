@@ -243,6 +243,21 @@ export function VoiceControlPanel({
     });
   }, []);
 
+  const cancelActiveTranscription = useCallback(
+    async (opts: { updateUi?: boolean } = {}) => {
+      const manager = transcriptionJobManagerRef.current;
+      const activeJob = manager?.getActiveJob();
+      if (!manager || !activeJob) return;
+      const cancelled = await manager.cancel(activeJob.id);
+      if (opts.updateUi === false) return;
+      setLocalTranscriptionJob(cancelled);
+      setLocalTranscriptDraft(null);
+      setLocalDraftText("");
+      setTranscriptionNotice("Transcription cancelled.");
+    },
+    [],
+  );
+
   useEffect(() => {
     void refreshDevices();
     return subscribeToAudioDeviceChanges(() => {
@@ -256,20 +271,22 @@ export function VoiceControlPanel({
   useEffect(() => {
     return () => {
       void stopActiveCapture("unmount");
+      void cancelActiveTranscription({ updateUi: false });
     };
-  }, [stopActiveCapture]);
+  }, [cancelActiveTranscription, stopActiveCapture]);
 
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         void stopActiveCapture("visibility");
+        void cancelActiveTranscription();
       }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [stopActiveCapture]);
+  }, [cancelActiveTranscription, stopActiveCapture]);
 
   async function requestPermission() {
     dispatch({ type: "permission_request_started" });
@@ -382,14 +399,7 @@ export function VoiceControlPanel({
   }
 
   async function cancelTranscription() {
-    const manager = transcriptionJobManagerRef.current;
-    const activeJob = manager?.getActiveJob();
-    if (!manager || !activeJob) return;
-    const cancelled = await manager.cancel(activeJob.id);
-    setLocalTranscriptionJob(cancelled);
-    setLocalTranscriptDraft(null);
-    setLocalDraftText("");
-    setTranscriptionNotice("Transcription cancelled.");
+    await cancelActiveTranscription();
   }
 
   async function updateLocalDraft(text: string) {
