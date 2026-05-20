@@ -32,7 +32,7 @@ export interface PlaybackManagerOptions {
 
 interface StoredPlayback {
   item: PlaybackItem;
-  audio: SpeechAudioResult;
+  audio: SpeechAudioResult | null;
 }
 
 const ACTIVE_PLAYBACK_STATES = new Set<PlaybackState>([
@@ -129,7 +129,9 @@ export class InMemoryPlaybackManager {
       success: true,
       durationMs: playbackDuration(item),
     });
-    return copyPlaybackItem(item);
+    const snapshot = copyPlaybackItem(item);
+    this.releaseActiveAudio(itemId);
+    return snapshot;
   }
 
   complete(itemId: string): PlaybackItem | null {
@@ -147,7 +149,9 @@ export class InMemoryPlaybackManager {
       success: true,
       durationMs: playbackDuration(item),
     });
-    return copyPlaybackItem(item);
+    const snapshot = copyPlaybackItem(item);
+    this.releaseActiveAudio(itemId);
+    return snapshot;
   }
 
   fail(itemId: string, error: string): PlaybackItem | null {
@@ -166,7 +170,9 @@ export class InMemoryPlaybackManager {
       success: false,
       error: item.error,
     });
-    return copyPlaybackItem(item);
+    const snapshot = copyPlaybackItem(item);
+    this.releaseActiveAudio(itemId);
+    return snapshot;
   }
 
   cancel(itemId?: string): PlaybackItem | null {
@@ -185,7 +191,9 @@ export class InMemoryPlaybackManager {
       success: false,
       error: "cancelled",
     });
-    return copyPlaybackItem(item);
+    const snapshot = copyPlaybackItem(item);
+    this.releaseActiveAudio(item.id);
+    return snapshot;
   }
 
   cleanup(): void {
@@ -198,6 +206,12 @@ export class InMemoryPlaybackManager {
 
   getActiveAudio(): SpeechAudioResult | null {
     return this.active?.audio ?? null;
+  }
+
+  private releaseActiveAudio(itemId: string): void {
+    if (this.active?.item.id === itemId) {
+      this.active.audio = null;
+    }
   }
 
   private getMutableActiveItem(itemId: string): PlaybackItem | null {

@@ -128,6 +128,7 @@ describe("InMemoryPlaybackManager", () => {
       status: "completed",
       completedAt: 2_002,
     });
+    expect(manager.getActiveAudio()).toBeNull();
     manager.cleanup();
     expect(manager.getActiveItem()).toBeNull();
 
@@ -136,6 +137,7 @@ describe("InMemoryPlaybackManager", () => {
     expect(manager.cancel(second.item.id)).toMatchObject({
       status: "cancelled",
     });
+    expect(manager.getActiveAudio()).toBeNull();
     expect(telemetry.map((event) => event.eventType)).toEqual([
       "tts_playback_ready",
       "tts_playback_started",
@@ -178,6 +180,7 @@ describe("InMemoryPlaybackManager", () => {
     if (!created.ok) throw new Error("Expected playback item");
     manager.markPlaying(created.item.id);
     manager.complete(created.item.id);
+    expect(manager.getActiveAudio()).toBeNull();
 
     const serialized = JSON.stringify(telemetry);
     expect(serialized).toContain("tts_playback_ready");
@@ -228,5 +231,24 @@ describe("BrowserPlaybackWrapper", () => {
     wrapper.load(audioResult(new Uint8Array([4])));
     wrapper.cancel();
     expect(revokeObjectUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it("revokes a previous object URL when a new item is loaded", () => {
+    const revokeObjectUrl = vi.fn();
+    const audio = createAudioElement();
+    const wrapper = new BrowserPlaybackWrapper({
+      createObjectUrl: vi
+        .fn()
+        .mockReturnValueOnce("blob:first")
+        .mockReturnValueOnce("blob:second"),
+      revokeObjectUrl,
+      createAudioElement: () => audio,
+    });
+
+    wrapper.load(audioResult());
+    wrapper.load(audioResult(new Uint8Array([4])));
+
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:first");
+    expect(audio.src).toBe("blob:second");
   });
 });
