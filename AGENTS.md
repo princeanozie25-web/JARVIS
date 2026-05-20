@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 5:13am GMT+1
+# [jarvis] recent context, 2026-05-20 5:27am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (18,717t read) | 2,244,280t work | 99% savings
+Stats: 50 obs (20,741t read) | 2,202,056t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,28 +25,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 19, 2026
 
-584 9:46p ⚖️ JARVIS Phase 3A Scope Locked: Vault Foundation + Memory Schema Only
-585 " 🟣 JARVIS Phase 3A: Obsidian Vault Scaffold Auto-Creation
-586 " 🟣 JARVIS Phase 3A: SQLite Memory Schema — Four New Tables
-587 " 🟣 JARVIS Phase 3A: memory.note Registered as Phase 2-Compatible Tool
-589 9:47p 🔵 JARVIS Phase 2 Runtime Command Architecture: Read-Only Executor with Full Safety Pipeline
-590 " 🟣 RuntimeStreamEvent System Added to Executor: AsyncIterable + EventEmitter Dual Surface
-591 " 🔴 finishCancelled Double-Settlement Race Fixed with Early settled Guard
-592 " 🔴 RuntimeStreamEventEmitter Missing History Replay Caused Test Failure for Late Subscribers
-593 " 🔴 ESLint Error: Empty Interface Extending Omit Changed to Type Alias
-594 " 🟣 Stream Safety Tests Added: Secret Isolation, Truncation Events, Timeout/Cancel Event Coverage
-595 " 🔵 JARVIS Build Has Pre-Existing Turbopack NFT Warning in consent/manifest.ts Import Path
-596 9:58p ⚖️ JARVIS Phase 3A Scope Defined: Vault Foundation + Memory Schema Only
-597 " 🟣 JARVIS Obsidian Vault Scaffold Auto-Creation Planned
-598 " 🟣 Four New SQLite Memory Tables Added to JARVIS Schema
-599 " 🟣 memory.note Registered as Phase 2-Compatible Tool with Full Safety Contract
-600 " 🟣 Read-Only Memory Inspector Panel Added to JARVIS UI
 601 9:59p 🔵 JARVIS Existing Codebase Structure Confirmed Before Phase 3A
 602 " 🟣 Full Runtime Command REST API Implemented with 6 New Route Endpoints
 603 " 🔴 vitest.config.ts Created to Fix @/ Path Alias Resolution in Tests
 604 " 🔴 server-only Package Must Be Mocked in Vitest to Test Next.js Server Routes
 605 " 🟣 Runtime Command API Integration Tests: 11 Cases Covering Full Lifecycle
-606 " 🟣 JARVIS Build Confirms 29 API Routes Including All New Runtime Command Endpoints
 
 ### May 20, 2026
 
@@ -78,6 +61,23 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 634 " 🟣 Audio Module Unit Tests Added — 16 Tests All Passing
 635 " 🔴 TypeScript Error Fixed in devices.ts — MediaDeviceKind Assignability
 636 " 🔴 ESLint react-hooks/refs Violation Fixed in VoiceControlPanel
+637 5:13a 🟣 JARVIS Phase 4A-2: Safe Local Audio Capture Layer Initiated
+638 5:14a 🟣 New `src/lib/audio/capture.ts` — Core In-Memory Audio Capture Engine
+639 " 🟣 Extended Audio Type System with Capture Session Metadata and TransientAudioChunk
+640 " 🟣 VoiceControlPanel Wired to Real Audio Capture with Multi-Layer Safety Guards
+641 5:22a ⚖️ Phase 3.75 Streaming Runtime Modernisation — Architectural Scope
+642 " 🟣 Typed StreamEvent Union Replaces Plain String Stream Shape
+643 " 🟣 Chat API Endpoint Migrated from text/plain to Server-Sent Events
+644 " 🟣 AbortSignal Threaded Through Entire Stream Path for Client-Side Cancellation
+645 " 🟣 First-Token Latency Telemetry Added to Streaming Pipeline
+646 5:23a 🟣 LocalAudioCaptureHandle API Replaces Raw MediaStream in VoiceControlPanel
+647 " 🟣 New Audio Capture Module with Transient Analyser Buffer (capture.ts + capture.test.ts)
+648 " 🔴 TypeScript TS2352 Error Fixed in capture.ts AudioContext Cast
+649 " 🟣 AudioSessionState Extended with Capture Session Tracking Fields
+650 " 🟣 Audio Telemetry Route Extended with Capture Lifecycle Event Types
+651 " 🔵 Full Test Suite and Production Build Pass After Phase 3.75 Audio Changes
+652 " 🔵 node_repl Kernel Crashes with EPERM on C:\Users\princ\AppData lstat in This Environment
+653 " ✅ Phase 3.75 Git Status — Final File Set
 
-Access 2244k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2202k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

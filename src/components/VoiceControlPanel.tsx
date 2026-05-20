@@ -22,6 +22,7 @@ export function VoiceControlPanel({
 }: VoiceControlPanelProps) {
   const [state, dispatch] = useReducer(audioSessionReducer, initialState);
   const captureRef = useRef<LocalAudioCaptureHandle | null>(null);
+  const captureStartAbortRef = useRef<AbortController | null>(null);
   const captureStartingRef = useRef(false);
   const pttHeldRef = useRef(false);
   const stateRef = useRef(state);
@@ -47,9 +48,11 @@ export function VoiceControlPanel({
 
   const stopActiveCapture = useCallback(
     async (reason: "release" | "devicechange" | "visibility" | "unmount") => {
+      captureStartAbortRef.current?.abort();
+      captureStartAbortRef.current = null;
+      pttHeldRef.current = false;
       const capture = captureRef.current;
       if (!capture) return;
-      pttHeldRef.current = false;
       captureRef.current = null;
       const stoppedAt = Date.now();
       const result = await capture.stop(stoppedAt);
@@ -83,6 +86,8 @@ export function VoiceControlPanel({
   );
 
   const failActiveCapture = useCallback(async (message: string) => {
+    captureStartAbortRef.current?.abort();
+    captureStartAbortRef.current = null;
     const capture = captureRef.current;
     pttHeldRef.current = false;
     captureRef.current = null;
@@ -168,9 +173,12 @@ export function VoiceControlPanel({
       return;
     }
     captureStartingRef.current = true;
+    const startAbort = new AbortController();
+    captureStartAbortRef.current = startAbort;
     try {
       const capture = await startLocalAudioCapture({
         deviceId: current.selectedInputDeviceId || undefined,
+        signal: startAbort.signal,
         onVu(update) {
           dispatch({ type: "capture_vu_updated", ...update });
         },
@@ -178,6 +186,7 @@ export function VoiceControlPanel({
           void failActiveCapture(reason);
         },
       });
+      captureStartAbortRef.current = null;
       captureRef.current = capture;
       await recordAudioTelemetry({
         eventType: "audio_capture_started",
@@ -217,12 +226,22 @@ export function VoiceControlPanel({
         notes: `capture_session_id=${capture.metadata.id}`,
       });
     } catch (error) {
+      if (
+        error instanceof DOMException &&
+        error.name === "AbortError" &&
+        !pttHeldRef.current
+      ) {
+        return;
+      }
       await failActiveCapture(
         error instanceof Error
           ? error.message
           : "Audio capture could not be started.",
       );
     } finally {
+      if (captureStartAbortRef.current === startAbort) {
+        captureStartAbortRef.current = null;
+      }
       captureStartingRef.current = false;
     }
   }
@@ -393,9 +412,9 @@ export function VoiceControlPanel({
         </div>
         <p className="mt-2 text-xs text-gray-500">
           {state.activeCaptureSessionId
-            ? `session ${state.activeCaptureSessionId} · ${state.captureDurationMs}ms · ${state.captureSampleRate ?? "unknown"}Hz`
+            ? `session ${state.activeCaptureSessionId} - ${state.captureDurationMs}ms - ${state.captureSampleRate ?? "unknown"}Hz`
             : "No active capture session"}
-          {state.streamActive ? " · stream active" : ""}
+          {state.streamActive ? " - stream active" : ""}
         </p>
       </div>
 

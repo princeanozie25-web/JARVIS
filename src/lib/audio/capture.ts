@@ -38,6 +38,7 @@ export interface LocalAudioCaptureHandle {
 
 export interface StartLocalAudioCaptureOptions {
   deviceId?: string;
+  signal?: AbortSignal;
   mediaDevices?: AudioMediaDevices;
   createAudioContext?: () => AudioContextLike;
   requestFrame?: (callback: FrameRequestCallback) => number;
@@ -59,14 +60,21 @@ export async function startLocalAudioCapture(
   const constraints: MediaStreamConstraints = {
     audio: opts.deviceId ? { deviceId: { exact: opts.deviceId } } : true,
   };
+  throwIfAborted(opts.signal);
   const stream = await mediaDevices.getUserMedia(constraints);
 
   try {
+    throwIfAborted(opts.signal);
     return createLocalAudioCaptureHandle(stream, opts);
   } catch (error) {
     stopMediaStream(stream);
     throw error;
   }
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  throw new DOMException("Audio capture was cancelled.", "AbortError");
 }
 
 export function createLocalAudioCaptureHandle(

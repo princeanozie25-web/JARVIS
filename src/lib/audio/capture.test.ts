@@ -136,6 +136,36 @@ describe("local audio capture", () => {
     expect(stop).toHaveBeenCalledTimes(1);
   });
 
+  it("aborts pending capture before creating an audio graph after PTT release", async () => {
+    const stop = vi.fn();
+    const createAudioContext = vi.fn(() => fakeAudioContext());
+    let resolveStream: (stream: MediaStream) => void = () => undefined;
+    const mediaDevices: AudioMediaDevices = {
+      enumerateDevices: vi.fn(),
+      getUserMedia: vi.fn(
+        () =>
+          new Promise<MediaStream>((resolve) => {
+            resolveStream = resolve;
+          }),
+      ),
+    };
+    const ac = new AbortController();
+    const capturePromise = startLocalAudioCapture({
+      mediaDevices,
+      signal: ac.signal,
+      createAudioContext,
+    });
+
+    ac.abort();
+    resolveStream(fakeStream({ stop }));
+
+    await expect(capturePromise).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(createAudioContext).not.toHaveBeenCalled();
+  });
+
   it("reports track ended and performs deterministic cleanup", async () => {
     let endedListener: (() => void) | undefined;
     const onEnded = vi.fn();
