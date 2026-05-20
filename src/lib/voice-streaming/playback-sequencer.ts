@@ -174,6 +174,16 @@ export class VoicePlaybackSequencer {
     );
   }
 
+  clearPendingForTerminal(
+    sessionId: string,
+    state: Extract<
+      VoicePlaybackSequenceIntentState,
+      "cancelled" | "interrupted"
+    >,
+  ): number {
+    return this.clearSessionIntents(sessionId, state);
+  }
+
   getPendingIntents(sessionId?: string): VoicePlaybackSequenceIntent[] {
     return this.intentsInOrder(this.pendingIntents, sessionId);
   }

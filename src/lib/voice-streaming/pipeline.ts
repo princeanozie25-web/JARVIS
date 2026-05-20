@@ -56,6 +56,8 @@ const TERMINAL_STATES = new Set<VoiceTurnState>([
 ]);
 
 export class VoiceRealtimeOrchestrationPipeline {
+  private readonly activeTerminalFanouts = new Set<string>();
+
   constructor(
     private readonly opts: VoiceRealtimeOrchestrationPipelineOptions,
   ) {}
@@ -139,27 +141,21 @@ export class VoiceRealtimeOrchestrationPipeline {
   }
 
   async cancelSession(sessionId: string): Promise<void> {
-    if (await this.emitTerminalNoop(sessionId, "cancel")) return;
-    await this.opts.playbackSequencer.cancelSession(sessionId);
-    await this.opts.synthesisQueue.cancelSession(sessionId);
-    await this.opts.scheduler.cancelSession(sessionId);
-    const session = this.opts.supervisor.getSession(sessionId);
+    const session = await this.fanoutTerminal(sessionId, "cancel");
+    if (!session) return;
     await this.emitSessionLifecycle(
       sessionId,
-      session?.state ?? "cancelled",
+      session.state,
       "voice_realtime_pipeline_cancelled",
     );
   }
 
   async interrupt(sessionId: string): Promise<void> {
-    if (await this.emitTerminalNoop(sessionId, "interrupt")) return;
-    await this.opts.playbackSequencer.interrupt(sessionId);
-    await this.opts.synthesisQueue.interrupt(sessionId);
-    await this.opts.scheduler.interrupt(sessionId);
-    const session = this.opts.supervisor.getSession(sessionId);
+    const session = await this.fanoutTerminal(sessionId, "interrupt");
+    if (!session) return;
     await this.emitSessionLifecycle(
       sessionId,
-      session?.state ?? "interrupted",
+      session.state,
       "voice_realtime_pipeline_interrupted",
     );
   }
@@ -241,7 +237,123 @@ export class VoiceRealtimeOrchestrationPipeline {
       success: true,
       terminalAction,
     });
+    if (terminalAction === "cancel" || terminalAction === "interrupt") {
+      await this.emitFanoutLifecycle(
+        sessionId,
+        session.state,
+        "voice_realtime_pipeline_fanout_noop",
+        terminalAction,
+        true,
+      );
+    }
     return true;
+  }
+
+  private async fanoutTerminal(
+    sessionId: string,
+    terminalAction: Extract<
+      NonNullable<VoiceOrchestrationTelemetryEvent["terminalAction"]>,
+      "cancel" | "interrupt"
+    >,
+  ): Promise<{ state: VoiceTurnState } | null> {
+    if (await this.emitTerminalNoop(sessionId, terminalAction)) return null;
+
+    if (this.activeTerminalFanouts.has(sessionId)) {
+      const session = this.opts.supervisor.getSession(sessionId);
+      await this.emitFanoutLifecycle(
+        sessionId,
+        session?.state ?? terminalFallbackStateForAction(terminalAction),
+        "voice_realtime_pipeline_fanout_noop",
+        terminalAction,
+        true,
+      );
+      return null;
+    }
+
+    this.activeTerminalFanouts.add(sessionId);
+    try {
+      const terminalState =
+        terminalAction === "cancel" ? "cancelled" : "interrupted";
+      const session =
+        terminalAction === "cancel"
+          ? await this.opts.supervisor.cancelSession(sessionId)
+          : await this.opts.supervisor.interrupt(sessionId);
+      const state = session?.state ?? terminalState;
+
+      await this.emitFanoutLifecycle(
+        sessionId,
+        state,
+        "voice_realtime_pipeline_fanout_started",
+        terminalAction,
+        true,
+        {
+          pendingIntentCount:
+            this.opts.scheduler.getPendingIntents(sessionId).length,
+          pendingSynthesisItemCount:
+            this.opts.synthesisQueue.getPendingItems(sessionId).length,
+          pendingPlaybackIntentCount:
+            this.opts.playbackSequencer.getPendingIntents(sessionId).length,
+        },
+      );
+
+      const clearedPlaybackIntentCount =
+        this.opts.playbackSequencer.clearPendingForTerminal(
+          sessionId,
+          terminalState,
+        );
+      const clearedSynthesisItemCount =
+        this.opts.synthesisQueue.clearPendingForTerminal(
+          sessionId,
+          terminalState,
+        );
+      const clearedIntentCount = this.opts.scheduler.clearPendingForTerminal(
+        sessionId,
+        terminalState,
+      );
+
+      await this.emitFanoutLifecycle(
+        sessionId,
+        state,
+        "voice_realtime_pipeline_fanout_completed",
+        terminalAction,
+        true,
+        {
+          clearedIntentCount,
+          pendingIntentCount:
+            this.opts.scheduler.getPendingIntents(sessionId).length,
+          clearedSynthesisItemCount,
+          pendingSynthesisItemCount:
+            this.opts.synthesisQueue.getPendingItems(sessionId).length,
+          clearedPlaybackIntentCount,
+          pendingPlaybackIntentCount:
+            this.opts.playbackSequencer.getPendingIntents(sessionId).length,
+        },
+      );
+
+      return { state };
+    } finally {
+      this.activeTerminalFanouts.delete(sessionId);
+    }
+  }
+
+  private async emitFanoutLifecycle(
+    sessionId: string,
+    state: VoiceTurnState,
+    eventType: VoiceOrchestrationTelemetryEvent["eventType"],
+    terminalAction: NonNullable<
+      VoiceOrchestrationTelemetryEvent["terminalAction"]
+    >,
+    success: boolean,
+    fields: Partial<VoiceOrchestrationTelemetryEvent> = {},
+  ): Promise<void> {
+    await this.opts.emitTelemetry?.({
+      eventType,
+      sessionId,
+      state,
+      success,
+      terminalAction,
+      ...fields,
+    });
   }
 
   private async emit(
@@ -288,6 +400,17 @@ function terminalFallbackState(
   if (eventType === "voice_realtime_pipeline_cancelled") return "cancelled";
   if (eventType === "voice_realtime_pipeline_interrupted") return "interrupted";
   if (eventType === "voice_realtime_pipeline_failed") return "failed";
+  return "failed";
+}
+
+function terminalFallbackStateForAction(
+  terminalAction: NonNullable<
+    VoiceOrchestrationTelemetryEvent["terminalAction"]
+  >,
+): VoiceTurnState {
+  if (terminalAction === "cancel") return "cancelled";
+  if (terminalAction === "interrupt") return "interrupted";
+  if (terminalAction === "complete") return "completed";
   return "failed";
 }
 

@@ -178,6 +178,34 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
         success: false,
       }),
     );
+    expect(
+      telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_started",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "cancel",
+        pendingIntentCount: 2,
+        pendingSynthesisItemCount: 2,
+        pendingPlaybackIntentCount: 2,
+      }),
+    ]);
+    expect(
+      telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_fanout_completed",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "cancel",
+        clearedIntentCount: 2,
+        clearedSynthesisItemCount: 2,
+        clearedPlaybackIntentCount: 2,
+        pendingIntentCount: 0,
+        pendingSynthesisItemCount: 0,
+        pendingPlaybackIntentCount: 0,
+      }),
+    ]);
   });
 
   it("fans interruption out and clears pending work across all stages", async () => {
@@ -213,6 +241,31 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
         success: false,
       }),
     );
+    expect(
+      telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_started",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "interrupt",
+        pendingIntentCount: 2,
+        pendingSynthesisItemCount: 2,
+        pendingPlaybackIntentCount: 2,
+      }),
+    ]);
+    expect(
+      telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_fanout_completed",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        terminalAction: "interrupt",
+        clearedIntentCount: 2,
+        clearedSynthesisItemCount: 2,
+        clearedPlaybackIntentCount: 2,
+      }),
+    ]);
   });
 
   it("handles backpressure safely at scheduler, synthesis, and playback stages", async () => {
@@ -511,6 +564,68 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     );
   });
 
+  it("rejects late stage completions after cancellation and interruption fanout", async () => {
+    for (const terminalAction of ["cancel", "interrupt"] as const) {
+      const {
+        scheduler,
+        synthesisQueue,
+        playbackSequencer,
+        pipeline,
+        telemetry,
+        sessionId,
+      } = await createHarness();
+      const scheduled = await scheduler.ingest(chunkEvent(sessionId, 0));
+      if (!scheduled.ok || !scheduled.intent) {
+        throw new Error("Expected scheduled intent");
+      }
+      const queued = await synthesisQueue.enqueue(scheduled.intent);
+      if (!queued.ok) throw new Error("Expected synthesis item");
+      const sequenced = await playbackSequencer.sequence({
+        type: "synthesis_ready",
+        item: queued.item,
+        synthesisResultId: "initial-result",
+      });
+      if (!sequenced.ok) throw new Error("Expected playback intent");
+
+      if (terminalAction === "cancel") {
+        await pipeline.cancelSession(sessionId);
+      } else {
+        await pipeline.interrupt(sessionId);
+      }
+
+      expect(await scheduler.ingest(chunkEvent(sessionId, 1))).toEqual({
+        ok: false,
+        reason: "stale_turn",
+      });
+      expect(await synthesisQueue.enqueue(scheduled.intent)).toEqual({
+        ok: false,
+        reason: "stale_turn",
+      });
+      expect(
+        await playbackSequencer.sequence({
+          type: "synthesis_ready",
+          item: queued.item,
+          synthesisResultId: "late-result",
+        }),
+      ).toEqual({ ok: false, reason: "stale_turn" });
+      expect(scheduler.getPendingIntents(sessionId)).toEqual([]);
+      expect(synthesisQueue.getPendingItems(sessionId)).toEqual([]);
+      expect(playbackSequencer.getPendingIntents(sessionId)).toEqual([]);
+      expect(scheduler.getClearedIntents(sessionId)).toHaveLength(1);
+      expect(synthesisQueue.getClearedItems(sessionId)).toHaveLength(1);
+      expect(playbackSequencer.getClearedIntents(sessionId)).toHaveLength(1);
+      expect(telemetry).toContainEqual(
+        expect.objectContaining({
+          eventType: "voice_realtime_pipeline_fanout_completed",
+          terminalAction,
+          clearedIntentCount: 1,
+          clearedSynthesisItemCount: 1,
+          clearedPlaybackIntentCount: 1,
+        }),
+      );
+    }
+  });
+
   it("treats repeated terminal calls as idempotent no-ops", async () => {
     const cancelled = await createHarness();
     await cancelled.pipeline.ingest(chunkEvent(cancelled.sessionId, 0));
@@ -552,8 +667,40 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
       ),
     ).toEqual([expect.objectContaining({ terminalAction: "cancel" })]);
     expect(
+      cancelled.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_started",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "cancel" })]);
+    expect(
+      cancelled.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_fanout_completed",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "cancel" })]);
+    expect(
+      cancelled.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "cancel" })]);
+    expect(
       interrupted.telemetry.filter(
         (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "interrupt" })]);
+    expect(
+      interrupted.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_started",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "interrupt" })]);
+    expect(
+      interrupted.telemetry.filter(
+        (event) =>
+          event.eventType === "voice_realtime_pipeline_fanout_completed",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "interrupt" })]);
+    expect(
+      interrupted.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_fanout_noop",
       ),
     ).toEqual([expect.objectContaining({ terminalAction: "interrupt" })]);
     expect(

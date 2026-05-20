@@ -119,6 +119,13 @@ export class VoiceResponseChunkScheduler {
     );
   }
 
+  clearPendingForTerminal(
+    sessionId: string,
+    state: "cancelled" | "interrupted",
+  ): number {
+    return this.clearSessionIntents(sessionId, state);
+  }
+
   getPendingIntents(sessionId?: string): ChunkSchedulingIntent[] {
     return this.intentsInOrder(this.pendingIntents, sessionId);
   }

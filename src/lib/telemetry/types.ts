@@ -161,6 +161,9 @@ export type TelemetryEventType =
   | "voice_realtime_pipeline_failed"
   | "voice_realtime_pipeline_dropped"
   | "voice_realtime_pipeline_stale_event_rejected"
+  | "voice_realtime_pipeline_fanout_started"
+  | "voice_realtime_pipeline_fanout_completed"
+  | "voice_realtime_pipeline_fanout_noop"
   | "voice_realtime_pipeline_terminal_noop";
 
 export interface TelemetryEvent {

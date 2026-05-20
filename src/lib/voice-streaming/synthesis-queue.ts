@@ -143,6 +143,13 @@ export class VoiceSynthesisOrchestrationQueue {
     );
   }
 
+  clearPendingForTerminal(
+    sessionId: string,
+    state: Extract<VoiceSynthesisQueueItemState, "cancelled" | "interrupted">,
+  ): number {
+    return this.clearSessionItems(sessionId, state);
+  }
+
   getPendingItems(sessionId?: string): VoiceSynthesisQueueItem[] {
     return this.itemsInOrder(this.pendingItems, sessionId);
   }
