@@ -50,6 +50,22 @@ describe("LocalTtsRuntime", () => {
     });
   });
 
+  it("reports not installed when the voice model is missing", async () => {
+    const runtime = new LocalTtsRuntime({
+      config: enabledConfig,
+      fileExists: vi
+        .fn()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false),
+      launchRuntime: vi.fn(),
+    });
+
+    await expect(runtime.initialize()).resolves.toMatchObject({
+      status: "not_installed",
+      message: `Local TTS voice model was not found: ${enabledConfig.voiceModelPath}`,
+    });
+  });
+
   it("requires a launcher before reporting ready", async () => {
     const runtime = new LocalTtsRuntime({
       config: enabledConfig,
