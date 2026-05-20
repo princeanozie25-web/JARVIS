@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 8:17pm GMT+1
+# [jarvis] recent context, 2026-05-20 8:47pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (22,896t read) | 1,895,264t work | 99% savings
+Stats: 50 obs (22,541t read) | 1,564,827t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,16 +25,9 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 20, 2026
 
-666 5:47a 🔄 JARVIS STT TranscriptionProviderStatus Type Expansion
-667 " 🟣 LocalWhisperRuntime Class with Lifecycle, Timeout, and AbortSignal
-668 " 🔄 VoiceControlPanel STT Imports Split to Sub-Module Paths
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-670 5:51a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Planned for JARVIS
-671 6:21p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Initiated
 672 6:23p 🟣 VoiceControlPanel Wired to Real Transcription Job and Draft Managers
 673 " 🟣 New manual-voice-flow.ts Guard Module for Local STT Readiness
-674 " 🟣 Cancellation-Safety Test Added to InMemoryTranscriptionJobManager
-675 " 🔵 Phase 3.75 Streaming Changes Not Yet Started — Session Implemented Voice Panel STT Integration Instead
 676 6:31p ⚖️ JARVIS Phase 4B-13: Manual Local STT Flow Audit Initiated
 677 7:15p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped and Initiated
 678 7:16p 🔵 JARVIS Pre-Phase-3.75 Codebase Survey: Existing STT and Voice Infrastructure
@@ -76,6 +69,13 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 714 " 🔴 findTerminalBoundary Replaced with findFlushBoundary to Correctly Enforce minChunkChars
 715 " 🟣 TtsSentenceChunker Test Suite: 9 Tests Covering All Audit Checklist Items
 716 " ✅ Phase 4C-5 Audit Complete: All Checks Green, No Synthesis or Playback Wiring Added
+717 8:17p 🔵 TtsSentenceChunker Confirmed Isolated: No Wiring to App, Components, or Chat Pipeline
+718 " 🟣 Two Additional Hardening Tests Added: Split Deltas and Sticky Block State
+719 8:34p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
+720 " 🟣 TtsSentenceChunker Implemented for Phase 4C-4 TTS Pipeline
+721 " 🟣 Phase 4C-4 Verification: 698 Tests Passing, TypeScript Clean, Build Clean
+722 8:35p 🔵 STT InMemoryTranscriptionJobManager Used as Architectural Pattern for TTS Queue
+723 " 🟣 SpeechQueue Types Added to TTS Type System
 
-Access 1895k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1565k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

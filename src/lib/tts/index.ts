@@ -25,6 +25,12 @@ export {
   type LocalTtsRuntimeOptions,
   type LocalTtsRuntimeStatus,
 } from "./local-runtime";
+export {
+  InMemorySpeechQueueManager,
+  type SpeechQueueEnqueueResult,
+  type SpeechQueueManagerOptions,
+  type SpeechQueueRejectionReason,
+} from "./queue";
 export { SpeechProviderRegistry, speechProviders } from "./registry";
 export {
   evaluateSpeechSafetyPolicy,
@@ -35,6 +41,10 @@ export type {
   SpeechPlaybackStateStatus,
   LocalSpeechProviderConfig,
   SpeechChunk,
+  SpeechQueueItem,
+  SpeechQueueItemStatus,
+  SpeechQueueTelemetryEvent,
+  SpeechQueueTelemetryEventType,
   SpeechProvider,
   SpeechProviderMetadata,
   SpeechProviderStatus,

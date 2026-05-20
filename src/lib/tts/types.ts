@@ -45,6 +45,41 @@ export interface SpeechChunk {
   source: "assistant_prose";
 }
 
+export type SpeechQueueItemStatus =
+  | "queued"
+  | "synthesizing"
+  | "ready"
+  | "playing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface SpeechQueueItem {
+  id: string;
+  chunkId: string;
+  text: string;
+  status: SpeechQueueItemStatus;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  error?: string;
+}
+
+export type SpeechQueueTelemetryEventType =
+  | "tts_queue_item_enqueued"
+  | "tts_queue_item_cancelled"
+  | "tts_queue_cleared";
+
+export interface SpeechQueueTelemetryEvent {
+  eventType: SpeechQueueTelemetryEventType;
+  itemId?: string;
+  chunkId?: string;
+  status?: SpeechQueueItemStatus;
+  success: boolean;
+  clearedCount?: number;
+  error?: string;
+}
+
 export type SpeechProviderStatus =
   | "disabled"
   | "not_installed"

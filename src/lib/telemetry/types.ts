@@ -111,7 +111,10 @@ export type TelemetryEventType =
   | "transcript_draft_rejected"
   | "local_transcription_started"
   | "local_transcription_completed"
-  | "local_transcription_failed";
+  | "local_transcription_failed"
+  | "tts_queue_item_enqueued"
+  | "tts_queue_item_cancelled"
+  | "tts_queue_cleared";
 
 export interface TelemetryEvent {
   timestamp: number;
