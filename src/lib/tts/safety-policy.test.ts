@@ -40,5 +40,19 @@ describe("evaluateSpeechSafetyPolicy", () => {
         contentTags: ["personal_context"],
       }),
     ).toEqual({ allowed: false, reason: "personal_context_blocked" });
+
+    expect(
+      evaluateSpeechSafetyPolicy({
+        text: "Private preference.",
+        source: "personal_context",
+      }),
+    ).toEqual({ allowed: false, reason: "personal_context_blocked" });
+
+    expect(
+      evaluateSpeechSafetyPolicy({
+        text: "<personal_context>Private preference.</personal_context>",
+        source: "assistant_prose",
+      }),
+    ).toEqual({ allowed: false, reason: "personal_context_blocked" });
   });
 });
