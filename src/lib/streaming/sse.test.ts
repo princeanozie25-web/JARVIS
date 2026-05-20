@@ -100,6 +100,19 @@ describe("SSE stream protocol", () => {
     });
   });
 
+  it("ignores frames whose SSE event name disagrees with the JSON payload type", () => {
+    const valid = { type: "text", value: "safe" } as const;
+    const encoded = [
+      'event: error\ndata: {"type":"done","result":{"content":"bad","modelId":"m","costUsd":0,"latencyMs":1}}\n\n',
+      encodeSseEvent(valid),
+    ].join("");
+
+    expect(parseSseEvents(encoded)).toEqual({
+      events: [valid],
+      remaining: "",
+    });
+  });
+
   it("ignores SSE heartbeat comment frames", () => {
     const valid = { type: "text", value: "awake" } as const;
 

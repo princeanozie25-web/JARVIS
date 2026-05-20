@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 4:49am GMT+1
+# [jarvis] recent context, 2026-05-20 4:57am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (18,526t read) | 2,152,094t work | 99% savings
+Stats: 50 obs (17,707t read) | 2,351,039t work | 99% savings
 
 ### May 16, 2026
 
@@ -25,24 +25,8 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 ### May 19, 2026
 
-557 9:09p 🔵 JARVIS Codebase Pre-State: memory.note and memory.recall Already Registered
-558 " 🟣 RuntimeCommandRegistry Implemented: Safe Read-Only CLI Command Metadata Store
-559 " 🟣 RuntimeCommandRegistry Tests: Shell Injection and Structured Argv Validation
-560 " 🟣 All 529 Tests Pass, Lint Clean, TypeScript and Next.js Build Succeed After Runtime Command Addition
-561 " ✅ AGENTS.md Reset to Minimal Next.js Agent Rules Only
-562 9:15p ⚖️ JARVIS Phase 3A Scope Defined: Vault Foundation + Memory Schema
-563 " 🔵 JARVIS Schema Already Contains Phase 3A Memory Tables from Prior Migrations
-564 " 🟣 Migration 013: runtime_command_calls Audit Table Added
-565 " 🔴 Schema Test Snapshot Fixed After Migration 013 Addition
-566 9:23p ⚖️ JARVIS Phase 3A Scope: Vault Foundation + Memory Schema
-567 9:24p 🟣 Runtime Command Proposal/Approval Lifecycle Added to JARVIS
-568 " 🔵 JARVIS Build: Turbopack Warning on Dynamic require in consent/manifest.ts
 569 9:28p ⚖️ JARVIS Phase 3A Scope Definition: Vault Foundation + Memory Schema
 570 " 🟣 JARVIS Phase 3A: Obsidian Vault Scaffold Auto-Creation
-571 " 🟣 JARVIS Phase 3A: SQLite Memory Schema with Four Tables
-572 " 🟣 JARVIS Phase 3A: memory.note Tool Registered via Phase 2 Tool Contract
-573 " 🟣 JARVIS Phase 3A: Memory Telemetry Event Types Added
-574 " 🟣 JARVIS Phase 3A: Read-Only Memory Inspector Panel Added
 575 9:29p 🔵 JARVIS Telemetry Schema Already Contains Memory + Advanced Event Types Pre-Phase 3A
 576 " 🟣 RuntimeExecutionController: AbortSignal Lifecycle Management for Runtime Commands
 577 " 🟣 RuntimeExecutionController Test Suite: 5 Tests Covering All Cancellation Paths
@@ -76,5 +60,24 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 605 " 🟣 Runtime Command API Integration Tests: 11 Cases Covering Full Lifecycle
 606 " 🟣 JARVIS Build Confirms 29 API Routes Including All New Runtime Command Endpoints
 
-Access 2152k tokens of past work via get_observations([IDs]) or mem-search skill.
+### May 20, 2026
+
+609 4:50a ⚖️ Phase 3.75 — Streaming Runtime Modernisation Scoped
+610 " 🟣 Typed StreamEvent Union Replaces Plain String Stream Shape
+611 " 🟣 SSE Protocol Adopted for /api/chat Streaming Endpoint
+612 " 🟣 First-Token Telemetry Added to Streaming Path
+613 " 🟣 AbortSignal Threading Through Full Stream Path
+614 4:52a 🔵 Phase 3.75 Streaming Infrastructure Already Fully Implemented
+615 " 🟣 SSE Encoder Upgraded to Emit Named Event Fields
+616 " 🟣 OpenAI Provider Stream Tests Added
+617 " 🔵 StreamEvent Union Extends Beyond Phase 3.75 Spec — Tool-Call Streaming Already Live
+618 " 🔵 AbortController Double-Bridging Pattern in /api/chat Route
+619 " 🔵 time_to_first_token_ms Has a Dedicated Telemetry Column — No Notes Fallback Needed
+620 " 🔵 Git Status Shows Only AGENTS.md and Architecture Doc Modified
+621 4:53a ✅ Full Test Suite Passes — 605 Tests Across 78 Files
+622 4:54a 🔴 OpenAI Test Config Isolation Improved via vi.mock Instead of process.env Mutation
+623 " ✅ Production Build Clean — Known Turbopack Warning on workspace.ts
+624 " ✅ Phase 3.75 Final Deliverable State
+
+Access 2351k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

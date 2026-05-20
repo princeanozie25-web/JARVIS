@@ -23,11 +23,23 @@ export function parseSseEvents(buffer: string): ParsedSseEvents {
       .filter((line) => line.startsWith("data:"))
       .map((line) => line.slice(5).trimStart())
       .join("\n");
+    const eventType = block
+      .split("\n")
+      .find((line) => line.startsWith("event:"))
+      ?.slice(6)
+      .trim();
 
     if (!data) continue;
 
     try {
-      events.push(JSON.parse(data) as StreamEvent);
+      const parsed = JSON.parse(data) as { type?: unknown };
+      if (
+        eventType &&
+        (typeof parsed.type !== "string" || parsed.type !== eventType)
+      ) {
+        continue;
+      }
+      events.push(parsed as StreamEvent);
     } catch {
       continue;
     }
