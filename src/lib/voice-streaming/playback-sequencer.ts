@@ -20,6 +20,7 @@ export interface VoicePlaybackSequencerOptions {
 
 export type VoicePlaybackSequencingDropReason =
   | "session_not_found"
+  | "stale_turn"
   | "session_terminal"
   | "session_cancelled"
   | "invalid_synthesis_item_state"
@@ -73,6 +74,9 @@ export class VoicePlaybackSequencer {
     const session = this.opts.supervisor.getSession(item.sessionId);
     if (!session) {
       return this.drop(normalized, "session_not_found");
+    }
+    if (this.opts.supervisor.getState().activeSessionId !== item.sessionId) {
+      return this.drop(normalized, "stale_turn", session.state);
     }
     if (TERMINAL_STATES.has(session.state)) {
       return this.drop(normalized, "session_terminal", session.state);

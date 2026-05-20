@@ -147,7 +147,7 @@ describe("VoiceSynthesisOrchestrationQueue", () => {
     await synthesisQueue.cancelSession(sessionId);
     const afterCancel = await synthesisQueue.enqueue(secondIntent);
 
-    expect(afterCancel).toEqual({ ok: false, reason: "session_terminal" });
+    expect(afterCancel).toEqual({ ok: false, reason: "stale_turn" });
     expect(synthesisQueue.getPendingItems(sessionId)).toEqual([]);
     expect(synthesisQueue.getClearedItems(sessionId)).toEqual([
       expect.objectContaining({ id: "synthesis-1", state: "cancelled" }),

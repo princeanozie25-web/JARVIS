@@ -117,7 +117,7 @@ describe("VoiceResponseChunkScheduler", () => {
     await scheduler.cancelSession(sessionId);
     const afterCancel = await scheduler.ingest(chunkEvent(sessionId, 1));
 
-    expect(afterCancel).toEqual({ ok: false, reason: "session_terminal" });
+    expect(afterCancel).toEqual({ ok: false, reason: "stale_turn" });
     expect(scheduler.getPendingIntents(sessionId)).toEqual([]);
     expect(scheduler.getClearedIntents(sessionId)).toEqual([
       expect.objectContaining({ chunkIndex: 0, state: "cancelled" }),

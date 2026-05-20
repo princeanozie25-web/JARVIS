@@ -200,7 +200,7 @@ describe("VoicePlaybackSequencer", () => {
     await playbackSequencer.cancelSession(sessionId);
     const afterCancel = await playbackSequencer.sequence(secondItem);
 
-    expect(afterCancel).toEqual({ ok: false, reason: "session_terminal" });
+    expect(afterCancel).toEqual({ ok: false, reason: "stale_turn" });
     expect(playbackSequencer.getPendingIntents(sessionId)).toEqual([]);
     expect(playbackSequencer.getClearedIntents(sessionId)).toEqual([
       expect.objectContaining({ id: "playback-1", state: "cancelled" }),

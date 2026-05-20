@@ -19,6 +19,7 @@ export interface VoiceSynthesisOrchestrationQueueOptions {
 
 export type VoiceSynthesisQueueDropReason =
   | "session_not_found"
+  | "stale_turn"
   | "session_terminal"
   | "session_cancelled"
   | "invalid_intent_state"
@@ -53,6 +54,9 @@ export class VoiceSynthesisOrchestrationQueue {
     const session = this.opts.supervisor.getSession(intent.sessionId);
     if (!session) {
       return this.drop(intent, "session_not_found");
+    }
+    if (this.opts.supervisor.getState().activeSessionId !== intent.sessionId) {
+      return this.drop(intent, "stale_turn", session.state);
     }
     if (TERMINAL_STATES.has(session.state)) {
       return this.drop(intent, "session_terminal", session.state);

@@ -37,7 +37,8 @@ export type VoiceRealtimePipelineDropReason =
   | ChunkSchedulingDropReason
   | VoiceSynthesisQueueDropReason
   | VoicePlaybackSequencingDropReason
-  | "response_failed";
+  | "response_failed"
+  | "stale_turn";
 
 export type VoiceRealtimePipelineIngestResult =
   | { ok: true; playbackIntent?: VoicePlaybackSequenceIntent }
@@ -47,6 +48,13 @@ export type VoiceRealtimePipelineIngestResult =
       reason: VoiceRealtimePipelineDropReason;
     };
 
+const TERMINAL_STATES = new Set<VoiceTurnState>([
+  "interrupted",
+  "cancelled",
+  "completed",
+  "failed",
+]);
+
 export class VoiceRealtimeOrchestrationPipeline {
   constructor(
     private readonly opts: VoiceRealtimeOrchestrationPipelineOptions,
@@ -55,6 +63,11 @@ export class VoiceRealtimeOrchestrationPipeline {
   async ingest(
     event: AssistantResponseStreamMetadataEvent,
   ): Promise<VoiceRealtimePipelineIngestResult> {
+    const stale = this.getStaleEventReason(event.sessionId);
+    if (stale) {
+      return this.drop(event, "scheduler", stale, true);
+    }
+
     if (event.type === "response_started") {
       const result = await this.opts.scheduler.ingest(event);
       if (!result.ok) return this.drop(event, "scheduler", result.reason);
@@ -126,6 +139,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   }
 
   async cancelSession(sessionId: string): Promise<void> {
+    if (await this.emitTerminalNoop(sessionId, "cancel")) return;
     await this.opts.playbackSequencer.cancelSession(sessionId);
     await this.opts.synthesisQueue.cancelSession(sessionId);
     await this.opts.scheduler.cancelSession(sessionId);
@@ -138,6 +152,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   }
 
   async interrupt(sessionId: string): Promise<void> {
+    if (await this.emitTerminalNoop(sessionId, "interrupt")) return;
     await this.opts.playbackSequencer.interrupt(sessionId);
     await this.opts.synthesisQueue.interrupt(sessionId);
     await this.opts.scheduler.interrupt(sessionId);
@@ -150,6 +165,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   }
 
   async completeSession(sessionId: string): Promise<void> {
+    if (await this.emitTerminalNoop(sessionId, "complete")) return;
     await this.opts.supervisor.completeSession(sessionId);
     const session = this.opts.supervisor.getSession(sessionId);
     await this.emitSessionLifecycle(
@@ -161,6 +177,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   }
 
   async failSession(sessionId: string): Promise<void> {
+    if (await this.emitTerminalNoop(sessionId, "fail")) return;
     await this.opts.supervisor.failSession(sessionId, "pipeline_failed");
     const session = this.opts.supervisor.getSession(sessionId);
     await this.emitSessionLifecycle(
@@ -180,12 +197,50 @@ export class VoiceRealtimeOrchestrationPipeline {
     event: AssistantResponseStreamMetadataEvent,
     stage: VoiceRealtimePipelineDropStage,
     reason: VoiceRealtimePipelineDropReason,
+    stale = false,
   ): Promise<VoiceRealtimePipelineIngestResult> {
-    await this.emit(event, "voice_realtime_pipeline_dropped", false, reason, {
-      pipelineStage: stage,
-      chunkIndex: event.type === "chunk_available" ? event.index : undefined,
-    });
+    await this.emit(
+      event,
+      stale
+        ? "voice_realtime_pipeline_stale_event_rejected"
+        : "voice_realtime_pipeline_dropped",
+      false,
+      reason,
+      {
+        pipelineStage: stage,
+        chunkIndex: event.type === "chunk_available" ? event.index : undefined,
+      },
+    );
     return { ok: false, stage, reason };
+  }
+
+  private getStaleEventReason(
+    sessionId: string,
+  ): VoiceRealtimePipelineDropReason | null {
+    const session = this.opts.supervisor.getSession(sessionId);
+    if (!session) return "session_not_found";
+    if (this.opts.supervisor.getState().activeSessionId !== sessionId) {
+      return "stale_turn";
+    }
+    return null;
+  }
+
+  private async emitTerminalNoop(
+    sessionId: string,
+    terminalAction: NonNullable<
+      VoiceOrchestrationTelemetryEvent["terminalAction"]
+    >,
+  ): Promise<boolean> {
+    const session = this.opts.supervisor.getSession(sessionId);
+    if (!session || !TERMINAL_STATES.has(session.state)) return false;
+    await this.opts.emitTelemetry?.({
+      eventType: "voice_realtime_pipeline_terminal_noop",
+      sessionId,
+      state: session.state,
+      success: true,
+      terminalAction,
+    });
+    return true;
   }
 
   private async emit(

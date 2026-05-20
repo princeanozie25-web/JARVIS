@@ -160,7 +160,7 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(afterCancel).toEqual({
       ok: false,
       stage: "scheduler",
-      reason: "session_terminal",
+      reason: "stale_turn",
     });
     expect(scheduler.getPendingIntents(sessionId)).toEqual([]);
     expect(synthesisQueue.getPendingItems(sessionId)).toEqual([]);
@@ -282,7 +282,7 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(afterComplete).toEqual({
       ok: false,
       stage: "scheduler",
-      reason: "session_terminal",
+      reason: "stale_turn",
     });
     expect(completed.supervisor.getSession(completed.sessionId)).toMatchObject({
       state: "completed",
@@ -309,7 +309,7 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(afterFailure).toEqual({
       ok: false,
       stage: "scheduler",
-      reason: "session_terminal",
+      reason: "stale_turn",
     });
     expect(failed.supervisor.getSession(failed.sessionId)).toMatchObject({
       state: "failed",
@@ -318,6 +318,153 @@ describe("VoiceRealtimeOrchestrationPipeline", () => {
     expect(JSON.stringify(failed.telemetry)).not.toContain(
       "secret assistant body failure",
     );
+  });
+
+  it("rejects stale stream events while allowing only the active session to produce downstream intents", async () => {
+    const { pipeline, supervisor, telemetry, sessionId } =
+      await createHarness();
+    await pipeline.completeSession(sessionId);
+    const next = await supervisor.startSession();
+    if (!next.ok) throw new Error("Expected next session to start");
+
+    const stale = await pipeline.ingest({
+      ...chunkEvent(sessionId, 0),
+      assistantBody: "secret stale assistant body",
+    } as unknown as AssistantResponseStreamMetadataEvent);
+    const active = await pipeline.ingest(chunkEvent(next.session.id, 0));
+
+    expect(stale).toEqual({
+      ok: false,
+      stage: "scheduler",
+      reason: "stale_turn",
+    });
+    expect(active).toMatchObject({
+      ok: true,
+      playbackIntent: { sessionId: next.session.id, chunkIndex: 0 },
+    });
+    expect(pipeline.getPlaybackIntents(sessionId)).toEqual([]);
+    expect(pipeline.getPlaybackIntents(next.session.id)).toEqual([
+      expect.objectContaining({ sessionId: next.session.id, chunkIndex: 0 }),
+    ]);
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_realtime_pipeline_stale_event_rejected",
+        sessionId,
+        error: "stale_turn",
+      }),
+    );
+    expect(JSON.stringify(telemetry)).not.toContain(
+      "secret stale assistant body",
+    );
+  });
+
+  it("rejects stale synthesis and playback sequencing inputs", async () => {
+    const {
+      scheduler,
+      synthesisQueue,
+      playbackSequencer,
+      pipeline,
+      supervisor,
+      telemetry,
+      sessionId,
+    } = await createHarness();
+    const scheduled = await scheduler.ingest(chunkEvent(sessionId, 0));
+    if (!scheduled.ok || !scheduled.intent) {
+      throw new Error("Expected scheduled intent");
+    }
+    const queued = await synthesisQueue.enqueue(scheduled.intent);
+    if (!queued.ok) throw new Error("Expected synthesis item");
+
+    await pipeline.completeSession(sessionId);
+    const next = await supervisor.startSession();
+    if (!next.ok) throw new Error("Expected next session to start");
+
+    expect(await synthesisQueue.enqueue(scheduled.intent)).toEqual({
+      ok: false,
+      reason: "stale_turn",
+    });
+    expect(
+      await playbackSequencer.sequence({
+        type: "synthesis_ready",
+        item: queued.item,
+        synthesisResultId: "stale-result",
+      }),
+    ).toEqual({ ok: false, reason: "stale_turn" });
+    expect(await pipeline.ingest(chunkEvent(next.session.id, 0))).toMatchObject(
+      {
+        ok: true,
+        playbackIntent: { sessionId: next.session.id },
+      },
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_synthesis_queue_item_dropped",
+        error: "stale_turn",
+      }),
+    );
+    expect(telemetry).toContainEqual(
+      expect.objectContaining({
+        eventType: "voice_playback_sequence_item_dropped",
+        error: "stale_turn",
+      }),
+    );
+  });
+
+  it("treats repeated terminal calls as idempotent no-ops", async () => {
+    const cancelled = await createHarness();
+    await cancelled.pipeline.ingest(chunkEvent(cancelled.sessionId, 0));
+    await cancelled.pipeline.cancelSession(cancelled.sessionId);
+    await cancelled.pipeline.cancelSession(cancelled.sessionId);
+
+    const interrupted = await createHarness();
+    await interrupted.pipeline.ingest(chunkEvent(interrupted.sessionId, 0));
+    await interrupted.pipeline.interrupt(interrupted.sessionId);
+    await interrupted.pipeline.interrupt(interrupted.sessionId);
+
+    const completed = await createHarness();
+    await completed.pipeline.ingest(chunkEvent(completed.sessionId, 0));
+    await completed.pipeline.completeSession(completed.sessionId);
+    await completed.pipeline.completeSession(completed.sessionId);
+
+    const failed = await createHarness();
+    await failed.pipeline.ingest(chunkEvent(failed.sessionId, 0));
+    await failed.pipeline.failSession(failed.sessionId);
+    await failed.pipeline.failSession(failed.sessionId);
+
+    expect(cancelled.supervisor.getSession(cancelled.sessionId)).toMatchObject({
+      state: "cancelled",
+    });
+    expect(
+      interrupted.supervisor.getSession(interrupted.sessionId),
+    ).toMatchObject({
+      state: "interrupted",
+    });
+    expect(completed.supervisor.getSession(completed.sessionId)).toMatchObject({
+      state: "completed",
+    });
+    expect(failed.supervisor.getSession(failed.sessionId)).toMatchObject({
+      state: "failed",
+    });
+    expect(
+      cancelled.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "cancel" })]);
+    expect(
+      interrupted.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "interrupt" })]);
+    expect(
+      completed.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "complete" })]);
+    expect(
+      failed.telemetry.filter(
+        (event) => event.eventType === "voice_realtime_pipeline_terminal_noop",
+      ),
+    ).toEqual([expect.objectContaining({ terminalAction: "fail" })]);
   });
 
   it("keeps transcript, spoken, assistant body, and audio payloads out of telemetry", async () => {

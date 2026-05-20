@@ -18,6 +18,7 @@ export interface VoiceResponseChunkSchedulerOptions {
 
 export type ChunkSchedulingDropReason =
   | "session_not_found"
+  | "stale_turn"
   | "session_terminal"
   | "session_cancelled"
   | "invalid_chunk_index"
@@ -52,6 +53,9 @@ export class VoiceResponseChunkScheduler {
     const session = this.opts.supervisor.getSession(event.sessionId);
     if (!session) {
       return this.drop(event, "session_not_found");
+    }
+    if (this.opts.supervisor.getState().activeSessionId !== event.sessionId) {
+      return this.drop(event, "stale_turn", session.state);
     }
     if (TERMINAL_STATES.has(session.state)) {
       return this.drop(event, "session_terminal", session.state);

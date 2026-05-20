@@ -209,7 +209,9 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_realtime_pipeline_cancelled"
   | "voice_realtime_pipeline_interrupted"
   | "voice_realtime_pipeline_failed"
-  | "voice_realtime_pipeline_dropped";
+  | "voice_realtime_pipeline_dropped"
+  | "voice_realtime_pipeline_stale_event_rejected"
+  | "voice_realtime_pipeline_terminal_noop";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
@@ -217,6 +219,7 @@ export interface VoiceOrchestrationTelemetryEvent {
   state: VoiceTurnState;
   success: boolean;
   pipelineStage?: "scheduler" | "synthesis_queue" | "playback_sequence";
+  terminalAction?: "cancel" | "interrupt" | "complete" | "fail";
   streamId?: string;
   responseId?: string;
   chunkId?: string;
