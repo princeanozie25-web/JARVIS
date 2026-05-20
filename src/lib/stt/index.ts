@@ -13,6 +13,11 @@ export {
   type TranscriptionJobManagerOptions,
 } from "./jobs";
 export {
+  InMemoryVoiceTranscriptDraftManager,
+  type CreateVoiceTranscriptDraftInput,
+  type VoiceTranscriptDraftManagerOptions,
+} from "./transcript-drafts";
+export {
   localWhisperPlaceholderConfig,
   localWhisperPlaceholderProvider,
   localWhisperProviderWithStatus,
@@ -48,4 +53,9 @@ export type {
   TranscriptionJobStatus,
   TranscriptionJobTelemetryEvent,
   TranscriptionJobTelemetryEventType,
+  VoiceTranscriptChatPayload,
+  VoiceTranscriptDraft,
+  VoiceTranscriptDraftStatus,
+  VoiceTranscriptDraftTelemetryEvent,
+  VoiceTranscriptDraftTelemetryEventType,
 } from "./types";

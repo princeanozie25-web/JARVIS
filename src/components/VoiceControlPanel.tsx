@@ -449,6 +449,21 @@ export function VoiceControlPanel({
           <p className="mt-1 text-xs text-gray-600">
             {activeTranscriptionJobLabel}
           </p>
+          <div className="mt-3 rounded-md border border-gray-900 bg-gray-950 p-3">
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              Transcript draft
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              Voice transcript must be reviewed before sending.
+            </p>
+            <button
+              type="button"
+              disabled
+              className="mt-3 rounded-md border border-gray-800 px-3 py-2 text-xs text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Submit reviewed transcript
+            </button>
+          </div>
           <p className="mt-1 text-xs text-gray-600">
             local only, no network, no audio storage
           </p>

@@ -20,6 +20,8 @@ export interface TranscriptionResult {
   status: Exclude<TranscriptionStatus, "idle" | "preparing" | "transcribing">;
   providerId: string;
   text: string;
+  confidence?: number;
+  language?: string;
   reason?:
     | "not_configured"
     | "not_installed"
@@ -97,6 +99,42 @@ export interface TranscriptionJobTelemetryEvent {
   success: boolean;
   durationMs?: number;
   error?: string;
+}
+
+export type VoiceTranscriptDraftStatus = "draft" | "discarded" | "submitted";
+
+export interface VoiceTranscriptDraft {
+  id: string;
+  text: string;
+  sourceJobId: string;
+  createdAt: number;
+  confidence?: number;
+  language?: string;
+  status: VoiceTranscriptDraftStatus;
+}
+
+export interface VoiceTranscriptChatPayload {
+  target: "chat_input";
+  source: "voice";
+  text: string;
+  sourceDraftId: string;
+  sourceJobId: string;
+  canApproveRuntimeActions: false;
+}
+
+export type VoiceTranscriptDraftTelemetryEventType =
+  | "transcript_draft_created"
+  | "transcript_draft_discarded"
+  | "transcript_draft_submitted"
+  | "transcript_draft_rejected";
+
+export interface VoiceTranscriptDraftTelemetryEvent {
+  eventType: VoiceTranscriptDraftTelemetryEventType;
+  draftId?: string;
+  sourceJobId?: string;
+  status?: VoiceTranscriptDraftStatus;
+  success: boolean;
+  reason?: "not_completed" | "empty_transcript" | "no_active_draft";
 }
 
 export interface TranscriptionState {

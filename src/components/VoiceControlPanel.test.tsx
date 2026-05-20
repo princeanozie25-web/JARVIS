@@ -37,6 +37,9 @@ describe("VoiceControlPanel", () => {
     expect(html).toContain("not installed");
     expect(html).toContain("Runtime state: disabled");
     expect(html).toContain("No active transcription job");
+    expect(html).toContain("Transcript draft");
+    expect(html).toContain("Voice transcript must be reviewed before sending.");
+    expect(html).toContain("Submit reviewed transcript");
     expect(html).toContain("local only, no network, no audio storage");
     expect(html).toContain("Disabled until text-to-speech is implemented.");
     expect(html).toContain("Desk Mic");
