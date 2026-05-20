@@ -106,7 +106,14 @@ export function voiceDraftPayloadToChatInputState(
   payload: VoiceTranscriptChatPayload,
 ): VoiceDraftInputState | null {
   const text = payload.text.trim();
-  if (payload.target !== "chat_input" || !text) return null;
+  if (
+    payload.target !== "chat_input" ||
+    payload.source !== "voice" ||
+    payload.canApproveRuntimeActions !== false ||
+    !text
+  ) {
+    return null;
+  }
   return {
     input: text,
     marker: {

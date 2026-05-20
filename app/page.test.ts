@@ -64,6 +64,21 @@ describe("voice draft chat input bridge", () => {
     expect(state?.marker.canApproveRuntimeActions).toBe(false);
   });
 
+  it("rejects malformed voice payloads before they reach chat input", () => {
+    expect(
+      voiceDraftPayloadToChatInputState({
+        ...voicePayload,
+        source: "typed",
+      } as unknown as VoiceTranscriptChatPayload),
+    ).toBeNull();
+    expect(
+      voiceDraftPayloadToChatInputState({
+        ...voicePayload,
+        canApproveRuntimeActions: true,
+      } as unknown as VoiceTranscriptChatPayload),
+    ).toBeNull();
+  });
+
   it("leaves the typed send guard unchanged", () => {
     expect(canSendTypedChatInput("typed message", false)).toBe(true);
     expect(canSendTypedChatInput("   ", false)).toBe(false);
