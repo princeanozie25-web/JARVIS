@@ -39,6 +39,10 @@ export {
   VoiceRuntimeBoundaryCoordinator,
   type VoiceRuntimeBoundaryCoordinatorOptions,
 } from "./runtime-boundary-coordinator";
+export {
+  VoiceRestrictedContentBoundary,
+  type VoiceRestrictedContentBoundaryOptions,
+} from "./restricted-content-boundary";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -77,6 +81,11 @@ export type {
   VoiceRuntimeBoundaryRejectionReason,
   VoiceTurnPreemptionRecord,
   VoiceReadinessLatencyStage,
+  VoiceRestrictedContentBoundaryResult,
+  VoiceRestrictedContentClassification,
+  VoiceRestrictedContentDecision,
+  VoiceRestrictedContentDecisionRecord,
+  VoiceRestrictedContentDescriptor,
   VoicePlaybackSequenceIntent,
   VoicePlaybackSequenceIntentState,
   VoiceSynthesisQueueItem,

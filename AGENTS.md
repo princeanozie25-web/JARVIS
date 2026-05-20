@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-20 11:54pm GMT+1
+# [jarvis] recent context, 2026-05-21 12:03am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (25,298t read) | 1,282,178t work | 98% savings
+Stats: 50 obs (26,334t read) | 1,428,497t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,19 +26,11 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-728 8:58p 🔵 JARVIS TTS Queue Scaffold Exists with Safety Policy Integration
-731 9:04p ⚖️ Phase 3.75 — Streaming Runtime Modernisation Plan
-732 9:05p 🔵 TTS Queue Scaffold Already Exists and Is Well-Structured Pre-Phase-3.75
-733 " 🔵 time_to_first_token_ms Already Present in TelemetryEvent Schema
-734 " 🟣 TTS Queue Test Extended With Error Sanitization Coverage
-735 " 🔵 Known Build Warning: NFT Tracing Spans Whole Project via runtime-commands/workspace.ts
-736 9:07p ⚖️ JARVIS Phase 3.75 — Streaming Runtime Modernisation Scoped
-737 " 🔵 JARVIS TTS Layer — Existing Infrastructure Mapped
+737 9:07p 🔵 JARVIS TTS Layer — Existing Infrastructure Mapped
 738 " 🟣 TTS Type System Extended with SpeechAudioResult and AbortSignal Support
 739 " 🟣 LocalTtsSynthesisHandle Interface Added to local-runtime.ts
 740 " 🟣 New local-synthesis-provider.ts — Full Local TTS Synthesis Execution Layer
 741 " 🟣 InMemorySpeechQueueManager Gets markReady() Transition
-742 " ✅ Telemetry Type Union Extended with Three Local TTS Synthesis Events
 743 9:09p 🟣 local-synthesis-provider.test.ts — 8-Case Test Suite Added
 744 " 🔴 Null-Handle Test Broken by ?? Operator — Fixed to Strict undefined Check
 745 9:10p ✅ TypeScript Full Project Type-Check Passes After Phase 3.75 TTS Changes
@@ -76,6 +68,17 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 777 " ✅ Phase 4E Frozen and Phase 4F Handoff Documented in voice-streaming README
 778 " 🔵 JARVIS Test Suite Grew from 737 to 795 Tests After Phase 4E Barge-In Coordinator Additions
 779 11:54p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
+780 11:55p 🟣 JARVIS Phase 4F: VoiceRuntimeBoundaryCoordinator Implemented
+781 " 🔴 Wiring-Safety Test Regex Collisions Fixed After Phase 4F Types Addition
+782 " 🔵 Phase 4F Final Validation: 801 Tests Pass, TypeScript Clean, Lint Clean, Build Succeeds
+783 11:56p 🟣 Phase 4F Voice Approval Refusal Model Extended with Categorized Attempt Types
 
-Access 1282k tokens of past work via get_observations([IDs]) or mem-search skill.
+### May 21, 2026
+
+784 12:01a 🟣 JARVIS Phase 4D: Stream Metadata Ingestion & Chunk Scheduling Scaffold
+785 12:02a 🟣 Voice Approval Refusal Records & Categorized Rejection in Runtime Boundary Coordinator
+786 " 🟣 Voice Approval Refusal Test Suite Expanded with Parameterized Category Coverage
+787 " 🔵 JARVIS Phase 4D Build Verification: 808 Tests Pass, Clean TypeScript & Lint, Pre-existing Turbopack Warning
+
+Access 1428k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

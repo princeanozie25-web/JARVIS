@@ -423,6 +423,51 @@ export type VoiceRuntimeBoundaryCoordinatorResult =
       reason: VoiceRuntimeBoundaryRejectionReason;
     };
 
+export type VoiceRestrictedContentClassification =
+  | "assistant_prose_metadata"
+  | "tool_output"
+  | "file_content"
+  | "code_block"
+  | "personal_context"
+  | "audit_log"
+  | "runtime_output"
+  | "transcript"
+  | "unknown_restricted";
+
+export type VoiceRestrictedContentDecision =
+  | "allowed_for_speech_metadata"
+  | "blocked_from_speech"
+  | "no_op";
+
+export interface VoiceRestrictedContentDescriptor {
+  id: string;
+  sessionId: string;
+  classification: VoiceRestrictedContentClassification;
+  createdAt?: number;
+  turnId?: string;
+  contentRefId?: string;
+  sourceId?: string;
+  terminal?: boolean;
+  voiceTurnState?: VoiceTurnState;
+}
+
+export interface VoiceRestrictedContentDecisionRecord {
+  id: string;
+  descriptorId: string;
+  sessionId: string;
+  classification: VoiceRestrictedContentClassification;
+  decision: VoiceRestrictedContentDecision;
+  createdAt: number;
+  turnId?: string;
+  contentRefId?: string;
+  sourceId?: string;
+}
+
+export interface VoiceRestrictedContentBoundaryResult {
+  descriptor: VoiceRestrictedContentDescriptor;
+  record: VoiceRestrictedContentDecisionRecord;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -498,7 +543,11 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_runtime_boundary_noop"
   | "voice_runtime_boundary_voice_approval_attempt_received"
   | "voice_runtime_boundary_on_screen_confirmation_required"
-  | "voice_runtime_boundary_voice_approval_noop";
+  | "voice_runtime_boundary_voice_approval_noop"
+  | "voice_restricted_content_descriptor_received"
+  | "voice_restricted_content_allowed"
+  | "voice_restricted_content_blocked"
+  | "voice_restricted_content_noop";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -567,6 +616,12 @@ export interface VoiceOrchestrationTelemetryEvent {
   voiceApprovalRefusalAction?: VoiceApprovalRefusalAction;
   runtimeCallId?: string;
   toolName?: string;
+  restrictedContentDescriptorId?: string;
+  restrictedContentDecisionRecordId?: string;
+  restrictedContentClassification?: VoiceRestrictedContentClassification;
+  restrictedContentDecision?: VoiceRestrictedContentDecision;
+  contentRefId?: string;
+  restrictedContentSourceId?: string;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

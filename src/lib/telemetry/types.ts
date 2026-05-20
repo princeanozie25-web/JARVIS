@@ -194,7 +194,11 @@ export type TelemetryEventType =
   | "voice_runtime_boundary_noop"
   | "voice_runtime_boundary_voice_approval_attempt_received"
   | "voice_runtime_boundary_on_screen_confirmation_required"
-  | "voice_runtime_boundary_voice_approval_noop";
+  | "voice_runtime_boundary_voice_approval_noop"
+  | "voice_restricted_content_descriptor_received"
+  | "voice_restricted_content_allowed"
+  | "voice_restricted_content_blocked"
+  | "voice_restricted_content_noop";
 
 export interface TelemetryEvent {
   timestamp: number;

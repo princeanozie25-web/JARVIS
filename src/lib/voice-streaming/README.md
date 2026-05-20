@@ -128,10 +128,12 @@ Current Phase 4F status:
 - rejects voice approval attempts as refusal records and requires on-screen confirmation
 - rejects spoken yes/confirm/approve, inferred consent, ambiguous voice responses, and replayed voice responses
 - treats runtime cancellation requests as advisory-only and does not stop tools
+- accepts metadata-only restricted-content descriptors and classifies whether they may ever be treated as speech metadata
+- allows only `assistant_prose_metadata` descriptors and blocks tool output, file content, code blocks, personal context, audit logs, runtime output, transcripts, and unknown restricted classes
 - emits metadata-only boundary telemetry
 - does not import or call runtime command execution modules
 - does not import or call approval execution modules
-- does not synthesize, speak, persist, or emit tool output, file content, code blocks, personal context content, audit log content, transcripts, assistant body text, or audio data
+- does not synthesize, speak, persist, or emit tool output, file content, code blocks, personal context content, audit log content, runtime output, transcripts, assistant body text, or audio data
 
 Phase 4F runtime boundary metadata may contain only:
 
@@ -148,6 +150,21 @@ Phase 4F runtime boundary metadata may contain only:
 - metadata-only rejection reason
 - voice approval attempt category
 - voice approval refusal ID/action
+
+Phase 4F restricted-content boundary metadata may contain only:
+
+- descriptor ID
+- decision record ID
+- content classification
+- metadata-only decision
+- session ID
+- turn ID
+- content reference ID
+- source ID
+- timestamps
+- terminal/no-op state
+
+Restricted-content descriptors and decision records must not contain actual content bodies, tool output, file content, code blocks, personal context content, audit log content, runtime output, transcripts, spoken text, assistant body text, audio URLs, audio blobs, PCM data, raw audio, chat payloads, runtime command payloads, or approval execution payloads.
 
 Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, or approval UI. Those adapters must preserve the Phase 4D/4E/4F boundaries:
 
