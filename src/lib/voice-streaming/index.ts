@@ -4,7 +4,16 @@ export {
   type StartVoiceSessionResult,
   type VoiceOrchestrationSupervisorOptions,
 } from "./supervisor";
+export {
+  VoiceResponseChunkScheduler,
+  type AssistantResponseMetadataIngestResult,
+  type ChunkSchedulingDropReason,
+  type VoiceResponseChunkSchedulerOptions,
+} from "./scheduler";
 export type {
+  AssistantResponseStreamMetadataEvent,
+  ChunkSchedulingIntent,
+  ChunkSchedulingIntentState,
   OrchestrationState,
   StreamingSpeechChunk,
   StreamingSpeechChunkState,

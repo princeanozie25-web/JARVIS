@@ -131,7 +131,15 @@ export type TelemetryEventType =
   | "voice_session_cancelled"
   | "voice_session_completed"
   | "voice_session_failed"
-  | "voice_orchestration_interrupted";
+  | "voice_orchestration_interrupted"
+  | "voice_response_metadata_stream_started"
+  | "voice_response_metadata_stream_completed"
+  | "voice_response_metadata_stream_failed"
+  | "voice_response_chunk_scheduled"
+  | "voice_response_chunk_schedule_dropped"
+  | "voice_response_chunk_schedule_overflow"
+  | "voice_response_chunk_scheduling_cancelled"
+  | "voice_response_chunk_scheduling_interrupted";
 
 export interface TelemetryEvent {
   timestamp: number;

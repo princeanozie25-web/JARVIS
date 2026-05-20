@@ -61,6 +61,58 @@ export interface StreamingSpeechSession {
   };
 }
 
+export type AssistantResponseStreamMetadataEvent =
+  | {
+      type: "response_started";
+      sessionId: string;
+      streamId: string;
+      responseId?: string;
+      createdAt?: number;
+    }
+  | {
+      type: "chunk_available";
+      sessionId: string;
+      streamId: string;
+      responseId?: string;
+      chunkId: string;
+      index: number;
+      createdAt?: number;
+    }
+  | {
+      type: "response_completed";
+      sessionId: string;
+      streamId: string;
+      responseId?: string;
+      chunkCount?: number;
+      createdAt?: number;
+    }
+  | {
+      type: "response_failed";
+      sessionId: string;
+      streamId: string;
+      responseId?: string;
+      error?: string;
+      createdAt?: number;
+    };
+
+export type ChunkSchedulingIntentState =
+  | "scheduled"
+  | "cancelled"
+  | "interrupted";
+
+export interface ChunkSchedulingIntent {
+  id: string;
+  sessionId: string;
+  streamId: string;
+  responseId?: string;
+  assistantResponseChunkId: string;
+  orchestrationChunkId: string;
+  chunkIndex: number;
+  state: ChunkSchedulingIntentState;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -73,13 +125,29 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_session_cancelled"
   | "voice_session_completed"
   | "voice_session_failed"
-  | "voice_orchestration_interrupted";
+  | "voice_orchestration_interrupted"
+  | "voice_response_metadata_stream_started"
+  | "voice_response_metadata_stream_completed"
+  | "voice_response_metadata_stream_failed"
+  | "voice_response_chunk_scheduled"
+  | "voice_response_chunk_schedule_dropped"
+  | "voice_response_chunk_schedule_overflow"
+  | "voice_response_chunk_scheduling_cancelled"
+  | "voice_response_chunk_scheduling_interrupted";
 
 export interface VoiceOrchestrationTelemetryEvent {
   eventType: VoiceOrchestrationTelemetryEventType;
   sessionId: string;
   state: VoiceTurnState;
   success: boolean;
+  streamId?: string;
+  responseId?: string;
+  chunkId?: string;
+  intentId?: string;
+  chunkIndex?: number;
+  pendingIntentCount?: number;
+  clearedIntentCount?: number;
+  maxPendingIntents?: number;
   durationMs?: number;
   error?: string;
 }
