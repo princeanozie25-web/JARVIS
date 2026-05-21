@@ -183,6 +183,45 @@ async function runApprovedProjectSetStatus(
   });
 }
 
+async function runApprovedProjectAddSource(
+  executionId: string,
+  input: {
+    projectId: string;
+    kind: "file" | "memory_slug" | "obsidian_note" | "thread";
+    ref: string;
+  },
+) {
+  await runtime.runTool({
+    toolId: "project.add_source",
+    input,
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  const pending = ensurePendingToolApproval({
+    db,
+    executionId,
+    sessionId: "session-1",
+    toolId: "project.add_source",
+    toolName: "Add Project Source",
+    scopeHash: tools.get("project.add_source").scopeOf(input),
+    requiredSafetyTag: "CONFIRM_ALWAYS",
+    safetyTag: "ALLOW",
+    toolInput: input,
+    now,
+    ttlMs: 500,
+  });
+  now += 100;
+  return resumeApproval({
+    db,
+    runtime,
+    executionId,
+    decision: "APPROVED_ONCE",
+    approvalToken: pending.approvalToken,
+    now,
+  });
+}
+
 function insertExtractedProjectTask(input: {
   id: string;
   projectId: string;
@@ -210,6 +249,173 @@ function insertExtractedProjectTask(input: {
     input.createdAt ?? 1_000,
     input.updatedAt ?? 1_000,
   );
+}
+
+function seedIsolationProjects() {
+  insertRegisteredProject(db, {
+    id: "proj_alpha",
+    slug: "alpha",
+    displayName: "Alpha Project",
+    rootKind: "virtual",
+    rootRef: "virtual:alpha",
+    createdAt: 1_000,
+  });
+  insertRegisteredProject(db, {
+    id: "proj_beta",
+    slug: "beta-secret-slug",
+    displayName: "Beta Secret Project",
+    rootKind: "virtual",
+    rootRef: "virtual:beta-secret",
+    createdAt: 1_000,
+  });
+  db.prepare(
+    `INSERT INTO project_thread (
+       id, project_id, title, status, first_seen_at, last_active_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pth_alpha",
+    "proj_alpha",
+    "Alpha Thread",
+    "open",
+    1_000,
+    1_100,
+    "origin:alpha-thread",
+  );
+  db.prepare(
+    `INSERT INTO project_thread (
+       id, project_id, title, status, first_seen_at, last_active_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pth_beta",
+    "proj_beta",
+    "BETA_THREAD_SECRET",
+    "open",
+    1_000,
+    1_100,
+    "origin:BETA_THREAD_SECRET",
+  );
+  insertExtractedProjectTask({
+    id: "ptask_alpha_candidate",
+    projectId: "proj_alpha",
+    title: "Alpha candidate",
+  });
+  insertExtractedProjectTask({
+    id: "ptask_alpha_commitment",
+    projectId: "proj_alpha",
+    title: "Alpha commitment",
+    status: "open",
+    promoted: 1,
+  });
+  insertExtractedProjectTask({
+    id: "ptask_beta_candidate_secret",
+    projectId: "proj_beta",
+    title: "BETA_TASK_SECRET",
+  });
+  insertExtractedProjectTask({
+    id: "ptask_beta_commitment_secret",
+    projectId: "proj_beta",
+    title: "BETA_COMMITMENT_SECRET",
+    status: "open",
+    promoted: 1,
+  });
+  db.prepare(
+    `INSERT INTO project_blocker (
+       id, project_id, task_id, description, status, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pblk_alpha",
+    "proj_alpha",
+    null,
+    "Alpha blocker",
+    "open",
+    "origin:alpha-blocker",
+  );
+  db.prepare(
+    `INSERT INTO project_blocker (
+       id, project_id, task_id, description, status, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pblk_beta_secret",
+    "proj_beta",
+    null,
+    "BETA_BLOCKER_SECRET",
+    "open",
+    "origin:BETA_BLOCKER_SECRET",
+  );
+  db.prepare(
+    `INSERT INTO project_decision (
+       id, project_id, summary, decided_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?)`,
+  ).run(
+    "pdec_alpha",
+    "proj_alpha",
+    "Alpha decision",
+    1_200,
+    "origin:alpha-decision",
+  );
+  db.prepare(
+    `INSERT INTO project_decision (
+       id, project_id, summary, decided_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?)`,
+  ).run(
+    "pdec_beta_secret",
+    "proj_beta",
+    "BETA_DECISION_SECRET",
+    1_200,
+    "origin:BETA_DECISION_SECRET",
+  );
+  insertProjectSource(db, {
+    id: "psrc_alpha",
+    projectId: "proj_alpha",
+    kind: "file",
+    ref: "alpha-source.md",
+  });
+  insertProjectSource(db, {
+    id: "psrc_beta_secret",
+    projectId: "proj_beta",
+    kind: "file",
+    ref: "beta-secret-source.md",
+  });
+  insertProjectIndexSnapshot(db, {
+    id: "pidx_alpha",
+    projectId: "proj_alpha",
+    startedAt: 2_000,
+    finishedAt: 2_100,
+    sourcesSeen: 1,
+    artifactsExtracted: 1,
+    triggeredBy: "manual",
+    status: "completed",
+  });
+  insertProjectIndexSnapshot(db, {
+    id: "pidx_beta_secret",
+    projectId: "proj_beta",
+    startedAt: 3_000,
+    finishedAt: 3_100,
+    sourcesSeen: 1,
+    artifactsExtracted: 1,
+    triggeredBy: "manual",
+    status: "completed",
+  });
+}
+
+function expectNoBetaLeak(value: unknown) {
+  const serialized = JSON.stringify(value);
+  for (const secret of [
+    "beta-secret-slug",
+    "Beta Secret Project",
+    "virtual:beta-secret",
+    "BETA_THREAD_SECRET",
+    "BETA_TASK_SECRET",
+    "BETA_COMMITMENT_SECRET",
+    "BETA_BLOCKER_SECRET",
+    "BETA_DECISION_SECRET",
+    "beta-secret-source.md",
+    "origin:BETA",
+    "pidx_beta_secret",
+    "psrc_beta_secret",
+  ]) {
+    expect(serialized).not.toContain(secret);
+  }
 }
 
 describe("Phase 5 project tools", () => {
@@ -932,6 +1138,192 @@ describe("Phase 5 project tools", () => {
     ).toEqual(beforeMemoryCount);
   });
 
+  it("project read models and summarize stay isolated to the requested project", async () => {
+    seedIsolationProjects();
+
+    const getResult = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_alpha" },
+      sessionId: "session-1",
+      executionId: "isolation-get",
+      decision: allowDecision,
+    });
+    const summarizeResult = await runtime.runTool({
+      toolId: "project.summarize",
+      input: { id: "proj_alpha" },
+      sessionId: "session-1",
+      executionId: "isolation-summarize",
+      decision: allowDecision,
+    });
+
+    expect(getResult).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        project: expect.objectContaining({
+          id: "proj_alpha",
+          slug: "alpha",
+        }),
+        artifactSummary: {
+          counts: {
+            extractedTasks: 1,
+            promotedTasks: 1,
+            openBlockers: 1,
+            decisions: 1,
+            threads: 1,
+          },
+          promotedTasks: {
+            items: [
+              expect.objectContaining({
+                id: "ptask_alpha_commitment",
+                title: "Alpha commitment",
+              }),
+            ],
+          },
+          openBlockers: {
+            items: [
+              expect.objectContaining({
+                id: "pblk_alpha",
+                description: "Alpha blocker",
+              }),
+            ],
+          },
+        },
+      },
+    });
+    expect(summarizeResult).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        summary: {
+          project: expect.objectContaining({
+            id: "proj_alpha",
+            slug: "alpha",
+          }),
+          counts: {
+            extractedTasks: 1,
+            promotedTasks: 1,
+            openBlockers: 1,
+            decisions: 1,
+            threads: 1,
+          },
+          commitments: {
+            items: [
+              expect.objectContaining({
+                id: "ptask_alpha_commitment",
+                title: "Alpha commitment",
+              }),
+            ],
+          },
+          openBlockers: {
+            items: [
+              expect.objectContaining({
+                id: "pblk_alpha",
+                description: "Alpha blocker",
+              }),
+            ],
+          },
+        },
+      },
+    });
+    expectNoBetaLeak(getResult.data);
+    expectNoBetaLeak(summarizeResult.data);
+  });
+
+  it("project mutations and indexing cannot cross project boundaries", async () => {
+    writeFileSync(join(workspaceRoot, "alpha-source.md"), "TODO: Alpha index");
+    writeFileSync(
+      join(workspaceRoot, "beta-secret-source.md"),
+      "TODO: BETA_INDEX_SECRET",
+    );
+    seedIsolationProjects();
+
+    await expect(
+      runApprovedProjectPromoteTask("isolation-promote-mismatch", {
+        projectId: "proj_alpha",
+        taskId: "ptask_beta_candidate_secret",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project task is not registered.",
+      },
+    });
+    expect(listProjectTasks(db, "proj_beta")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ptask_beta_candidate_secret",
+          promoted: 0,
+        }),
+      ]),
+    );
+
+    await runApprovedProjectAddSource("isolation-add-source-alpha", {
+      projectId: "proj_alpha",
+      kind: "thread",
+      ref: "thread:alpha-only",
+    });
+    await expect(
+      runApprovedProjectAddSource("isolation-add-source-missing", {
+        projectId: "proj_missing",
+        kind: "thread",
+        ref: "thread:missing",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project is not registered.",
+      },
+    });
+    expect(
+      listProjectSources(db, "proj_alpha").map((source) => source.ref),
+    ).toEqual(expect.arrayContaining(["alpha-source.md", "thread:alpha-only"]));
+    expect(
+      listProjectSources(db, "proj_beta").map((source) => source.ref),
+    ).toEqual(["beta-secret-source.md"]);
+
+    await runApprovedProjectIndex("isolation-index-alpha", {
+      projectId: "proj_alpha",
+      triggeredBy: "manual",
+    });
+    expect(listProjectTasks(db, "proj_alpha")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Alpha index",
+          origin_ref: "alpha-source.md#L1:C1:task:TODO:",
+        }),
+      ]),
+    );
+    expect(listProjectTasks(db, "proj_beta")).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: "BETA_INDEX_SECRET" }),
+      ]),
+    );
+    expect(listProjectSources(db, "proj_beta")).toEqual([
+      expect.objectContaining({
+        id: "psrc_beta_secret",
+        ref: "beta-secret-source.md",
+        last_indexed_at: null,
+      }),
+    ]);
+
+    await runApprovedProjectSetStatus("isolation-status-alpha", {
+      projectId: "proj_alpha",
+      status: "paused",
+    });
+    expect(getRegisteredProject(db, { id: "proj_alpha" })).toMatchObject({
+      status: "paused",
+    });
+    expect(getRegisteredProject(db, { id: "proj_beta" })).toMatchObject({
+      status: "active",
+    });
+    expectNoBetaLeak(listTelemetryEvents(db, 100));
+    expect(tools.has("project.cross_project_synthesis")).toBe(false);
+    expect(tools.has("project.synthesize")).toBe(false);
+  });
+
   it("does not register disabled Phase 5 tools or mutation surfaces", () => {
     const registeredToolIds = tools.list().map((tool) => tool.id);
 
@@ -950,6 +1342,8 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).not.toContain("project.decision");
     expect(registeredToolIds).not.toContain("project.extract");
     expect(registeredToolIds).not.toContain("project.extract_tasks");
+    expect(registeredToolIds).not.toContain("project.synthesize");
+    expect(registeredToolIds).not.toContain("project.cross_project_synthesis");
     expect(registeredToolIds).not.toContain("background.indexing");
     expect(registeredToolIds).not.toContain("task.auto_promote");
     expect(registeredToolIds).not.toContain("voice.project_mutation");

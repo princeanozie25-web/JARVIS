@@ -160,6 +160,106 @@ function seedProject() {
   });
 }
 
+function seedOtherProject() {
+  insertRegisteredProject(db, {
+    id: "proj_other_secret",
+    slug: "other-secret-slug",
+    displayName: "Other Secret Project",
+    rootKind: "virtual",
+    rootRef: "virtual:other-secret",
+    createdAt: 1_000,
+  });
+  insertProjectSource(db, {
+    id: "psrc_other_secret",
+    projectId: "proj_other_secret",
+    kind: "file",
+    ref: "other-secret-source.md",
+  });
+  db.prepare(
+    `INSERT INTO project_task (
+       id, project_id, thread_id, title, status, confidence, promoted,
+       origin_ref, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "ptask_other_secret",
+    "proj_other_secret",
+    null,
+    "OTHER_TASK_SECRET",
+    "open",
+    0.9,
+    1,
+    "origin:OTHER_TASK_SECRET",
+    1_000,
+    2_000,
+  );
+  db.prepare(
+    `INSERT INTO project_blocker (
+       id, project_id, task_id, description, status, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pblk_other_secret",
+    "proj_other_secret",
+    null,
+    "OTHER_BLOCKER_SECRET",
+    "open",
+    "origin:OTHER_BLOCKER_SECRET",
+  );
+  db.prepare(
+    `INSERT INTO project_thread (
+       id, project_id, title, status, first_seen_at, last_active_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "pth_other_secret",
+    "proj_other_secret",
+    "OTHER_THREAD_SECRET",
+    "open",
+    1_000,
+    1_100,
+    "origin:OTHER_THREAD_SECRET",
+  );
+  db.prepare(
+    `INSERT INTO project_decision (
+       id, project_id, summary, decided_at, origin_ref
+     ) VALUES (?, ?, ?, ?, ?)`,
+  ).run(
+    "pdec_other_secret",
+    "proj_other_secret",
+    "OTHER_DECISION_SECRET",
+    1_500,
+    "origin:OTHER_DECISION_SECRET",
+  );
+  insertProjectIndexSnapshot(db, {
+    id: "pidx_other_secret",
+    projectId: "proj_other_secret",
+    startedAt: 8_000,
+    finishedAt: 8_100,
+    sourcesSeen: 1,
+    artifactsExtracted: 4,
+    triggeredBy: "manual",
+    status: "completed",
+  });
+}
+
+function expectNoOtherProjectLeak(value: unknown) {
+  const serialized = JSON.stringify(value);
+  for (const secret of [
+    "proj_other_secret",
+    "other-secret-slug",
+    "Other Secret Project",
+    "virtual:other-secret",
+    "other-secret-source.md",
+    "OTHER_TASK_SECRET",
+    "OTHER_BLOCKER_SECRET",
+    "OTHER_THREAD_SECRET",
+    "OTHER_DECISION_SECRET",
+    "origin:OTHER",
+    "pidx_other_secret",
+    "psrc_other_secret",
+  ]) {
+    expect(serialized).not.toContain(secret);
+  }
+}
+
 describe("project context assembly", () => {
   it("requires an explicit project id and fails safely for missing projects", () => {
     expect(assembleProjectContext(db, {})).toEqual({
@@ -308,6 +408,37 @@ describe("project context assembly", () => {
     );
     expect(result.context.budget.truncated).toBe(true);
     expect(result.context.contextText.endsWith("...")).toBe(true);
+  });
+
+  it("does not leak another project's identifiers or artifacts", () => {
+    seedProject();
+    seedOtherProject();
+
+    const result = assembleProjectContext(db, {
+      projectId: "proj_context",
+      now: 9_000,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected project context");
+    expect(result.context.project).toMatchObject({
+      id: "proj_context",
+      slug: "context",
+      displayName: "Context",
+    });
+    expect(result.context.counts).toMatchObject({
+      extractedTasks: 2,
+      promotedTasks: 6,
+      openBlockers: 6,
+      decisions: 1,
+      threads: 1,
+    });
+    expect(result.context.indexFreshness).toMatchObject({
+      snapshotId: "pidx_context",
+      sourcesSeen: 1,
+      artifactsExtracted: 3,
+    });
+    expectNoOtherProjectLeak(result.context);
   });
 
   it("does not read files, source contents, memory text, telemetry payloads, or wire chat/router", () => {
