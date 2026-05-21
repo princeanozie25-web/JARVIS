@@ -39,11 +39,16 @@ export {
   upsertProjectState,
 } from "./project-state";
 export type { ProjectStateRow, UpsertProjectStateInput } from "./project-state";
-export { getRegisteredProject, listRegisteredProjects } from "./projects";
+export {
+  getRegisteredProject,
+  listRegisteredProjects,
+  updateProjectStatus,
+} from "./projects";
 export type {
   InsertRegisteredProjectInput,
   ListRegisteredProjectsInput,
   ProjectRow,
+  UpdateProjectStatusInput,
 } from "./projects";
 export {
   countProjectSources,

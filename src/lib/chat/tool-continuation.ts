@@ -51,6 +51,7 @@ export const PROJECT_PROVIDER_TOOL_IDS = new Set([
   "project.add_source",
   "project.index",
   "project.promote_task",
+  "project.set_status",
 ]);
 
 export const PROVIDER_TOOL_IDS = new Set([

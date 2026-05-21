@@ -271,6 +271,46 @@ describe("tool approval flow", () => {
     expect(JSON.stringify(pending)).not.toContain("result");
   });
 
+  it("shows safe project status change details in the approval summary", () => {
+    db.prepare(
+      `INSERT INTO projects (
+         id, slug, display_name, root_kind, root_ref, created_at, archived_at, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "proj_1",
+      "jarvis",
+      "JARVIS",
+      "virtual",
+      "virtual:jarvis",
+      1_000,
+      null,
+      "active",
+    );
+
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-status",
+      sessionId: "session-1",
+      toolId: "project.set_status",
+      toolName: "Set Project Status",
+      scopeHash: "project.set_status:project:proj_1:status:paused",
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: {
+        projectId: "proj_1",
+        status: "paused",
+      },
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_1; slug: jarvis; display_name: JARVIS; current_status: active; requested_status: paused",
+    );
+    expect(JSON.stringify(pending)).not.toContain("output_json");
+    expect(JSON.stringify(pending)).not.toContain("result");
+  });
+
   it("allows an approved-once tool execution exactly once", async () => {
     await requestApproval("exec-1");
     now = 1_100;

@@ -35,6 +35,12 @@ export interface ListRegisteredProjectsInput {
   limit?: number;
 }
 
+export interface UpdateProjectStatusInput {
+  id: string;
+  status: ProjectStatus;
+  updatedAt: number;
+}
+
 function requireTrimmed(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`${label} is required`);
@@ -122,4 +128,22 @@ export function getRegisteredProject(
   return db.prepare("SELECT * FROM projects WHERE slug = ?").get(slug) as
     | ProjectRow
     | undefined;
+}
+
+export function updateProjectStatus(
+  db: DatabaseType.Database,
+  input: UpdateProjectStatusInput,
+): ProjectRow | undefined {
+  const id = requireTrimmed(input.id, "id");
+  const status = ProjectStatusSchema.parse(input.status);
+  const archivedAt = status === "archived" ? input.updatedAt : null;
+
+  db.prepare(
+    `UPDATE projects
+     SET status = ?,
+         archived_at = ?
+     WHERE id = ?`,
+  ).run(status, archivedAt, id);
+
+  return getRegisteredProject(db, { id });
 }

@@ -30,6 +30,7 @@ import {
   getRegisteredProject,
   insertRegisteredProject,
   listRegisteredProjects,
+  updateProjectStatus,
 } from "../db/projects";
 import {
   createOpaqueProjectSourceId,
@@ -47,7 +48,11 @@ import {
   PROJECT_STATUSES,
   ProjectSlugSchema,
 } from "../projects";
-import type { ProjectRootKind, ProjectSourceKind } from "../projects/types";
+import type {
+  ProjectRootKind,
+  ProjectSourceKind,
+  ProjectStatus,
+} from "../projects/types";
 import {
   resolveSafePath,
   SafePathError,
@@ -113,6 +118,11 @@ const ProjectPromoteTaskInputSchema = z.object({
   taskId: z.string().trim().min(1).max(200),
 });
 
+const ProjectSetStatusInputSchema = z.object({
+  projectId: z.string().trim().min(1).max(200),
+  status: z.enum(PROJECT_STATUSES),
+});
+
 export type ProjectListInput = z.infer<typeof ProjectListInputSchema>;
 export type ProjectGetInput = z.infer<typeof ProjectGetInputSchema>;
 export type ProjectRegisterInput = z.infer<typeof ProjectRegisterInputSchema>;
@@ -121,6 +131,7 @@ export type ProjectIndexInput = z.infer<typeof ProjectIndexInputSchema>;
 export type ProjectPromoteTaskInput = z.infer<
   typeof ProjectPromoteTaskInputSchema
 >;
+export type ProjectSetStatusInput = z.infer<typeof ProjectSetStatusInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -185,6 +196,14 @@ export function projectPromoteTaskScopeOf(
     "project.promote_task",
     `project:${input.projectId}`,
     `task:${input.taskId}`,
+  ].join(":");
+}
+
+export function projectSetStatusScopeOf(input: ProjectSetStatusInput): string {
+  return [
+    "project.set_status",
+    `project:${input.projectId}`,
+    `status:${input.status}`,
   ].join(":");
 }
 
@@ -807,6 +826,69 @@ export const projectPromoteTaskTool: Tool<ProjectPromoteTaskInput> = {
   },
 };
 
+export const projectSetStatusTool: Tool<ProjectSetStatusInput> = {
+  id: "project.set_status",
+  name: "Set Project Status",
+  description:
+    "Change the status of an existing Phase 5 project after explicit approval. This does not index, read sources, summarize, or write memory.",
+  requiredSafetyTag: "CONFIRM_ALWAYS",
+  inputSchema: ProjectSetStatusInputSchema,
+  scopeOf: projectSetStatusScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: PROJECT_TOOL_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied(
+        "Project registry database is unavailable.",
+        "db_unavailable",
+      );
+    }
+
+    const project = getRegisteredProject(context.db, { id: input.projectId });
+    if (!project) {
+      return denied("Project is not registered.", "project_not_found");
+    }
+    if (project.status === input.status) {
+      return denied(
+        "Project already has requested status.",
+        "project_status_unchanged",
+      );
+    }
+
+    const updated = updateProjectStatus(context.db, {
+      id: project.id,
+      status: input.status as ProjectStatus,
+      updatedAt: Date.now(),
+    });
+    if (!updated || updated.status !== input.status) {
+      return {
+        ok: false,
+        status: "ERROR",
+        message: "Project status update failed.",
+        data: { reason: "project_status_update_failed" },
+      };
+    }
+
+    return {
+      ok: true,
+      status: "COMPLETED",
+      message: "Project status updated.",
+      data: {
+        project: {
+          id: updated.id,
+          status: updated.status,
+          archivedAt: updated.archived_at,
+        },
+        derivedState: true,
+        authority: projectRegistryAuthorityNote(),
+      },
+    };
+  },
+};
+
 export const projectReadTools = [projectListTool, projectGetTool] as const;
 export const projectRegisterToolScaffold = projectRegisterTool;
 export const projectMutationTools = [
@@ -814,5 +896,6 @@ export const projectMutationTools = [
   projectAddSourceTool,
   projectIndexTool,
   projectPromoteTaskTool,
+  projectSetStatusTool,
 ] as const;
 export { PROJECT_TOOL_TIMEOUT_MS };

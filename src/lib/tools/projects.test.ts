@@ -147,6 +147,41 @@ async function runApprovedProjectPromoteTask(
   });
 }
 
+async function runApprovedProjectSetStatus(
+  executionId: string,
+  input: { projectId: string; status: "active" | "paused" | "archived" },
+) {
+  await runtime.runTool({
+    toolId: "project.set_status",
+    input,
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  const pending = ensurePendingToolApproval({
+    db,
+    executionId,
+    sessionId: "session-1",
+    toolId: "project.set_status",
+    toolName: "Set Project Status",
+    scopeHash: tools.get("project.set_status").scopeOf(input),
+    requiredSafetyTag: "CONFIRM_ALWAYS",
+    safetyTag: "ALLOW",
+    toolInput: input,
+    now,
+    ttlMs: 500,
+  });
+  now += 100;
+  return resumeApproval({
+    db,
+    runtime,
+    executionId,
+    decision: "APPROVED_ONCE",
+    approvalToken: pending.approvalToken,
+    now,
+  });
+}
+
 function insertExtractedProjectTask(input: {
   id: string;
   projectId: string;
@@ -568,6 +603,7 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.add_source");
     expect(registeredToolIds).toContain("project.index");
     expect(registeredToolIds).toContain("project.promote_task");
+    expect(registeredToolIds).toContain("project.set_status");
     expect(registeredToolIds).not.toContain("project.write_memory");
     expect(registeredToolIds).not.toContain("project.task");
     expect(registeredToolIds).not.toContain("project.thread");
@@ -1260,6 +1296,289 @@ describe("Phase 5 project tools", () => {
         message: "Only extracted project tasks can be promoted.",
       },
     });
+  });
+
+  it("project.set_status requires approval and does not mutate before approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.set_status",
+      input: { projectId: "proj_status", status: "paused" },
+      sessionId: "session-1",
+      executionId: "status-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+      },
+    });
+    expect(getRegisteredProject(db, { id: "proj_status" })).toMatchObject({
+      status: "active",
+      archived_at: null,
+    });
+  });
+
+  it("project.set_status updates status and archived_at after approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+    const input = { projectId: "proj_status", status: "archived" as const };
+    await runtime.runTool({
+      toolId: "project.set_status",
+      input,
+      sessionId: "session-1",
+      executionId: "status-approved",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "status-approved",
+      sessionId: "session-1",
+      toolId: "project.set_status",
+      toolName: "Set Project Status",
+      scopeHash: tools.get("project.set_status").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_status; slug: status; display_name: Status; current_status: active; requested_status: archived",
+    );
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "status-approved",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: true,
+      executionId: "status-approved",
+      decision: "APPROVED_ONCE",
+      status: "COMPLETED",
+      message: "Project status updated.",
+    });
+    expect(approved.body).not.toHaveProperty("data");
+    expect(approved.body).not.toHaveProperty("result");
+    const row = getRegisteredProject(db, { id: "proj_status" });
+    expect(row).toMatchObject({
+      id: "proj_status",
+      slug: "status",
+      display_name: "Status",
+      root_kind: "virtual",
+      root_ref: "virtual:status",
+      created_at: 1_000,
+      status: "archived",
+    });
+    expect(row?.archived_at).toBeGreaterThanOrEqual(1_000);
+
+    const getResult = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_status" },
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+    expect(getResult.data).toMatchObject({
+      project: expect.objectContaining({
+        id: "proj_status",
+        status: "archived",
+        archivedAt: expect.any(Number),
+      }),
+    });
+  });
+
+  it("project.set_status clears archived_at for active or paused status", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+      archivedAt: 1_500,
+      status: "archived",
+    });
+
+    await expect(
+      runApprovedProjectSetStatus("status-paused", {
+        projectId: "proj_status",
+        status: "paused",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        status: "COMPLETED",
+        message: "Project status updated.",
+      },
+    });
+
+    expect(getRegisteredProject(db, { id: "proj_status" })).toMatchObject({
+      status: "paused",
+      archived_at: null,
+    });
+  });
+
+  it("project.set_status blocks session approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+    const input = { projectId: "proj_status", status: "paused" as const };
+    await runtime.runTool({
+      toolId: "project.set_status",
+      input,
+      sessionId: "session-1",
+      executionId: "status-session",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "status-session",
+      sessionId: "session-1",
+      toolId: "project.set_status",
+      toolName: "Set Project Status",
+      scopeHash: tools.get("project.set_status").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "status-session",
+      decision: "APPROVED_SESSION",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved).toMatchObject({
+      httpStatus: 409,
+      body: { ok: false, reason: "approval_session_not_allowed" },
+    });
+    expect(getRegisteredProject(db, { id: "proj_status" })?.status).toBe(
+      "active",
+    );
+  });
+
+  it("project.set_status fails safely for no-op, invalid, and missing project", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+      status: "paused",
+    });
+
+    await expect(
+      runApprovedProjectSetStatus("status-noop", {
+        projectId: "proj_status",
+        status: "paused",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project already has requested status.",
+      },
+    });
+    await expect(
+      runApprovedProjectSetStatus("status-missing", {
+        projectId: "proj_missing",
+        status: "active",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project is not registered.",
+      },
+    });
+    await expect(
+      runtime.runTool({
+        toolId: "project.set_status",
+        input: { projectId: "proj_status", status: "running" },
+        sessionId: "session-1",
+        executionId: "status-invalid",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "invalid_tool_input" },
+    });
+  });
+
+  it("project.set_status changes only status and archived_at without indexing", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_status",
+      projectId: "proj_status",
+      kind: "thread",
+      ref: "thread:status",
+    });
+    const beforeSources = listProjectSources(db, "proj_status");
+    const beforeSnapshots = listProjectIndexSnapshots(db, "proj_status");
+
+    await runApprovedProjectSetStatus("status-only", {
+      projectId: "proj_status",
+      status: "paused",
+    });
+
+    expect(getRegisteredProject(db, { id: "proj_status" })).toMatchObject({
+      id: "proj_status",
+      slug: "status",
+      display_name: "Status",
+      root_kind: "virtual",
+      root_ref: "virtual:status",
+      created_at: 1_000,
+      archived_at: null,
+      status: "paused",
+    });
+    expect(listProjectSources(db, "proj_status")).toEqual(beforeSources);
+    expect(listProjectIndexSnapshots(db, "proj_status")).toEqual(
+      beforeSnapshots,
+    );
   });
 
   it("project.index requires approval and does not snapshot before approval", async () => {

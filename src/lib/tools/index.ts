@@ -81,6 +81,8 @@ export {
   projectRegisterScopeOf,
   projectRegisterTool,
   projectRegisterToolScaffold,
+  projectSetStatusScopeOf,
+  projectSetStatusTool,
 } from "./projects";
 export type {
   ProjectAddSourceInput,
@@ -89,6 +91,7 @@ export type {
   ProjectListInput,
   ProjectPromoteTaskInput,
   ProjectRegisterInput,
+  ProjectSetStatusInput,
 } from "./projects";
 export {
   isProtectedPath,

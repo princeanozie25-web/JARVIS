@@ -101,6 +101,7 @@ describe("ToolRegistry", () => {
       "project.add_source",
       "project.index",
       "project.promote_task",
+      "project.set_status",
       "fs.undo",
     ]);
   });
@@ -136,6 +137,7 @@ describe("ToolRegistry", () => {
       ["project.add_source", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["project.index", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["project.promote_task", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
+      ["project.set_status", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
     ]);
   });

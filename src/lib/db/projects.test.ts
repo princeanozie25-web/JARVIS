@@ -4,6 +4,7 @@ import {
   getRegisteredProject,
   insertRegisteredProject,
   listRegisteredProjects,
+  updateProjectStatus,
 } from "./projects";
 import { applyMigrations } from "./schema";
 
@@ -136,5 +137,64 @@ describe("project registry persistence", () => {
       "proj_lookup",
     );
     expect(getRegisteredProject(db, { slug: "missing" })).toBeUndefined();
+  });
+
+  it("updates only status and archived_at", () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+
+    const archived = updateProjectStatus(db, {
+      id: "proj_status",
+      status: "archived",
+      updatedAt: 2_000,
+    });
+
+    expect(archived).toEqual({
+      id: "proj_status",
+      slug: "status",
+      display_name: "Status",
+      root_kind: "virtual",
+      root_ref: "virtual:status",
+      created_at: 1_000,
+      archived_at: 2_000,
+      status: "archived",
+    });
+
+    const paused = updateProjectStatus(db, {
+      id: "proj_status",
+      status: "paused",
+      updatedAt: 3_000,
+    });
+
+    expect(paused).toMatchObject({
+      id: "proj_status",
+      status: "paused",
+      archived_at: null,
+    });
+  });
+
+  it("rejects invalid project status updates", () => {
+    insertRegisteredProject(db, {
+      id: "proj_status",
+      slug: "status",
+      displayName: "Status",
+      rootKind: "virtual",
+      rootRef: "virtual:status",
+      createdAt: 1_000,
+    });
+
+    expect(() =>
+      updateProjectStatus(db, {
+        id: "proj_status",
+        status: "running" as "active",
+        updatedAt: 2_000,
+      }),
+    ).toThrow();
   });
 });

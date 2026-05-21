@@ -3,6 +3,7 @@ import {
   createPendingApproval,
   decideApprovalByExecution,
   expirePendingApprovals,
+  getRegisteredProject,
   getProjectTask,
   getToolCall,
   updateToolCall,
@@ -56,6 +57,8 @@ export function safeToolInputSummary(
       db,
     );
     if (projectPromoteTaskSummary) return projectPromoteTaskSummary;
+    const projectStatusSummary = projectStatusSummaryFromInput(record, db);
+    if (projectStatusSummary) return projectStatusSummary;
     const projectSourceSummary = projectSourceSummaryFromInput(record);
     if (projectSourceSummary) return projectSourceSummary;
     const projectIndexSummary = projectIndexSummaryFromInput(record);
@@ -70,6 +73,40 @@ export function safeToolInputSummary(
   if (typeof input === "string") return truncateSummary(input);
   if (input === null || input === undefined) return "empty input";
   return truncateSummary(typeof input);
+}
+
+function projectStatusSummaryFromInput(
+  record: Record<string, unknown>,
+  db?: DatabaseType.Database,
+): string | null {
+  if (
+    typeof record.projectId !== "string" ||
+    typeof record.status !== "string"
+  ) {
+    return null;
+  }
+
+  const project = db
+    ? getRegisteredProject(db, { id: record.projectId })
+    : undefined;
+  if (project) {
+    return truncateSummary(
+      [
+        `project_id: ${project.id}`,
+        `slug: ${project.slug}`,
+        `display_name: ${project.display_name}`,
+        `current_status: ${project.status}`,
+        `requested_status: ${record.status}`,
+      ].join("; "),
+    );
+  }
+
+  return truncateSummary(
+    [
+      `project_id: ${record.projectId}`,
+      `requested_status: ${record.status}`,
+    ].join("; "),
+  );
 }
 
 function projectPromoteTaskSummaryFromInput(
