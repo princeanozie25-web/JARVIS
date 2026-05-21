@@ -5,7 +5,7 @@ import { writeFsTools } from "./fs-write";
 import { memoryNoteTool } from "./memory-note";
 import { memoryRecallTool } from "./memory-recall";
 import { statusTool } from "./mock";
-import { projectReadTools } from "./projects";
+import { projectMutationTools, projectReadTools } from "./projects";
 import { tools } from "./registry";
 
 tools.register(statusTool);
@@ -21,6 +21,9 @@ for (const tool of writeFsTools) {
 tools.register(memoryNoteTool);
 tools.register(memoryRecallTool);
 for (const tool of projectReadTools) {
+  tools.register(tool);
+}
+for (const tool of projectMutationTools) {
   tools.register(tool);
 }
 tools.register(fsUndoTool);
@@ -67,8 +70,10 @@ export {
   projectGetTool,
   projectListScopeOf,
   projectListTool,
+  projectMutationTools,
   projectReadTools,
   projectRegisterScopeOf,
+  projectRegisterTool,
   projectRegisterToolScaffold,
 } from "./projects";
 export type {

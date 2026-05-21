@@ -26,6 +26,8 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "doc.read_pdf",
   "doc.read_docx",
   "memory.recall",
+  "project.list",
+  "project.get",
 ]);
 
 export const WRITE_PROVIDER_TOOL_IDS = new Set([
@@ -42,10 +44,17 @@ export const MEMORY_PROVIDER_TOOL_IDS = new Set([
   "memory.recall",
 ]);
 
+export const PROJECT_PROVIDER_TOOL_IDS = new Set([
+  "project.list",
+  "project.get",
+  "project.register",
+]);
+
 export const PROVIDER_TOOL_IDS = new Set([
   ...READ_ONLY_PROVIDER_TOOL_IDS,
   ...WRITE_PROVIDER_TOOL_IDS,
   ...MEMORY_PROVIDER_TOOL_IDS,
+  ...PROJECT_PROVIDER_TOOL_IDS,
 ]);
 
 const MAX_TOOL_CONTINUATIONS = 3;

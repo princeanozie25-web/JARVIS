@@ -45,6 +45,8 @@ export interface ResumeApprovalResult {
 export function safeToolInputSummary(input: unknown): string {
   if (input && typeof input === "object" && !Array.isArray(input)) {
     const record = input as Record<string, unknown>;
+    const projectSummary = projectRegisterSummary(record);
+    if (projectSummary) return projectSummary;
     if (typeof record.path === "string") {
       return truncateSummary(`path: ${record.path}`);
     }
@@ -55,6 +57,30 @@ export function safeToolInputSummary(input: unknown): string {
   if (typeof input === "string") return truncateSummary(input);
   if (input === null || input === undefined) return "empty input";
   return truncateSummary(typeof input);
+}
+
+function projectRegisterSummary(
+  record: Record<string, unknown>,
+): string | null {
+  if (
+    typeof record.slug !== "string" ||
+    typeof record.displayName !== "string" ||
+    typeof record.rootKind !== "string" ||
+    typeof record.rootRef !== "string"
+  ) {
+    return null;
+  }
+
+  const status = typeof record.status === "string" ? record.status : "active";
+  return truncateSummary(
+    [
+      `slug: ${record.slug}`,
+      `display_name: ${record.displayName}`,
+      `root_kind: ${record.rootKind}`,
+      `root_ref: ${record.rootRef}`,
+      `status: ${status}`,
+    ].join("; "),
+  );
 }
 
 export function parseToolInput(argsJson: string): unknown {

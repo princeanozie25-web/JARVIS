@@ -1,10 +1,17 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
+import {
+  getRegisteredProject,
+  insertRegisteredProject,
+  listRegisteredProjects,
+} from "../db/projects";
 import {
   createProjectRegistrationDraft,
+  PROJECT_ROOT_KINDS,
   projectFromRow,
   projectRegistryAuthorityNote,
+  PROJECT_STATUSES,
+  ProjectSlugSchema,
 } from "../projects";
 import type { ProjectRootKind } from "../projects/types";
 import type { Tool, ToolResult } from "./types";
@@ -26,10 +33,18 @@ const ProjectGetInputSchema = z
   });
 
 const ProjectRegisterInputSchema = z.object({
-  slug: z.string().trim().min(1).max(120),
+  slug: ProjectSlugSchema,
   displayName: z.string().trim().min(1).max(200),
-  rootKind: z.enum(["fs", "memory", "obsidian", "virtual"]),
-  rootRef: z.string().trim().min(1).max(500),
+  rootKind: z.enum(PROJECT_ROOT_KINDS),
+  rootRef: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine((value) => !isNetworkRootRef(value), {
+      message: "Network project sources are disabled.",
+    }),
+  status: z.enum(PROJECT_STATUSES).default("active"),
 });
 
 export type ProjectListInput = z.infer<typeof ProjectListInputSchema>;
@@ -42,6 +57,10 @@ function denied(message: string, reason: string): ToolResult {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function isNetworkRootRef(rootRef: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(rootRef.trim());
 }
 
 export function projectListScopeOf(input: ProjectListInput): string {
@@ -65,6 +84,7 @@ export function projectRegisterScopeOf(input: ProjectRegisterInput): string {
     "project.register",
     `slug:${input.slug}`,
     `root_kind:${input.rootKind}`,
+    `status:${input.status ?? "active"}`,
     `root_ref_sha256:${sha256(input.rootRef)}`,
   ].join(":");
 }
@@ -153,34 +173,69 @@ export const projectGetTool: Tool<ProjectGetInput> = {
   },
 };
 
-export const projectRegisterToolScaffold: Tool<ProjectRegisterInput> = {
+export const projectRegisterTool: Tool<ProjectRegisterInput> = {
   id: "project.register",
   name: "Register Project",
   description:
-    "Scaffold for approval-gated Phase 5 project registration. It is intentionally not registered live in W1.",
+    "Register a Phase 5 project in the local derived project registry after explicit approval.",
   requiredSafetyTag: "CONFIRM_ALWAYS",
   inputSchema: ProjectRegisterInputSchema,
   scopeOf: projectRegisterScopeOf,
   reversibilityClass: "REVERSIBLE_WRITE",
   timeoutMs: PROJECT_TOOL_TIMEOUT_MS,
-  async execute(input) {
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied(
+        "Project registry database is unavailable.",
+        "db_unavailable",
+      );
+    }
+    if (isNetworkRootRef(input.rootRef)) {
+      return denied(
+        "Network project sources are not supported in Phase 5 A2.",
+        "network_project_source_disabled",
+      );
+    }
+    if (getRegisteredProject(context.db, { slug: input.slug })) {
+      return denied("Project slug is already registered.", "duplicate_slug");
+    }
+
+    const draft = createProjectRegistrationDraft({
+      slug: input.slug,
+      displayName: input.displayName,
+      rootKind: input.rootKind as ProjectRootKind,
+      rootRef: input.rootRef,
+      status: input.status,
+    });
+    const createdAt = Date.now();
+    const row = insertRegisteredProject(context.db, {
+      id: draft.id,
+      slug: draft.slug,
+      displayName: draft.displayName,
+      rootKind: draft.rootKind,
+      rootRef: draft.rootRef,
+      status: draft.status,
+      createdAt,
+      archivedAt: draft.status === "archived" ? createdAt : null,
+    });
+
     return {
-      ok: false,
-      status: "DENIED",
-      message:
-        "Project registration is scaffolded but not live until the approval architecture is extended for Phase 5.",
+      ok: true,
+      status: "COMPLETED",
+      message: "Project registered.",
       data: {
-        reason: "phase_5_project_register_not_live",
-        draft: createProjectRegistrationDraft({
-          slug: input.slug,
-          displayName: input.displayName,
-          rootKind: input.rootKind as ProjectRootKind,
-          rootRef: input.rootRef,
-        }),
+        project: projectFromRow(row),
+        derivedState: true,
+        authority: projectRegistryAuthorityNote(),
       },
     };
   },
 };
 
 export const projectReadTools = [projectListTool, projectGetTool] as const;
+export const projectRegisterToolScaffold = projectRegisterTool;
+export const projectMutationTools = [projectRegisterTool] as const;
 export { PROJECT_TOOL_TIMEOUT_MS };

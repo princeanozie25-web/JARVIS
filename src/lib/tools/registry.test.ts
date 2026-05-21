@@ -97,6 +97,7 @@ describe("ToolRegistry", () => {
       "memory.recall",
       "project.list",
       "project.get",
+      "project.register",
       "fs.undo",
     ]);
   });
@@ -128,6 +129,7 @@ describe("ToolRegistry", () => {
       ["memory.recall", "PURE_READ", "ALLOW"],
       ["project.list", "PURE_READ", "ALLOW"],
       ["project.get", "PURE_READ", "ALLOW"],
+      ["project.register", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
     ]);
   });

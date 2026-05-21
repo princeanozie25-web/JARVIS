@@ -42,7 +42,7 @@ export interface ProjectRegistrationDraft {
   displayName: string;
   rootKind: ProjectRootKind;
   rootRef: string;
-  status: "active";
+  status: ProjectStatus;
 }
 
 export const PROJECT_STATE_AUTHORITY_NOTE =

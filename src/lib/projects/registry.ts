@@ -45,6 +45,7 @@ export function createProjectRegistrationDraft(input: {
   displayName: string;
   rootKind: ProjectRootKind;
   rootRef: string;
+  status?: ProjectStatus;
   newId?: () => string;
 }): ProjectRegistrationDraft {
   const displayName = input.displayName.trim();
@@ -58,7 +59,7 @@ export function createProjectRegistrationDraft(input: {
     displayName,
     rootKind: validateProjectRootKind(input.rootKind),
     rootRef,
-    status: "active",
+    status: validateProjectStatus(input.status ?? "active"),
   };
 }
 

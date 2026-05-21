@@ -280,6 +280,8 @@ describe("read-only provider tool continuation", () => {
       "doc.read_pdf",
       "doc.read_docx",
       "memory.recall",
+      "project.list",
+      "project.get",
     ]);
   });
 });
@@ -363,7 +365,66 @@ describe("approval-gated provider tool continuation", () => {
       "fs.delete_file",
       "memory.note",
       "memory.recall",
+      "project.list",
+      "project.get",
+      "project.register",
     ]);
+  });
+
+  it("emits pending approval for project.register without creating a row first", async () => {
+    const provider = new StubProvider(
+      "project_register",
+      '{"slug":"jarvis","displayName":"JARVIS","rootKind":"virtual","rootRef":"virtual:jarvis","status":"active"}',
+      "unused",
+    );
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    const events: StreamEvent[] = [];
+    for await (const event of streamWithReadOnlyToolContinuation({
+      provider,
+      messages: [{ role: "user", content: "register the project" }],
+      model: "gpt-4o-mini",
+      signal: new AbortController().signal,
+      providerTools,
+      runtime: runtime(),
+      registry: tools,
+      db,
+      sessionId: "session-1",
+      assistantMessageId: "message-1",
+      decision: allowDecision,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "tool_call_start",
+      "tool_call_complete",
+      "tool_proposed",
+      "tool_pending",
+    ]);
+    expect(events.find((event) => event.type === "tool_pending")).toMatchObject(
+      {
+        type: "tool_pending",
+        executionId: "call-1",
+        toolId: "project.register",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+        summary:
+          "slug: jarvis; display_name: JARVIS; root_kind: virtual; root_ref: virtual:jarvis; status: active",
+      },
+    );
+    expect(listToolCalls(db)[0]).toMatchObject({
+      execution_id: "call-1",
+      tool_id: "project.register",
+      status: "AWAITING_APPROVAL",
+    });
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM projects").get(),
+    ).toMatchObject({ count: 0 });
   });
 
   it("does not let provider tool continuation invoke fs.undo", async () => {

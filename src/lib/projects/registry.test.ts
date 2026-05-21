@@ -38,11 +38,13 @@ describe("project registry domain models", () => {
       displayName: "JARVIS",
       rootKind: "fs",
       rootRef: "C:/Users/princ/Documents/jarvis",
+      status: "paused",
       newId: () => "fixed-id",
     });
 
     expect(draft.id).toBe("proj_fixed-id");
     expect(draft.id).not.toBe(draft.rootRef);
+    expect(draft.status).toBe("paused");
   });
 
   it("validates root kinds and statuses", () => {

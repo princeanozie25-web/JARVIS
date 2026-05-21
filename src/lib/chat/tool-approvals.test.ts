@@ -134,6 +134,34 @@ describe("tool approval flow", () => {
     expect(listToolCalls(db)[0].status).toBe("AWAITING_APPROVAL");
   });
 
+  it("shows project registration details in the approval summary", () => {
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-project",
+      sessionId: "session-1",
+      toolId: "project.register",
+      toolName: "Register Project",
+      scopeHash: "project.register:slug:jarvis",
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: {
+        slug: "jarvis",
+        displayName: "JARVIS",
+        rootKind: "fs",
+        rootRef: "workspace-ref",
+        status: "active",
+      },
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "slug: jarvis; display_name: JARVIS; root_kind: fs; root_ref: workspace-ref; status: active",
+    );
+    expect(JSON.stringify(pending)).not.toContain("output_json");
+    expect(JSON.stringify(pending)).not.toContain("result");
+  });
+
   it("allows an approved-once tool execution exactly once", async () => {
     await requestApproval("exec-1");
     now = 1_100;
