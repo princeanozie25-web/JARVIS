@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:38am GMT+1
+# [jarvis] recent context, 2026-05-21 7:44am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (28,020t read) | 1,625,772t work | 98% savings
+Stats: 50 obs (28,022t read) | 1,545,928t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,7 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-771 11:45p 🟣 VoiceBargeInCoordinator: In-Flight Terminal Transition Guard
 773 11:49p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion and Chunk Scheduling Scaffold
 774 11:51p 🟣 Phase 4E VoiceBargeInCoordinator Test Suite Expanded with Coverage, Failure, and Telemetry-Safety Tests
 775 " 🔴 Safety Wiring Test False Positive: `canAutoplay` Field in types.ts Matched Autoplay Regex
@@ -79,6 +78,7 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 819 7:37a 🔴 Vitest Set vs ArrayContaining Matcher Incompatibility Fixed
 820 " 🟣 Phase 4G Cloud Routing Policy Freeze — Complete and Frozen
 821 " 🔵 JARVIS Full Test Suite: 874 Tests Passing After Phase 4G Freeze
+822 7:43a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
 
-Access 1626k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1546k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

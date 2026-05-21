@@ -1,4 +1,5 @@
 import { InMemorySpeechQueueManager, InMemoryPlaybackManager } from "../tts";
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   OrchestrationState,
   StreamingSpeechChunk,
@@ -416,7 +417,7 @@ export class VoiceOrchestrationSupervisor {
     success: boolean,
     error?: string,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: session.id,
       state: session.state,

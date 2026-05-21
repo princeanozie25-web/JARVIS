@@ -1,4 +1,5 @@
 import type { VoiceOrchestrationSupervisor } from "./supervisor";
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -365,7 +366,7 @@ export class VoiceResponseChunkScheduler {
     fallbackState?: VoiceTurnState,
   ): Promise<void> {
     const session = this.opts.supervisor.getSession(event.sessionId);
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: event.sessionId,
       state: session?.state ?? fallbackState ?? "failed",
@@ -383,7 +384,7 @@ export class VoiceResponseChunkScheduler {
     eventType: VoiceOrchestrationTelemetryEvent["eventType"],
     clearedIntentCount: number,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId,
       state,

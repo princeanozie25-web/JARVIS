@@ -1,5 +1,6 @@
 import type { VoiceRealtimeOrchestrationPipeline } from "./pipeline";
 import type { VoiceOrchestrationSupervisor } from "./supervisor";
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceBargeInAction,
   VoiceBargeInCoordinatorResult,
@@ -659,7 +660,7 @@ export class VoiceBargeInCoordinator {
     success: boolean,
     fields: Partial<VoiceOrchestrationTelemetryEvent> = {},
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: intent.sessionId,
       state: fields.state ?? "failed",

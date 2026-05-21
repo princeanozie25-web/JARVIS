@@ -1,3 +1,4 @@
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceCloudProviderId,
   VoiceCloudRoutingCapability,
@@ -89,7 +90,7 @@ export class VoiceCloudRoutingPolicy {
     record: VoiceCloudRoutingPolicyRecord,
     success: boolean,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: request.sessionId,
       state: request.voiceTurnState ?? "waiting_for_send",

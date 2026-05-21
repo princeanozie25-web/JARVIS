@@ -1,3 +1,4 @@
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceApprovalAttemptCategory,
   VoiceApprovalRefusalRecord,
@@ -361,7 +362,7 @@ export class VoiceRuntimeBoundaryCoordinator {
     success: boolean,
     fields: Partial<VoiceOrchestrationTelemetryEvent> = {},
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: event.sessionId,
       state: event.voiceTurnState ?? "waiting_for_send",

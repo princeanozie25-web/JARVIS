@@ -59,6 +59,15 @@ export {
   VoicePrivacyPolicy,
   type VoicePrivacyPolicyOptions,
 } from "./privacy-policy";
+export {
+  emitMetadataOnlyVoiceTelemetry,
+  sanitizeVoiceTelemetryEvent,
+  VOICE_TELEMETRY_ALLOWED_KEY_LIST,
+  VOICE_TELEMETRY_ALLOWED_KEYS,
+  VOICE_TELEMETRY_FORBIDDEN_KEY_LIST,
+  type VoiceTelemetryAllowedKey,
+  type VoiceTelemetryHygieneResult,
+} from "./telemetry-hygiene";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,

@@ -1,3 +1,4 @@
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceCloudBudgetDecision,
   VoiceCloudBudgetDimension,
@@ -110,7 +111,7 @@ export class VoiceCloudBudgetGuard {
     record: VoiceCloudBudgetGuardRecord,
     success: boolean,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: request.sessionId,
       state: request.voiceTurnState ?? "waiting_for_send",

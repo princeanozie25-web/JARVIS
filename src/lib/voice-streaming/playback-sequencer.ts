@@ -1,4 +1,5 @@
 import type { VoiceOrchestrationSupervisor } from "./supervisor";
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceOrchestrationTelemetryEvent,
   VoicePlaybackSequenceIntent,
@@ -258,7 +259,7 @@ export class VoicePlaybackSequencer {
     fallbackState?: VoiceTurnState,
   ): Promise<void> {
     const session = this.opts.supervisor.getSession(input.sessionId);
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: input.sessionId,
       state: session?.state ?? fallbackState ?? "failed",
@@ -276,7 +277,7 @@ export class VoicePlaybackSequencer {
     eventType: VoiceOrchestrationTelemetryEvent["eventType"],
     clearedPlaybackIntentCount: number,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId,
       state,

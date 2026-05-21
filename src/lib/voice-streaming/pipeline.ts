@@ -7,6 +7,7 @@ import type {
   VoicePlaybackSequencingDropReason,
 } from "./playback-sequencer";
 import type { VoiceOrchestrationSupervisor } from "./supervisor";
+import { emitMetadataOnlyVoiceTelemetry } from "./telemetry-hygiene";
 import type {
   VoiceSynthesisOrchestrationQueue,
   VoiceSynthesisQueueDropReason,
@@ -461,7 +462,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   ): Promise<boolean> {
     const session = this.opts.supervisor.getSession(sessionId);
     if (!session || !TERMINAL_STATES.has(session.state)) return false;
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType: "voice_realtime_pipeline_terminal_noop",
       sessionId,
       state: session.state,
@@ -614,7 +615,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     success: boolean,
     fields: Partial<VoiceOrchestrationTelemetryEvent> = {},
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId,
       state,
@@ -729,7 +730,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     const firstReady = this.updateFirstReadyCache(sessionId);
     if (!firstReady) return;
     if (previous?.chunkIndex === firstReady.chunkIndex) return;
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType: "voice_realtime_first_chunk_ready",
       sessionId,
       state:
@@ -777,7 +778,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     record: VoiceChunkReadinessRecord,
     previousState: VoiceChunkReadinessState | undefined,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType: "voice_realtime_chunk_readiness_changed",
       sessionId: record.sessionId,
       state:
@@ -807,7 +808,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     state: VoiceChunkReadinessState,
   ): Promise<void> {
     const marker = latencyMarkerForState(record, state);
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType: "voice_realtime_stage_latency_marker",
       sessionId: record.sessionId,
       state:
@@ -833,7 +834,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     timeoutMs: number,
     ageMs: number,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType: "voice_realtime_chunk_readiness_timeout",
       sessionId: record.sessionId,
       state:
@@ -934,7 +935,7 @@ export class VoiceRealtimeOrchestrationPipeline {
   private async emitTerminalLifecycle(
     fields: VoiceOrchestrationTelemetryEvent,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.(fields);
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, fields);
   }
 
   private async emit(
@@ -945,7 +946,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     fields: Partial<VoiceOrchestrationTelemetryEvent> = {},
   ): Promise<void> {
     const session = this.opts.supervisor.getSession(event.sessionId);
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId: event.sessionId,
       state: session?.state ?? terminalFallbackState(eventType),
@@ -964,7 +965,7 @@ export class VoiceRealtimeOrchestrationPipeline {
     success = false,
     error?: string,
   ): Promise<void> {
-    await this.opts.emitTelemetry?.({
+    await emitMetadataOnlyVoiceTelemetry(this.opts.emitTelemetry, {
       eventType,
       sessionId,
       state,
