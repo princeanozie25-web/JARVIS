@@ -51,6 +51,10 @@ export {
   VoiceCloudBudgetGuard,
   type VoiceCloudBudgetGuardOptions,
 } from "./cloud-budget-guard";
+export {
+  VoiceCloudConsentPolicy,
+  type VoiceCloudConsentPolicyOptions,
+} from "./cloud-consent-policy";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -104,6 +108,14 @@ export type {
   VoiceCloudBudgetLimit,
   VoiceCloudBudgetUsage,
   VoiceCloudBudgetWindow,
+  VoiceCloudConsentDecision,
+  VoiceCloudConsentPolicyDecision,
+  VoiceCloudConsentPolicyRecord,
+  VoiceCloudConsentPolicyRequest,
+  VoiceCloudConsentPolicyResult,
+  VoiceCloudConsentState,
+  VoiceCloudDisclosureDecision,
+  VoiceCloudDisclosureState,
   VoiceCloudRoutingCapability,
   VoiceCloudRoutingDecision,
   VoiceCloudRoutingDenialReason,

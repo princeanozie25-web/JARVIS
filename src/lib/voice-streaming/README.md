@@ -194,7 +194,7 @@ Restricted-content descriptors and decision records must not contain actual cont
 
 ## Phase 4G Cloud Routing Policy Scaffold
 
-Phase 4G starts with disabled-by-default cloud voice routing and budget policy scaffolds. They evaluate metadata-only requests and return allow/deny metadata only. They do not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
+Phase 4G starts with disabled-by-default cloud voice routing, consent/disclosure, and budget policy scaffolds. They evaluate metadata-only requests and return allow/deny metadata only. They do not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
 
 Current Phase 4G status: scaffold started.
 
@@ -229,6 +229,23 @@ Phase 4G budget guard metadata may contain only:
 - budget limit
 - projected usage
 - metadata-only budget decision
+- timestamps
+
+Phase 4G consent/disclosure policy metadata may contain only:
+
+- consent policy request ID
+- consent policy record ID
+- provider ID
+- requested capability
+- consent state
+- disclosure state
+- metadata-only consent/disclosure decision
+- consent granted boolean
+- cost disclosure accepted boolean
+- provider retention disclosure accepted boolean
+- audio leaves device disclosure accepted boolean
+- transcript leaves device disclosure accepted boolean
+- session ID
 - timestamps
 
 Phase 4G cloud provider identifiers are policy labels only:
@@ -267,6 +284,16 @@ Phase 4G budget decisions:
 - `denied_invalid_estimate`
 - `denied_provider_disabled`
 
+Phase 4G consent/disclosure decisions:
+
+- `allowed_metadata_only`
+- `denied_consent_missing`
+- `denied_cost_disclosure_missing`
+- `denied_retention_disclosure_missing`
+- `denied_audio_disclosure_missing`
+- `denied_transcript_disclosure_missing`
+- `denied_provider_disabled`
+
 Phase 4G forbidden wiring:
 
 - OpenAI Realtime calls
@@ -285,6 +312,8 @@ Phase 4G forbidden wiring:
 
 Phase 4G does not include real provider pricing tables. Estimated cost units and limits must be passed in as explicit metadata/config by future reviewed adapters.
 
+Phase 4G cloud routing remains ineligible unless consent, cost disclosure, provider retention disclosure, audio-leaves-device disclosure, transcript-leaves-device disclosure, and budget guard metadata all pass.
+
 Phase 4G telemetry must not include transcript text, spoken text, assistant body text, tool output, file content, code blocks, personal context content, audit log content, approval payloads, approval IDs, API keys, audio URLs, audio blobs, PCM data, raw audio, chat payloads, or runtime command payloads.
 
 ## Phase 4H Handoff Points
@@ -300,7 +329,7 @@ Future Phase 4H work may choose explicit, reviewable adapters for user-controlle
 - no voice approval path
 - no spoken approval acceptance
 - no spoken tool output or restricted content
-- no cloud routing unless explicit consent, cost disclosure, routing policy, and budget guard policy pass
+- no cloud routing unless explicit consent, cost disclosure, provider retention disclosure, audio/transcript device-boundary disclosure, routing policy, and budget guard policy pass
 - no wake word or always-listening behavior
 - explicit user-controlled wiring
 - terminal and stale-session guards at every async boundary

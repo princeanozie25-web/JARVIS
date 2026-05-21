@@ -213,7 +213,11 @@ export type TelemetryEventType =
   | "voice_cloud_budget_allowed"
   | "voice_cloud_budget_denied"
   | "voice_cloud_budget_exceeded"
-  | "voice_cloud_budget_invalid_estimate";
+  | "voice_cloud_budget_invalid_estimate"
+  | "voice_cloud_consent_evaluated"
+  | "voice_cloud_consent_allowed"
+  | "voice_cloud_consent_denied"
+  | "voice_cloud_consent_disclosure_missing";
 
 export interface TelemetryEvent {
   timestamp: number;

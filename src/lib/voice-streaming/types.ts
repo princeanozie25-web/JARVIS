@@ -619,6 +619,75 @@ export interface VoiceCloudBudgetGuardResult {
   record: VoiceCloudBudgetGuardRecord;
 }
 
+export type VoiceCloudConsentState =
+  | "disabled"
+  | "consent_missing"
+  | "consent_granted_metadata_only"
+  | "provider_disabled";
+
+export type VoiceCloudDisclosureState =
+  | "not_evaluated"
+  | "cost_disclosure_missing"
+  | "provider_retention_disclosure_missing"
+  | "audio_leaves_device_disclosure_missing"
+  | "transcript_leaves_device_disclosure_missing"
+  | "disclosures_complete_metadata_only"
+  | "provider_disabled";
+
+export type VoiceCloudConsentDecision =
+  | "allowed_metadata_only"
+  | "denied_consent_missing"
+  | "denied_provider_disabled";
+
+export type VoiceCloudDisclosureDecision =
+  | "allowed_metadata_only"
+  | "denied_cost_disclosure_missing"
+  | "denied_retention_disclosure_missing"
+  | "denied_audio_disclosure_missing"
+  | "denied_transcript_disclosure_missing"
+  | "denied_provider_disabled";
+
+export type VoiceCloudConsentPolicyDecision =
+  | VoiceCloudConsentDecision
+  | VoiceCloudDisclosureDecision;
+
+export interface VoiceCloudConsentPolicyRequest {
+  id: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  consentGranted: boolean;
+  costDisclosureAccepted: boolean;
+  providerRetentionDisclosureAccepted: boolean;
+  audioLeavesDeviceDisclosureAccepted: boolean;
+  transcriptLeavesDeviceDisclosureAccepted: boolean;
+  createdAt?: number;
+  voiceTurnState?: VoiceTurnState;
+}
+
+export interface VoiceCloudConsentPolicyRecord {
+  id: string;
+  requestId: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  consentState: VoiceCloudConsentState;
+  disclosureState: VoiceCloudDisclosureState;
+  decision: VoiceCloudConsentPolicyDecision;
+  allowed: boolean;
+  consentGranted: boolean;
+  costDisclosureAccepted: boolean;
+  providerRetentionDisclosureAccepted: boolean;
+  audioLeavesDeviceDisclosureAccepted: boolean;
+  transcriptLeavesDeviceDisclosureAccepted: boolean;
+  createdAt: number;
+}
+
+export interface VoiceCloudConsentPolicyResult {
+  request: VoiceCloudConsentPolicyRequest;
+  record: VoiceCloudConsentPolicyRecord;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -713,7 +782,11 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_cloud_budget_allowed"
   | "voice_cloud_budget_denied"
   | "voice_cloud_budget_exceeded"
-  | "voice_cloud_budget_invalid_estimate";
+  | "voice_cloud_budget_invalid_estimate"
+  | "voice_cloud_consent_evaluated"
+  | "voice_cloud_consent_allowed"
+  | "voice_cloud_consent_denied"
+  | "voice_cloud_consent_disclosure_missing";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -816,6 +889,15 @@ export interface VoiceOrchestrationTelemetryEvent {
   cloudBudgetDimension?: VoiceCloudBudgetDimension;
   cloudBudgetLimit?: number;
   cloudProjectedUsage?: number;
+  cloudConsentPolicyRequestId?: string;
+  cloudConsentPolicyRecordId?: string;
+  cloudConsentState?: VoiceCloudConsentState;
+  cloudDisclosureState?: VoiceCloudDisclosureState;
+  cloudConsentDecision?: VoiceCloudConsentPolicyDecision;
+  cloudConsentAllowed?: boolean;
+  cloudProviderRetentionDisclosureAccepted?: boolean;
+  cloudAudioLeavesDeviceDisclosureAccepted?: boolean;
+  cloudTranscriptLeavesDeviceDisclosureAccepted?: boolean;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

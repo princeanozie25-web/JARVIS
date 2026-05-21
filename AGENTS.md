@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:16am GMT+1
+# [jarvis] recent context, 2026-05-21 7:24am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (29,014t read) | 1,607,097t work | 98% savings
+Stats: 50 obs (28,857t read) | 1,534,036t work | 98% savings
 
 ### May 16, 2026
 
@@ -27,8 +27,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
 755 11:23p 🔵 JARVIS Phase 4D Voice Streaming Pipeline Already Fully Implemented
-756 " 🟣 JARVIS Phase 4E.1: Metadata-Only Barge-In Coordinator Implemented
-757 " 🟣 Barge-In Coordinator Test Suite Added with Safety Assertion Coverage
 758 11:28p 🔵 JARVIS Phase 4D Voice Streaming — Current State Before Metadata Ingestion Slice
 759 " 🟣 JARVIS Phase 4D — Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
 760 11:29p 🟣 JARVIS Phase 4E — VoiceBargeInCoordinator Rewritten With Internal State Machine
@@ -79,6 +77,8 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 802 " 🟣 Phase 4G: VoiceCloudRoutingPolicy — Disabled-by-Default Metadata-Only Cloud Routing Gate
 803 " 🟣 Phase 4G Tests: cloud-routing-policy.test.ts with Telemetry Safety and Anti-Wiring Freeze Assertions
 804 " 🟣 Phase 4G README Documentation and Test Suite Growth from 737 to 848
+805 7:16a ✅ Phase 4G Voice Streaming Changes Committed to Repository
+806 7:23a 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion and Chunk Scheduling Scaffold
 
-Access 1607k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1534k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
