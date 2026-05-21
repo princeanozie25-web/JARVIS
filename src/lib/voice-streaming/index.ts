@@ -60,6 +60,13 @@ export {
   type VoicePrivacyPolicyOptions,
 } from "./privacy-policy";
 export {
+  classifyVoiceProjectTool,
+  VOICE_ALLOWED_PROJECT_READ_TOOL_IDS,
+  type VoiceProjectToolBoundaryDecision,
+  type VoiceProjectToolBoundaryResult,
+  type VoiceProjectToolRegistry,
+} from "./project-tool-boundary";
+export {
   emitMetadataOnlyVoiceTelemetry,
   sanitizeVoiceTelemetryEvent,
   VOICE_TELEMETRY_ALLOWED_KEY_LIST,
