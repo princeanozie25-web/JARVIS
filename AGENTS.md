@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:29am GMT+1
+# [jarvis] recent context, 2026-05-21 7:38am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (28,852t read) | 1,534,495t work | 98% savings
+Stats: 50 obs (28,020t read) | 1,625,772t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,16 +26,7 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-763 11:32p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
-764 11:33p 🟣 Phase 4E: Turn Preemption Records Added to VoiceBargeInCoordinator
-765 " 🟣 Phase 4E Turn Preemption: All Validation Gates Pass — 789 Tests, Clean Lint, Clean Build
-766 11:36p 🟣 Phase 4E: Capture Rearm Intent/Result Types and Telemetry Events Added to types.ts
-767 " 🟣 Phase 4E: Capture Rearm Lifecycle Implemented in VoiceBargeInCoordinator
-768 11:40p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold
-769 " 🟣 JARVIS Phase 4E: Capture Re-arm Coordination Added to VoiceBargeInCoordinator
-770 11:45p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold
-771 " 🟣 VoiceBargeInCoordinator: In-Flight Terminal Transition Guard
-772 " 🔵 JARVIS voice-streaming types.ts: Full Type Surface as of Phase 4E
+771 11:45p 🟣 VoiceBargeInCoordinator: In-Flight Terminal Transition Guard
 773 11:49p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion and Chunk Scheduling Scaffold
 774 11:51p 🟣 Phase 4E VoiceBargeInCoordinator Test Suite Expanded with Coverage, Failure, and Telemetry-Safety Tests
 775 " 🔴 Safety Wiring Test False Positive: `canAutoplay` Field in types.ts Matched Autoplay Regex
@@ -79,6 +70,15 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 810 " 🔴 TypeScript Error: Array.push() Return Type Incompatible with void | Promise&lt;void&gt; Telemetry Callback
 811 " ✅ Build Status: 860 Tests Pass, Build Clean, Pre-existing NFT Warning Remains
 812 7:28a 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
+813 7:29a 🔵 JARVIS Voice Streaming Module Architecture: Existing Phase 4D–4G Scaffold
+814 " 🟣 Phase 4G: VoiceCloudConsentPolicy — Multi-Layer Disclosure Guard for Cloud Voice Routing
+815 " 🟣 Phase 4G Consent Policy Test Suite: Metadata Safety, Disclosure Waterfall, and No-Wiring Verification
+816 " ✅ All Checks Green: 870 Tests, Clean TypeScript, Clean Lint, Successful Next.js Build
+817 7:30a 🔵 Phase 4G Consent Policy Changes Committed — Clean Working Tree for Next Implementation
+818 7:36a 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold
+819 7:37a 🔴 Vitest Set vs ArrayContaining Matcher Incompatibility Fixed
+820 " 🟣 Phase 4G Cloud Routing Policy Freeze — Complete and Frozen
+821 " 🔵 JARVIS Full Test Suite: 874 Tests Passing After Phase 4G Freeze
 
-Access 1534k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1626k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

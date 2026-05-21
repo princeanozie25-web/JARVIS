@@ -217,7 +217,11 @@ export type TelemetryEventType =
   | "voice_cloud_consent_evaluated"
   | "voice_cloud_consent_allowed"
   | "voice_cloud_consent_denied"
-  | "voice_cloud_consent_disclosure_missing";
+  | "voice_cloud_consent_disclosure_missing"
+  | "voice_privacy_policy_evaluated"
+  | "voice_privacy_policy_allowed"
+  | "voice_privacy_policy_denied"
+  | "voice_privacy_policy_unknown_payload";
 
 export interface TelemetryEvent {
   timestamp: number;

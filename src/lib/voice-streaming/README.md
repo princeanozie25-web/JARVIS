@@ -327,11 +327,59 @@ Phase 4G cloud routing remains ineligible unless consent, cost disclosure, provi
 
 Phase 4G telemetry must not include transcript text, spoken text, assistant body text, tool output, file content, code blocks, personal context content, audit log content, approval payloads, approval IDs, API keys, audio URLs, audio blobs, PCM data, raw audio, chat payloads, or runtime command payloads.
 
+## Phase 4H Voice Privacy Policy
+
+Phase 4H starts with a metadata-only voice privacy policy scaffold. It evaluates privacy descriptors, returns allow/deny records, and emits metadata-only telemetry. It does not accept payload bodies, retain audio, upload transcripts, make cloud calls, access devices, execute runtime commands, approve actions, synthesize speech, start playback, or wire to chat, UI, browser, keyboard, wake-word, or always-listening behavior.
+
+Current Phase 4H status: privacy policy scaffold started.
+
+Phase 4H privacy policy invariants:
+
+- deny-by-default for every classification except `local_voice_metadata`
+- descriptor-only inputs and metadata-only results
+- no storage or return path for payload bodies
+- raw audio retention is denied
+- audio upload paths are denied
+- transcript upload paths are denied
+- speech text retention is denied
+- cloud voice requests are denied until a later explicit reviewed policy allows metadata-only eligibility
+- unknown payload classes are denied
+- telemetry contains only privacy descriptor IDs, record IDs, classifications, decisions, allow/deny state, session IDs, turn IDs, source IDs, and timestamps
+
+Phase 4H privacy classifications:
+
+- `raw_audio`
+- `transcript_text`
+- `assistant_speech_text`
+- `synthesized_audio`
+- `audio_url`
+- `cloud_voice_request`
+- `local_voice_metadata`
+- `unknown_payload`
+
+Phase 4H privacy decisions:
+
+- `allowed_metadata_only`
+- `denied_raw_audio_retention`
+- `denied_audio_upload`
+- `denied_transcript_upload`
+- `denied_speech_text_retention`
+- `denied_cloud_request`
+- `denied_unknown_payload`
+
+Phase 4H forbidden data and wiring:
+
+- transcript text, spoken text, assistant body text, tool output, file content, code blocks, personal context content, audit log content, request payloads, approval payloads, approval IDs, API keys, or provider secrets
+- raw audio, synthesized audio, audio URLs, audio blobs, PCM data, or audio payloads
+- live audio capture, microphone or device APIs, audio upload, transcript upload, cloud calls, network calls, API key access, or provider SDK imports
+- runtime execution, approval execution, approval bypass, voice approvals, TTS execution, autoplay, playback start, chat UI wiring, auto-submit, keyboard listeners, UI/browser APIs, wake word, or always-listening behavior
+
 ## Phase 4H Handoff Points
 
-Future Phase 4H work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, approval UI, or cloud routing. Those adapters must preserve the Phase 4D/4E/4F/4G boundaries:
+Future Phase 4H work may add more explicit privacy-policy refinements, then choose reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, approval UI, or cloud routing. Those adapters must preserve the Phase 4D/4E/4F/4G/4H boundaries:
 
 - metadata-only telemetry
+- privacy descriptor-only decisions before sensitive voice data can be handled
 - no implicit autoplay
 - no microphone access without explicit user action and permission handling
 - no keyboard or UI listeners inside the library layer

@@ -688,6 +688,52 @@ export interface VoiceCloudConsentPolicyResult {
   record: VoiceCloudConsentPolicyRecord;
 }
 
+export type VoicePrivacyPolicyClassification =
+  | "raw_audio"
+  | "transcript_text"
+  | "assistant_speech_text"
+  | "synthesized_audio"
+  | "audio_url"
+  | "cloud_voice_request"
+  | "local_voice_metadata"
+  | "unknown_payload";
+
+export type VoicePrivacyPolicyDecision =
+  | "allowed_metadata_only"
+  | "denied_raw_audio_retention"
+  | "denied_audio_upload"
+  | "denied_transcript_upload"
+  | "denied_speech_text_retention"
+  | "denied_cloud_request"
+  | "denied_unknown_payload";
+
+export interface VoicePrivacyPolicyDescriptor {
+  id: string;
+  sessionId: string;
+  classification: VoicePrivacyPolicyClassification;
+  createdAt?: number;
+  turnId?: string;
+  sourceId?: string;
+  voiceTurnState?: VoiceTurnState;
+}
+
+export interface VoicePrivacyPolicyRecord {
+  id: string;
+  descriptorId: string;
+  sessionId: string;
+  classification: VoicePrivacyPolicyClassification;
+  decision: VoicePrivacyPolicyDecision;
+  allowed: boolean;
+  createdAt: number;
+  turnId?: string;
+  sourceId?: string;
+}
+
+export interface VoicePrivacyPolicyResult {
+  descriptor: VoicePrivacyPolicyDescriptor;
+  record: VoicePrivacyPolicyRecord;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -786,7 +832,11 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_cloud_consent_evaluated"
   | "voice_cloud_consent_allowed"
   | "voice_cloud_consent_denied"
-  | "voice_cloud_consent_disclosure_missing";
+  | "voice_cloud_consent_disclosure_missing"
+  | "voice_privacy_policy_evaluated"
+  | "voice_privacy_policy_allowed"
+  | "voice_privacy_policy_denied"
+  | "voice_privacy_policy_unknown_payload";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -898,6 +948,12 @@ export interface VoiceOrchestrationTelemetryEvent {
   cloudProviderRetentionDisclosureAccepted?: boolean;
   cloudAudioLeavesDeviceDisclosureAccepted?: boolean;
   cloudTranscriptLeavesDeviceDisclosureAccepted?: boolean;
+  voicePrivacyDescriptorId?: string;
+  voicePrivacyRecordId?: string;
+  voicePrivacyClassification?: VoicePrivacyPolicyClassification;
+  voicePrivacyDecision?: VoicePrivacyPolicyDecision;
+  voicePrivacyAllowed?: boolean;
+  voicePrivacySourceId?: string;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

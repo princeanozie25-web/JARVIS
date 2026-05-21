@@ -55,6 +55,10 @@ export {
   VoiceCloudConsentPolicy,
   type VoiceCloudConsentPolicyOptions,
 } from "./cloud-consent-policy";
+export {
+  VoicePrivacyPolicy,
+  type VoicePrivacyPolicyOptions,
+} from "./privacy-policy";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -123,6 +127,11 @@ export type {
   VoiceCloudRoutingPolicyRequest,
   VoiceCloudRoutingPolicyResult,
   VoiceCloudRoutingPolicyState,
+  VoicePrivacyPolicyClassification,
+  VoicePrivacyPolicyDecision,
+  VoicePrivacyPolicyDescriptor,
+  VoicePrivacyPolicyRecord,
+  VoicePrivacyPolicyResult,
   VoicePlaybackSequenceIntent,
   VoicePlaybackSequenceIntentState,
   VoiceSynthesisQueueItem,
