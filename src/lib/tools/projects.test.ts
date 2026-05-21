@@ -841,6 +841,97 @@ describe("Phase 5 project tools", () => {
     expect(JSON.stringify(listResult.data)).not.toContain("thread:secret-ref");
   });
 
+  it("memory_slug sources stay pointer-only in project read surfaces", async () => {
+    const secretMemoryText = "raw memory body must not cross project bridge";
+    insertRegisteredProject(db, {
+      id: "proj_memory_bridge",
+      slug: "memory-bridge",
+      displayName: "Memory Bridge",
+      rootKind: "memory",
+      rootRef: "memory:bridge",
+      createdAt: 1_000,
+    });
+    db.prepare(
+      `INSERT INTO long_term_memory (
+         id, category, content, source, source_id, project, tags_json,
+         sensitivity, created_at, updated_at, obsidian_path, hash, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "mem_project_secret",
+      "decision",
+      secretMemoryText,
+      "user",
+      null,
+      "memory-bridge",
+      JSON.stringify(["#project"]),
+      "personal",
+      1_000,
+      1_000,
+      "20-projects/memory-bridge/secret.md",
+      "sha256:secret",
+      "active",
+    );
+    insertProjectSource(db, {
+      id: "psrc_memory_bridge",
+      projectId: "proj_memory_bridge",
+      kind: "memory_slug",
+      ref: "memory:mem_project_secret",
+    });
+    const beforeMemoryCount = db
+      .prepare("SELECT COUNT(*) AS count FROM long_term_memory")
+      .get() as { count: number };
+
+    const getResult = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_memory_bridge" },
+      sessionId: "session-1",
+      executionId: "memory-get",
+      decision: allowDecision,
+    });
+    const summarizeResult = await runtime.runTool({
+      toolId: "project.summarize",
+      input: { id: "proj_memory_bridge" },
+      sessionId: "session-1",
+      executionId: "memory-summarize",
+      decision: allowDecision,
+    });
+    const indexResult = await runApprovedProjectIndex("memory-index", {
+      projectId: "proj_memory_bridge",
+      triggeredBy: "manual",
+    });
+
+    expect(getResult.data).toMatchObject({
+      project: expect.objectContaining({ sourceCount: 1 }),
+    });
+    expect(summarizeResult).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        summary: expect.objectContaining({
+          mode: "deterministic_code_generated",
+          llmGenerated: false,
+        }),
+      },
+    });
+    expect(indexResult.body).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+    });
+    const serialized = JSON.stringify({
+      get: getResult.data,
+      summarize: summarizeResult.data,
+      telemetry: listTelemetryEvents(db, 50),
+      toolCalls: listToolCalls(db),
+    });
+    expect(serialized).not.toContain(secretMemoryText);
+    expect(serialized).not.toContain("memory:mem_project_secret");
+    expect(serialized).not.toContain("20-projects/memory-bridge/secret.md");
+    expect(serialized).not.toContain("mem_project_secret");
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),
+    ).toEqual(beforeMemoryCount);
+  });
+
   it("does not register disabled Phase 5 tools or mutation surfaces", () => {
     const registeredToolIds = tools.list().map((tool) => tool.id);
 

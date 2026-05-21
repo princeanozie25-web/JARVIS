@@ -73,3 +73,14 @@ export type {
   ProjectMarkerArtifact,
   ProjectMarkerArtifactKind,
 } from "./marker-extraction";
+export {
+  discoverProjectMemorySourcePointers,
+  isProjectMemoryBridgeEnabled,
+  PROJECT_MEMORY_BRIDGE_FEATURE_FLAG,
+} from "./memory-bridge";
+export type {
+  DiscoverProjectMemorySourcesInput,
+  ProjectMemoryBridgeReason,
+  ProjectMemoryBridgeResult,
+  ProjectMemoryBridgeSourcePointer,
+} from "./memory-bridge";
