@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:24am GMT+1
+# [jarvis] recent context, 2026-05-21 7:29am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (28,857t read) | 1,534,036t work | 98% savings
+Stats: 50 obs (28,852t read) | 1,534,495t work | 98% savings
 
 ### May 16, 2026
 
@@ -26,12 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-755 11:23p 🔵 JARVIS Phase 4D Voice Streaming Pipeline Already Fully Implemented
-758 11:28p 🔵 JARVIS Phase 4D Voice Streaming — Current State Before Metadata Ingestion Slice
-759 " 🟣 JARVIS Phase 4D — Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
-760 11:29p 🟣 JARVIS Phase 4E — VoiceBargeInCoordinator Rewritten With Internal State Machine
-761 " 🟣 JARVIS Phase 4E — Barge-In Coordinator State Machine Tests Including In-Flight Concurrency
-762 " 🟣 JARVIS Phase 4E — All CI Gates Pass: 788 Tests, Clean TypeScript, Lint, and Build
 763 11:32p 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
 764 11:33p 🟣 Phase 4E: Turn Preemption Records Added to VoiceBargeInCoordinator
 765 " 🟣 Phase 4E Turn Preemption: All Validation Gates Pass — 789 Tests, Clean Lint, Clean Build
@@ -79,6 +73,12 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 804 " 🟣 Phase 4G README Documentation and Test Suite Growth from 737 to 848
 805 7:16a ✅ Phase 4G Voice Streaming Changes Committed to Repository
 806 7:23a 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion and Chunk Scheduling Scaffold
+807 7:24a 🟣 VoiceCloudBudgetGuard: Metadata-Only Cloud Budget Evaluation with Multi-Window Enforcement
+808 " 🟣 Budget Guard Type System: VoiceCloudBudget\* Interfaces Added to types.ts and telemetry/types.ts
+809 " 🟣 VoiceCloudBudgetGuard Tests: 10 Cases Including Telemetry Safety and No-Wiring Assertions
+810 " 🔴 TypeScript Error: Array.push() Return Type Incompatible with void | Promise&lt;void&gt; Telemetry Callback
+811 " ✅ Build Status: 860 Tests Pass, Build Clean, Pre-existing NFT Warning Remains
+812 7:28a 🟣 JARVIS Phase 4D: Live Assistant Response Stream Metadata Ingestion & Chunk Scheduling Scaffold
 
 Access 1534k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

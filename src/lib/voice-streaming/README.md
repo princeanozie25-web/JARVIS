@@ -192,11 +192,22 @@ Phase 4F restricted-content boundary metadata may contain only:
 
 Restricted-content descriptors and decision records must not contain actual content bodies, tool output, file content, code blocks, personal context content, audit log content, runtime output, transcripts, spoken text, assistant body text, audio URLs, audio blobs, PCM data, raw audio, chat payloads, runtime command payloads, or approval execution payloads.
 
-## Phase 4G Cloud Routing Policy Scaffold
+## Phase 4G Cloud Routing Policy Freeze
 
 Phase 4G starts with disabled-by-default cloud voice routing, consent/disclosure, and budget policy scaffolds. They evaluate metadata-only requests and return allow/deny metadata only. They do not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
 
-Current Phase 4G status: scaffold started.
+Current Phase 4G status: complete and frozen.
+
+Frozen Phase 4G safety invariants:
+
+- disabled and deny-by-default
+- policy-only, metadata-only decisions
+- consent and every required disclosure must pass before routing can be eligible
+- budget limits must be explicitly configured and pass before routing can be eligible
+- unsupported provider/capability pairs are denied
+- local fallback availability is recorded as metadata only
+- no real provider pricing tables are embedded
+- no provider SDK, network, API key, runtime, approval, TTS, playback, chat, device, UI, browser, wake-word, or always-listening wiring exists
 
 Phase 4G policy metadata may contain only:
 
