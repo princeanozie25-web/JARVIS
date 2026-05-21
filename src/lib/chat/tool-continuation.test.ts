@@ -369,6 +369,7 @@ describe("approval-gated provider tool continuation", () => {
       "project.get",
       "project.register",
       "project.add_source",
+      "project.index",
     ]);
   });
 
@@ -490,6 +491,71 @@ describe("approval-gated provider tool continuation", () => {
     );
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM project_source").get(),
+    ).toMatchObject({ count: 0 });
+  });
+
+  it("emits pending approval for project.index without creating a snapshot first", async () => {
+    db.prepare(
+      `INSERT INTO projects (
+         id, slug, display_name, root_kind, root_ref, created_at, archived_at, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "proj_jarvis",
+      "jarvis",
+      "JARVIS",
+      "virtual",
+      "virtual:jarvis",
+      1_000,
+      null,
+      "active",
+    );
+    const provider = new StubProvider(
+      "project_index",
+      '{"projectId":"proj_jarvis","triggeredBy":"manual"}',
+      "unused",
+    );
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    const events: StreamEvent[] = [];
+    for await (const event of streamWithReadOnlyToolContinuation({
+      provider,
+      messages: [{ role: "user", content: "snapshot project index" }],
+      model: "gpt-4o-mini",
+      signal: new AbortController().signal,
+      providerTools,
+      runtime: runtime(),
+      registry: tools,
+      db,
+      sessionId: "session-1",
+      assistantMessageId: "message-1",
+      decision: allowDecision,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "tool_call_start",
+      "tool_call_complete",
+      "tool_proposed",
+      "tool_pending",
+    ]);
+    expect(events.find((event) => event.type === "tool_pending")).toMatchObject(
+      {
+        type: "tool_pending",
+        executionId: "call-1",
+        toolId: "project.index",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+        summary:
+          "project_id: proj_jarvis; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+      },
+    );
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM project_index_snapshot").get(),
     ).toMatchObject({ count: 0 });
   });
 

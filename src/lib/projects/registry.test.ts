@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   createProjectRegistrationDraft,
   projectFromRow,
+  projectIndexSnapshotFromRow,
   projectSourceFromRow,
+  validateProjectIndexSnapshotStatus,
   validateProjectRootKind,
   validateProjectSourceKind,
   validateProjectStatus,
@@ -56,6 +58,30 @@ describe("project registry domain models", () => {
     });
   });
 
+  it("maps index snapshot rows into typed metadata-only models", () => {
+    expect(
+      projectIndexSnapshotFromRow({
+        id: "pidx_1",
+        project_id: "proj_opaque",
+        started_at: 2_000,
+        finished_at: 2_100,
+        sources_seen: 3,
+        artifacts_extracted: 0,
+        triggered_by: "manual",
+        status: "completed",
+      }),
+    ).toEqual({
+      id: "pidx_1",
+      projectId: "proj_opaque",
+      startedAt: 2_000,
+      finishedAt: 2_100,
+      sourcesSeen: 3,
+      artifactsExtracted: 0,
+      triggeredBy: "manual",
+      status: "completed",
+    });
+  });
+
   it("creates opaque registration draft ids that are not derived from roots", () => {
     const draft = createProjectRegistrationDraft({
       slug: "jarvis",
@@ -75,8 +101,10 @@ describe("project registry domain models", () => {
     expect(validateProjectRootKind("obsidian")).toBe("obsidian");
     expect(validateProjectStatus("paused")).toBe("paused");
     expect(validateProjectSourceKind("thread")).toBe("thread");
+    expect(validateProjectIndexSnapshotStatus("rejected")).toBe("rejected");
     expect(() => validateProjectRootKind("network")).toThrow();
     expect(() => validateProjectStatus("running")).toThrow();
     expect(() => validateProjectSourceKind("network_url")).toThrow();
+    expect(() => validateProjectIndexSnapshotStatus("queued")).toThrow();
   });
 });

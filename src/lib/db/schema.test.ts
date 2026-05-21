@@ -63,6 +63,7 @@ describe("schema", () => {
         "memory_candidates",
         "project_state",
         "project_source",
+        "project_index_snapshot",
         "projects",
         "preferences",
         "reflective_memory",
@@ -116,6 +117,16 @@ describe("schema", () => {
       "ref",
       "last_indexed_at",
       "source_hash",
+    ]);
+    expect(columnNames("project_index_snapshot")).toEqual([
+      "id",
+      "project_id",
+      "started_at",
+      "finished_at",
+      "sources_seen",
+      "artifacts_extracted",
+      "triggered_by",
+      "status",
     ]);
     expect(columnNames("memory_candidates")).toEqual([
       "id",
@@ -222,6 +233,7 @@ describe("schema", () => {
       "013_runtime_command_calls",
       "014_project_registry",
       "015_project_source_ledger",
+      "016_project_index_snapshot",
     ]);
   });
 });

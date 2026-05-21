@@ -16,6 +16,7 @@ const MIGRATION_IDS = [
   "013_runtime_command_calls",
   "014_project_registry",
   "015_project_source_ledger",
+  "016_project_index_snapshot",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -357,6 +358,27 @@ CREATE INDEX IF NOT EXISTS idx_project_source_project
 
 CREATE INDEX IF NOT EXISTS idx_project_source_kind
   ON project_source (kind);
+
+CREATE TABLE IF NOT EXISTS project_index_snapshot (
+  id                   TEXT PRIMARY KEY,
+  project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  started_at           INTEGER NOT NULL,
+  finished_at          INTEGER,
+  sources_seen         INTEGER NOT NULL CHECK (sources_seen >= 0),
+  artifacts_extracted  INTEGER NOT NULL CHECK (artifacts_extracted >= 0),
+  triggered_by         TEXT NOT NULL,
+  status               TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'rejected'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_index_snapshot_project
+  ON project_index_snapshot (project_id, started_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_project_index_snapshot_status
+  ON project_index_snapshot (status, started_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_index_snapshot_active_project
+  ON project_index_snapshot (project_id)
+  WHERE status IN ('pending', 'running');
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

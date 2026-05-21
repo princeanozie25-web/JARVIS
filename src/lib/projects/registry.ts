@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { ProjectRow } from "../db/projects";
 import type { ProjectSourceRow } from "../db/project-sources";
+import type { ProjectIndexSnapshotRow } from "../db/project-index-snapshots";
 import {
+  ProjectIndexSnapshotSchema,
+  ProjectIndexSnapshotStatusSchema,
   PROJECT_STATE_AUTHORITY_NOTE,
   ProjectRootKindSchema,
   ProjectSlugSchema,
@@ -10,6 +13,8 @@ import {
   ProjectStatusSchema,
   RegisteredProjectSchema,
   type ProjectRegistrationDraft,
+  type ProjectIndexSnapshot,
+  type ProjectIndexSnapshotStatus,
   type ProjectRootKind,
   type ProjectSource,
   type ProjectSourceKind,
@@ -27,6 +32,12 @@ export function createOpaqueProjectSourceId(
   newId: () => string = randomUUID,
 ): string {
   return `psrc_${newId()}`;
+}
+
+export function createOpaqueProjectIndexSnapshotId(
+  newId: () => string = randomUUID,
+): string {
+  return `pidx_${newId()}`;
 }
 
 export function projectFromRow(
@@ -57,6 +68,21 @@ export function projectSourceFromRow(row: ProjectSourceRow): ProjectSource {
   });
 }
 
+export function projectIndexSnapshotFromRow(
+  row: ProjectIndexSnapshotRow,
+): ProjectIndexSnapshot {
+  return ProjectIndexSnapshotSchema.parse({
+    id: row.id,
+    projectId: row.project_id,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    sourcesSeen: row.sources_seen,
+    artifactsExtracted: row.artifacts_extracted,
+    triggeredBy: row.triggered_by,
+    status: row.status,
+  });
+}
+
 export function validateProjectRootKind(value: string): ProjectRootKind {
   return ProjectRootKindSchema.parse(value);
 }
@@ -67,6 +93,12 @@ export function validateProjectStatus(value: string): ProjectStatus {
 
 export function validateProjectSourceKind(value: string): ProjectSourceKind {
   return ProjectSourceKindSchema.parse(value);
+}
+
+export function validateProjectIndexSnapshotStatus(
+  value: string,
+): ProjectIndexSnapshotStatus {
+  return ProjectIndexSnapshotStatusSchema.parse(value);
 }
 
 export function createProjectRegistrationDraft(input: {

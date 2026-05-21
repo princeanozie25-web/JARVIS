@@ -1,19 +1,25 @@
 export {
   createOpaqueProjectId,
+  createOpaqueProjectIndexSnapshotId,
   createOpaqueProjectSourceId,
+  projectIndexSnapshotFromRow,
   createProjectRegistrationDraft,
   projectFromRow,
   projectRegistryAuthorityNote,
   projectSourceFromRow,
   validateProjectSourceKind,
   validateProjectRootKind,
+  validateProjectIndexSnapshotStatus,
   validateProjectStatus,
 } from "./registry";
 export {
+  PROJECT_INDEX_SNAPSHOT_STATUSES,
   PROJECT_ROOT_KINDS,
   PROJECT_SOURCE_KINDS,
   PROJECT_STATE_AUTHORITY_NOTE,
   PROJECT_STATUSES,
+  ProjectIndexSnapshotSchema,
+  ProjectIndexSnapshotStatusSchema,
   ProjectRootKindSchema,
   ProjectSlugSchema,
   ProjectSourceKindSchema,
@@ -22,6 +28,8 @@ export {
   RegisteredProjectSchema,
 } from "./types";
 export type {
+  ProjectIndexSnapshot,
+  ProjectIndexSnapshotStatus,
   ProjectRegistrationDraft,
   ProjectRootKind,
   ProjectSource,

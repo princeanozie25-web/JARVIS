@@ -188,6 +188,31 @@ describe("tool approval flow", () => {
     expect(JSON.stringify(pending)).not.toContain("result");
   });
 
+  it("shows metadata-only project index details in the approval summary", () => {
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-index",
+      sessionId: "session-1",
+      toolId: "project.index",
+      toolName: "Index Project Snapshot",
+      scopeHash: "project.index:project:proj_1",
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: {
+        projectId: "proj_1",
+        triggeredBy: "manual",
+      },
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_1; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+    );
+    expect(JSON.stringify(pending)).not.toContain("output_json");
+    expect(JSON.stringify(pending)).not.toContain("result");
+  });
+
   it("allows an approved-once tool execution exactly once", async () => {
     await requestApproval("exec-1");
     now = 1_100;

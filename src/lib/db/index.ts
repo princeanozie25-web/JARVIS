@@ -56,6 +56,17 @@ export type {
   ProjectSourceRow,
 } from "./project-sources";
 export {
+  ACTIVE_PROJECT_INDEX_SNAPSHOT_STATUSES,
+  getProjectIndexSnapshot,
+  hasActiveProjectIndexSnapshot,
+  insertProjectIndexSnapshot,
+  listProjectIndexSnapshots,
+} from "./project-index-snapshots";
+export type {
+  InsertProjectIndexSnapshotInput,
+  ProjectIndexSnapshotRow,
+} from "./project-index-snapshots";
+export {
   createMemoryCandidate,
   listMemoryCandidates,
   MEMORY_CANDIDATE_STATUSES,

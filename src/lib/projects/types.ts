@@ -14,14 +14,26 @@ export const PROJECT_SOURCE_KINDS = [
   "obsidian_note",
   "thread",
 ] as const;
+export const PROJECT_INDEX_SNAPSHOT_STATUSES = [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "rejected",
+] as const;
 
 export type ProjectRootKind = (typeof PROJECT_ROOT_KINDS)[number];
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type ProjectSourceKind = (typeof PROJECT_SOURCE_KINDS)[number];
+export type ProjectIndexSnapshotStatus =
+  (typeof PROJECT_INDEX_SNAPSHOT_STATUSES)[number];
 
 export const ProjectRootKindSchema = z.enum(PROJECT_ROOT_KINDS);
 export const ProjectStatusSchema = z.enum(PROJECT_STATUSES);
 export const ProjectSourceKindSchema = z.enum(PROJECT_SOURCE_KINDS);
+export const ProjectIndexSnapshotStatusSchema = z.enum(
+  PROJECT_INDEX_SNAPSHOT_STATUSES,
+);
 
 export const ProjectSlugSchema = z
   .string()
@@ -55,6 +67,19 @@ export const ProjectSourceSchema = z.object({
 });
 
 export type ProjectSource = z.infer<typeof ProjectSourceSchema>;
+
+export const ProjectIndexSnapshotSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  projectId: z.string().trim().min(1).max(200),
+  startedAt: z.number().int().nonnegative(),
+  finishedAt: z.number().int().nonnegative().nullable(),
+  sourcesSeen: z.number().int().nonnegative(),
+  artifactsExtracted: z.literal(0),
+  triggeredBy: z.string().trim().min(1).max(120),
+  status: ProjectIndexSnapshotStatusSchema,
+});
+
+export type ProjectIndexSnapshot = z.infer<typeof ProjectIndexSnapshotSchema>;
 
 export interface ProjectRegistrationDraft {
   id: string;

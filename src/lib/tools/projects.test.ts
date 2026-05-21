@@ -4,6 +4,10 @@ import {
   ensurePendingToolApproval,
   resumeApproval,
 } from "../chat/tool-approvals";
+import {
+  insertProjectIndexSnapshot,
+  listProjectIndexSnapshots,
+} from "../db/project-index-snapshots";
 import { countProjectSources, listProjectSources } from "../db/project-sources";
 import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
 import { applyMigrations } from "../db/schema";
@@ -196,7 +200,7 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.get");
     expect(registeredToolIds).toContain("project.register");
     expect(registeredToolIds).toContain("project.add_source");
-    expect(registeredToolIds).not.toContain("project.index");
+    expect(registeredToolIds).toContain("project.index");
     expect(registeredToolIds).not.toContain("project.write_memory");
     expect(registeredToolIds).not.toContain("project.extract");
     expect(registeredToolIds).not.toContain("project.extract_tasks");
@@ -613,5 +617,175 @@ describe("Phase 5 project tools", () => {
       status: "DENIED",
       data: { reason: "invalid_tool_input" },
     });
+  });
+
+  it("project.index requires approval and does not snapshot before approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.index",
+      input: { projectId: "proj_index", triggeredBy: "manual" },
+      sessionId: "session-1",
+      executionId: "index-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+      },
+    });
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([]);
+  });
+
+  it("project.index records a metadata-only snapshot after approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    db.prepare(
+      `INSERT INTO project_source (
+         id, project_id, kind, ref, last_indexed_at, source_hash
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "psrc_index",
+      "proj_index",
+      "thread",
+      "thread:do-not-read",
+      null,
+      null,
+    );
+    const input = { projectId: "proj_index", triggeredBy: "manual" };
+    await runtime.runTool({
+      toolId: "project.index",
+      input,
+      sessionId: "session-1",
+      executionId: "index-approved",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "index-approved",
+      sessionId: "session-1",
+      toolId: "project.index",
+      toolName: "Index Project Snapshot",
+      scopeHash: tools.get("project.index").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_index; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+    );
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "index-approved",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: true,
+      executionId: "index-approved",
+      decision: "APPROVED_ONCE",
+      status: "COMPLETED",
+      message: "Project index snapshot recorded.",
+    });
+    expect(approved.body).not.toHaveProperty("data");
+    expect(approved.body).not.toHaveProperty("result");
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        project_id: "proj_index",
+        sources_seen: 1,
+        artifacts_extracted: 0,
+        triggered_by: "manual",
+        status: "completed",
+      }),
+    ]);
+    expect(JSON.stringify(approved.body)).not.toContain("thread:do-not-read");
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),
+    ).toMatchObject({ count: 0 });
+  });
+
+  it("project.index rejects concurrent active snapshots with a rejected audit row", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectIndexSnapshot(db, {
+      id: "pidx_running",
+      projectId: "proj_index",
+      startedAt: 1_050,
+      sourcesSeen: 0,
+      artifactsExtracted: 0,
+      triggeredBy: "manual",
+      status: "running",
+    });
+    const input = { projectId: "proj_index", triggeredBy: "manual" };
+    await runtime.runTool({
+      toolId: "project.index",
+      input,
+      sessionId: "session-1",
+      executionId: "index-rejected",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "index-rejected",
+      sessionId: "session-1",
+      toolId: "project.index",
+      toolName: "Index Project Snapshot",
+      scopeHash: tools.get("project.index").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "index-rejected",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: false,
+      status: "DENIED",
+      message: "Project index snapshot rejected because one is already active.",
+    });
+    expect(
+      listProjectIndexSnapshots(db, "proj_index").map((row) => row.status),
+    ).toEqual(["rejected", "running"]);
   });
 });

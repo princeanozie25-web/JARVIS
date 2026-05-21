@@ -70,6 +70,8 @@ export {
   projectAddSourceTool,
   projectGetScopeOf,
   projectGetTool,
+  projectIndexScopeOf,
+  projectIndexTool,
   projectListScopeOf,
   projectListTool,
   projectMutationTools,
@@ -81,6 +83,7 @@ export {
 export type {
   ProjectAddSourceInput,
   ProjectGetInput,
+  ProjectIndexInput,
   ProjectListInput,
   ProjectRegisterInput,
 } from "./projects";

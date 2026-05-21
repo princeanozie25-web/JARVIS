@@ -49,6 +49,8 @@ export function safeToolInputSummary(input: unknown): string {
     if (projectSummary) return projectSummary;
     const projectSourceSummary = projectSourceSummaryFromInput(record);
     if (projectSourceSummary) return projectSourceSummary;
+    const projectIndexSummary = projectIndexSummaryFromInput(record);
+    if (projectIndexSummary) return projectIndexSummary;
     if (typeof record.path === "string") {
       return truncateSummary(`path: ${record.path}`);
     }
@@ -59,6 +61,22 @@ export function safeToolInputSummary(input: unknown): string {
   if (typeof input === "string") return truncateSummary(input);
   if (input === null || input === undefined) return "empty input";
   return truncateSummary(typeof input);
+}
+
+function projectIndexSummaryFromInput(
+  record: Record<string, unknown>,
+): string | null {
+  if (typeof record.projectId !== "string") return null;
+  const triggeredBy =
+    typeof record.triggeredBy === "string" ? record.triggeredBy : "manual";
+  return truncateSummary(
+    [
+      `project_id: ${record.projectId}`,
+      `triggered_by: ${triggeredBy}`,
+      "mode: metadata_only",
+      "artifacts_extracted: 0",
+    ].join("; "),
+  );
 }
 
 function projectSourceSummaryFromInput(

@@ -99,6 +99,7 @@ describe("ToolRegistry", () => {
       "project.get",
       "project.register",
       "project.add_source",
+      "project.index",
       "fs.undo",
     ]);
   });
@@ -132,6 +133,7 @@ describe("ToolRegistry", () => {
       ["project.get", "PURE_READ", "ALLOW"],
       ["project.register", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["project.add_source", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
+      ["project.index", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
     ]);
   });

@@ -552,6 +552,7 @@ describe("fs.create_file", () => {
       "memory.note",
       "project.register",
       "project.add_source",
+      "project.index",
       "fs.undo",
     ]);
     expect(tools.list().map((tool) => tool.id)).not.toEqual(
