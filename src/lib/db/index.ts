@@ -62,6 +62,38 @@ export type {
   ProjectSourceRow,
 } from "./project-sources";
 export {
+  getEnvironmentCapability,
+  getEnvironmentDevice,
+  getEnvironmentRegistry,
+  getEnvironmentRegistryMetadata,
+  getEnvironmentRoom,
+  insertEnvironmentCapability,
+  insertEnvironmentDevice,
+  insertEnvironmentRoom,
+  listEnvironmentCapabilities,
+  listEnvironmentDevices,
+  listEnvironmentRegistryMetadata,
+  listEnvironmentRooms,
+  listEnvironmentTrustClasses,
+  seedEnvironmentRegistryDefaults,
+  updateEnvironmentCapability,
+  updateEnvironmentDevice,
+  updateEnvironmentRoom,
+  upsertEnvironmentRegistryMetadata,
+  upsertEnvironmentTrustClass,
+} from "./environment-registry";
+export type {
+  EnvironmentCapabilityRow,
+  EnvironmentDeviceRow,
+  EnvironmentRegistryMetadataRow,
+  EnvironmentRoomRow,
+  EnvironmentTrustClassRow,
+  InsertEnvironmentCapabilityInput,
+  InsertEnvironmentDeviceInput,
+  InsertEnvironmentRoomInput,
+  UpsertEnvironmentRegistryMetadataInput,
+} from "./environment-registry";
+export {
   ACTIVE_PROJECT_INDEX_SNAPSHOT_STATUSES,
   finishProjectIndexSnapshot,
   getProjectIndexSnapshot,

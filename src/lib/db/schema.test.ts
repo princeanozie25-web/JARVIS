@@ -55,6 +55,12 @@ describe("schema", () => {
         "_schema_migrations",
         "curator_audit_records",
         "curator_records",
+        "environment_capability",
+        "environment_device",
+        "environment_device_capability",
+        "environment_registry_metadata",
+        "environment_room",
+        "environment_trust_class",
         "goals",
         "human_review_queue",
         "long_term_memory",
@@ -168,6 +174,41 @@ describe("schema", () => {
       "decided_at",
       "origin_ref",
     ]);
+    expect(columnNames("environment_registry_metadata")).toEqual([
+      "key",
+      "value",
+      "updated_at",
+    ]);
+    expect(columnNames("environment_room")).toEqual([
+      "id",
+      "display_name",
+      "kind",
+    ]);
+    expect(columnNames("environment_trust_class")).toEqual([
+      "id",
+      "can_observe",
+      "can_mutate",
+      "requires_approval",
+      "notes",
+    ]);
+    expect(columnNames("environment_capability")).toEqual([
+      "id",
+      "display_name",
+      "description",
+      "trust_class",
+    ]);
+    expect(columnNames("environment_device")).toEqual([
+      "id",
+      "display_name",
+      "room_id",
+      "manufacturer",
+      "model",
+      "trust_class",
+    ]);
+    expect(columnNames("environment_device_capability")).toEqual([
+      "device_id",
+      "capability_id",
+    ]);
     expect(columnNames("memory_candidates")).toEqual([
       "id",
       "session_id",
@@ -275,6 +316,7 @@ describe("schema", () => {
       "015_project_source_ledger",
       "016_project_index_snapshot",
       "017_project_artifacts",
+      "018_environment_registry",
     ]);
   });
 });

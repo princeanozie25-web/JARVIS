@@ -18,6 +18,7 @@ const MIGRATION_IDS = [
   "015_project_source_ledger",
   "016_project_index_snapshot",
   "017_project_artifacts",
+  "018_environment_registry",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -444,6 +445,57 @@ CREATE TABLE IF NOT EXISTS project_decision (
 
 CREATE INDEX IF NOT EXISTS idx_project_decision_project
   ON project_decision (project_id, decided_at DESC);
+
+CREATE TABLE IF NOT EXISTS environment_registry_metadata (
+  key         TEXT PRIMARY KEY,
+  value       TEXT NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS environment_room (
+  id            TEXT PRIMARY KEY,
+  display_name  TEXT NOT NULL,
+  kind          TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS environment_trust_class (
+  id                 TEXT PRIMARY KEY CHECK (id IN ('observe-only', 'safe-mutate', 'restricted-mutate', 'forbidden')),
+  can_observe        INTEGER NOT NULL CHECK (can_observe IN (0, 1)),
+  can_mutate         INTEGER NOT NULL CHECK (can_mutate IN (0, 1)),
+  requires_approval  INTEGER NOT NULL CHECK (requires_approval IN (0, 1)),
+  notes              TEXT
+);
+
+CREATE TABLE IF NOT EXISTS environment_capability (
+  id            TEXT PRIMARY KEY CHECK (id IN ('state.observe', 'power.observe', 'light.observe', 'climate.observe', 'media.observe', 'lock.observe', 'environment.observe', 'automation.plan')),
+  display_name  TEXT NOT NULL,
+  description   TEXT,
+  trust_class   TEXT NOT NULL REFERENCES environment_trust_class(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS environment_device (
+  id            TEXT PRIMARY KEY,
+  display_name  TEXT NOT NULL,
+  room_id       TEXT NOT NULL REFERENCES environment_room(id) ON DELETE RESTRICT,
+  manufacturer  TEXT,
+  model         TEXT,
+  trust_class   TEXT NOT NULL DEFAULT 'observe-only' REFERENCES environment_trust_class(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_environment_device_room
+  ON environment_device (room_id, display_name ASC);
+
+CREATE INDEX IF NOT EXISTS idx_environment_device_trust
+  ON environment_device (trust_class, display_name ASC);
+
+CREATE TABLE IF NOT EXISTS environment_device_capability (
+  device_id      TEXT NOT NULL REFERENCES environment_device(id) ON DELETE CASCADE,
+  capability_id  TEXT NOT NULL REFERENCES environment_capability(id) ON DELETE RESTRICT,
+  PRIMARY KEY (device_id, capability_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_environment_device_capability_capability
+  ON environment_device_capability (capability_id);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,
