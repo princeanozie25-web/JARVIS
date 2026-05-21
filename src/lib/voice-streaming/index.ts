@@ -47,6 +47,10 @@ export {
   VoiceCloudRoutingPolicy,
   type VoiceCloudRoutingPolicyOptions,
 } from "./cloud-routing-policy";
+export {
+  VoiceCloudBudgetGuard,
+  type VoiceCloudBudgetGuardOptions,
+} from "./cloud-budget-guard";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -92,6 +96,14 @@ export type {
   VoiceRestrictedContentDecisionRecord,
   VoiceRestrictedContentDescriptor,
   VoiceCloudProviderId,
+  VoiceCloudBudgetDecision,
+  VoiceCloudBudgetDimension,
+  VoiceCloudBudgetGuardRecord,
+  VoiceCloudBudgetGuardRequest,
+  VoiceCloudBudgetGuardResult,
+  VoiceCloudBudgetLimit,
+  VoiceCloudBudgetUsage,
+  VoiceCloudBudgetWindow,
   VoiceCloudRoutingCapability,
   VoiceCloudRoutingDecision,
   VoiceCloudRoutingDenialReason,

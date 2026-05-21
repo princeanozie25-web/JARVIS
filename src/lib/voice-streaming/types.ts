@@ -549,6 +549,76 @@ export interface VoiceCloudRoutingPolicyResult {
   record: VoiceCloudRoutingPolicyRecord;
 }
 
+export type VoiceCloudBudgetWindow = "per_session" | "daily" | "monthly";
+
+export type VoiceCloudBudgetDimension =
+  | "estimated_minutes"
+  | "estimated_cost_units"
+  | "request_count";
+
+export type VoiceCloudBudgetDecision =
+  | "allowed_metadata_only"
+  | "denied_budget_missing"
+  | "denied_budget_exceeded"
+  | "denied_invalid_estimate"
+  | "denied_provider_disabled";
+
+export interface VoiceCloudBudgetLimit {
+  window: VoiceCloudBudgetWindow;
+  dimension: VoiceCloudBudgetDimension;
+  limit: number;
+  providerId?: VoiceCloudProviderId;
+  requestedCapability?: VoiceCloudRoutingCapability;
+}
+
+export interface VoiceCloudBudgetUsage {
+  estimatedMinutes: number;
+  estimatedCostUnits: number;
+  requestCount: number;
+}
+
+export interface VoiceCloudBudgetGuardRequest {
+  id: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  estimatedMinutes: number;
+  estimatedCostUnits: number;
+  currentSessionUsage: VoiceCloudBudgetUsage;
+  currentDailyUsage: VoiceCloudBudgetUsage;
+  currentMonthlyUsage: VoiceCloudBudgetUsage;
+  configuredLimits: VoiceCloudBudgetLimit[];
+  createdAt?: number;
+  voiceTurnState?: VoiceTurnState;
+}
+
+export interface VoiceCloudBudgetGuardRecord {
+  id: string;
+  requestId: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  decision: VoiceCloudBudgetDecision;
+  allowed: boolean;
+  estimatedMinutes: number;
+  estimatedCostUnits: number;
+  requestCount: number;
+  currentSessionUsage: VoiceCloudBudgetUsage;
+  currentDailyUsage: VoiceCloudBudgetUsage;
+  currentMonthlyUsage: VoiceCloudBudgetUsage;
+  configuredLimitCount: number;
+  createdAt: number;
+  exceededWindow?: VoiceCloudBudgetWindow;
+  exceededDimension?: VoiceCloudBudgetDimension;
+  exceededLimit?: number;
+  projectedUsage?: number;
+}
+
+export interface VoiceCloudBudgetGuardResult {
+  request: VoiceCloudBudgetGuardRequest;
+  record: VoiceCloudBudgetGuardRecord;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -638,7 +708,12 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_cloud_routing_policy_denied"
   | "voice_cloud_routing_policy_consent_required"
   | "voice_cloud_routing_policy_cost_disclosure_required"
-  | "voice_cloud_routing_policy_budget_required";
+  | "voice_cloud_routing_policy_budget_required"
+  | "voice_cloud_budget_evaluated"
+  | "voice_cloud_budget_allowed"
+  | "voice_cloud_budget_denied"
+  | "voice_cloud_budget_exceeded"
+  | "voice_cloud_budget_invalid_estimate";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -729,6 +804,18 @@ export interface VoiceOrchestrationTelemetryEvent {
   cloudCostDisclosureAccepted?: boolean;
   cloudBudgetAvailable?: boolean;
   cloudLocalFallbackAvailable?: boolean;
+  cloudBudgetRequestId?: string;
+  cloudBudgetRecordId?: string;
+  cloudBudgetDecision?: VoiceCloudBudgetDecision;
+  cloudBudgetAllowed?: boolean;
+  cloudEstimatedMinutes?: number;
+  cloudEstimatedCostUnits?: number;
+  cloudRequestCount?: number;
+  cloudConfiguredLimitCount?: number;
+  cloudBudgetWindow?: VoiceCloudBudgetWindow;
+  cloudBudgetDimension?: VoiceCloudBudgetDimension;
+  cloudBudgetLimit?: number;
+  cloudProjectedUsage?: number;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

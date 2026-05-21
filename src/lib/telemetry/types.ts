@@ -208,7 +208,12 @@ export type TelemetryEventType =
   | "voice_cloud_routing_policy_denied"
   | "voice_cloud_routing_policy_consent_required"
   | "voice_cloud_routing_policy_cost_disclosure_required"
-  | "voice_cloud_routing_policy_budget_required";
+  | "voice_cloud_routing_policy_budget_required"
+  | "voice_cloud_budget_evaluated"
+  | "voice_cloud_budget_allowed"
+  | "voice_cloud_budget_denied"
+  | "voice_cloud_budget_exceeded"
+  | "voice_cloud_budget_invalid_estimate";
 
 export interface TelemetryEvent {
   timestamp: number;

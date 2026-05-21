@@ -194,7 +194,7 @@ Restricted-content descriptors and decision records must not contain actual cont
 
 ## Phase 4G Cloud Routing Policy Scaffold
 
-Phase 4G starts with a disabled-by-default cloud voice routing policy. It evaluates metadata-only routing requests and returns allow/deny metadata only. It does not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
+Phase 4G starts with disabled-by-default cloud voice routing and budget policy scaffolds. They evaluate metadata-only requests and return allow/deny metadata only. They do not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
 
 Current Phase 4G status: scaffold started.
 
@@ -214,6 +214,23 @@ Phase 4G policy metadata may contain only:
 - local fallback available boolean
 - timestamps
 
+Phase 4G budget guard metadata may contain only:
+
+- budget request ID
+- budget record ID
+- provider ID
+- requested capability
+- estimated minutes
+- estimated cost units
+- request count
+- configured limit count
+- per-session, daily, and monthly usage totals
+- budget window and dimension
+- budget limit
+- projected usage
+- metadata-only budget decision
+- timestamps
+
 Phase 4G cloud provider identifiers are policy labels only:
 
 - `disabled`
@@ -229,6 +246,26 @@ Phase 4G routing policy states:
 - `budget_required`
 - `eligible_metadata_only`
 - `denied`
+
+Phase 4G budget windows:
+
+- `per_session`
+- `daily`
+- `monthly`
+
+Phase 4G budget dimensions:
+
+- `estimated_minutes`
+- `estimated_cost_units`
+- `request_count`
+
+Phase 4G budget decisions:
+
+- `allowed_metadata_only`
+- `denied_budget_missing`
+- `denied_budget_exceeded`
+- `denied_invalid_estimate`
+- `denied_provider_disabled`
 
 Phase 4G forbidden wiring:
 
@@ -246,6 +283,8 @@ Phase 4G forbidden wiring:
 - microphone, keyboard, UI, or browser APIs
 - wake word or always-listening behavior
 
+Phase 4G does not include real provider pricing tables. Estimated cost units and limits must be passed in as explicit metadata/config by future reviewed adapters.
+
 Phase 4G telemetry must not include transcript text, spoken text, assistant body text, tool output, file content, code blocks, personal context content, audit log content, approval payloads, approval IDs, API keys, audio URLs, audio blobs, PCM data, raw audio, chat payloads, or runtime command payloads.
 
 ## Phase 4H Handoff Points
@@ -261,7 +300,7 @@ Future Phase 4H work may choose explicit, reviewable adapters for user-controlle
 - no voice approval path
 - no spoken approval acceptance
 - no spoken tool output or restricted content
-- no cloud routing unless explicit consent, cost disclosure, and budget policy pass
+- no cloud routing unless explicit consent, cost disclosure, routing policy, and budget guard policy pass
 - no wake word or always-listening behavior
 - explicit user-controlled wiring
 - terminal and stale-session guards at every async boundary
