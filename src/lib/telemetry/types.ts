@@ -202,7 +202,13 @@ export type TelemetryEventType =
   | "voice_restricted_content_descriptor_received"
   | "voice_restricted_content_allowed"
   | "voice_restricted_content_blocked"
-  | "voice_restricted_content_noop";
+  | "voice_restricted_content_noop"
+  | "voice_cloud_routing_policy_evaluated"
+  | "voice_cloud_routing_policy_allowed"
+  | "voice_cloud_routing_policy_denied"
+  | "voice_cloud_routing_policy_consent_required"
+  | "voice_cloud_routing_policy_cost_disclosure_required"
+  | "voice_cloud_routing_policy_budget_required";
 
 export interface TelemetryEvent {
   timestamp: number;

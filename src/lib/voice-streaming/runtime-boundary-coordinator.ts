@@ -421,12 +421,7 @@ function advisoryStateForEvent(
 }
 
 function operationIdForEvent(event: VoiceRuntimeBoundaryEvent): string {
-  return (
-    event.runtimeCallId ??
-    event.approvalRequestId ??
-    event.voiceApprovalAttemptId ??
-    `${event.sessionId}:${event.id}`
-  );
+  return event.runtimeCallId ?? `${event.sessionId}:${event.type}:${event.id}`;
 }
 
 function lifecycleRank(record: VoiceRuntimeBoundaryAdvisoryRecord): number {

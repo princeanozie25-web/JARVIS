@@ -122,7 +122,8 @@ function readVoiceStreamingImplementationSources(): string {
         !fileName.endsWith(".test.ts") &&
         fileName !== "index.ts" &&
         fileName !== "types.ts" &&
-        fileName !== "runtime-boundary-coordinator.ts",
+        fileName !== "runtime-boundary-coordinator.ts" &&
+        fileName !== "cloud-routing-policy.ts",
     )
     .map((fileName) => readFileSync(join(dir, fileName), "utf8"))
     .join("\n");

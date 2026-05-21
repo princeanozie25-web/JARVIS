@@ -117,11 +117,13 @@ Phase 4E capture re-arm records may contain only:
 
 Capture re-arm coordination does not access microphones, keyboards, UI surfaces, browser device APIs, playback devices, chat submission, runtime commands, approvals, Realtime, or cloud APIs. It only produces records and telemetry that a future explicitly wired adapter may inspect.
 
-## Phase 4F Handoff Points
+## Phase 4F Runtime Boundary Freeze
 
 Phase 4F starts with a metadata-only runtime boundary coordinator. It accepts safe runtime lifecycle metadata and produces advisory records only. It cannot execute runtime commands, approve actions, bypass approvals, speak tool output, synthesize restricted content, or control runtime cancellation.
 
-Current Phase 4F status:
+Current Phase 4F status: complete and frozen.
+
+Frozen Phase 4F safety invariants:
 
 - accepts metadata-only runtime boundary events for pending approvals, tool lifecycle, and runtime cancellation lifecycle
 - produces advisory-only metadata records
@@ -138,6 +140,22 @@ Current Phase 4F status:
 - does not import or call runtime command execution modules
 - does not import or call approval execution modules
 - does not synthesize, speak, persist, or emit tool output, file content, code blocks, personal context content, audit log content, runtime output, transcripts, assistant body text, or audio data
+
+Phase 4F forbidden wiring:
+
+- runtime command execution
+- approval execution
+- approval bypass
+- voice approvals
+- spoken approval acceptance
+- TTS execution
+- autoplay or playback start
+- chat UI wiring or auto-submit
+- microphone or device APIs
+- keyboard listeners
+- UI/browser event wiring
+- OpenAI Realtime or cloud streaming
+- wake word or always-listening behavior
 
 Phase 4F runtime boundary metadata may contain only:
 
@@ -157,6 +175,8 @@ Phase 4F runtime boundary metadata may contain only:
 - voice approval attempt category
 - voice approval refusal ID/action
 
+Runtime boundary telemetry must not include approval request IDs, approval payloads, tool output, file content, code blocks, personal context content, audit log content, transcripts, spoken text, assistant body text, audio URLs, audio blobs, PCM data, raw audio, chat payloads, or runtime command payloads.
+
 Phase 4F restricted-content boundary metadata may contain only:
 
 - descriptor ID
@@ -172,7 +192,65 @@ Phase 4F restricted-content boundary metadata may contain only:
 
 Restricted-content descriptors and decision records must not contain actual content bodies, tool output, file content, code blocks, personal context content, audit log content, runtime output, transcripts, spoken text, assistant body text, audio URLs, audio blobs, PCM data, raw audio, chat payloads, runtime command payloads, or approval execution payloads.
 
-Future Phase 4F work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, or approval UI. Those adapters must preserve the Phase 4D/4E/4F boundaries:
+## Phase 4G Cloud Routing Policy Scaffold
+
+Phase 4G starts with a disabled-by-default cloud voice routing policy. It evaluates metadata-only routing requests and returns allow/deny metadata only. It does not call provider SDKs, use API keys, open network connections, execute runtime commands, approve actions, synthesize audio, start playback, or wire to chat, microphone, keyboard, UI, browser, wake-word, or always-listening behavior.
+
+Current Phase 4G status: scaffold started.
+
+Phase 4G policy metadata may contain only:
+
+- policy request ID
+- policy record ID
+- provider ID
+- requested capability
+- policy state
+- allow/deny decision
+- metadata-only denial reason
+- session ID
+- consent granted boolean
+- cost disclosure accepted boolean
+- budget available boolean
+- local fallback available boolean
+- timestamps
+
+Phase 4G cloud provider identifiers are policy labels only:
+
+- `disabled`
+- `openai_realtime`
+- `cloud_stt`
+- `cloud_tts`
+
+Phase 4G routing policy states:
+
+- `disabled`
+- `consent_required`
+- `cost_disclosure_required`
+- `budget_required`
+- `eligible_metadata_only`
+- `denied`
+
+Phase 4G forbidden wiring:
+
+- OpenAI Realtime calls
+- cloud STT/TTS calls
+- provider SDK imports
+- network calls
+- API key access
+- runtime execution
+- approval execution or bypass
+- voice approvals
+- TTS execution
+- autoplay or playback start
+- chat UI wiring or auto-submit
+- microphone, keyboard, UI, or browser APIs
+- wake word or always-listening behavior
+
+Phase 4G telemetry must not include transcript text, spoken text, assistant body text, tool output, file content, code blocks, personal context content, audit log content, approval payloads, approval IDs, API keys, audio URLs, audio blobs, PCM data, raw audio, chat payloads, or runtime command payloads.
+
+## Phase 4H Handoff Points
+
+Future Phase 4H work may choose explicit, reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, approval UI, or cloud routing. Those adapters must preserve the Phase 4D/4E/4F/4G boundaries:
 
 - metadata-only telemetry
 - no implicit autoplay
@@ -183,6 +261,7 @@ Future Phase 4F work may choose explicit, reviewable adapters for user-controlle
 - no voice approval path
 - no spoken approval acceptance
 - no spoken tool output or restricted content
+- no cloud routing unless explicit consent, cost disclosure, and budget policy pass
 - no wake word or always-listening behavior
 - explicit user-controlled wiring
 - terminal and stale-session guards at every async boundary

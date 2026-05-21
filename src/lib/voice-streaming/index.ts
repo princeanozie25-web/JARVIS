@@ -43,6 +43,10 @@ export {
   VoiceRestrictedContentBoundary,
   type VoiceRestrictedContentBoundaryOptions,
 } from "./restricted-content-boundary";
+export {
+  VoiceCloudRoutingPolicy,
+  type VoiceCloudRoutingPolicyOptions,
+} from "./cloud-routing-policy";
 export type {
   AssistantResponseStreamMetadataEvent,
   ChunkSchedulingIntent,
@@ -87,6 +91,14 @@ export type {
   VoiceRestrictedContentDecision,
   VoiceRestrictedContentDecisionRecord,
   VoiceRestrictedContentDescriptor,
+  VoiceCloudProviderId,
+  VoiceCloudRoutingCapability,
+  VoiceCloudRoutingDecision,
+  VoiceCloudRoutingDenialReason,
+  VoiceCloudRoutingPolicyRecord,
+  VoiceCloudRoutingPolicyRequest,
+  VoiceCloudRoutingPolicyResult,
+  VoiceCloudRoutingPolicyState,
   VoicePlaybackSequenceIntent,
   VoicePlaybackSequenceIntentState,
   VoiceSynthesisQueueItem,

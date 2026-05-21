@@ -483,6 +483,72 @@ export interface VoiceRestrictedContentBoundaryResult {
   record: VoiceRestrictedContentDecisionRecord;
 }
 
+export type VoiceCloudProviderId =
+  | "disabled"
+  | "openai_realtime"
+  | "cloud_stt"
+  | "cloud_tts";
+
+export type VoiceCloudRoutingPolicyState =
+  | "disabled"
+  | "consent_required"
+  | "cost_disclosure_required"
+  | "budget_required"
+  | "eligible_metadata_only"
+  | "denied";
+
+export type VoiceCloudRoutingCapability =
+  | "realtime_voice"
+  | "speech_to_text"
+  | "text_to_speech";
+
+export type VoiceCloudRoutingDecision =
+  | "allow_metadata_only"
+  | "deny_metadata_only";
+
+export type VoiceCloudRoutingDenialReason =
+  | "policy_disabled"
+  | "provider_disabled"
+  | "consent_required"
+  | "cost_disclosure_required"
+  | "budget_required"
+  | "capability_not_supported";
+
+export interface VoiceCloudRoutingPolicyRequest {
+  id: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  consentGranted: boolean;
+  costDisclosureAccepted: boolean;
+  budgetAvailable: boolean;
+  localFallbackAvailable: boolean;
+  createdAt?: number;
+  voiceTurnState?: VoiceTurnState;
+}
+
+export interface VoiceCloudRoutingPolicyRecord {
+  id: string;
+  requestId: string;
+  sessionId: string;
+  providerId: VoiceCloudProviderId;
+  requestedCapability: VoiceCloudRoutingCapability;
+  state: VoiceCloudRoutingPolicyState;
+  decision: VoiceCloudRoutingDecision;
+  allowed: boolean;
+  consentGranted: boolean;
+  costDisclosureAccepted: boolean;
+  budgetAvailable: boolean;
+  localFallbackAvailable: boolean;
+  createdAt: number;
+  denialReason?: VoiceCloudRoutingDenialReason;
+}
+
+export interface VoiceCloudRoutingPolicyResult {
+  request: VoiceCloudRoutingPolicyRequest;
+  record: VoiceCloudRoutingPolicyRecord;
+}
+
 export interface OrchestrationState {
   activeSessionId: string | null;
   sessions: StreamingSpeechSession[];
@@ -566,7 +632,13 @@ export type VoiceOrchestrationTelemetryEventType =
   | "voice_restricted_content_descriptor_received"
   | "voice_restricted_content_allowed"
   | "voice_restricted_content_blocked"
-  | "voice_restricted_content_noop";
+  | "voice_restricted_content_noop"
+  | "voice_cloud_routing_policy_evaluated"
+  | "voice_cloud_routing_policy_allowed"
+  | "voice_cloud_routing_policy_denied"
+  | "voice_cloud_routing_policy_consent_required"
+  | "voice_cloud_routing_policy_cost_disclosure_required"
+  | "voice_cloud_routing_policy_budget_required";
 
 export type VoiceOrchestrationTerminalAction =
   | "cancel"
@@ -645,6 +717,18 @@ export interface VoiceOrchestrationTelemetryEvent {
   restrictedContentDecision?: VoiceRestrictedContentDecision;
   contentRefId?: string;
   restrictedContentSourceId?: string;
+  cloudRoutingRequestId?: string;
+  cloudRoutingPolicyRecordId?: string;
+  cloudProviderId?: VoiceCloudProviderId;
+  cloudRequestedCapability?: VoiceCloudRoutingCapability;
+  cloudRoutingPolicyState?: VoiceCloudRoutingPolicyState;
+  cloudRoutingDecision?: VoiceCloudRoutingDecision;
+  cloudRoutingDenialReason?: VoiceCloudRoutingDenialReason;
+  cloudRoutingAllowed?: boolean;
+  cloudConsentGranted?: boolean;
+  cloudCostDisclosureAccepted?: boolean;
+  cloudBudgetAvailable?: boolean;
+  cloudLocalFallbackAvailable?: boolean;
   orderingIssue?: "duplicate" | "gap" | "out_of_order" | "late";
   streamId?: string;
   responseId?: string;

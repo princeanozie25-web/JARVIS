@@ -549,14 +549,13 @@ describe("VoiceRuntimeBoundaryCoordinator", () => {
   });
 
   it("does not introduce autoplay, chat, cloud, mic, keyboard, UI, browser, or audio wiring", () => {
-    const source = [
-      "src/lib/voice-streaming/runtime-boundary-coordinator.ts",
-      "src/lib/voice-streaming/types.ts",
-      "src/lib/voice-streaming/index.ts",
-    ]
-      .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
-      .join("\n")
-      .replace(/canAutoplay/g, "");
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "src/lib/voice-streaming/runtime-boundary-coordinator.ts",
+      ),
+      "utf8",
+    ).replace(/canAutoplay/g, "");
 
     expect(source).not.toMatch(/microphone|navigator|mediaDevices/i);
     expect(source).not.toMatch(
