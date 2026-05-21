@@ -9,13 +9,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:52am GMT+1
+# [jarvis] recent context, 2026-05-21 7:58am GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (28,771t read) | 1,635,160t work | 98% savings
+Stats: 50 obs (28,101t read) | 2,232,138t work | 99% savings
 
 ### May 16, 2026
 
@@ -26,12 +26,6 @@ S20 Re-run updated JARVIS codebase audit and export as PDF — streaming checkpo
 ### May 20, 2026
 
 S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus refactor, LocalWhisperRuntime class, and committing the changes (May 20, 5:48 AM)
-774 11:51p 🟣 Phase 4E VoiceBargeInCoordinator Test Suite Expanded with Coverage, Failure, and Telemetry-Safety Tests
-779 11:54p 🟣 JARVIS Phase 4D: Stream Metadata Ingestion and Chunk Scheduling Scaffold Planned
-780 11:55p 🟣 JARVIS Phase 4F: VoiceRuntimeBoundaryCoordinator Implemented
-781 " 🔴 Wiring-Safety Test Regex Collisions Fixed After Phase 4F Types Addition
-782 " 🔵 Phase 4F Final Validation: 801 Tests Pass, TypeScript Clean, Lint Clean, Build Succeeds
-783 11:56p 🟣 Phase 4F Voice Approval Refusal Model Extended with Categorized Attempt Types
 
 ### May 21, 2026
 
@@ -74,11 +68,17 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 820 " 🟣 Phase 4G Cloud Routing Policy Freeze — Complete and Frozen
 821 " 🔵 JARVIS Full Test Suite: 874 Tests Passing After Phase 4G Freeze
 822 7:43a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
+828 7:52a 🔵 JARVIS Voice Streaming: Full Module Inventory and Telemetry Architecture Pre-Phase-4D-Slice
+829 " 🟣 Voice Telemetry Hygiene Module: Centralized Sanitization for All Voice-Streaming Emitters
+830 " 🟣 Voice Telemetry Hygiene: 7-Test Suite Covering Allowlist, Strip, Redaction, Stress, and No-Wiring Invariants
+831 " 🔴 TypeScript Error: sanitizeVoiceTelemetryEvent Parameter Type Widened from Record to object
+832 " 🔴 pipeline.test.ts Freeze Test Failed: approval Regex Matched emitMetadataOnlyVoiceTelemetry in barge-in-coordinator.ts
+833 " ✅ Final Test Count After Phase 4D Telemetry Hygiene Slice: 891 Tests Passing (Up from 737)
 823 7:44a 🔵 JARVIS Voice Streaming Module: Full Type Surface and Phase Status (4D–4G)
 824 " 🟣 Phase 4H: VoicePrivacyPolicy — Metadata-Only Voice Data Classification and Deny-by-Default Guard
 825 " 🔴 Test Regex False Positive: "synthesized_audio" String Literal Matched Forbidden Wiring Regex
 826 " ✅ Phase 4H Full Validation: 884 Tests Pass, TypeScript Clean, Lint Clean, Build Succeeds
 827 7:51a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
 
-Access 1635k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 2232k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
