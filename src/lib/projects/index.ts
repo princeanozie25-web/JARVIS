@@ -84,3 +84,21 @@ export type {
   ProjectMemoryBridgeResult,
   ProjectMemoryBridgeSourcePointer,
 } from "./memory-bridge";
+export {
+  assembleProjectContext,
+  PROJECT_CONTEXT_DEFAULT_BUDGET_CHARS,
+  PROJECT_CONTEXT_MAX_BUDGET_CHARS,
+  PROJECT_CONTEXT_MIN_BUDGET_CHARS,
+  PROJECT_CONTEXT_OPEN_BLOCKER_LIMIT,
+  PROJECT_CONTEXT_PROMOTED_TASK_LIMIT,
+} from "./context-assembly";
+export type {
+  AssembleProjectContextInput,
+  ProjectContextAssembly,
+  ProjectContextAssemblyResult,
+  ProjectContextBudget,
+  ProjectContextCommitment,
+  ProjectContextIdentity,
+  ProjectContextIndexFreshness,
+  ProjectContextOpenBlocker,
+} from "./context-assembly";
