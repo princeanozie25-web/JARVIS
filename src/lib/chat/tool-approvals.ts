@@ -3,6 +3,7 @@ import {
   createPendingApproval,
   decideApprovalByExecution,
   expirePendingApprovals,
+  getProjectTask,
   getToolCall,
   updateToolCall,
   type ApiApprovalDecision,
@@ -42,11 +43,19 @@ export interface ResumeApprovalResult {
   };
 }
 
-export function safeToolInputSummary(input: unknown): string {
+export function safeToolInputSummary(
+  input: unknown,
+  db?: DatabaseType.Database,
+): string {
   if (input && typeof input === "object" && !Array.isArray(input)) {
     const record = input as Record<string, unknown>;
     const projectSummary = projectRegisterSummary(record);
     if (projectSummary) return projectSummary;
+    const projectPromoteTaskSummary = projectPromoteTaskSummaryFromInput(
+      record,
+      db,
+    );
+    if (projectPromoteTaskSummary) return projectPromoteTaskSummary;
     const projectSourceSummary = projectSourceSummaryFromInput(record);
     if (projectSourceSummary) return projectSourceSummary;
     const projectIndexSummary = projectIndexSummaryFromInput(record);
@@ -61,6 +70,35 @@ export function safeToolInputSummary(input: unknown): string {
   if (typeof input === "string") return truncateSummary(input);
   if (input === null || input === undefined) return "empty input";
   return truncateSummary(typeof input);
+}
+
+function projectPromoteTaskSummaryFromInput(
+  record: Record<string, unknown>,
+  db?: DatabaseType.Database,
+): string | null {
+  if (
+    typeof record.projectId !== "string" ||
+    typeof record.taskId !== "string"
+  ) {
+    return null;
+  }
+
+  const task = db ? getProjectTask(db, record.taskId) : undefined;
+  if (task && task.project_id === record.projectId) {
+    return truncateSummary(
+      [
+        `project_id: ${record.projectId}`,
+        `task_id: ${record.taskId}`,
+        `task_title: ${task.title}`,
+        `current_status: ${task.status}`,
+        `confidence: ${task.confidence}`,
+      ].join("; "),
+    );
+  }
+
+  return truncateSummary(
+    [`project_id: ${record.projectId}`, `task_id: ${record.taskId}`].join("; "),
+  );
 }
 
 function projectIndexSummaryFromInput(
@@ -159,7 +197,7 @@ export function ensurePendingToolApproval(input: {
     scopeHash: input.scopeHash,
     requiredSafetyTag: input.requiredSafetyTag,
     safetyTag: input.safetyTag,
-    summary: safeToolInputSummary(input.toolInput),
+    summary: safeToolInputSummary(input.toolInput, input.db),
     approvalExpiresAt: pending.expiresAt,
     approvalToken: pending.token,
   };

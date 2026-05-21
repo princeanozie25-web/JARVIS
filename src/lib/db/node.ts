@@ -84,12 +84,14 @@ export {
   listPromotedProjectTasks,
   listProjectTasks,
   listProjectThreads,
+  promoteProjectTask,
 } from "./project-artifacts";
 export type {
   InsertProjectBlockerInput,
   InsertProjectDecisionInput,
   InsertProjectTaskInput,
   InsertProjectThreadInput,
+  PromoteProjectTaskInput,
   ProjectArtifactCounts,
   ProjectBlockerRow,
   ProjectDecisionRow,

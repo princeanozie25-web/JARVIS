@@ -54,6 +54,12 @@ export interface InsertProjectTaskInput {
   updatedAt: number;
 }
 
+export interface PromoteProjectTaskInput {
+  projectId: string;
+  taskId: string;
+  updatedAt: number;
+}
+
 export interface ProjectBlockerRow {
   id: string;
   project_id: string;
@@ -263,6 +269,26 @@ export function listProjectTasks(
        ORDER BY updated_at DESC, id ASC`,
     )
     .all(projectId) as ProjectTaskRow[];
+}
+
+export function promoteProjectTask(
+  db: DatabaseType.Database,
+  input: PromoteProjectTaskInput,
+): ProjectTaskRow | undefined {
+  db.prepare(
+    `UPDATE project_task
+     SET promoted = 1,
+         updated_at = ?
+     WHERE id = ?
+       AND project_id = ?
+       AND promoted = 0
+       AND status = 'extracted'`,
+  ).run(
+    requireNonNegativeInteger(input.updatedAt, "updatedAt"),
+    requireTrimmed(input.taskId, "taskId"),
+    requireTrimmed(input.projectId, "projectId"),
+  );
+  return getProjectTask(db, input.taskId);
 }
 
 export function listPromotedProjectTasks(

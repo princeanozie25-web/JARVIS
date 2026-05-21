@@ -370,6 +370,7 @@ describe("approval-gated provider tool continuation", () => {
       "project.register",
       "project.add_source",
       "project.index",
+      "project.promote_task",
     ]);
   });
 

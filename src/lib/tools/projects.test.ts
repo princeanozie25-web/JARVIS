@@ -112,6 +112,70 @@ async function runApprovedProjectIndex(
   });
 }
 
+async function runApprovedProjectPromoteTask(
+  executionId: string,
+  input: { projectId: string; taskId: string },
+) {
+  await runtime.runTool({
+    toolId: "project.promote_task",
+    input,
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  const pending = ensurePendingToolApproval({
+    db,
+    executionId,
+    sessionId: "session-1",
+    toolId: "project.promote_task",
+    toolName: "Promote Project Task",
+    scopeHash: tools.get("project.promote_task").scopeOf(input),
+    requiredSafetyTag: "CONFIRM_ALWAYS",
+    safetyTag: "ALLOW",
+    toolInput: input,
+    now,
+    ttlMs: 500,
+  });
+  now += 100;
+  return resumeApproval({
+    db,
+    runtime,
+    executionId,
+    decision: "APPROVED_ONCE",
+    approvalToken: pending.approvalToken,
+    now,
+  });
+}
+
+function insertExtractedProjectTask(input: {
+  id: string;
+  projectId: string;
+  title?: string;
+  status?: string;
+  confidence?: number;
+  promoted?: 0 | 1;
+  createdAt?: number;
+  updatedAt?: number;
+}) {
+  db.prepare(
+    `INSERT INTO project_task (
+       id, project_id, thread_id, title, status, confidence, promoted,
+       origin_ref, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    input.id,
+    input.projectId,
+    null,
+    input.title ?? "Promote me",
+    input.status ?? "extracted",
+    input.confidence ?? 0.8,
+    input.promoted ?? 0,
+    `origin:${input.id}`,
+    input.createdAt ?? 1_000,
+    input.updatedAt ?? 1_000,
+  );
+}
+
 describe("Phase 5 project tools", () => {
   it("project.list returns registered rows", async () => {
     insertRegisteredProject(db, {
@@ -503,6 +567,7 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.register");
     expect(registeredToolIds).toContain("project.add_source");
     expect(registeredToolIds).toContain("project.index");
+    expect(registeredToolIds).toContain("project.promote_task");
     expect(registeredToolIds).not.toContain("project.write_memory");
     expect(registeredToolIds).not.toContain("project.task");
     expect(registeredToolIds).not.toContain("project.thread");
@@ -923,6 +988,277 @@ describe("Phase 5 project tools", () => {
       ok: false,
       status: "DENIED",
       data: { reason: "invalid_tool_input" },
+    });
+  });
+
+  it("project.promote_task requires approval and does not mutate before approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_promote",
+      slug: "promote",
+      displayName: "Promote",
+      rootKind: "virtual",
+      rootRef: "virtual:promote",
+      createdAt: 1_000,
+    });
+    insertExtractedProjectTask({
+      id: "ptask_promote",
+      projectId: "proj_promote",
+      title: "Promote safely",
+      confidence: 0.75,
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.promote_task",
+      input: { projectId: "proj_promote", taskId: "ptask_promote" },
+      sessionId: "session-1",
+      executionId: "promote-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+      },
+    });
+    expect(listProjectTasks(db, "proj_promote")).toEqual([
+      expect.objectContaining({
+        id: "ptask_promote",
+        promoted: 0,
+        updated_at: 1_000,
+      }),
+    ]);
+  });
+
+  it("project.promote_task promotes an extracted task after approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_promote",
+      slug: "promote",
+      displayName: "Promote",
+      rootKind: "virtual",
+      rootRef: "virtual:promote",
+      createdAt: 1_000,
+    });
+    insertExtractedProjectTask({
+      id: "ptask_promote",
+      projectId: "proj_promote",
+      title: "Promote safely",
+      confidence: 0.75,
+      updatedAt: 1_000,
+    });
+    const input = { projectId: "proj_promote", taskId: "ptask_promote" };
+    await runtime.runTool({
+      toolId: "project.promote_task",
+      input,
+      sessionId: "session-1",
+      executionId: "promote-approved",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "promote-approved",
+      sessionId: "session-1",
+      toolId: "project.promote_task",
+      toolName: "Promote Project Task",
+      scopeHash: tools.get("project.promote_task").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_promote; task_id: ptask_promote; task_title: Promote safely; current_status: extracted; confidence: 0.75",
+    );
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "promote-approved",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: true,
+      executionId: "promote-approved",
+      decision: "APPROVED_ONCE",
+      status: "COMPLETED",
+      message: "Project task promoted.",
+    });
+    expect(approved.body).not.toHaveProperty("data");
+    expect(approved.body).not.toHaveProperty("result");
+    const [task] = listProjectTasks(db, "proj_promote");
+    expect(task).toMatchObject({
+      id: "ptask_promote",
+      title: "Promote safely",
+      status: "extracted",
+      confidence: 0.75,
+      promoted: 1,
+      origin_ref: "origin:ptask_promote",
+      created_at: 1_000,
+    });
+    expect(task?.updated_at).toBeGreaterThanOrEqual(1_000);
+
+    const getResult = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_promote" },
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+    expect(getResult.data).toMatchObject({
+      artifactSummary: {
+        counts: {
+          extractedTasks: 0,
+          promotedTasks: 1,
+        },
+        promotedTasks: {
+          items: [
+            expect.objectContaining({
+              id: "ptask_promote",
+              title: "Promote safely",
+              status: "extracted",
+              confidence: 0.75,
+            }),
+          ],
+        },
+        semantics: {
+          promotedTasks: "commitments",
+          extractedTasks: "candidate_tasks",
+        },
+      },
+    });
+    expect(JSON.stringify(getResult.data)).not.toContain(
+      "origin:ptask_promote",
+    );
+  });
+
+  it("project.promote_task cannot use session approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_promote",
+      slug: "promote",
+      displayName: "Promote",
+      rootKind: "virtual",
+      rootRef: "virtual:promote",
+      createdAt: 1_000,
+    });
+    insertExtractedProjectTask({
+      id: "ptask_session",
+      projectId: "proj_promote",
+    });
+    const input = { projectId: "proj_promote", taskId: "ptask_session" };
+    await runtime.runTool({
+      toolId: "project.promote_task",
+      input,
+      sessionId: "session-1",
+      executionId: "promote-session",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "promote-session",
+      sessionId: "session-1",
+      toolId: "project.promote_task",
+      toolName: "Promote Project Task",
+      scopeHash: tools.get("project.promote_task").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "promote-session",
+      decision: "APPROVED_SESSION",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved).toMatchObject({
+      httpStatus: 409,
+      body: { ok: false, reason: "approval_session_not_allowed" },
+    });
+    expect(listProjectTasks(db, "proj_promote")).toEqual([
+      expect.objectContaining({ id: "ptask_session", promoted: 0 }),
+    ]);
+  });
+
+  it("project.promote_task fails safely for duplicates and missing rows", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_promote",
+      slug: "promote",
+      displayName: "Promote",
+      rootKind: "virtual",
+      rootRef: "virtual:promote",
+      createdAt: 1_000,
+    });
+    insertExtractedProjectTask({
+      id: "ptask_promoted",
+      projectId: "proj_promote",
+      promoted: 1,
+    });
+    insertExtractedProjectTask({
+      id: "ptask_open",
+      projectId: "proj_promote",
+      status: "open",
+    });
+
+    await expect(
+      runApprovedProjectPromoteTask("promote-duplicate", {
+        projectId: "proj_promote",
+        taskId: "ptask_promoted",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project task is already promoted.",
+      },
+    });
+    await expect(
+      runApprovedProjectPromoteTask("promote-missing-project", {
+        projectId: "proj_missing",
+        taskId: "ptask_promoted",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project is not registered.",
+      },
+    });
+    await expect(
+      runApprovedProjectPromoteTask("promote-missing-task", {
+        projectId: "proj_promote",
+        taskId: "ptask_missing",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project task is not registered.",
+      },
+    });
+    await expect(
+      runApprovedProjectPromoteTask("promote-open-task", {
+        projectId: "proj_promote",
+        taskId: "ptask_open",
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Only extracted project tasks can be promoted.",
+      },
     });
   });
 

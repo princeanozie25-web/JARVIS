@@ -75,6 +75,8 @@ export {
   projectListScopeOf,
   projectListTool,
   projectMutationTools,
+  projectPromoteTaskScopeOf,
+  projectPromoteTaskTool,
   projectReadTools,
   projectRegisterScopeOf,
   projectRegisterTool,
@@ -85,6 +87,7 @@ export type {
   ProjectGetInput,
   ProjectIndexInput,
   ProjectListInput,
+  ProjectPromoteTaskInput,
   ProjectRegisterInput,
 } from "./projects";
 export {

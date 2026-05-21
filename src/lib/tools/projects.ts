@@ -5,11 +5,13 @@ import { z } from "zod";
 import {
   getProjectArtifactCounts,
   getProjectBlockerByOrigin,
+  getProjectTask,
   getProjectTaskByOrigin,
   insertProjectBlocker,
   insertProjectTask,
   listOpenProjectBlockers,
   listPromotedProjectTasks,
+  promoteProjectTask,
 } from "../db/project-artifacts";
 import {
   finishProjectIndexSnapshot,
@@ -106,11 +108,19 @@ const ProjectIndexInputSchema = z.object({
   triggeredBy: z.string().trim().min(1).max(120).default("manual"),
 });
 
+const ProjectPromoteTaskInputSchema = z.object({
+  projectId: z.string().trim().min(1).max(200),
+  taskId: z.string().trim().min(1).max(200),
+});
+
 export type ProjectListInput = z.infer<typeof ProjectListInputSchema>;
 export type ProjectGetInput = z.infer<typeof ProjectGetInputSchema>;
 export type ProjectRegisterInput = z.infer<typeof ProjectRegisterInputSchema>;
 export type ProjectAddSourceInput = z.infer<typeof ProjectAddSourceInputSchema>;
 export type ProjectIndexInput = z.infer<typeof ProjectIndexInputSchema>;
+export type ProjectPromoteTaskInput = z.infer<
+  typeof ProjectPromoteTaskInputSchema
+>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -165,6 +175,16 @@ export function projectIndexScopeOf(input: ProjectIndexInput): string {
     `project:${input.projectId}`,
     `triggered_by:${input.triggeredBy ?? "manual"}`,
     "mode:deterministic_markers",
+  ].join(":");
+}
+
+export function projectPromoteTaskScopeOf(
+  input: ProjectPromoteTaskInput,
+): string {
+  return [
+    "project.promote_task",
+    `project:${input.projectId}`,
+    `task:${input.taskId}`,
   ].join(":");
 }
 
@@ -712,11 +732,87 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
   },
 };
 
+export const projectPromoteTaskTool: Tool<ProjectPromoteTaskInput> = {
+  id: "project.promote_task",
+  name: "Promote Project Task",
+  description:
+    "Promote an existing extracted Phase 5 project task to a commitment after explicit approval. This does not index, read sources, or write memory.",
+  requiredSafetyTag: "CONFIRM_ALWAYS",
+  inputSchema: ProjectPromoteTaskInputSchema,
+  scopeOf: projectPromoteTaskScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: PROJECT_TOOL_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied(
+        "Project registry database is unavailable.",
+        "db_unavailable",
+      );
+    }
+
+    const project = getRegisteredProject(context.db, { id: input.projectId });
+    if (!project) {
+      return denied("Project is not registered.", "project_not_found");
+    }
+
+    const task = getProjectTask(context.db, input.taskId);
+    if (!task || task.project_id !== project.id) {
+      return denied("Project task is not registered.", "task_not_found");
+    }
+    if (task.promoted === 1) {
+      return denied(
+        "Project task is already promoted.",
+        "task_already_promoted",
+      );
+    }
+    if (task.status !== "extracted") {
+      return denied(
+        "Only extracted project tasks can be promoted.",
+        "task_not_promotable",
+      );
+    }
+
+    const updated = promoteProjectTask(context.db, {
+      projectId: project.id,
+      taskId: task.id,
+      updatedAt: Date.now(),
+    });
+    if (!updated || updated.promoted !== 1) {
+      return {
+        ok: false,
+        status: "ERROR",
+        message: "Project task promotion failed.",
+        data: { reason: "promotion_failed" },
+      };
+    }
+
+    return {
+      ok: true,
+      status: "COMPLETED",
+      message: "Project task promoted.",
+      data: {
+        task: {
+          id: updated.id,
+          projectId: updated.project_id,
+          promoted: updated.promoted === 1,
+          updatedAt: updated.updated_at,
+        },
+        derivedState: true,
+        authority: projectRegistryAuthorityNote(),
+      },
+    };
+  },
+};
+
 export const projectReadTools = [projectListTool, projectGetTool] as const;
 export const projectRegisterToolScaffold = projectRegisterTool;
 export const projectMutationTools = [
   projectRegisterTool,
   projectAddSourceTool,
   projectIndexTool,
+  projectPromoteTaskTool,
 ] as const;
 export { PROJECT_TOOL_TIMEOUT_MS };

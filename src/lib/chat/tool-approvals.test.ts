@@ -213,6 +213,64 @@ describe("tool approval flow", () => {
     expect(JSON.stringify(pending)).not.toContain("result");
   });
 
+  it("shows safe project task promotion details in the approval summary", () => {
+    db.prepare(
+      `INSERT INTO projects (
+         id, slug, display_name, root_kind, root_ref, created_at, archived_at, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "proj_1",
+      "jarvis",
+      "JARVIS",
+      "virtual",
+      "virtual:jarvis",
+      1_000,
+      null,
+      "active",
+    );
+    db.prepare(
+      `INSERT INTO project_task (
+         id, project_id, thread_id, title, status, confidence, promoted,
+         origin_ref, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "ptask_1",
+      "proj_1",
+      null,
+      "Review artifact read model",
+      "extracted",
+      0.85,
+      0,
+      "origin:hidden",
+      1_000,
+      1_000,
+    );
+
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-promote",
+      sessionId: "session-1",
+      toolId: "project.promote_task",
+      toolName: "Promote Project Task",
+      scopeHash: "project.promote_task:project:proj_1:task:ptask_1",
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: {
+        projectId: "proj_1",
+        taskId: "ptask_1",
+      },
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_1; task_id: ptask_1; task_title: Review artifact read model; current_status: extracted; confidence: 0.85",
+    );
+    expect(pending.summary).not.toContain("origin:hidden");
+    expect(JSON.stringify(pending)).not.toContain("output_json");
+    expect(JSON.stringify(pending)).not.toContain("result");
+  });
+
   it("allows an approved-once tool execution exactly once", async () => {
     await requestApproval("exec-1");
     now = 1_100;
