@@ -329,9 +329,9 @@ Phase 4G telemetry must not include transcript text, spoken text, assistant body
 
 ## Phase 4H Voice Privacy Policy
 
-Phase 4H starts with a metadata-only voice privacy policy scaffold. It evaluates privacy descriptors, returns allow/deny records, and emits metadata-only telemetry. It does not accept payload bodies, retain audio, upload transcripts, make cloud calls, access devices, execute runtime commands, approve actions, synthesize speech, start playback, or wire to chat, UI, browser, keyboard, wake-word, or always-listening behavior.
+Phase 4H adds the metadata-only voice privacy policy and centralized voice telemetry hygiene layer. It evaluates privacy descriptors, returns allow/deny records, sanitizes every voice-streaming telemetry emission path, and emits metadata-only telemetry. It does not accept payload bodies, retain audio, upload transcripts, make cloud calls, access devices, execute runtime commands, approve actions, synthesize speech, start playback, or wire to chat, UI, browser, keyboard, wake-word, or always-listening behavior.
 
-Current Phase 4H status: privacy policy scaffold started.
+Current Phase 4H status: complete and frozen.
 
 Phase 4H privacy policy invariants:
 
@@ -345,6 +345,17 @@ Phase 4H privacy policy invariants:
 - cloud voice requests are denied until a later explicit reviewed policy allows metadata-only eligibility
 - unknown payload classes are denied
 - telemetry contains only privacy descriptor IDs, record IDs, classifications, decisions, allow/deny state, session IDs, turn IDs, source IDs, and timestamps
+
+Phase 4H telemetry hygiene invariants:
+
+- every current voice-streaming telemetry emission path routes through `emitMetadataOnlyVoiceTelemetry`
+- telemetry keys are restricted to an explicit voice metadata allowlist
+- forbidden top-level keys are stripped
+- nested forbidden payload keys are stripped
+- non-scalar payload values are dropped
+- unsafe scalar strings are redacted to `redacted_metadata_only`
+- telemetry hygiene is stress-tested across privacy policy, orchestration pipeline, barge-in, runtime boundary, restricted content boundary, cloud routing, consent, and budget policy paths
+- every voice telemetry event type is covered by metadata-only redaction tests
 
 Phase 4H privacy classifications:
 
@@ -374,9 +385,21 @@ Phase 4H forbidden data and wiring:
 - live audio capture, microphone or device APIs, audio upload, transcript upload, cloud calls, network calls, API key access, or provider SDK imports
 - runtime execution, approval execution, approval bypass, voice approvals, TTS execution, autoplay, playback start, chat UI wiring, auto-submit, keyboard listeners, UI/browser APIs, wake word, or always-listening behavior
 
+## Final Phase 4 Safety Status
+
+Phases 4D, 4E, 4F, 4G, and 4H are complete and frozen as library-only, metadata-only safety layers:
+
+- Phase 4D: realtime orchestration pipeline scaffold
+- Phase 4E: interrupt and barge-in coordination scaffold
+- Phase 4F: runtime, approval refusal, and restricted-content advisory boundary
+- Phase 4G: disabled-by-default cloud routing, consent, disclosure, and budget policy
+- Phase 4H: privacy policy and telemetry redaction/hygiene freeze
+
+Overall Phase 4 remains non-wired. It does not capture audio, upload audio, upload transcripts, make cloud or network calls, use API keys, import provider SDKs, execute runtime commands, execute approvals, bypass approvals, accept voice approvals, synthesize speech, autoplay, start playback, submit chat, listen to keyboards, wire browser/UI events, use wake words, or run always-listening behavior.
+
 ## Phase 4H Handoff Points
 
-Future Phase 4H work may add more explicit privacy-policy refinements, then choose reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, approval UI, or cloud routing. Those adapters must preserve the Phase 4D/4E/4F/4G/4H boundaries:
+Future post-Phase-4 work may choose reviewable adapters for user-controlled capture, synthesis, playback, runtime status display, approval UI, or cloud routing. Those adapters must preserve the Phase 4D/4E/4F/4G/4H boundaries:
 
 - metadata-only telemetry
 - privacy descriptor-only decisions before sensitive voice data can be handled
