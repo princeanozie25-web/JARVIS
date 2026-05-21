@@ -31,6 +31,15 @@ export interface InsertProjectIndexSnapshotInput {
   status: ProjectIndexSnapshotStatus;
 }
 
+export interface FinishProjectIndexSnapshotInput {
+  id: string;
+  finishedAt: number;
+  status: Extract<
+    ProjectIndexSnapshotStatus,
+    "completed" | "failed" | "rejected"
+  >;
+}
+
 function requireTrimmed(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`${label} is required`);
@@ -123,4 +132,21 @@ export function listProjectIndexSnapshots(
        ORDER BY started_at DESC, id ASC`,
     )
     .all(projectId) as ProjectIndexSnapshotRow[];
+}
+
+export function finishProjectIndexSnapshot(
+  db: DatabaseType.Database,
+  input: FinishProjectIndexSnapshotInput,
+): ProjectIndexSnapshotRow | undefined {
+  db.prepare(
+    `UPDATE project_index_snapshot
+     SET finished_at = ?,
+         status = ?
+     WHERE id = ?`,
+  ).run(
+    requireNonNegativeInteger(input.finishedAt, "finishedAt"),
+    ProjectIndexSnapshotStatusSchema.parse(input.status),
+    requireTrimmed(input.id, "id"),
+  );
+  return getProjectIndexSnapshot(db, input.id);
 }

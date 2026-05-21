@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  finishProjectIndexSnapshot,
   hasActiveProjectIndexSnapshot,
   insertProjectIndexSnapshot,
   listProjectIndexSnapshots,
@@ -145,6 +146,32 @@ describe("project index snapshot persistence", () => {
         status: "pending",
       }),
     ).toThrow();
+  });
+
+  it("finishes an active snapshot with a terminal status", () => {
+    insertProjectIndexSnapshot(db, {
+      id: "pidx_finish",
+      projectId: "proj_jarvis",
+      startedAt: 2_000,
+      sourcesSeen: 0,
+      artifactsExtracted: 0,
+      triggeredBy: "manual",
+      status: "running",
+    });
+
+    const finished = finishProjectIndexSnapshot(db, {
+      id: "pidx_finish",
+      finishedAt: 2_100,
+      status: "completed",
+    });
+
+    expect(finished).toMatchObject({
+      id: "pidx_finish",
+      finished_at: 2_100,
+      artifacts_extracted: 0,
+      status: "completed",
+    });
+    expect(hasActiveProjectIndexSnapshot(db, "proj_jarvis")).toBe(false);
   });
 
   it("sources_seen can be based on known source rows without content fields", () => {

@@ -4,6 +4,7 @@ import {
   countProjectSources,
   insertProjectSource,
   listProjectSources,
+  updateProjectSourceIndexMetadata,
 } from "./project-sources";
 import { insertRegisteredProject } from "./projects";
 import { applyMigrations } from "./schema";
@@ -89,5 +90,29 @@ describe("project source ledger persistence", () => {
       }),
     ).toThrow();
     expect(countProjectSources(db, "proj_jarvis")).toBe(0);
+  });
+
+  it("updates metadata-only index fields without changing the source pointer", () => {
+    insertProjectSource(db, {
+      id: "psrc_indexed",
+      projectId: "proj_jarvis",
+      kind: "thread",
+      ref: "thread:phase-5-a5",
+    });
+
+    const updated = updateProjectSourceIndexMetadata(db, {
+      id: "psrc_indexed",
+      lastIndexedAt: 3_000,
+      sourceHash: null,
+    });
+
+    expect(updated).toEqual({
+      id: "psrc_indexed",
+      project_id: "proj_jarvis",
+      kind: "thread",
+      ref: "thread:phase-5-a5",
+      last_indexed_at: 3_000,
+      source_hash: null,
+    });
   });
 });

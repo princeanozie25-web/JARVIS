@@ -2,13 +2,17 @@ import { createHash } from "node:crypto";
 import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
 import {
+  finishProjectIndexSnapshot,
   hasActiveProjectIndexSnapshot,
   insertProjectIndexSnapshot,
 } from "../db/project-index-snapshots";
 import {
   countProjectSources,
   insertProjectSource,
+  listProjectSources,
+  updateProjectSourceIndexMetadata,
 } from "../db/project-sources";
+import type { ProjectSourceRow } from "../db/project-sources";
 import {
   getRegisteredProject,
   insertRegisteredProject,
@@ -164,6 +168,29 @@ async function validateSourcePointer(input: ProjectAddSourceInput) {
 
   try {
     await resolveSafePath(input.ref);
+    return null;
+  } catch (error) {
+    if (error instanceof SafePathError) {
+      return denied(error.message, `unsafe_file_ref_${error.reason}`);
+    }
+    return denied("File source ref could not be validated.", "unsafe_file_ref");
+  }
+}
+
+async function validateSourcePointerForIndex(
+  source: ProjectSourceRow,
+): Promise<ToolResult | null> {
+  if (isNetworkRootRef(source.ref)) {
+    return denied(
+      "Network project sources are not supported in Phase 5 A5.",
+      "network_project_source_disabled",
+    );
+  }
+
+  if (source.kind !== "file") return null;
+
+  try {
+    await resolveSafePath(source.ref);
     return null;
   } catch (error) {
     if (error instanceof SafePathError) {
@@ -398,14 +425,15 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       return denied("Project is not registered.", "project_not_found");
     }
 
-    const now = Date.now();
-    const sourcesSeen = countProjectSources(context.db, project.id);
+    const startedAt = Date.now();
+    const sources = listProjectSources(context.db, project.id);
+    const sourcesSeen = sources.length;
     if (hasActiveProjectIndexSnapshot(context.db, project.id)) {
       const row = insertProjectIndexSnapshot(context.db, {
         id: createOpaqueProjectIndexSnapshotId(),
         projectId: project.id,
-        startedAt: now,
-        finishedAt: now,
+        startedAt,
+        finishedAt: startedAt,
         sourcesSeen,
         artifactsExtracted: 0,
         triggeredBy: input.triggeredBy,
@@ -428,11 +456,66 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
     const row = insertProjectIndexSnapshot(context.db, {
       id: createOpaqueProjectIndexSnapshotId(),
       projectId: project.id,
-      startedAt: now,
-      finishedAt: now,
+      startedAt,
+      finishedAt: null,
       sourcesSeen,
       artifactsExtracted: 0,
       triggeredBy: input.triggeredBy,
+      status: "running",
+    });
+
+    for (const source of sources) {
+      const pointerDenied = await validateSourcePointerForIndex(source);
+      if (pointerDenied) {
+        const failed = finishProjectIndexSnapshot(context.db, {
+          id: row.id,
+          finishedAt: Date.now(),
+          status: "failed",
+        });
+        return {
+          ok: false,
+          status: "ERROR",
+          message: "Project index snapshot failed during metadata validation.",
+          data: {
+            reason: "source_validation_failed",
+            snapshot: failed ? projectIndexSnapshotFromRow(failed) : null,
+            indexed: false,
+            extracted: false,
+          },
+        };
+      }
+    }
+
+    try {
+      for (const source of sources) {
+        updateProjectSourceIndexMetadata(context.db, {
+          id: source.id,
+          lastIndexedAt: startedAt,
+          sourceHash: null,
+        });
+      }
+    } catch {
+      const failed = finishProjectIndexSnapshot(context.db, {
+        id: row.id,
+        finishedAt: Date.now(),
+        status: "failed",
+      });
+      return {
+        ok: false,
+        status: "ERROR",
+        message: "Project index snapshot failed during metadata update.",
+        data: {
+          reason: "source_metadata_update_failed",
+          snapshot: failed ? projectIndexSnapshotFromRow(failed) : null,
+          indexed: false,
+          extracted: false,
+        },
+      };
+    }
+
+    const completed = finishProjectIndexSnapshot(context.db, {
+      id: row.id,
+      finishedAt: Date.now(),
       status: "completed",
     });
 
@@ -441,8 +524,8 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       status: "COMPLETED",
       message: "Project index snapshot recorded.",
       data: {
-        snapshot: projectIndexSnapshotFromRow(row),
-        indexed: false,
+        snapshot: completed ? projectIndexSnapshotFromRow(completed) : null,
+        indexed: true,
         extracted: false,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),

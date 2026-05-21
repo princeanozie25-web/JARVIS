@@ -128,6 +128,14 @@ describe("schema", () => {
       "triggered_by",
       "status",
     ]);
+    expect(tableNames()).not.toEqual(
+      expect.arrayContaining([
+        "project_task",
+        "project_thread",
+        "project_blocker",
+        "project_decision",
+      ]),
+    );
     expect(columnNames("memory_candidates")).toEqual([
       "id",
       "session_id",

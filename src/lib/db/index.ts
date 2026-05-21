@@ -50,6 +50,7 @@ export {
   getProjectSource,
   insertProjectSource,
   listProjectSources,
+  updateProjectSourceIndexMetadata,
 } from "./project-sources";
 export type {
   InsertProjectSourceInput,
@@ -57,6 +58,7 @@ export type {
 } from "./project-sources";
 export {
   ACTIVE_PROJECT_INDEX_SNAPSHOT_STATUSES,
+  finishProjectIndexSnapshot,
   getProjectIndexSnapshot,
   hasActiveProjectIndexSnapshot,
   insertProjectIndexSnapshot,

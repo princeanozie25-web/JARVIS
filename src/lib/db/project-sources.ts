@@ -22,6 +22,12 @@ export interface InsertProjectSourceInput {
   sourceHash?: string | null;
 }
 
+export interface UpdateProjectSourceIndexMetadataInput {
+  id: string;
+  lastIndexedAt: number;
+  sourceHash?: string | null;
+}
+
 function requireTrimmed(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`${label} is required`);
@@ -92,4 +98,21 @@ export function countProjectSources(
     )
     .get(projectId) as { count: number };
   return row.count;
+}
+
+export function updateProjectSourceIndexMetadata(
+  db: DatabaseType.Database,
+  input: UpdateProjectSourceIndexMetadataInput,
+): ProjectSourceRow | undefined {
+  db.prepare(
+    `UPDATE project_source
+     SET last_indexed_at = ?,
+         source_hash = ?
+     WHERE id = ?`,
+  ).run(
+    input.lastIndexedAt,
+    input.sourceHash?.trim() || null,
+    requireTrimmed(input.id, "id"),
+  );
+  return getProjectSource(db, input.id);
 }

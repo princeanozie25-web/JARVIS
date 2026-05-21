@@ -8,7 +8,11 @@ import {
   insertProjectIndexSnapshot,
   listProjectIndexSnapshots,
 } from "../db/project-index-snapshots";
-import { countProjectSources, listProjectSources } from "../db/project-sources";
+import {
+  countProjectSources,
+  insertProjectSource,
+  listProjectSources,
+} from "../db/project-sources";
 import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
 import { applyMigrations } from "../db/schema";
 import { insertRegisteredProject } from "../db/projects";
@@ -202,6 +206,10 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.add_source");
     expect(registeredToolIds).toContain("project.index");
     expect(registeredToolIds).not.toContain("project.write_memory");
+    expect(registeredToolIds).not.toContain("project.task");
+    expect(registeredToolIds).not.toContain("project.thread");
+    expect(registeredToolIds).not.toContain("project.blocker");
+    expect(registeredToolIds).not.toContain("project.decision");
     expect(registeredToolIds).not.toContain("project.extract");
     expect(registeredToolIds).not.toContain("project.extract_tasks");
     expect(registeredToolIds).not.toContain("background.indexing");
@@ -628,6 +636,12 @@ describe("Phase 5 project tools", () => {
       rootRef: "virtual:index",
       createdAt: 1_000,
     });
+    insertProjectSource(db, {
+      id: "psrc_unapproved",
+      projectId: "proj_index",
+      kind: "thread",
+      ref: "thread:unapproved",
+    });
 
     const result = await runtime.runTool({
       toolId: "project.index",
@@ -646,6 +660,13 @@ describe("Phase 5 project tools", () => {
       },
     });
     expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([]);
+    expect(listProjectSources(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        id: "psrc_unapproved",
+        last_indexed_at: null,
+        source_hash: null,
+      }),
+    ]);
   });
 
   it("project.index records a metadata-only snapshot after approval", async () => {
@@ -720,13 +741,153 @@ describe("Phase 5 project tools", () => {
         sources_seen: 1,
         artifacts_extracted: 0,
         triggered_by: "manual",
+        finished_at: expect.any(Number),
         status: "completed",
+      }),
+    ]);
+    expect(listProjectSources(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        id: "psrc_index",
+        last_indexed_at: expect.any(Number),
+        source_hash: null,
       }),
     ]);
     expect(JSON.stringify(approved.body)).not.toContain("thread:do-not-read");
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),
     ).toMatchObject({ count: 0 });
+  });
+
+  it("project.index fails closed without touching source metadata for disabled source refs", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_network",
+      projectId: "proj_index",
+      kind: "thread",
+      ref: "https://example.test/project",
+    });
+    const input = { projectId: "proj_index", triggeredBy: "manual" };
+    await runtime.runTool({
+      toolId: "project.index",
+      input,
+      sessionId: "session-1",
+      executionId: "index-failed",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "index-failed",
+      sessionId: "session-1",
+      toolId: "project.index",
+      toolName: "Index Project Snapshot",
+      scopeHash: tools.get("project.index").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "index-failed",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      message: "Project index snapshot failed during metadata validation.",
+    });
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        project_id: "proj_index",
+        sources_seen: 1,
+        artifacts_extracted: 0,
+        status: "failed",
+      }),
+    ]);
+    expect(listProjectSources(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        id: "psrc_network",
+        last_indexed_at: null,
+        source_hash: null,
+      }),
+    ]);
+  });
+
+  it("project.index metadata pass does not query content-bearing project sources", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_thread",
+      projectId: "proj_index",
+      kind: "thread",
+      ref: "thread:content-must-not-be-read",
+    });
+    const prepare = db.prepare.bind(db);
+    const blockedContentTables =
+      /\b(long_term_memory|messages|reflective_memory|semantic_memory)\b/i;
+    db.prepare = ((source: string) => {
+      expect(source).not.toMatch(blockedContentTables);
+      expect(source).not.toMatch(/\bcontent\b/i);
+      return prepare(source);
+    }) as typeof db.prepare;
+    const input = { projectId: "proj_index", triggeredBy: "manual" };
+    await runtime.runTool({
+      toolId: "project.index",
+      input,
+      sessionId: "session-1",
+      executionId: "index-no-content",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "index-no-content",
+      sessionId: "session-1",
+      toolId: "project.index",
+      toolName: "Index Project Snapshot",
+      scopeHash: tools.get("project.index").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "index-no-content",
+        decision: "APPROVED_ONCE",
+        approvalToken: pending.approvalToken,
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: true,
+        status: "COMPLETED",
+      },
+    });
   });
 
   it("project.index rejects concurrent active snapshots with a rejected audit row", async () => {
