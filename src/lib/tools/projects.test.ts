@@ -210,6 +210,7 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).not.toContain("project.thread");
     expect(registeredToolIds).not.toContain("project.blocker");
     expect(registeredToolIds).not.toContain("project.decision");
+    expect(registeredToolIds).not.toContain("project.summarize");
     expect(registeredToolIds).not.toContain("project.extract");
     expect(registeredToolIds).not.toContain("project.extract_tasks");
     expect(registeredToolIds).not.toContain("background.indexing");
@@ -752,6 +753,16 @@ describe("Phase 5 project tools", () => {
         source_hash: null,
       }),
     ]);
+    for (const tableName of [
+      "project_thread",
+      "project_task",
+      "project_blocker",
+      "project_decision",
+    ]) {
+      expect(
+        db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get(),
+      ).toMatchObject({ count: 0 });
+    }
     expect(JSON.stringify(approved.body)).not.toContain("thread:do-not-read");
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),

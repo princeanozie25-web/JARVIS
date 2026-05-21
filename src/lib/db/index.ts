@@ -69,6 +69,30 @@ export type {
   ProjectIndexSnapshotRow,
 } from "./project-index-snapshots";
 export {
+  getProjectBlocker,
+  getProjectDecision,
+  getProjectTask,
+  getProjectThread,
+  insertProjectBlocker,
+  insertProjectDecision,
+  insertProjectTask,
+  insertProjectThread,
+  listProjectBlockers,
+  listProjectDecisions,
+  listProjectTasks,
+  listProjectThreads,
+} from "./project-artifacts";
+export type {
+  InsertProjectBlockerInput,
+  InsertProjectDecisionInput,
+  InsertProjectTaskInput,
+  InsertProjectThreadInput,
+  ProjectBlockerRow,
+  ProjectDecisionRow,
+  ProjectTaskRow,
+  ProjectThreadRow,
+} from "./project-artifacts";
+export {
   createMemoryCandidate,
   listMemoryCandidates,
   MEMORY_CANDIDATE_STATUSES,

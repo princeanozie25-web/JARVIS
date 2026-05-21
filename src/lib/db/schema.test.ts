@@ -64,6 +64,10 @@ describe("schema", () => {
         "project_state",
         "project_source",
         "project_index_snapshot",
+        "project_thread",
+        "project_task",
+        "project_blocker",
+        "project_decision",
         "projects",
         "preferences",
         "reflective_memory",
@@ -128,14 +132,42 @@ describe("schema", () => {
       "triggered_by",
       "status",
     ]);
-    expect(tableNames()).not.toEqual(
-      expect.arrayContaining([
-        "project_task",
-        "project_thread",
-        "project_blocker",
-        "project_decision",
-      ]),
-    );
+    expect(columnNames("project_thread")).toEqual([
+      "id",
+      "project_id",
+      "title",
+      "status",
+      "first_seen_at",
+      "last_active_at",
+      "origin_ref",
+    ]);
+    expect(columnNames("project_task")).toEqual([
+      "id",
+      "project_id",
+      "thread_id",
+      "title",
+      "status",
+      "confidence",
+      "promoted",
+      "origin_ref",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(columnNames("project_blocker")).toEqual([
+      "id",
+      "project_id",
+      "task_id",
+      "description",
+      "status",
+      "origin_ref",
+    ]);
+    expect(columnNames("project_decision")).toEqual([
+      "id",
+      "project_id",
+      "summary",
+      "decided_at",
+      "origin_ref",
+    ]);
     expect(columnNames("memory_candidates")).toEqual([
       "id",
       "session_id",
@@ -242,6 +274,7 @@ describe("schema", () => {
       "014_project_registry",
       "015_project_source_ledger",
       "016_project_index_snapshot",
+      "017_project_artifacts",
     ]);
   });
 });

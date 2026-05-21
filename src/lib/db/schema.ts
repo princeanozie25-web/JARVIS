@@ -17,6 +17,7 @@ const MIGRATION_IDS = [
   "014_project_registry",
   "015_project_source_ledger",
   "016_project_index_snapshot",
+  "017_project_artifacts",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -379,6 +380,64 @@ CREATE INDEX IF NOT EXISTS idx_project_index_snapshot_status
 CREATE UNIQUE INDEX IF NOT EXISTS idx_project_index_snapshot_active_project
   ON project_index_snapshot (project_id)
   WHERE status IN ('pending', 'running');
+
+CREATE TABLE IF NOT EXISTS project_thread (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title           TEXT NOT NULL,
+  status          TEXT NOT NULL CHECK (status IN ('open', 'resolved', 'stale')),
+  first_seen_at   INTEGER NOT NULL,
+  last_active_at  INTEGER NOT NULL,
+  origin_ref      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_thread_project
+  ON project_thread (project_id, status, last_active_at DESC);
+
+CREATE TABLE IF NOT EXISTS project_task (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  thread_id   TEXT REFERENCES project_thread(id) ON DELETE SET NULL,
+  title       TEXT NOT NULL,
+  status      TEXT NOT NULL CHECK (status IN ('extracted', 'open', 'in_progress', 'blocked', 'done', 'dismissed')),
+  confidence  REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  promoted    INTEGER NOT NULL DEFAULT 0 CHECK (promoted IN (0, 1)),
+  origin_ref  TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_task_project
+  ON project_task (project_id, status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_project_task_thread
+  ON project_task (thread_id);
+
+CREATE TABLE IF NOT EXISTS project_blocker (
+  id           TEXT PRIMARY KEY,
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_id      TEXT REFERENCES project_task(id) ON DELETE SET NULL,
+  description  TEXT NOT NULL,
+  status       TEXT NOT NULL CHECK (status IN ('open', 'cleared')),
+  origin_ref   TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_blocker_project
+  ON project_blocker (project_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_project_blocker_task
+  ON project_blocker (task_id);
+
+CREATE TABLE IF NOT EXISTS project_decision (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  summary     TEXT NOT NULL,
+  decided_at  INTEGER,
+  origin_ref  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_decision_project
+  ON project_decision (project_id, decided_at DESC);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

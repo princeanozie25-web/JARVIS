@@ -21,12 +21,25 @@ export const PROJECT_INDEX_SNAPSHOT_STATUSES = [
   "failed",
   "rejected",
 ] as const;
+export const PROJECT_THREAD_STATUSES = ["open", "resolved", "stale"] as const;
+export const PROJECT_TASK_STATUSES = [
+  "extracted",
+  "open",
+  "in_progress",
+  "blocked",
+  "done",
+  "dismissed",
+] as const;
+export const PROJECT_BLOCKER_STATUSES = ["open", "cleared"] as const;
 
 export type ProjectRootKind = (typeof PROJECT_ROOT_KINDS)[number];
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type ProjectSourceKind = (typeof PROJECT_SOURCE_KINDS)[number];
 export type ProjectIndexSnapshotStatus =
   (typeof PROJECT_INDEX_SNAPSHOT_STATUSES)[number];
+export type ProjectThreadStatus = (typeof PROJECT_THREAD_STATUSES)[number];
+export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUSES)[number];
+export type ProjectBlockerStatus = (typeof PROJECT_BLOCKER_STATUSES)[number];
 
 export const ProjectRootKindSchema = z.enum(PROJECT_ROOT_KINDS);
 export const ProjectStatusSchema = z.enum(PROJECT_STATUSES);
@@ -34,6 +47,9 @@ export const ProjectSourceKindSchema = z.enum(PROJECT_SOURCE_KINDS);
 export const ProjectIndexSnapshotStatusSchema = z.enum(
   PROJECT_INDEX_SNAPSHOT_STATUSES,
 );
+export const ProjectThreadStatusSchema = z.enum(PROJECT_THREAD_STATUSES);
+export const ProjectTaskStatusSchema = z.enum(PROJECT_TASK_STATUSES);
+export const ProjectBlockerStatusSchema = z.enum(PROJECT_BLOCKER_STATUSES);
 
 export const ProjectSlugSchema = z
   .string()
@@ -80,6 +96,54 @@ export const ProjectIndexSnapshotSchema = z.object({
 });
 
 export type ProjectIndexSnapshot = z.infer<typeof ProjectIndexSnapshotSchema>;
+
+export const ProjectThreadSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  projectId: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(500),
+  status: ProjectThreadStatusSchema,
+  firstSeenAt: z.number().int().nonnegative(),
+  lastActiveAt: z.number().int().nonnegative(),
+  originRef: z.string().trim().min(1).max(500),
+});
+
+export type ProjectThread = z.infer<typeof ProjectThreadSchema>;
+
+export const ProjectTaskSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  projectId: z.string().trim().min(1).max(200),
+  threadId: z.string().trim().min(1).max(200).nullable(),
+  title: z.string().trim().min(1).max(500),
+  status: ProjectTaskStatusSchema,
+  confidence: z.number().min(0).max(1),
+  promoted: z.boolean(),
+  originRef: z.string().trim().min(1).max(500),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+});
+
+export type ProjectTask = z.infer<typeof ProjectTaskSchema>;
+
+export const ProjectBlockerSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  projectId: z.string().trim().min(1).max(200),
+  taskId: z.string().trim().min(1).max(200).nullable(),
+  description: z.string().trim().min(1).max(1_000),
+  status: ProjectBlockerStatusSchema,
+  originRef: z.string().trim().min(1).max(500),
+});
+
+export type ProjectBlocker = z.infer<typeof ProjectBlockerSchema>;
+
+export const ProjectDecisionSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  projectId: z.string().trim().min(1).max(200),
+  summary: z.string().trim().min(1).max(1_000),
+  decidedAt: z.number().int().nonnegative().nullable(),
+  originRef: z.string().trim().min(1).max(500),
+});
+
+export type ProjectDecision = z.infer<typeof ProjectDecisionSchema>;
 
 export interface ProjectRegistrationDraft {
   id: string;
