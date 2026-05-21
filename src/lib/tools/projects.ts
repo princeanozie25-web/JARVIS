@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
+import { insertTelemetryEvent } from "../db/telemetry";
 import {
   getProjectArtifactCounts,
   getProjectBlockerByOrigin,
@@ -53,12 +54,13 @@ import type {
   ProjectSourceKind,
   ProjectStatus,
 } from "../projects/types";
+import type { TelemetryEventType } from "../telemetry";
 import {
   resolveSafePath,
   SafePathError,
   type SafePathResult,
 } from "./fs-safe-path";
-import type { Tool, ToolResult } from "./types";
+import type { Tool, ToolContext, ToolResult } from "./types";
 
 const PROJECT_TOOL_TIMEOUT_MS = 3_000;
 const PROJECT_INDEX_MAX_FILE_BYTES = 256_000;
@@ -139,6 +141,47 @@ function denied(message: string, reason: string): ToolResult {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function telemetryHash(value: string): string {
+  return `sha256:${sha256(value).slice(0, 16)}`;
+}
+
+function telemetryNotes(
+  fields: Record<string, string | number | boolean | null | undefined>,
+): string {
+  return Object.entries(fields)
+    .filter((entry): entry is [string, string | number | boolean] => {
+      const value = entry[1];
+      return value !== null && value !== undefined;
+    })
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+}
+
+function emitProjectTelemetry(input: {
+  db: DatabaseType.Database;
+  context: Pick<ToolContext, "executionId" | "sessionId" | "decision">;
+  eventType: TelemetryEventType;
+  toolName: string;
+  success: boolean;
+  latencyMs?: number;
+  notes: Record<string, string | number | boolean | null | undefined>;
+}): void {
+  insertTelemetryEvent(input.db, {
+    timestamp: Date.now(),
+    event_type: input.eventType,
+    success: input.success,
+    session_id: input.context.sessionId,
+    execution_id: input.context.executionId,
+    tool_name: input.toolName,
+    intent: input.context.decision.intent.intent,
+    safety_tag: input.context.decision.safety.safetyTag,
+    tier: input.context.decision.capability.tier,
+    model_id: input.context.decision.selection.model.modelName,
+    latency_ms: input.latencyMs,
+    notes: telemetryNotes(input.notes),
+  });
 }
 
 function isNetworkRootRef(rootRef: string): boolean {
@@ -343,9 +386,9 @@ async function extractRegisteredFileSourceMarkers(input: {
   source: ProjectSourceRow;
   safePath: SafePathResult;
   now: number;
-}): Promise<number> {
+}): Promise<{ tasksCreated: number; blockersCreated: number }> {
   const metadata = await stat(input.safePath.resolvedPath);
-  if (!metadata.isFile()) return 0;
+  if (!metadata.isFile()) return { tasksCreated: 0, blockersCreated: 0 };
   if (metadata.size > PROJECT_INDEX_MAX_FILE_BYTES) {
     throw new Error(
       "registered file source exceeds A7 marker extraction limit",
@@ -357,7 +400,8 @@ async function extractRegisteredFileSourceMarkers(input: {
     flag: "r",
   });
 
-  let created = 0;
+  let tasksCreated = 0;
+  let blockersCreated = 0;
   for (const marker of extractProjectMarkers(content)) {
     const originRef = originRefForMarker(input.source, marker);
     if (marker.kind === "task") {
@@ -375,7 +419,7 @@ async function extractRegisteredFileSourceMarkers(input: {
         createdAt: input.now,
         updatedAt: input.now,
       });
-      created += 1;
+      tasksCreated += 1;
     } else {
       if (getProjectBlockerByOrigin(input.db, input.projectId, originRef)) {
         continue;
@@ -387,10 +431,10 @@ async function extractRegisteredFileSourceMarkers(input: {
         status: "open",
         originRef,
       });
-      created += 1;
+      blockersCreated += 1;
     }
   }
-  return created;
+  return { tasksCreated, blockersCreated };
 }
 
 export const projectListTool: Tool<ProjectListInput> = {
@@ -635,6 +679,21 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
         triggeredBy: input.triggeredBy,
         status: "rejected",
       });
+      emitProjectTelemetry({
+        db: context.db,
+        context,
+        eventType: "project.indexed",
+        toolName: "project.index",
+        success: false,
+        latencyMs: Date.now() - startedAt,
+        notes: {
+          project_id_hash: telemetryHash(project.id),
+          snapshot_status: "rejected",
+          reason: "active_snapshot_exists",
+          sources_seen: sourcesSeen,
+          artifacts_extracted: 0,
+        },
+      });
       return {
         ok: false,
         status: "DENIED",
@@ -672,6 +731,21 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
           finishedAt: Date.now(),
           status: "failed",
         });
+        emitProjectTelemetry({
+          db: context.db,
+          context,
+          eventType: "project.indexed",
+          toolName: "project.index",
+          success: false,
+          latencyMs: Date.now() - startedAt,
+          notes: {
+            project_id_hash: telemetryHash(project.id),
+            snapshot_status: "failed",
+            reason: "source_validation_failed",
+            sources_seen: sourcesSeen,
+            artifacts_extracted: 0,
+          },
+        });
         return {
           ok: false,
           status: "ERROR",
@@ -690,6 +764,8 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
     }
 
     let artifactsExtracted = 0;
+    let tasksExtracted = 0;
+    let blockersExtracted = 0;
     try {
       for (const source of sources) {
         updateProjectSourceIndexMetadata(context.db, {
@@ -699,13 +775,17 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
         });
       }
       for (const fileSource of safeFileSources) {
-        artifactsExtracted += await extractRegisteredFileSourceMarkers({
+        const extracted = await extractRegisteredFileSourceMarkers({
           db: context.db,
           projectId: project.id,
           source: fileSource.source,
           safePath: fileSource.safePath,
           now: startedAt,
         });
+        tasksExtracted += extracted.tasksCreated;
+        blockersExtracted += extracted.blockersCreated;
+        artifactsExtracted +=
+          extracted.tasksCreated + extracted.blockersCreated;
       }
     } catch {
       const failed = finishProjectIndexSnapshot(context.db, {
@@ -713,6 +793,24 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
         finishedAt: Date.now(),
         status: "failed",
         artifactsExtracted,
+      });
+      emitProjectTelemetry({
+        db: context.db,
+        context,
+        eventType: "project.indexed",
+        toolName: "project.index",
+        success: false,
+        latencyMs: Date.now() - startedAt,
+        notes: {
+          project_id_hash: telemetryHash(project.id),
+          snapshot_status: "failed",
+          reason: "source_metadata_update_failed",
+          sources_seen: sourcesSeen,
+          file_sources_read: safeFileSources.length,
+          tasks_extracted: tasksExtracted,
+          blockers_extracted: blockersExtracted,
+          artifacts_extracted: artifactsExtracted,
+        },
       });
       return {
         ok: false,
@@ -732,6 +830,38 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       finishedAt: Date.now(),
       status: "completed",
       artifactsExtracted,
+    });
+
+    emitProjectTelemetry({
+      db: context.db,
+      context,
+      eventType: "project.indexed",
+      toolName: "project.index",
+      success: true,
+      latencyMs: Date.now() - startedAt,
+      notes: {
+        project_id_hash: telemetryHash(project.id),
+        snapshot_status: "completed",
+        sources_seen: sourcesSeen,
+        file_sources_read: safeFileSources.length,
+        tasks_extracted: tasksExtracted,
+        blockers_extracted: blockersExtracted,
+        artifacts_extracted: artifactsExtracted,
+      },
+    });
+    emitProjectTelemetry({
+      db: context.db,
+      context,
+      eventType: "project.task_extracted",
+      toolName: "project.index",
+      success: true,
+      latencyMs: Date.now() - startedAt,
+      notes: {
+        project_id_hash: telemetryHash(project.id),
+        tasks_extracted: tasksExtracted,
+        blockers_extracted: blockersExtracted,
+        artifacts_extracted: artifactsExtracted,
+      },
     });
 
     return {
@@ -808,6 +938,22 @@ export const projectPromoteTaskTool: Tool<ProjectPromoteTaskInput> = {
       };
     }
 
+    emitProjectTelemetry({
+      db: context.db,
+      context,
+      eventType: "project.task_promoted",
+      toolName: "project.promote_task",
+      success: true,
+      notes: {
+        project_id_hash: telemetryHash(project.id),
+        task_id_hash: telemetryHash(updated.id),
+        from_promoted: false,
+        to_promoted: true,
+        task_status: updated.status,
+        confidence: updated.confidence,
+      },
+    });
+
     return {
       ok: true,
       status: "COMPLETED",
@@ -871,6 +1017,20 @@ export const projectSetStatusTool: Tool<ProjectSetStatusInput> = {
         data: { reason: "project_status_update_failed" },
       };
     }
+
+    emitProjectTelemetry({
+      db: context.db,
+      context,
+      eventType: "project.status_changed",
+      toolName: "project.set_status",
+      success: true,
+      notes: {
+        project_id_hash: telemetryHash(project.id),
+        from_status: project.status,
+        to_status: updated.status,
+        archived_at_set: updated.archived_at !== null,
+      },
+    });
 
     return {
       ok: true,

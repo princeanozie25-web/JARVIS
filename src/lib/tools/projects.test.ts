@@ -20,6 +20,7 @@ import {
 import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
 import { applyMigrations } from "../db/schema";
 import { insertRegisteredProject } from "../db/projects";
+import { listTelemetryEvents } from "../db/telemetry";
 import { listToolCalls } from "../db/tool-calls";
 import type { RouterDecision } from "../router";
 import { InProcessToolRuntime, tools } from ".";
@@ -1881,6 +1882,92 @@ describe("Phase 5 project tools", () => {
     ).not.toContain("secret-alpha");
     expect(JSON.stringify(listToolCalls(db))).not.toContain("secret-alpha");
     expect(JSON.stringify(listToolCalls(db))).not.toContain("ignored");
+  });
+
+  it("project operations emit metadata-only redacted telemetry", async () => {
+    const sourceRef = "sensitive-source.md";
+    const rawTaskText = "secret task title must stay out";
+    const rawBlockerText = "secret blocker description must stay out";
+    writeFileSync(
+      join(workspaceRoot, sourceRef),
+      [`TODO: ${rawTaskText}`, `blocked by ${rawBlockerText}`].join("\n"),
+    );
+    insertRegisteredProject(db, {
+      id: "proj_sensitive_raw_id",
+      slug: "secret-project-slug",
+      displayName: "Secret Project Display",
+      rootKind: "virtual",
+      rootRef: "virtual:secret-project",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_sensitive",
+      projectId: "proj_sensitive_raw_id",
+      kind: "file",
+      ref: sourceRef,
+    });
+
+    await runApprovedProjectIndex("telemetry-index", {
+      projectId: "proj_sensitive_raw_id",
+      triggeredBy: "manual",
+    });
+    const [task] = listProjectTasks(db, "proj_sensitive_raw_id");
+    expect(task).toBeTruthy();
+    await runApprovedProjectPromoteTask("telemetry-promote", {
+      projectId: "proj_sensitive_raw_id",
+      taskId: task!.id,
+    });
+    await runApprovedProjectSetStatus("telemetry-status", {
+      projectId: "proj_sensitive_raw_id",
+      status: "paused",
+    });
+
+    const telemetry = listTelemetryEvents(db, 100);
+    const projectTelemetry = telemetry.filter((event) =>
+      event.event_type.startsWith("project."),
+    );
+    expect(projectTelemetry.map((event) => event.event_type).sort()).toEqual([
+      "project.indexed",
+      "project.status_changed",
+      "project.task_extracted",
+      "project.task_promoted",
+    ]);
+    expect(
+      projectTelemetry.find((event) => event.event_type === "project.indexed")
+        ?.notes,
+    ).toContain("tasks_extracted=1");
+    expect(
+      projectTelemetry.find(
+        (event) => event.event_type === "project.task_extracted",
+      )?.notes,
+    ).toContain("blockers_extracted=1");
+    expect(
+      projectTelemetry.find(
+        (event) => event.event_type === "project.task_promoted",
+      )?.notes,
+    ).toContain("task_id_hash=sha256:");
+    expect(
+      projectTelemetry.find(
+        (event) => event.event_type === "project.status_changed",
+      )?.notes,
+    ).toContain("from_status=active to_status=paused");
+
+    const serialized = JSON.stringify(telemetry);
+    for (const unsafe of [
+      "proj_sensitive_raw_id",
+      "secret-project-slug",
+      "Secret Project Display",
+      sourceRef,
+      rawTaskText,
+      rawBlockerText,
+      task!.id,
+      task!.origin_ref,
+      "voice project mutation",
+      "voice_surface_text",
+    ]) {
+      expect(serialized).not.toContain(unsafe);
+    }
+    expect(serialized).toContain("project_id_hash=sha256:");
   });
 
   it("project.index deterministic marker extraction is idempotent by origin_ref", async () => {
