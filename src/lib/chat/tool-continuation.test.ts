@@ -282,6 +282,7 @@ describe("read-only provider tool continuation", () => {
       "memory.recall",
       "project.list",
       "project.get",
+      "project.summarize",
     ]);
   });
 });
@@ -367,6 +368,7 @@ describe("approval-gated provider tool continuation", () => {
       "memory.recall",
       "project.list",
       "project.get",
+      "project.summarize",
       "project.register",
       "project.add_source",
       "project.index",

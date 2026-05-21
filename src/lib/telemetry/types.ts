@@ -36,6 +36,7 @@ export type TelemetryEventType =
   | "project.task_extracted"
   | "project.task_promoted"
   | "project.status_changed"
+  | "project.summarized"
   | "memory_candidate_generated"
   | "memory_candidate_reviewed"
   | "memory_candidate_rejected"

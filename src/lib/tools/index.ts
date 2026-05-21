@@ -83,6 +83,8 @@ export {
   projectRegisterToolScaffold,
   projectSetStatusScopeOf,
   projectSetStatusTool,
+  projectSummarizeScopeOf,
+  projectSummarizeTool,
 } from "./projects";
 export type {
   ProjectAddSourceInput,
@@ -92,6 +94,7 @@ export type {
   ProjectPromoteTaskInput,
   ProjectRegisterInput,
   ProjectSetStatusInput,
+  ProjectSummarizeInput,
 } from "./projects";
 export {
   isProtectedPath,

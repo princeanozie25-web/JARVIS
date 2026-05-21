@@ -28,6 +28,7 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "memory.recall",
   "project.list",
   "project.get",
+  "project.summarize",
 ]);
 
 export const WRITE_PROVIDER_TOOL_IDS = new Set([
@@ -47,6 +48,7 @@ export const MEMORY_PROVIDER_TOOL_IDS = new Set([
 export const PROJECT_PROVIDER_TOOL_IDS = new Set([
   "project.list",
   "project.get",
+  "project.summarize",
   "project.register",
   "project.add_source",
   "project.index",

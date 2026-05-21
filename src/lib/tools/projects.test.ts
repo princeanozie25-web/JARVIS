@@ -557,6 +557,252 @@ describe("Phase 5 project tools", () => {
     );
   });
 
+  it("project.summarize returns a deterministic bounded derived summary without approval or source reads", async () => {
+    writeFileSync(
+      join(workspaceRoot, "summarize-source.md"),
+      "RAW FILE CONTENT MUST NOT APPEAR IN SUMMARY",
+    );
+    insertRegisteredProject(db, {
+      id: "proj_summary_raw_id",
+      slug: "summary-slug",
+      displayName: "Summary Display",
+      rootKind: "virtual",
+      rootRef: "virtual:summary",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_summary",
+      projectId: "proj_summary_raw_id",
+      kind: "file",
+      ref: "summarize-source.md",
+    });
+    db.prepare(
+      `INSERT INTO project_thread (
+         id, project_id, title, status, first_seen_at, last_active_at, origin_ref
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pth_summary",
+      "proj_summary_raw_id",
+      "Thread title",
+      "open",
+      1_000,
+      1_100,
+      "origin:thread:secret",
+    );
+    for (let index = 1; index <= 2; index += 1) {
+      insertExtractedProjectTask({
+        id: `ptask_candidate_${index}`,
+        projectId: "proj_summary_raw_id",
+        title: `Candidate ${index}`,
+      });
+    }
+    for (let index = 1; index <= 6; index += 1) {
+      insertExtractedProjectTask({
+        id: `ptask_commitment_${index}`,
+        projectId: "proj_summary_raw_id",
+        title: `Commitment ${index}`,
+        status: "open",
+        promoted: 1,
+        updatedAt: 2_000 + index,
+      });
+    }
+    for (let index = 1; index <= 6; index += 1) {
+      db.prepare(
+        `INSERT INTO project_blocker (
+           id, project_id, task_id, description, status, origin_ref
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(
+        `pblk_summary_open_${index}`,
+        "proj_summary_raw_id",
+        null,
+        `Open blocker ${index}`,
+        "open",
+        `origin:blocker:open:${index}`,
+      );
+    }
+    db.prepare(
+      `INSERT INTO project_blocker (
+         id, project_id, task_id, description, status, origin_ref
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pblk_summary_cleared",
+      "proj_summary_raw_id",
+      null,
+      "Cleared blocker should stay out of open list",
+      "cleared",
+      "origin:blocker:cleared",
+    );
+    db.prepare(
+      `INSERT INTO project_decision (
+         id, project_id, summary, decided_at, origin_ref
+       ) VALUES (?, ?, ?, ?, ?)`,
+    ).run(
+      "pdec_summary",
+      "proj_summary_raw_id",
+      "Decision summary should not be copied into summary output",
+      3_000,
+      "origin:decision:secret",
+    );
+    insertProjectIndexSnapshot(db, {
+      id: "pidx_summary",
+      projectId: "proj_summary_raw_id",
+      startedAt: 4_000,
+      finishedAt: 4_200,
+      sourcesSeen: 1,
+      artifactsExtracted: 2,
+      triggeredBy: "manual",
+      status: "completed",
+    });
+    const before = {
+      projects: listRegisteredProjects(db, { includeArchived: true }),
+      sources: listProjectSources(db, "proj_summary_raw_id"),
+      snapshots: listProjectIndexSnapshots(db, "proj_summary_raw_id"),
+      tasks: listProjectTasks(db, "proj_summary_raw_id"),
+      blockers: listProjectBlockers(db, "proj_summary_raw_id"),
+      threads: db.prepare("SELECT * FROM project_thread").all(),
+      decisions: db.prepare("SELECT * FROM project_decision").all(),
+    };
+
+    const result = await runtime.runTool({
+      toolId: "project.summarize",
+      input: { id: "proj_summary_raw_id" },
+      sessionId: "session-1",
+      executionId: "summarize-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      message: "Deterministic project summary generated.",
+      data: {
+        derivedState: true,
+        summary: {
+          mode: "deterministic_code_generated",
+          llmGenerated: false,
+          derivedState: true,
+          project: {
+            id: "proj_summary_raw_id",
+            slug: "summary-slug",
+            displayName: "Summary Display",
+            status: "active",
+            archivedAt: null,
+          },
+          indexFreshness: {
+            indexedAt: 4_200,
+            status: "completed",
+            sourcesSeen: 1,
+            artifactsExtracted: 2,
+          },
+          counts: {
+            extractedTasks: 2,
+            promotedTasks: 6,
+            openBlockers: 6,
+            clearedBlockers: 1,
+            decisions: 1,
+            threads: 1,
+          },
+          commitments: {
+            semantics: "promoted_tasks_are_commitments",
+            limit: 5,
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                id: "ptask_commitment_6",
+                title: "Commitment 6",
+              }),
+            ]),
+          },
+          openBlockers: {
+            semantics: "open_blockers_only",
+            limit: 5,
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                id: "pblk_summary_open_1",
+                description: "Open blocker 1",
+              }),
+            ]),
+          },
+          candidateTasks: {
+            semantics: "extracted_tasks_are_candidates_unless_promoted",
+            count: 2,
+          },
+          summaryText: expect.stringContaining(
+            "Promoted tasks are commitments; extracted tasks are candidates.",
+          ),
+        },
+      },
+    });
+    const summary = (
+      result.data as {
+        summary: {
+          commitments: { items: Array<{ id: string; title: string }> };
+          openBlockers: { items: Array<{ id: string; description: string }> };
+        };
+      }
+    ).summary;
+    expect(summary.commitments.items).toHaveLength(5);
+    expect(summary.openBlockers.items).toHaveLength(5);
+    expect(summary.commitments.items.map((task) => task.id)).not.toContain(
+      "ptask_candidate_1",
+    );
+    expect(
+      summary.openBlockers.items.map((blocker) => blocker.description),
+    ).not.toContain("Cleared blocker should stay out of open list");
+    expect(JSON.stringify(result.data)).not.toContain("origin:");
+    expect(JSON.stringify(result.data)).not.toContain("summarize-source.md");
+    expect(JSON.stringify(result.data)).not.toContain(
+      "RAW FILE CONTENT MUST NOT APPEAR IN SUMMARY",
+    );
+    expect(JSON.stringify(result.data)).not.toContain(
+      "Decision summary should not be copied into summary output",
+    );
+    expect(listToolCalls(db)).toEqual([
+      expect.objectContaining({
+        tool_id: "project.summarize",
+        status: "COMPLETED",
+      }),
+    ]);
+    expect(listRegisteredProjects(db, { includeArchived: true })).toEqual(
+      before.projects,
+    );
+    expect(listProjectSources(db, "proj_summary_raw_id")).toEqual(
+      before.sources,
+    );
+    expect(listProjectIndexSnapshots(db, "proj_summary_raw_id")).toEqual(
+      before.snapshots,
+    );
+    expect(listProjectTasks(db, "proj_summary_raw_id")).toEqual(before.tasks);
+    expect(listProjectBlockers(db, "proj_summary_raw_id")).toEqual(
+      before.blockers,
+    );
+    expect(db.prepare("SELECT * FROM project_thread").all()).toEqual(
+      before.threads,
+    );
+    expect(db.prepare("SELECT * FROM project_decision").all()).toEqual(
+      before.decisions,
+    );
+
+    const telemetry = listTelemetryEvents(db, 20).filter(
+      (event) => event.event_type === "project.summarized",
+    );
+    expect(telemetry).toHaveLength(1);
+    expect(telemetry[0]?.notes).toContain("project_id_hash=sha256:");
+    expect(telemetry[0]?.notes).toContain("promoted_tasks=6");
+    const serializedTelemetry = JSON.stringify(telemetry);
+    for (const unsafe of [
+      "proj_summary_raw_id",
+      "summary-slug",
+      "Summary Display",
+      "Commitment",
+      "Open blocker",
+      "origin:",
+      "summarize-source.md",
+      "RAW FILE CONTENT MUST NOT APPEAR IN SUMMARY",
+    ]) {
+      expect(serializedTelemetry).not.toContain(unsafe);
+    }
+  });
+
   it("project.get and project.list expose source counts without source refs", async () => {
     insertRegisteredProject(db, {
       id: "proj_counted",
@@ -605,12 +851,12 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.index");
     expect(registeredToolIds).toContain("project.promote_task");
     expect(registeredToolIds).toContain("project.set_status");
+    expect(registeredToolIds).toContain("project.summarize");
     expect(registeredToolIds).not.toContain("project.write_memory");
     expect(registeredToolIds).not.toContain("project.task");
     expect(registeredToolIds).not.toContain("project.thread");
     expect(registeredToolIds).not.toContain("project.blocker");
     expect(registeredToolIds).not.toContain("project.decision");
-    expect(registeredToolIds).not.toContain("project.summarize");
     expect(registeredToolIds).not.toContain("project.extract");
     expect(registeredToolIds).not.toContain("project.extract_tasks");
     expect(registeredToolIds).not.toContain("background.indexing");

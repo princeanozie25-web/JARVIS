@@ -125,6 +125,8 @@ const ProjectSetStatusInputSchema = z.object({
   status: z.enum(PROJECT_STATUSES),
 });
 
+const ProjectSummarizeInputSchema = ProjectGetInputSchema;
+
 export type ProjectListInput = z.infer<typeof ProjectListInputSchema>;
 export type ProjectGetInput = z.infer<typeof ProjectGetInputSchema>;
 export type ProjectRegisterInput = z.infer<typeof ProjectRegisterInputSchema>;
@@ -134,6 +136,7 @@ export type ProjectPromoteTaskInput = z.infer<
   typeof ProjectPromoteTaskInputSchema
 >;
 export type ProjectSetStatusInput = z.infer<typeof ProjectSetStatusInputSchema>;
+export type ProjectSummarizeInput = z.infer<typeof ProjectSummarizeInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -250,6 +253,14 @@ export function projectSetStatusScopeOf(input: ProjectSetStatusInput): string {
   ].join(":");
 }
 
+export function projectSummarizeScopeOf(input: ProjectSummarizeInput): string {
+  return [
+    "project.summarize",
+    input.id ? `id:${input.id}` : "id:none",
+    input.slug ? `slug:${input.slug}` : "slug:none",
+  ].join(":");
+}
+
 function projectWithSourceCount(
   db: DatabaseType.Database,
   row: NonNullable<ReturnType<typeof getRegisteredProject>>,
@@ -318,6 +329,63 @@ function projectArtifactSummary(db: DatabaseType.Database, projectId: string) {
       promotedTasks: "commitments",
       extractedTasks: "candidate_tasks",
     },
+  };
+}
+
+function deterministicProjectSummaryText(input: {
+  project: ReturnType<typeof projectFromRow>;
+  artifactSummary: ReturnType<typeof projectArtifactSummary>;
+}): string {
+  const freshness = input.artifactSummary.indexFreshness
+    ? `latest_index=${input.artifactSummary.indexFreshness.status} indexed_at=${input.artifactSummary.indexFreshness.indexedAt ?? "none"} sources_seen=${input.artifactSummary.indexFreshness.sourcesSeen}`
+    : "latest_index=none";
+  const counts = input.artifactSummary.counts;
+  return [
+    `Project ${input.project.displayName} (${input.project.slug}) is ${input.project.status}.`,
+    "Derived project state: true. Canonical truth remains in registered sources.",
+    freshness,
+    `counts extracted_tasks=${counts.extractedTasks} promoted_tasks=${counts.promotedTasks} open_blockers=${counts.openBlockers} cleared_blockers=${counts.clearedBlockers} decisions=${counts.decisions} threads=${counts.threads}.`,
+    "Promoted tasks are commitments; extracted tasks are candidates.",
+  ].join(" ");
+}
+
+function projectDeterministicSummary(
+  db: DatabaseType.Database,
+  row: NonNullable<ReturnType<typeof getRegisteredProject>>,
+) {
+  const project = projectWithSourceCount(db, row);
+  const artifactSummary = projectArtifactSummary(db, row.id);
+  return {
+    mode: "deterministic_code_generated",
+    llmGenerated: false,
+    derivedState: true,
+    project: {
+      id: project.id,
+      slug: project.slug,
+      displayName: project.displayName,
+      status: project.status,
+      archivedAt: project.archivedAt,
+    },
+    indexFreshness: artifactSummary.indexFreshness,
+    counts: artifactSummary.counts,
+    commitments: {
+      semantics: "promoted_tasks_are_commitments",
+      limit: PROJECT_GET_PROMOTED_TASK_LIMIT,
+      items: artifactSummary.promotedTasks.items,
+    },
+    openBlockers: {
+      semantics: "open_blockers_only",
+      limit: PROJECT_GET_OPEN_BLOCKER_LIMIT,
+      items: artifactSummary.openBlockers.items,
+    },
+    candidateTasks: {
+      semantics: "extracted_tasks_are_candidates_unless_promoted",
+      count: artifactSummary.counts.extractedTasks,
+    },
+    summaryText: deterministicProjectSummaryText({
+      project,
+      artifactSummary,
+    }),
   };
 }
 
@@ -518,6 +586,67 @@ export const projectGetTool: Tool<ProjectGetInput> = {
         artifactSummary: row
           ? projectArtifactSummary(context.db, row.id)
           : null,
+        derivedState: true,
+        authority: projectRegistryAuthorityNote(),
+      },
+    };
+  },
+};
+
+export const projectSummarizeTool: Tool<ProjectSummarizeInput> = {
+  id: "project.summarize",
+  name: "Summarize Project",
+  description:
+    "Read a deterministic bounded summary from derived Phase 5 project state. This does not index, read sources, summarize externally, or write memory.",
+  requiredSafetyTag: "ALLOW",
+  inputSchema: ProjectSummarizeInputSchema,
+  scopeOf: projectSummarizeScopeOf,
+  reversibilityClass: "PURE_READ",
+  timeoutMs: PROJECT_TOOL_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied(
+        "Project registry database is unavailable.",
+        "db_unavailable",
+      );
+    }
+
+    const row = getRegisteredProject(context.db, {
+      id: input.id,
+      slug: input.slug,
+    });
+    const summary = row ? projectDeterministicSummary(context.db, row) : null;
+    if (row && summary) {
+      emitProjectTelemetry({
+        db: context.db,
+        context,
+        eventType: "project.summarized",
+        toolName: "project.summarize",
+        success: true,
+        notes: {
+          project_id_hash: telemetryHash(row.id),
+          status: row.status,
+          extracted_tasks: summary.counts.extractedTasks,
+          promoted_tasks: summary.counts.promotedTasks,
+          open_blockers: summary.counts.openBlockers,
+          cleared_blockers: summary.counts.clearedBlockers,
+          decisions: summary.counts.decisions,
+          threads: summary.counts.threads,
+        },
+      });
+    }
+
+    return {
+      ok: true,
+      status: "COMPLETED",
+      message: row
+        ? "Deterministic project summary generated."
+        : "Registered project not found.",
+      data: {
+        summary,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),
       },
@@ -1049,7 +1178,11 @@ export const projectSetStatusTool: Tool<ProjectSetStatusInput> = {
   },
 };
 
-export const projectReadTools = [projectListTool, projectGetTool] as const;
+export const projectReadTools = [
+  projectListTool,
+  projectGetTool,
+  projectSummarizeTool,
+] as const;
 export const projectRegisterToolScaffold = projectRegisterTool;
 export const projectMutationTools = [
   projectRegisterTool,
