@@ -3,15 +3,19 @@ import { readFile, stat } from "node:fs/promises";
 import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
 import {
+  getProjectArtifactCounts,
   getProjectBlockerByOrigin,
   getProjectTaskByOrigin,
   insertProjectBlocker,
   insertProjectTask,
+  listOpenProjectBlockers,
+  listPromotedProjectTasks,
 } from "../db/project-artifacts";
 import {
   finishProjectIndexSnapshot,
   hasActiveProjectIndexSnapshot,
   insertProjectIndexSnapshot,
+  listProjectIndexSnapshots,
 } from "../db/project-index-snapshots";
 import {
   countProjectSources,
@@ -51,6 +55,9 @@ import type { Tool, ToolResult } from "./types";
 
 const PROJECT_TOOL_TIMEOUT_MS = 3_000;
 const PROJECT_INDEX_MAX_FILE_BYTES = 256_000;
+const PROJECT_GET_PROMOTED_TASK_LIMIT = 5;
+const PROJECT_GET_OPEN_BLOCKER_LIMIT = 5;
+const PROJECT_GET_TEXT_MAX_CHARS = 160;
 
 const ProjectListInputSchema = z.object({
   includeArchived: z.boolean().default(false),
@@ -169,6 +176,67 @@ function projectWithSourceCount(
     ...row,
     source_count: countProjectSources(db, row.id),
   });
+}
+
+function boundedText(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= PROJECT_GET_TEXT_MAX_CHARS) return trimmed;
+  return `${trimmed.slice(0, PROJECT_GET_TEXT_MAX_CHARS - 3)}...`;
+}
+
+function projectArtifactSummary(db: DatabaseType.Database, projectId: string) {
+  const counts = getProjectArtifactCounts(db, projectId);
+  const promotedTasks = listPromotedProjectTasks(
+    db,
+    projectId,
+    PROJECT_GET_PROMOTED_TASK_LIMIT,
+  ).map((task) => ({
+    id: task.id,
+    title: boundedText(task.title),
+    status: task.status,
+    confidence: task.confidence,
+    updatedAt: task.updated_at,
+  }));
+  const openBlockers = listOpenProjectBlockers(
+    db,
+    projectId,
+    PROJECT_GET_OPEN_BLOCKER_LIMIT,
+  ).map((blocker) => ({
+    id: blocker.id,
+    description: boundedText(blocker.description),
+    status: blocker.status,
+    taskId: blocker.task_id,
+  }));
+  const latestSnapshotRow = listProjectIndexSnapshots(db, projectId)[0] ?? null;
+  const latestSnapshot = latestSnapshotRow
+    ? projectIndexSnapshotFromRow(latestSnapshotRow)
+    : null;
+
+  return {
+    derivedState: true,
+    counts,
+    promotedTasks: {
+      limit: PROJECT_GET_PROMOTED_TASK_LIMIT,
+      items: promotedTasks,
+    },
+    openBlockers: {
+      limit: PROJECT_GET_OPEN_BLOCKER_LIMIT,
+      items: openBlockers,
+    },
+    latestSnapshot,
+    indexFreshness: latestSnapshot
+      ? {
+          indexedAt: latestSnapshot.finishedAt,
+          status: latestSnapshot.status,
+          sourcesSeen: latestSnapshot.sourcesSeen,
+          artifactsExtracted: latestSnapshot.artifactsExtracted,
+        }
+      : null,
+    semantics: {
+      promotedTasks: "commitments",
+      extractedTasks: "candidate_tasks",
+    },
+  };
 }
 
 async function validateSourcePointer(input: ProjectAddSourceInput) {
@@ -364,6 +432,9 @@ export const projectGetTool: Tool<ProjectGetInput> = {
         : "Registered project not found.",
       data: {
         project: row ? projectWithSourceCount(context.db, row) : null,
+        artifactSummary: row
+          ? projectArtifactSummary(context.db, row.id)
+          : null,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),
       },

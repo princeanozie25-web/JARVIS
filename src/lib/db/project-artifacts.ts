@@ -88,6 +88,15 @@ export interface InsertProjectDecisionInput {
   originRef: string;
 }
 
+export interface ProjectArtifactCounts {
+  extractedTasks: number;
+  promotedTasks: number;
+  openBlockers: number;
+  clearedBlockers: number;
+  decisions: number;
+  threads: number;
+}
+
 function requireTrimmed(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`${label} is required`);
@@ -256,6 +265,26 @@ export function listProjectTasks(
     .all(projectId) as ProjectTaskRow[];
 }
 
+export function listPromotedProjectTasks(
+  db: DatabaseType.Database,
+  projectId: string,
+  limit: number,
+): ProjectTaskRow[] {
+  return db
+    .prepare(
+      `SELECT *
+       FROM project_task
+       WHERE project_id = ?
+         AND promoted = 1
+       ORDER BY updated_at DESC, id ASC
+       LIMIT ?`,
+    )
+    .all(
+      requireTrimmed(projectId, "projectId"),
+      requireNonNegativeInteger(limit, "limit"),
+    ) as ProjectTaskRow[];
+}
+
 export function insertProjectBlocker(
   db: DatabaseType.Database,
   input: InsertProjectBlockerInput,
@@ -326,6 +355,26 @@ export function listProjectBlockers(
     .all(projectId) as ProjectBlockerRow[];
 }
 
+export function listOpenProjectBlockers(
+  db: DatabaseType.Database,
+  projectId: string,
+  limit: number,
+): ProjectBlockerRow[] {
+  return db
+    .prepare(
+      `SELECT *
+       FROM project_blocker
+       WHERE project_id = ?
+         AND status = 'open'
+       ORDER BY id ASC
+       LIMIT ?`,
+    )
+    .all(
+      requireTrimmed(projectId, "projectId"),
+      requireNonNegativeInteger(limit, "limit"),
+    ) as ProjectBlockerRow[];
+}
+
 export function insertProjectDecision(
   db: DatabaseType.Database,
   input: InsertProjectDecisionInput,
@@ -371,4 +420,52 @@ export function listProjectDecisions(
        ORDER BY decided_at DESC, id ASC`,
     )
     .all(projectId) as ProjectDecisionRow[];
+}
+
+export function getProjectArtifactCounts(
+  db: DatabaseType.Database,
+  projectId: string,
+): ProjectArtifactCounts {
+  const id = requireTrimmed(projectId, "projectId");
+  const row = db
+    .prepare(
+      `SELECT
+         (
+           SELECT COUNT(*)
+           FROM project_task
+           WHERE project_id = ?
+             AND status = 'extracted'
+             AND promoted = 0
+         ) AS extractedTasks,
+         (
+           SELECT COUNT(*)
+           FROM project_task
+           WHERE project_id = ?
+             AND promoted = 1
+         ) AS promotedTasks,
+         (
+           SELECT COUNT(*)
+           FROM project_blocker
+           WHERE project_id = ?
+             AND status = 'open'
+         ) AS openBlockers,
+         (
+           SELECT COUNT(*)
+           FROM project_blocker
+           WHERE project_id = ?
+             AND status = 'cleared'
+         ) AS clearedBlockers,
+         (
+           SELECT COUNT(*)
+           FROM project_decision
+           WHERE project_id = ?
+         ) AS decisions,
+         (
+           SELECT COUNT(*)
+           FROM project_thread
+           WHERE project_id = ?
+         ) AS threads`,
+    )
+    .get(id, id, id, id, id, id) as ProjectArtifactCounts;
+  return row;
 }

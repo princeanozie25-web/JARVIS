@@ -69,6 +69,7 @@ export type {
 export {
   getProjectBlocker,
   getProjectBlockerByOrigin,
+  getProjectArtifactCounts,
   getProjectDecision,
   getProjectTask,
   getProjectTaskByOrigin,
@@ -79,6 +80,8 @@ export {
   insertProjectThread,
   listProjectBlockers,
   listProjectDecisions,
+  listOpenProjectBlockers,
+  listPromotedProjectTasks,
   listProjectTasks,
   listProjectThreads,
 } from "./project-artifacts";
@@ -87,6 +90,7 @@ export type {
   InsertProjectDecisionInput,
   InsertProjectTaskInput,
   InsertProjectThreadInput,
+  ProjectArtifactCounts,
   ProjectBlockerRow,
   ProjectDecisionRow,
   ProjectTaskRow,

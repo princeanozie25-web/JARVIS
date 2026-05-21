@@ -210,6 +210,253 @@ describe("Phase 5 project tools", () => {
     });
   });
 
+  it("project.get returns bounded derived artifact counts and commitment lists", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_artifacts",
+      slug: "artifacts",
+      displayName: "Artifacts",
+      rootKind: "virtual",
+      rootRef: "virtual:artifacts",
+      createdAt: 1_000,
+    });
+    db.prepare(
+      `INSERT INTO project_thread (
+         id, project_id, title, status, first_seen_at, last_active_at, origin_ref
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pth_1",
+      "proj_artifacts",
+      "Thread",
+      "open",
+      1_000,
+      1_000,
+      "origin:thread",
+    );
+    for (let index = 1; index <= 2; index += 1) {
+      db.prepare(
+        `INSERT INTO project_task (
+           id, project_id, thread_id, title, status, confidence, promoted,
+           origin_ref, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        `ptask_extracted_${index}`,
+        "proj_artifacts",
+        "pth_1",
+        `Candidate ${index}`,
+        "extracted",
+        0.8,
+        0,
+        `origin:task:extracted:${index}`,
+        1_000,
+        1_000 + index,
+      );
+    }
+    for (let index = 1; index <= 6; index += 1) {
+      db.prepare(
+        `INSERT INTO project_task (
+           id, project_id, thread_id, title, status, confidence, promoted,
+           origin_ref, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        `ptask_promoted_${index}`,
+        "proj_artifacts",
+        null,
+        `Promoted commitment ${index}`,
+        "open",
+        1,
+        1,
+        `origin:task:promoted:${index}`,
+        1_000,
+        2_000 + index,
+      );
+    }
+    for (let index = 1; index <= 6; index += 1) {
+      db.prepare(
+        `INSERT INTO project_blocker (
+           id, project_id, task_id, description, status, origin_ref
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(
+        `pblk_open_${index}`,
+        "proj_artifacts",
+        null,
+        `Open blocker ${index}`,
+        "open",
+        `origin:blocker:open:${index}`,
+      );
+    }
+    db.prepare(
+      `INSERT INTO project_blocker (
+         id, project_id, task_id, description, status, origin_ref
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pblk_cleared",
+      "proj_artifacts",
+      null,
+      "Cleared blocker",
+      "cleared",
+      "origin:blocker:cleared",
+    );
+    for (let index = 1; index <= 2; index += 1) {
+      db.prepare(
+        `INSERT INTO project_decision (
+           id, project_id, summary, decided_at, origin_ref
+         ) VALUES (?, ?, ?, ?, ?)`,
+      ).run(
+        `pdec_${index}`,
+        "proj_artifacts",
+        `Decision ${index}`,
+        3_000 + index,
+        `origin:decision:${index}`,
+      );
+    }
+    insertProjectIndexSnapshot(db, {
+      id: "pidx_latest",
+      projectId: "proj_artifacts",
+      startedAt: 4_000,
+      finishedAt: 4_100,
+      sourcesSeen: 3,
+      artifactsExtracted: 9,
+      triggeredBy: "manual",
+      status: "completed",
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_artifacts" },
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        artifactSummary: {
+          derivedState: true,
+          counts: {
+            extractedTasks: 2,
+            promotedTasks: 6,
+            openBlockers: 6,
+            clearedBlockers: 1,
+            decisions: 2,
+            threads: 1,
+          },
+          promotedTasks: {
+            limit: 5,
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                id: "ptask_promoted_6",
+                title: "Promoted commitment 6",
+                status: "open",
+                confidence: 1,
+              }),
+            ]),
+          },
+          openBlockers: {
+            limit: 5,
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                id: "pblk_open_1",
+                description: "Open blocker 1",
+                status: "open",
+              }),
+            ]),
+          },
+          latestSnapshot: expect.objectContaining({
+            id: "pidx_latest",
+            finishedAt: 4_100,
+            artifactsExtracted: 9,
+            status: "completed",
+          }),
+          indexFreshness: {
+            indexedAt: 4_100,
+            status: "completed",
+            sourcesSeen: 3,
+            artifactsExtracted: 9,
+          },
+          semantics: {
+            promotedTasks: "commitments",
+            extractedTasks: "candidate_tasks",
+          },
+        },
+      },
+    });
+    const summary = (result.data as { artifactSummary: unknown })
+      .artifactSummary as {
+      promotedTasks: { items: Array<{ id: string }> };
+      openBlockers: { items: Array<{ id: string }> };
+    };
+    expect(summary.promotedTasks.items).toHaveLength(5);
+    expect(summary.openBlockers.items).toHaveLength(5);
+    expect(summary.promotedTasks.items.map((task) => task.id)).not.toContain(
+      "ptask_extracted_1",
+    );
+    expect(JSON.stringify(result.data)).not.toContain("origin:");
+    expect(JSON.stringify(result.data)).not.toContain("Cleared blocker");
+  });
+
+  it("project.get does not read sources, index, or mutate rows", async () => {
+    writeFileSync(
+      join(workspaceRoot, "get-only.md"),
+      "TODO: this content must not be read by project.get",
+    );
+    insertRegisteredProject(db, {
+      id: "proj_get_readonly",
+      slug: "get-readonly",
+      displayName: "Get Readonly",
+      rootKind: "virtual",
+      rootRef: "virtual:get-readonly",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_get_file",
+      projectId: "proj_get_readonly",
+      kind: "file",
+      ref: "get-only.md",
+    });
+    const before = {
+      sources: listProjectSources(db, "proj_get_readonly"),
+      snapshots: listProjectIndexSnapshots(db, "proj_get_readonly"),
+      tasks: listProjectTasks(db, "proj_get_readonly"),
+      blockers: listProjectBlockers(db, "proj_get_readonly"),
+    };
+
+    const result = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_get_readonly" },
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      data: {
+        artifactSummary: {
+          counts: {
+            extractedTasks: 0,
+            promotedTasks: 0,
+            openBlockers: 0,
+            clearedBlockers: 0,
+            decisions: 0,
+            threads: 0,
+          },
+          latestSnapshot: null,
+          indexFreshness: null,
+        },
+      },
+    });
+    expect(JSON.stringify(result.data)).not.toContain("this content");
+    expect(listProjectSources(db, "proj_get_readonly")).toEqual(before.sources);
+    expect(listProjectIndexSnapshots(db, "proj_get_readonly")).toEqual(
+      before.snapshots,
+    );
+    expect(listProjectTasks(db, "proj_get_readonly")).toEqual(before.tasks);
+    expect(listProjectBlockers(db, "proj_get_readonly")).toEqual(
+      before.blockers,
+    );
+  });
+
   it("project.get and project.list expose source counts without source refs", async () => {
     insertRegisteredProject(db, {
       id: "proj_counted",
