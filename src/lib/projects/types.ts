@@ -90,7 +90,7 @@ export const ProjectIndexSnapshotSchema = z.object({
   startedAt: z.number().int().nonnegative(),
   finishedAt: z.number().int().nonnegative().nullable(),
   sourcesSeen: z.number().int().nonnegative(),
-  artifactsExtracted: z.literal(0),
+  artifactsExtracted: z.number().int().nonnegative(),
   triggeredBy: z.string().trim().min(1).max(120),
   status: ProjectIndexSnapshotStatusSchema,
 });

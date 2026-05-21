@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
+import { readFile, stat } from "node:fs/promises";
 import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
+import {
+  getProjectBlockerByOrigin,
+  getProjectTaskByOrigin,
+  insertProjectBlocker,
+  insertProjectTask,
+} from "../db/project-artifacts";
 import {
   finishProjectIndexSnapshot,
   hasActiveProjectIndexSnapshot,
@@ -21,7 +28,10 @@ import {
 import {
   createOpaqueProjectSourceId,
   createOpaqueProjectIndexSnapshotId,
+  createOpaqueProjectBlockerId,
+  createOpaqueProjectTaskId,
   createProjectRegistrationDraft,
+  extractProjectMarkers,
   PROJECT_ROOT_KINDS,
   PROJECT_SOURCE_KINDS,
   projectFromRow,
@@ -32,10 +42,15 @@ import {
   ProjectSlugSchema,
 } from "../projects";
 import type { ProjectRootKind, ProjectSourceKind } from "../projects/types";
-import { resolveSafePath, SafePathError } from "./fs-safe-path";
+import {
+  resolveSafePath,
+  SafePathError,
+  type SafePathResult,
+} from "./fs-safe-path";
 import type { Tool, ToolResult } from "./types";
 
 const PROJECT_TOOL_TIMEOUT_MS = 3_000;
+const PROJECT_INDEX_MAX_FILE_BYTES = 256_000;
 
 const ProjectListInputSchema = z.object({
   includeArchived: z.boolean().default(false),
@@ -142,7 +157,7 @@ export function projectIndexScopeOf(input: ProjectIndexInput): string {
     "project.index",
     `project:${input.projectId}`,
     `triggered_by:${input.triggeredBy ?? "manual"}`,
-    "mode:metadata_only",
+    "mode:deterministic_markers",
   ].join(":");
 }
 
@@ -179,25 +194,96 @@ async function validateSourcePointer(input: ProjectAddSourceInput) {
 
 async function validateSourcePointerForIndex(
   source: ProjectSourceRow,
-): Promise<ToolResult | null> {
+): Promise<{ denied: ToolResult } | { safePath: SafePathResult | null }> {
   if (isNetworkRootRef(source.ref)) {
-    return denied(
-      "Network project sources are not supported in Phase 5 A5.",
-      "network_project_source_disabled",
+    return {
+      denied: denied(
+        "Network project sources are not supported in Phase 5 A7.",
+        "network_project_source_disabled",
+      ),
+    };
+  }
+
+  if (source.kind !== "file") return { safePath: null };
+
+  try {
+    return { safePath: await resolveSafePath(source.ref) };
+  } catch (error) {
+    if (error instanceof SafePathError) {
+      return {
+        denied: denied(error.message, `unsafe_file_ref_${error.reason}`),
+      };
+    }
+    return {
+      denied: denied(
+        "File source ref could not be validated.",
+        "unsafe_file_ref",
+      ),
+    };
+  }
+}
+
+function originRefForMarker(
+  source: ProjectSourceRow,
+  marker: ReturnType<typeof extractProjectMarkers>[number],
+): string {
+  return `${source.ref}#L${marker.line}:C${marker.column}:${marker.kind}:${marker.marker}`;
+}
+
+async function extractRegisteredFileSourceMarkers(input: {
+  db: DatabaseType.Database;
+  projectId: string;
+  source: ProjectSourceRow;
+  safePath: SafePathResult;
+  now: number;
+}): Promise<number> {
+  const metadata = await stat(input.safePath.resolvedPath);
+  if (!metadata.isFile()) return 0;
+  if (metadata.size > PROJECT_INDEX_MAX_FILE_BYTES) {
+    throw new Error(
+      "registered file source exceeds A7 marker extraction limit",
     );
   }
 
-  if (source.kind !== "file") return null;
+  const content = await readFile(input.safePath.resolvedPath, {
+    encoding: "utf8",
+    flag: "r",
+  });
 
-  try {
-    await resolveSafePath(source.ref);
-    return null;
-  } catch (error) {
-    if (error instanceof SafePathError) {
-      return denied(error.message, `unsafe_file_ref_${error.reason}`);
+  let created = 0;
+  for (const marker of extractProjectMarkers(content)) {
+    const originRef = originRefForMarker(input.source, marker);
+    if (marker.kind === "task") {
+      if (getProjectTaskByOrigin(input.db, input.projectId, originRef)) {
+        continue;
+      }
+      insertProjectTask(input.db, {
+        id: createOpaqueProjectTaskId(),
+        projectId: input.projectId,
+        title: marker.text,
+        status: "extracted",
+        confidence: marker.confidence ?? 0.8,
+        promoted: false,
+        originRef,
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
+      created += 1;
+    } else {
+      if (getProjectBlockerByOrigin(input.db, input.projectId, originRef)) {
+        continue;
+      }
+      insertProjectBlocker(input.db, {
+        id: createOpaqueProjectBlockerId(),
+        projectId: input.projectId,
+        description: marker.text,
+        status: "open",
+        originRef,
+      });
+      created += 1;
     }
-    return denied("File source ref could not be validated.", "unsafe_file_ref");
   }
+  return created;
 }
 
 export const projectListTool: Tool<ProjectListInput> = {
@@ -403,7 +489,7 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
   id: "project.index",
   name: "Index Project Snapshot",
   description:
-    "Create a metadata-only Phase 5 index snapshot audit row after explicit approval. This does not read, scan, hash, extract, or write memory.",
+    "Run a Phase 5 index snapshot after explicit approval. A7 reads only explicitly registered safe file sources for deterministic markers.",
   requiredSafetyTag: "CONFIRM_ALWAYS",
   inputSchema: ProjectIndexInputSchema,
   scopeOf: projectIndexScopeOf,
@@ -464,9 +550,13 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       status: "running",
     });
 
+    const safeFileSources: Array<{
+      source: ProjectSourceRow;
+      safePath: SafePathResult;
+    }> = [];
     for (const source of sources) {
-      const pointerDenied = await validateSourcePointerForIndex(source);
-      if (pointerDenied) {
+      const validation = await validateSourcePointerForIndex(source);
+      if ("denied" in validation) {
         const failed = finishProjectIndexSnapshot(context.db, {
           id: row.id,
           finishedAt: Date.now(),
@@ -484,8 +574,12 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
           },
         };
       }
+      if (validation.safePath) {
+        safeFileSources.push({ source, safePath: validation.safePath });
+      }
     }
 
+    let artifactsExtracted = 0;
     try {
       for (const source of sources) {
         updateProjectSourceIndexMetadata(context.db, {
@@ -494,11 +588,21 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
           sourceHash: null,
         });
       }
+      for (const fileSource of safeFileSources) {
+        artifactsExtracted += await extractRegisteredFileSourceMarkers({
+          db: context.db,
+          projectId: project.id,
+          source: fileSource.source,
+          safePath: fileSource.safePath,
+          now: startedAt,
+        });
+      }
     } catch {
       const failed = finishProjectIndexSnapshot(context.db, {
         id: row.id,
         finishedAt: Date.now(),
         status: "failed",
+        artifactsExtracted,
       });
       return {
         ok: false,
@@ -517,6 +621,7 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       id: row.id,
       finishedAt: Date.now(),
       status: "completed",
+      artifactsExtracted,
     });
 
     return {
@@ -526,7 +631,9 @@ export const projectIndexTool: Tool<ProjectIndexInput> = {
       data: {
         snapshot: completed ? projectIndexSnapshotFromRow(completed) : null,
         indexed: true,
-        extracted: false,
+        extracted: artifactsExtracted > 0,
+        artifactsExtracted,
+        sourcesRead: safeFileSources.length,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),
       },

@@ -551,7 +551,7 @@ describe("approval-gated provider tool continuation", () => {
         toolId: "project.index",
         requiredSafetyTag: "CONFIRM_ALWAYS",
         summary:
-          "project_id: proj_jarvis; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+          "project_id: proj_jarvis; triggered_by: manual; mode: deterministic_markers; file_sources_only: true",
       },
     );
     expect(

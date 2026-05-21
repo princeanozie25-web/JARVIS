@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -8,6 +11,7 @@ import {
   insertProjectIndexSnapshot,
   listProjectIndexSnapshots,
 } from "../db/project-index-snapshots";
+import { listProjectBlockers, listProjectTasks } from "../db/project-artifacts";
 import {
   countProjectSources,
   insertProjectSource,
@@ -16,6 +20,7 @@ import {
 import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
 import { applyMigrations } from "../db/schema";
 import { insertRegisteredProject } from "../db/projects";
+import { listToolCalls } from "../db/tool-calls";
 import type { RouterDecision } from "../router";
 import { InProcessToolRuntime, tools } from ".";
 
@@ -44,8 +49,13 @@ const allowDecision: RouterDecision = {
 let db: Database.Database;
 let runtime: InProcessToolRuntime;
 let now: number;
+let previousWorkspaceRoot: string | undefined;
+let workspaceRoot: string;
 
 beforeEach(() => {
+  previousWorkspaceRoot = process.env.JARVIS_WORKSPACE_ROOT;
+  workspaceRoot = mkdtempSync(join(tmpdir(), "jarvis-projects-"));
+  process.env.JARVIS_WORKSPACE_ROOT = workspaceRoot;
   db = new Database(":memory:");
   applyMigrations(db);
   now = 1_000;
@@ -59,7 +69,48 @@ beforeEach(() => {
 
 afterEach(() => {
   db.close();
+  if (previousWorkspaceRoot === undefined) {
+    delete process.env.JARVIS_WORKSPACE_ROOT;
+  } else {
+    process.env.JARVIS_WORKSPACE_ROOT = previousWorkspaceRoot;
+  }
+  rmSync(workspaceRoot, { recursive: true, force: true });
 });
+
+async function runApprovedProjectIndex(
+  executionId: string,
+  input: { projectId: string; triggeredBy: string },
+) {
+  await runtime.runTool({
+    toolId: "project.index",
+    input,
+    sessionId: "session-1",
+    executionId,
+    decision: allowDecision,
+  });
+  const pending = ensurePendingToolApproval({
+    db,
+    executionId,
+    sessionId: "session-1",
+    toolId: "project.index",
+    toolName: "Index Project Snapshot",
+    scopeHash: tools.get("project.index").scopeOf(input),
+    requiredSafetyTag: "CONFIRM_ALWAYS",
+    safetyTag: "ALLOW",
+    toolInput: input,
+    now,
+    ttlMs: 500,
+  });
+  now += 100;
+  return resumeApproval({
+    db,
+    runtime,
+    executionId,
+    decision: "APPROVED_ONCE",
+    approvalToken: pending.approvalToken,
+    now,
+  });
+}
 
 describe("Phase 5 project tools", () => {
   it("project.list returns registered rows", async () => {
@@ -670,6 +721,40 @@ describe("Phase 5 project tools", () => {
     ]);
   });
 
+  it("project.index does not read file content before approval", async () => {
+    writeFileSync(
+      join(workspaceRoot, "unapproved.md"),
+      "TODO: secret unapproved task",
+    );
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_file_unapproved",
+      projectId: "proj_index",
+      kind: "file",
+      ref: "unapproved.md",
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.index",
+      input: { projectId: "proj_index", triggeredBy: "manual" },
+      sessionId: "session-1",
+      executionId: "index-file-unapproved",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({ status: "AWAITING_APPROVAL" });
+    expect(listProjectTasks(db, "proj_index")).toEqual([]);
+    expect(listProjectBlockers(db, "proj_index")).toEqual([]);
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([]);
+  });
+
   it("project.index records a metadata-only snapshot after approval", async () => {
     insertRegisteredProject(db, {
       id: "proj_index",
@@ -714,7 +799,7 @@ describe("Phase 5 project tools", () => {
     });
 
     expect(pending.summary).toBe(
-      "project_id: proj_index; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+      "project_id: proj_index; triggered_by: manual; mode: deterministic_markers; file_sources_only: true",
     );
     now = 1_100;
 
@@ -767,6 +852,203 @@ describe("Phase 5 project tools", () => {
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),
     ).toMatchObject({ count: 0 });
+  });
+
+  it("project.index extracts deterministic markers from explicitly registered safe files only", async () => {
+    writeFileSync(
+      join(workspaceRoot, "markers.md"),
+      [
+        "TODO: finish deterministic parser secret-alpha",
+        "FIXME: repair snapshot count secret-beta",
+        "notes #task document marker confidence secret-gamma",
+        "#blocked waiting for schema fixture secret-delta",
+        "blocked by approval review secret-epsilon",
+        "waiting on final gates secret-zeta",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(workspaceRoot, "ignored.md"),
+      "TODO: ignored unregistered task",
+    );
+    writeFileSync(
+      join(workspaceRoot, "memory-pointer.md"),
+      "TODO: ignored memory pointer task",
+    );
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_markers",
+      projectId: "proj_index",
+      kind: "file",
+      ref: "markers.md",
+    });
+    insertProjectSource(db, {
+      id: "psrc_memory",
+      projectId: "proj_index",
+      kind: "memory_slug",
+      ref: "memory-pointer.md",
+    });
+    insertProjectSource(db, {
+      id: "psrc_obsidian",
+      projectId: "proj_index",
+      kind: "obsidian_note",
+      ref: "ignored.md",
+    });
+    insertProjectSource(db, {
+      id: "psrc_thread",
+      projectId: "proj_index",
+      kind: "thread",
+      ref: "ignored.md",
+    });
+
+    const approved = await runApprovedProjectIndex("index-markers", {
+      projectId: "proj_index",
+      triggeredBy: "manual",
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: true,
+      status: "COMPLETED",
+      message: "Project index snapshot recorded.",
+    });
+    const tasks = listProjectTasks(db, "proj_index").sort((left, right) =>
+      left.origin_ref.localeCompare(right.origin_ref),
+    );
+    const blockers = listProjectBlockers(db, "proj_index").sort((left, right) =>
+      left.origin_ref.localeCompare(right.origin_ref),
+    );
+    expect(tasks).toEqual([
+      expect.objectContaining({
+        title: "finish deterministic parser secret-alpha",
+        status: "extracted",
+        confidence: 0.85,
+        promoted: 0,
+        origin_ref: "markers.md#L1:C1:task:TODO:",
+      }),
+      expect.objectContaining({
+        title: "repair snapshot count secret-beta",
+        status: "extracted",
+        confidence: 0.9,
+        promoted: 0,
+        origin_ref: "markers.md#L2:C1:task:FIXME:",
+      }),
+      expect.objectContaining({
+        title: "document marker confidence secret-gamma",
+        status: "extracted",
+        confidence: 0.8,
+        promoted: 0,
+        origin_ref: "markers.md#L3:C7:task:#task",
+      }),
+    ]);
+    expect(blockers).toEqual([
+      expect.objectContaining({
+        description: "waiting for schema fixture secret-delta",
+        status: "open",
+        task_id: null,
+        origin_ref: "markers.md#L4:C1:blocker:#blocked",
+      }),
+      expect.objectContaining({
+        description: "approval review secret-epsilon",
+        status: "open",
+        task_id: null,
+        origin_ref: "markers.md#L5:C1:blocker:blocked by",
+      }),
+      expect.objectContaining({
+        description: "final gates secret-zeta",
+        status: "open",
+        task_id: null,
+        origin_ref: "markers.md#L6:C1:blocker:waiting on",
+      }),
+    ]);
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        sources_seen: 4,
+        artifacts_extracted: 6,
+        status: "completed",
+      }),
+    ]);
+    expect(JSON.stringify(approved.body)).not.toContain("secret-alpha");
+    expect(
+      JSON.stringify(listProjectIndexSnapshots(db, "proj_index")),
+    ).not.toContain("secret-alpha");
+    expect(JSON.stringify(listToolCalls(db))).not.toContain("secret-alpha");
+    expect(JSON.stringify(listToolCalls(db))).not.toContain("ignored");
+  });
+
+  it("project.index deterministic marker extraction is idempotent by origin_ref", async () => {
+    writeFileSync(join(workspaceRoot, "repeat.md"), "TODO: run once");
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_repeat",
+      projectId: "proj_index",
+      kind: "file",
+      ref: "repeat.md",
+    });
+
+    await runApprovedProjectIndex("index-repeat-1", {
+      projectId: "proj_index",
+      triggeredBy: "manual",
+    });
+    await runApprovedProjectIndex("index-repeat-2", {
+      projectId: "proj_index",
+      triggeredBy: "manual",
+    });
+
+    expect(listProjectTasks(db, "proj_index")).toHaveLength(1);
+    expect(
+      listProjectIndexSnapshots(db, "proj_index").map(
+        (row) => row.artifacts_extracted,
+      ),
+    ).toEqual([0, 1]);
+  });
+
+  it("project.index fails safe before reading an unsafe registered file ref", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_index",
+      slug: "index",
+      displayName: "Index",
+      rootKind: "virtual",
+      rootRef: "virtual:index",
+      createdAt: 1_000,
+    });
+    insertProjectSource(db, {
+      id: "psrc_escape",
+      projectId: "proj_index",
+      kind: "file",
+      ref: "../outside-a7.md",
+    });
+
+    const approved = await runApprovedProjectIndex("index-unsafe-file", {
+      projectId: "proj_index",
+      triggeredBy: "manual",
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: false,
+      status: "ERROR",
+      message: "Project index snapshot failed during metadata validation.",
+    });
+    expect(listProjectTasks(db, "proj_index")).toEqual([]);
+    expect(listProjectBlockers(db, "proj_index")).toEqual([]);
+    expect(listProjectIndexSnapshots(db, "proj_index")).toEqual([
+      expect.objectContaining({
+        artifacts_extracted: 0,
+        status: "failed",
+      }),
+    ]);
   });
 
   it("project.index fails closed without touching source metadata for disabled source refs", async () => {

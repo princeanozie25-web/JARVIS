@@ -1,7 +1,9 @@
 export {
   createOpaqueProjectId,
+  createOpaqueProjectBlockerId,
   createOpaqueProjectIndexSnapshotId,
   createOpaqueProjectSourceId,
+  createOpaqueProjectTaskId,
   projectBlockerFromRow,
   projectDecisionFromRow,
   projectIndexSnapshotFromRow,
@@ -61,3 +63,13 @@ export type {
   ProjectThreadStatus,
   RegisteredProject,
 } from "./types";
+export {
+  extractProjectMarkers,
+  PROJECT_MARKER_BLOCKER_MARKERS,
+  PROJECT_MARKER_TASK_CONFIDENCE,
+  PROJECT_MARKER_TASK_MARKERS,
+} from "./marker-extraction";
+export type {
+  ProjectMarkerArtifact,
+  ProjectMarkerArtifactKind,
+} from "./marker-extraction";

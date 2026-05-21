@@ -68,8 +68,10 @@ export type {
 } from "./project-index-snapshots";
 export {
   getProjectBlocker,
+  getProjectBlockerByOrigin,
   getProjectDecision,
   getProjectTask,
+  getProjectTaskByOrigin,
   getProjectThread,
   insertProjectBlocker,
   insertProjectDecision,

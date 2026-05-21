@@ -15,7 +15,7 @@ export interface ProjectIndexSnapshotRow {
   started_at: number;
   finished_at: number | null;
   sources_seen: number;
-  artifacts_extracted: 0;
+  artifacts_extracted: number;
   triggered_by: string;
   status: ProjectIndexSnapshotStatus;
 }
@@ -26,7 +26,7 @@ export interface InsertProjectIndexSnapshotInput {
   startedAt: number;
   finishedAt?: number | null;
   sourcesSeen: number;
-  artifactsExtracted?: 0;
+  artifactsExtracted?: number;
   triggeredBy: string;
   status: ProjectIndexSnapshotStatus;
 }
@@ -38,6 +38,7 @@ export interface FinishProjectIndexSnapshotInput {
     ProjectIndexSnapshotStatus,
     "completed" | "failed" | "rejected"
   >;
+  artifactsExtracted?: number;
 }
 
 function requireTrimmed(value: string, label: string): string {
@@ -74,9 +75,6 @@ export function insertProjectIndexSnapshot(
   input: InsertProjectIndexSnapshotInput,
 ): ProjectIndexSnapshotRow {
   const artifactsExtracted = input.artifactsExtracted ?? 0;
-  if (artifactsExtracted !== 0) {
-    throw new Error("artifactsExtracted must remain 0 in Phase 5 A4");
-  }
 
   const row: ProjectIndexSnapshotRow = {
     id: requireTrimmed(input.id, "id"),
@@ -87,7 +85,10 @@ export function insertProjectIndexSnapshot(
         ? null
         : requireNonNegativeInteger(input.finishedAt, "finishedAt"),
     sources_seen: requireNonNegativeInteger(input.sourcesSeen, "sourcesSeen"),
-    artifacts_extracted: 0,
+    artifacts_extracted: requireNonNegativeInteger(
+      artifactsExtracted,
+      "artifactsExtracted",
+    ),
     triggered_by: requireTrimmed(input.triggeredBy, "triggeredBy"),
     status: ProjectIndexSnapshotStatusSchema.parse(input.status),
   };
@@ -138,15 +139,30 @@ export function finishProjectIndexSnapshot(
   db: DatabaseType.Database,
   input: FinishProjectIndexSnapshotInput,
 ): ProjectIndexSnapshotRow | undefined {
-  db.prepare(
-    `UPDATE project_index_snapshot
-     SET finished_at = ?,
-         status = ?
-     WHERE id = ?`,
-  ).run(
-    requireNonNegativeInteger(input.finishedAt, "finishedAt"),
-    ProjectIndexSnapshotStatusSchema.parse(input.status),
-    requireTrimmed(input.id, "id"),
-  );
+  if (input.artifactsExtracted === undefined) {
+    db.prepare(
+      `UPDATE project_index_snapshot
+       SET finished_at = ?,
+           status = ?
+       WHERE id = ?`,
+    ).run(
+      requireNonNegativeInteger(input.finishedAt, "finishedAt"),
+      ProjectIndexSnapshotStatusSchema.parse(input.status),
+      requireTrimmed(input.id, "id"),
+    );
+  } else {
+    db.prepare(
+      `UPDATE project_index_snapshot
+       SET finished_at = ?,
+           artifacts_extracted = ?,
+           status = ?
+       WHERE id = ?`,
+    ).run(
+      requireNonNegativeInteger(input.finishedAt, "finishedAt"),
+      requireNonNegativeInteger(input.artifactsExtracted, "artifactsExtracted"),
+      ProjectIndexSnapshotStatusSchema.parse(input.status),
+      requireTrimmed(input.id, "id"),
+    );
+  }
   return getProjectIndexSnapshot(db, input.id);
 }

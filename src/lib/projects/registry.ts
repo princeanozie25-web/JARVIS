@@ -60,6 +60,18 @@ export function createOpaqueProjectIndexSnapshotId(
   return `pidx_${newId()}`;
 }
 
+export function createOpaqueProjectTaskId(
+  newId: () => string = randomUUID,
+): string {
+  return `ptask_${newId()}`;
+}
+
+export function createOpaqueProjectBlockerId(
+  newId: () => string = randomUUID,
+): string {
+  return `pblk_${newId()}`;
+}
+
 export function projectFromRow(
   row: ProjectRow & { source_count?: number },
 ): RegisteredProject {

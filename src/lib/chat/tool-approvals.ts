@@ -73,8 +73,8 @@ function projectIndexSummaryFromInput(
     [
       `project_id: ${record.projectId}`,
       `triggered_by: ${triggeredBy}`,
-      "mode: metadata_only",
-      "artifacts_extracted: 0",
+      "mode: deterministic_markers",
+      "file_sources_only: true",
     ].join("; "),
   );
 }

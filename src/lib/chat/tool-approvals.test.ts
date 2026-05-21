@@ -188,7 +188,7 @@ describe("tool approval flow", () => {
     expect(JSON.stringify(pending)).not.toContain("result");
   });
 
-  it("shows metadata-only project index details in the approval summary", () => {
+  it("shows deterministic marker project index details in the approval summary", () => {
     const pending = ensurePendingToolApproval({
       db,
       executionId: "exec-index",
@@ -207,7 +207,7 @@ describe("tool approval flow", () => {
     });
 
     expect(pending.summary).toBe(
-      "project_id: proj_1; triggered_by: manual; mode: metadata_only; artifacts_extracted: 0",
+      "project_id: proj_1; triggered_by: manual; mode: deterministic_markers; file_sources_only: true",
     );
     expect(JSON.stringify(pending)).not.toContain("output_json");
     expect(JSON.stringify(pending)).not.toContain("result");

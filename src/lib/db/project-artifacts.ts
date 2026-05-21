@@ -224,6 +224,24 @@ export function getProjectTask(
     | undefined;
 }
 
+export function getProjectTaskByOrigin(
+  db: DatabaseType.Database,
+  projectId: string,
+  originRef: string,
+): ProjectTaskRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM project_task
+       WHERE project_id = ?
+         AND origin_ref = ?`,
+    )
+    .get(
+      requireTrimmed(projectId, "projectId"),
+      requireTrimmed(originRef, "originRef"),
+    ) as ProjectTaskRow | undefined;
+}
+
 export function listProjectTasks(
   db: DatabaseType.Database,
   projectId: string,
@@ -274,6 +292,24 @@ export function getProjectBlocker(
   return db.prepare("SELECT * FROM project_blocker WHERE id = ?").get(id) as
     | ProjectBlockerRow
     | undefined;
+}
+
+export function getProjectBlockerByOrigin(
+  db: DatabaseType.Database,
+  projectId: string,
+  originRef: string,
+): ProjectBlockerRow | undefined {
+  return db
+    .prepare(
+      `SELECT *
+       FROM project_blocker
+       WHERE project_id = ?
+         AND origin_ref = ?`,
+    )
+    .get(
+      requireTrimmed(projectId, "projectId"),
+      requireTrimmed(originRef, "originRef"),
+    ) as ProjectBlockerRow | undefined;
 }
 
 export function listProjectBlockers(

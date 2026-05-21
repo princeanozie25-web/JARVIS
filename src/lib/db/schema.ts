@@ -413,6 +413,9 @@ CREATE INDEX IF NOT EXISTS idx_project_task_project
 CREATE INDEX IF NOT EXISTS idx_project_task_thread
   ON project_task (thread_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_task_origin
+  ON project_task (project_id, origin_ref);
+
 CREATE TABLE IF NOT EXISTS project_blocker (
   id           TEXT PRIMARY KEY,
   project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -427,6 +430,9 @@ CREATE INDEX IF NOT EXISTS idx_project_blocker_project
 
 CREATE INDEX IF NOT EXISTS idx_project_blocker_task
   ON project_blocker (task_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_blocker_origin
+  ON project_blocker (project_id, origin_ref);
 
 CREATE TABLE IF NOT EXISTS project_decision (
   id          TEXT PRIMARY KEY,

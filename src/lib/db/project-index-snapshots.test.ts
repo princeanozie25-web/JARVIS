@@ -97,7 +97,7 @@ describe("project index snapshot persistence", () => {
     expect(listProjectIndexSnapshots(db, "proj_jarvis")).toHaveLength(5);
   });
 
-  it("rejects invalid status and nonzero artifacts", () => {
+  it("rejects invalid status and invalid artifact counts", () => {
     expect(() =>
       insertProjectIndexSnapshot(db, {
         id: "pidx_bad_status",
@@ -116,11 +116,11 @@ describe("project index snapshot persistence", () => {
         projectId: "proj_jarvis",
         startedAt: 2_000,
         sourcesSeen: 0,
-        artifactsExtracted: 1 as 0,
+        artifactsExtracted: -1,
         triggeredBy: "manual",
         status: "completed",
       }),
-    ).toThrow("artifactsExtracted must remain 0");
+    ).toThrow("artifactsExtracted must be a non-negative integer");
   });
 
   it("supports active snapshot lock detection and database enforcement", () => {
@@ -163,12 +163,13 @@ describe("project index snapshot persistence", () => {
       id: "pidx_finish",
       finishedAt: 2_100,
       status: "completed",
+      artifactsExtracted: 2,
     });
 
     expect(finished).toMatchObject({
       id: "pidx_finish",
       finished_at: 2_100,
-      artifacts_extracted: 0,
+      artifacts_extracted: 2,
       status: "completed",
     });
     expect(hasActiveProjectIndexSnapshot(db, "proj_jarvis")).toBe(false);
