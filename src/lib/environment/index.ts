@@ -12,6 +12,22 @@ export {
   validateEnvironmentTrustClass,
 } from "./registry";
 export {
+  CapabilityEligibilitySchema,
+  ENVIRONMENT_ACTION_KINDS,
+  ENVIRONMENT_POLICY_DECISIONS,
+  ENVIRONMENT_POLICY_REASONS,
+  EnvironmentActionKindSchema,
+  EnvironmentActionSchema,
+  EnvironmentPolicyDecisionSchema,
+  EnvironmentPolicyReasonSchema,
+  EnvironmentPolicySchema,
+  QuietHoursSchema,
+  RoomPolicySchema,
+  TrustClassActionRuleSchema,
+  createEnvironmentPolicy,
+  evaluateEnvironmentAction,
+} from "./policy";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -37,3 +53,16 @@ export type {
   Room,
   TrustClass,
 } from "./types";
+export type {
+  CapabilityEligibility,
+  EnvironmentAction,
+  EnvironmentActionKind,
+  EnvironmentPolicy,
+  EnvironmentPolicyDecision,
+  EnvironmentPolicyEvaluation,
+  EnvironmentPolicyInput,
+  EnvironmentPolicyReason,
+  QuietHours,
+  RoomPolicy,
+  TrustClassActionRule,
+} from "./policy";
