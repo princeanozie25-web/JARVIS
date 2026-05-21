@@ -9,7 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <claude-mem-context>
 # Memory Context
 
-# [jarvis] recent context, 2026-05-21 7:58am GMT+1
+# [jarvis] recent context, 2026-05-21 6:16pm GMT+1
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
@@ -68,17 +68,17 @@ S41 JARVIS Phase 3.75 STT layer modernisation — TranscriptionProviderStatus re
 820 " 🟣 Phase 4G Cloud Routing Policy Freeze — Complete and Frozen
 821 " 🔵 JARVIS Full Test Suite: 874 Tests Passing After Phase 4G Freeze
 822 7:43a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
+823 7:44a 🔵 JARVIS Voice Streaming Module: Full Type Surface and Phase Status (4D–4G)
+824 " 🟣 Phase 4H: VoicePrivacyPolicy — Metadata-Only Voice Data Classification and Deny-by-Default Guard
+825 " 🔴 Test Regex False Positive: "synthesized_audio" String Literal Matched Forbidden Wiring Regex
+826 " ✅ Phase 4H Full Validation: 884 Tests Pass, TypeScript Clean, Lint Clean, Build Succeeds
+827 7:51a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
 828 7:52a 🔵 JARVIS Voice Streaming: Full Module Inventory and Telemetry Architecture Pre-Phase-4D-Slice
 829 " 🟣 Voice Telemetry Hygiene Module: Centralized Sanitization for All Voice-Streaming Emitters
 830 " 🟣 Voice Telemetry Hygiene: 7-Test Suite Covering Allowlist, Strip, Redaction, Stress, and No-Wiring Invariants
 831 " 🔴 TypeScript Error: sanitizeVoiceTelemetryEvent Parameter Type Widened from Record to object
 832 " 🔴 pipeline.test.ts Freeze Test Failed: approval Regex Matched emitMetadataOnlyVoiceTelemetry in barge-in-coordinator.ts
 833 " ✅ Final Test Count After Phase 4D Telemetry Hygiene Slice: 891 Tests Passing (Up from 737)
-823 7:44a 🔵 JARVIS Voice Streaming Module: Full Type Surface and Phase Status (4D–4G)
-824 " 🟣 Phase 4H: VoicePrivacyPolicy — Metadata-Only Voice Data Classification and Deny-by-Default Guard
-825 " 🔴 Test Regex False Positive: "synthesized_audio" String Literal Matched Forbidden Wiring Regex
-826 " ✅ Phase 4H Full Validation: 884 Tests Pass, TypeScript Clean, Lint Clean, Build Succeeds
-827 7:51a 🟣 JARVIS Phase 4D: Voice Stream Metadata Ingestion & Chunk Scheduling Scaffold
 
 Access 2232k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

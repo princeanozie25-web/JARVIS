@@ -14,6 +14,7 @@ const MIGRATION_IDS = [
   "011_conversation_curator",
   "012_human_review_queue",
   "013_runtime_command_calls",
+  "014_project_registry",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -323,6 +324,23 @@ CREATE INDEX IF NOT EXISTS idx_runtime_command_calls_command
 
 CREATE INDEX IF NOT EXISTS idx_runtime_command_calls_status
   ON runtime_command_calls (status, proposed_at DESC);
+
+CREATE TABLE IF NOT EXISTS projects (
+  id            TEXT PRIMARY KEY,
+  slug          TEXT UNIQUE NOT NULL,
+  display_name  TEXT NOT NULL,
+  root_kind     TEXT NOT NULL CHECK (root_kind IN ('fs', 'memory', 'obsidian', 'virtual')),
+  root_ref      TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  archived_at   INTEGER,
+  status        TEXT NOT NULL CHECK (status IN ('active', 'paused', 'archived'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_status
+  ON projects (status, display_name ASC);
+
+CREATE INDEX IF NOT EXISTS idx_projects_created_at
+  ON projects (created_at DESC);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

@@ -95,6 +95,8 @@ describe("ToolRegistry", () => {
       "fs.delete_file",
       "memory.note",
       "memory.recall",
+      "project.list",
+      "project.get",
       "fs.undo",
     ]);
   });
@@ -124,6 +126,8 @@ describe("ToolRegistry", () => {
       ["fs.delete_file", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["memory.note", "REVERSIBLE_WRITE", "CONFIRM_ONCE"],
       ["memory.recall", "PURE_READ", "ALLOW"],
+      ["project.list", "PURE_READ", "ALLOW"],
+      ["project.get", "PURE_READ", "ALLOW"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
     ]);
   });

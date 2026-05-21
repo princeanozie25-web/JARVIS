@@ -62,6 +62,7 @@ describe("schema", () => {
         "memory_embeddings",
         "memory_candidates",
         "project_state",
+        "projects",
         "preferences",
         "reflective_memory",
         "rollbacks",
@@ -96,6 +97,16 @@ describe("schema", () => {
       "open_threads_json",
       "next_intended_step",
       "updated_at",
+    ]);
+    expect(columnNames("projects")).toEqual([
+      "id",
+      "slug",
+      "display_name",
+      "root_kind",
+      "root_ref",
+      "created_at",
+      "archived_at",
+      "status",
     ]);
     expect(columnNames("memory_candidates")).toEqual([
       "id",
@@ -200,6 +211,7 @@ describe("schema", () => {
       "011_conversation_curator",
       "012_human_review_queue",
       "013_runtime_command_calls",
+      "014_project_registry",
     ]);
   });
 });

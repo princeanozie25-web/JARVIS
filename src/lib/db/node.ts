@@ -37,6 +37,12 @@ export {
   upsertProjectState,
 } from "./project-state";
 export type { ProjectStateRow, UpsertProjectStateInput } from "./project-state";
+export { getRegisteredProject, listRegisteredProjects } from "./projects";
+export type {
+  InsertRegisteredProjectInput,
+  ListRegisteredProjectsInput,
+  ProjectRow,
+} from "./projects";
 export {
   createMemoryCandidate,
   listMemoryCandidates,
