@@ -48,6 +48,7 @@ export const PROJECT_PROVIDER_TOOL_IDS = new Set([
   "project.list",
   "project.get",
   "project.register",
+  "project.add_source",
 ]);
 
 export const PROVIDER_TOOL_IDS = new Set([

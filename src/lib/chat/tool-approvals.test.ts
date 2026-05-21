@@ -162,6 +162,32 @@ describe("tool approval flow", () => {
     expect(JSON.stringify(pending)).not.toContain("result");
   });
 
+  it("shows project source pointer details in the approval summary", () => {
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "exec-source",
+      sessionId: "session-1",
+      toolId: "project.add_source",
+      toolName: "Add Project Source",
+      scopeHash: "project.add_source:project:proj_1",
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: {
+        projectId: "proj_1",
+        kind: "thread",
+        ref: "thread:phase-5-a3",
+      },
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_1; kind: thread; ref: thread:phase-5-a3; indexes_now: false",
+    );
+    expect(JSON.stringify(pending)).not.toContain("output_json");
+    expect(JSON.stringify(pending)).not.toContain("result");
+  });
+
   it("allows an approved-once tool execution exactly once", async () => {
     await requestApproval("exec-1");
     now = 1_100;

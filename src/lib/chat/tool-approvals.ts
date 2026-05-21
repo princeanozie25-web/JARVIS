@@ -47,6 +47,8 @@ export function safeToolInputSummary(input: unknown): string {
     const record = input as Record<string, unknown>;
     const projectSummary = projectRegisterSummary(record);
     if (projectSummary) return projectSummary;
+    const projectSourceSummary = projectSourceSummaryFromInput(record);
+    if (projectSourceSummary) return projectSourceSummary;
     if (typeof record.path === "string") {
       return truncateSummary(`path: ${record.path}`);
     }
@@ -57,6 +59,27 @@ export function safeToolInputSummary(input: unknown): string {
   if (typeof input === "string") return truncateSummary(input);
   if (input === null || input === undefined) return "empty input";
   return truncateSummary(typeof input);
+}
+
+function projectSourceSummaryFromInput(
+  record: Record<string, unknown>,
+): string | null {
+  if (
+    typeof record.projectId !== "string" ||
+    typeof record.kind !== "string" ||
+    typeof record.ref !== "string"
+  ) {
+    return null;
+  }
+
+  return truncateSummary(
+    [
+      `project_id: ${record.projectId}`,
+      `kind: ${record.kind}`,
+      `ref: ${record.ref}`,
+      "indexes_now: false",
+    ].join("; "),
+  );
 }
 
 function projectRegisterSummary(

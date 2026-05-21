@@ -1,19 +1,28 @@
 import { createHash } from "node:crypto";
+import type DatabaseType from "better-sqlite3";
 import { z } from "zod";
+import {
+  countProjectSources,
+  insertProjectSource,
+} from "../db/project-sources";
 import {
   getRegisteredProject,
   insertRegisteredProject,
   listRegisteredProjects,
 } from "../db/projects";
 import {
+  createOpaqueProjectSourceId,
   createProjectRegistrationDraft,
   PROJECT_ROOT_KINDS,
+  PROJECT_SOURCE_KINDS,
   projectFromRow,
   projectRegistryAuthorityNote,
+  projectSourceFromRow,
   PROJECT_STATUSES,
   ProjectSlugSchema,
 } from "../projects";
-import type { ProjectRootKind } from "../projects/types";
+import type { ProjectRootKind, ProjectSourceKind } from "../projects/types";
+import { resolveSafePath, SafePathError } from "./fs-safe-path";
 import type { Tool, ToolResult } from "./types";
 
 const PROJECT_TOOL_TIMEOUT_MS = 3_000;
@@ -47,9 +56,23 @@ const ProjectRegisterInputSchema = z.object({
   status: z.enum(PROJECT_STATUSES).default("active"),
 });
 
+const ProjectAddSourceInputSchema = z.object({
+  projectId: z.string().trim().min(1).max(200),
+  kind: z.enum(PROJECT_SOURCE_KINDS),
+  ref: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine((value) => !isNetworkRootRef(value), {
+      message: "Network project sources are disabled.",
+    }),
+});
+
 export type ProjectListInput = z.infer<typeof ProjectListInputSchema>;
 export type ProjectGetInput = z.infer<typeof ProjectGetInputSchema>;
 export type ProjectRegisterInput = z.infer<typeof ProjectRegisterInputSchema>;
+export type ProjectAddSourceInput = z.infer<typeof ProjectAddSourceInputSchema>;
 
 function denied(message: string, reason: string): ToolResult {
   return { ok: false, status: "DENIED", message, data: { reason } };
@@ -89,6 +112,46 @@ export function projectRegisterScopeOf(input: ProjectRegisterInput): string {
   ].join(":");
 }
 
+export function projectAddSourceScopeOf(input: ProjectAddSourceInput): string {
+  return [
+    "project.add_source",
+    `project:${input.projectId}`,
+    `kind:${input.kind}`,
+    `ref_sha256:${sha256(input.ref)}`,
+  ].join(":");
+}
+
+function projectWithSourceCount(
+  db: DatabaseType.Database,
+  row: NonNullable<ReturnType<typeof getRegisteredProject>>,
+) {
+  return projectFromRow({
+    ...row,
+    source_count: countProjectSources(db, row.id),
+  });
+}
+
+async function validateSourcePointer(input: ProjectAddSourceInput) {
+  if (isNetworkRootRef(input.ref)) {
+    return denied(
+      "Network project sources are not supported in Phase 5 A3.",
+      "network_project_source_disabled",
+    );
+  }
+
+  if (input.kind !== "file") return null;
+
+  try {
+    await resolveSafePath(input.ref);
+    return null;
+  } catch (error) {
+    if (error instanceof SafePathError) {
+      return denied(error.message, `unsafe_file_ref_${error.reason}`);
+    }
+    return denied("File source ref could not be validated.", "unsafe_file_ref");
+  }
+}
+
 export const projectListTool: Tool<ProjectListInput> = {
   id: "project.list",
   name: "List Projects",
@@ -110,7 +173,8 @@ export const projectListTool: Tool<ProjectListInput> = {
       );
     }
 
-    const rows = listRegisteredProjects(context.db, {
+    const db = context.db;
+    const rows = listRegisteredProjects(db, {
       includeArchived: input.includeArchived,
       limit: input.maxResults,
     });
@@ -123,7 +187,7 @@ export const projectListTool: Tool<ProjectListInput> = {
           ? "No registered projects found."
           : "Registered projects found.",
       data: {
-        projects: rows.map(projectFromRow),
+        projects: rows.map((row) => projectWithSourceCount(db, row)),
         count: rows.length,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),
@@ -165,7 +229,7 @@ export const projectGetTool: Tool<ProjectGetInput> = {
         ? "Registered project found."
         : "Registered project not found.",
       data: {
-        project: row ? projectFromRow(row) : null,
+        project: row ? projectWithSourceCount(context.db, row) : null,
         derivedState: true,
         authority: projectRegistryAuthorityNote(),
       },
@@ -235,7 +299,62 @@ export const projectRegisterTool: Tool<ProjectRegisterInput> = {
   },
 };
 
+export const projectAddSourceTool: Tool<ProjectAddSourceInput> = {
+  id: "project.add_source",
+  name: "Add Project Source",
+  description:
+    "Add a known source pointer to the Phase 5 project source ledger after explicit approval. This does not index or read source contents.",
+  requiredSafetyTag: "CONFIRM_ALWAYS",
+  inputSchema: ProjectAddSourceInputSchema,
+  scopeOf: projectAddSourceScopeOf,
+  reversibilityClass: "REVERSIBLE_WRITE",
+  timeoutMs: PROJECT_TOOL_TIMEOUT_MS,
+  async execute(input, context) {
+    if (context.signal.aborted) {
+      return denied("Tool execution aborted.", "aborted");
+    }
+    if (!context.db) {
+      return denied(
+        "Project registry database is unavailable.",
+        "db_unavailable",
+      );
+    }
+
+    const project = getRegisteredProject(context.db, { id: input.projectId });
+    if (!project) {
+      return denied("Project is not registered.", "project_not_found");
+    }
+
+    const pointerDenied = await validateSourcePointer(input);
+    if (pointerDenied) return pointerDenied;
+
+    const row = insertProjectSource(context.db, {
+      id: createOpaqueProjectSourceId(),
+      projectId: project.id,
+      kind: input.kind as ProjectSourceKind,
+      ref: input.ref.trim(),
+      lastIndexedAt: null,
+      sourceHash: null,
+    });
+
+    return {
+      ok: true,
+      status: "COMPLETED",
+      message: "Project source added.",
+      data: {
+        source: projectSourceFromRow(row),
+        indexed: false,
+        derivedState: true,
+        authority: projectRegistryAuthorityNote(),
+      },
+    };
+  },
+};
+
 export const projectReadTools = [projectListTool, projectGetTool] as const;
 export const projectRegisterToolScaffold = projectRegisterTool;
-export const projectMutationTools = [projectRegisterTool] as const;
+export const projectMutationTools = [
+  projectRegisterTool,
+  projectAddSourceTool,
+] as const;
 export { PROJECT_TOOL_TIMEOUT_MS };

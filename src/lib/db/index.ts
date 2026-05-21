@@ -46,6 +46,16 @@ export type {
   ProjectRow,
 } from "./projects";
 export {
+  countProjectSources,
+  getProjectSource,
+  insertProjectSource,
+  listProjectSources,
+} from "./project-sources";
+export type {
+  InsertProjectSourceInput,
+  ProjectSourceRow,
+} from "./project-sources";
+export {
   createMemoryCandidate,
   listMemoryCandidates,
   MEMORY_CANDIDATE_STATUSES,

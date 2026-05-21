@@ -15,6 +15,7 @@ const MIGRATION_IDS = [
   "012_human_review_queue",
   "013_runtime_command_calls",
   "014_project_registry",
+  "015_project_source_ledger",
 ] as const;
 
 export const SCHEMA_SQL = `
@@ -341,6 +342,21 @@ CREATE INDEX IF NOT EXISTS idx_projects_status
 
 CREATE INDEX IF NOT EXISTS idx_projects_created_at
   ON projects (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS project_source (
+  id               TEXT PRIMARY KEY,
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind             TEXT NOT NULL CHECK (kind IN ('file', 'memory_slug', 'obsidian_note', 'thread')),
+  ref              TEXT NOT NULL,
+  last_indexed_at  INTEGER,
+  source_hash      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_source_project
+  ON project_source (project_id, kind);
+
+CREATE INDEX IF NOT EXISTS idx_project_source_kind
+  ON project_source (kind);
 
 CREATE TABLE IF NOT EXISTS long_term_memory (
   id             TEXT PRIMARY KEY,

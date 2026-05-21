@@ -62,6 +62,7 @@ describe("schema", () => {
         "memory_embeddings",
         "memory_candidates",
         "project_state",
+        "project_source",
         "projects",
         "preferences",
         "reflective_memory",
@@ -107,6 +108,14 @@ describe("schema", () => {
       "created_at",
       "archived_at",
       "status",
+    ]);
+    expect(columnNames("project_source")).toEqual([
+      "id",
+      "project_id",
+      "kind",
+      "ref",
+      "last_indexed_at",
+      "source_hash",
     ]);
     expect(columnNames("memory_candidates")).toEqual([
       "id",
@@ -212,6 +221,7 @@ describe("schema", () => {
       "012_human_review_queue",
       "013_runtime_command_calls",
       "014_project_registry",
+      "015_project_source_ledger",
     ]);
   });
 });

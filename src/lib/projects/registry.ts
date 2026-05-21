@@ -1,13 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { ProjectRow } from "../db/projects";
+import type { ProjectSourceRow } from "../db/project-sources";
 import {
   PROJECT_STATE_AUTHORITY_NOTE,
   ProjectRootKindSchema,
   ProjectSlugSchema,
+  ProjectSourceKindSchema,
+  ProjectSourceSchema,
   ProjectStatusSchema,
   RegisteredProjectSchema,
   type ProjectRegistrationDraft,
   type ProjectRootKind,
+  type ProjectSource,
+  type ProjectSourceKind,
   type ProjectStatus,
   type RegisteredProject,
 } from "./types";
@@ -18,7 +23,15 @@ export function createOpaqueProjectId(
   return `proj_${newId()}`;
 }
 
-export function projectFromRow(row: ProjectRow): RegisteredProject {
+export function createOpaqueProjectSourceId(
+  newId: () => string = randomUUID,
+): string {
+  return `psrc_${newId()}`;
+}
+
+export function projectFromRow(
+  row: ProjectRow & { source_count?: number },
+): RegisteredProject {
   return RegisteredProjectSchema.parse({
     id: row.id,
     slug: row.slug,
@@ -29,6 +42,18 @@ export function projectFromRow(row: ProjectRow): RegisteredProject {
     archivedAt: row.archived_at,
     status: row.status,
     indexedAt: null,
+    sourceCount: row.source_count ?? 0,
+  });
+}
+
+export function projectSourceFromRow(row: ProjectSourceRow): ProjectSource {
+  return ProjectSourceSchema.parse({
+    id: row.id,
+    projectId: row.project_id,
+    kind: row.kind,
+    ref: row.ref,
+    lastIndexedAt: row.last_indexed_at,
+    sourceHash: row.source_hash,
   });
 }
 
@@ -38,6 +63,10 @@ export function validateProjectRootKind(value: string): ProjectRootKind {
 
 export function validateProjectStatus(value: string): ProjectStatus {
   return ProjectStatusSchema.parse(value);
+}
+
+export function validateProjectSourceKind(value: string): ProjectSourceKind {
+  return ProjectSourceKindSchema.parse(value);
 }
 
 export function createProjectRegistrationDraft(input: {

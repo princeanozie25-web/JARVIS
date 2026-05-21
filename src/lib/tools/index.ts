@@ -66,6 +66,8 @@ export type { MemoryNoteInput } from "./memory-note";
 export { memoryRecallScopeOf, memoryRecallTool } from "./memory-recall";
 export type { MemoryRecallInput } from "./memory-recall";
 export {
+  projectAddSourceScopeOf,
+  projectAddSourceTool,
   projectGetScopeOf,
   projectGetTool,
   projectListScopeOf,
@@ -77,6 +79,7 @@ export {
   projectRegisterToolScaffold,
 } from "./projects";
 export type {
+  ProjectAddSourceInput,
   ProjectGetInput,
   ProjectListInput,
   ProjectRegisterInput,

@@ -368,6 +368,7 @@ describe("approval-gated provider tool continuation", () => {
       "project.list",
       "project.get",
       "project.register",
+      "project.add_source",
     ]);
   });
 
@@ -424,6 +425,71 @@ describe("approval-gated provider tool continuation", () => {
     });
     expect(
       db.prepare("SELECT COUNT(*) AS count FROM projects").get(),
+    ).toMatchObject({ count: 0 });
+  });
+
+  it("emits pending approval for project.add_source without adding a source first", async () => {
+    db.prepare(
+      `INSERT INTO projects (
+         id, slug, display_name, root_kind, root_ref, created_at, archived_at, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "proj_jarvis",
+      "jarvis",
+      "JARVIS",
+      "virtual",
+      "virtual:jarvis",
+      1_000,
+      null,
+      "active",
+    );
+    const provider = new StubProvider(
+      "project_add_source",
+      '{"projectId":"proj_jarvis","kind":"thread","ref":"thread:phase-5-a3"}',
+      "unused",
+    );
+    const providerTools = providerToolMetadata(tools, (toolId) =>
+      PROVIDER_TOOL_IDS.has(toolId),
+    );
+
+    const events: StreamEvent[] = [];
+    for await (const event of streamWithReadOnlyToolContinuation({
+      provider,
+      messages: [{ role: "user", content: "add source pointer" }],
+      model: "gpt-4o-mini",
+      signal: new AbortController().signal,
+      providerTools,
+      runtime: runtime(),
+      registry: tools,
+      db,
+      sessionId: "session-1",
+      assistantMessageId: "message-1",
+      decision: allowDecision,
+      recordEvent(event) {
+        telemetryEvents.push(event);
+      },
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual([
+      "tool_call_start",
+      "tool_call_complete",
+      "tool_proposed",
+      "tool_pending",
+    ]);
+    expect(events.find((event) => event.type === "tool_pending")).toMatchObject(
+      {
+        type: "tool_pending",
+        executionId: "call-1",
+        toolId: "project.add_source",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+        summary:
+          "project_id: proj_jarvis; kind: thread; ref: thread:phase-5-a3; indexes_now: false",
+      },
+    );
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM project_source").get(),
     ).toMatchObject({ count: 0 });
   });
 

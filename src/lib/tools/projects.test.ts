@@ -4,6 +4,7 @@ import {
   ensurePendingToolApproval,
   resumeApproval,
 } from "../chat/tool-approvals";
+import { countProjectSources, listProjectSources } from "../db/project-sources";
 import { getRegisteredProject, listRegisteredProjects } from "../db/projects";
 import { applyMigrations } from "../db/schema";
 import { insertRegisteredProject } from "../db/projects";
@@ -85,6 +86,7 @@ describe("Phase 5 project tools", () => {
             rootRef: "workspace-ref",
             status: "active",
             indexedAt: null,
+            sourceCount: 0,
           }),
         ],
       },
@@ -116,6 +118,7 @@ describe("Phase 5 project tools", () => {
           id: "proj_lookup",
           slug: "lookup",
           indexedAt: null,
+          sourceCount: 0,
         }),
         derivedState: true,
       },
@@ -143,8 +146,47 @@ describe("Phase 5 project tools", () => {
       project: expect.objectContaining({
         id: "proj_unindexed",
         indexedAt: null,
+        sourceCount: 0,
       }),
     });
+  });
+
+  it("project.get and project.list expose source counts without source refs", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_counted",
+      slug: "counted",
+      displayName: "Counted",
+      rootKind: "virtual",
+      rootRef: "virtual:counted",
+      createdAt: 1_000,
+    });
+    db.prepare(
+      `INSERT INTO project_source (
+         id, project_id, kind, ref, last_indexed_at, source_hash
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run("psrc_1", "proj_counted", "thread", "thread:secret-ref", null, null);
+
+    const getResult = await runtime.runTool({
+      toolId: "project.get",
+      input: { id: "proj_counted" },
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+    const listResult = await runtime.runTool({
+      toolId: "project.list",
+      input: {},
+      sessionId: "session-1",
+      decision: allowDecision,
+    });
+
+    expect(getResult.data).toMatchObject({
+      project: expect.objectContaining({ sourceCount: 1 }),
+    });
+    expect(listResult.data).toMatchObject({
+      projects: [expect.objectContaining({ sourceCount: 1 })],
+    });
+    expect(JSON.stringify(getResult.data)).not.toContain("thread:secret-ref");
+    expect(JSON.stringify(listResult.data)).not.toContain("thread:secret-ref");
   });
 
   it("does not register disabled Phase 5 tools or mutation surfaces", () => {
@@ -153,8 +195,11 @@ describe("Phase 5 project tools", () => {
     expect(registeredToolIds).toContain("project.list");
     expect(registeredToolIds).toContain("project.get");
     expect(registeredToolIds).toContain("project.register");
+    expect(registeredToolIds).toContain("project.add_source");
     expect(registeredToolIds).not.toContain("project.index");
     expect(registeredToolIds).not.toContain("project.write_memory");
+    expect(registeredToolIds).not.toContain("project.extract");
+    expect(registeredToolIds).not.toContain("project.extract_tasks");
     expect(registeredToolIds).not.toContain("background.indexing");
     expect(registeredToolIds).not.toContain("task.auto_promote");
     expect(registeredToolIds).not.toContain("voice.project_mutation");
@@ -398,5 +443,175 @@ describe("Phase 5 project tools", () => {
     });
 
     expect(listRegisteredProjects(db, { includeArchived: true })).toEqual([]);
+  });
+
+  it("project.add_source requires approval and does not mutate before approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_source",
+      slug: "source",
+      displayName: "Source",
+      rootKind: "virtual",
+      rootRef: "virtual:source",
+      createdAt: 1_000,
+    });
+
+    const result = await runtime.runTool({
+      toolId: "project.add_source",
+      input: {
+        projectId: "proj_source",
+        kind: "thread",
+        ref: "thread:phase-5-a3",
+      },
+      sessionId: "session-1",
+      executionId: "source-1",
+      decision: allowDecision,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "AWAITING_APPROVAL",
+      data: {
+        reason: "approval_required",
+        requiredSafetyTag: "CONFIRM_ALWAYS",
+      },
+    });
+    expect(countProjectSources(db, "proj_source")).toBe(0);
+  });
+
+  it("project.add_source adds a pointer ledger row only after approval", async () => {
+    insertRegisteredProject(db, {
+      id: "proj_source",
+      slug: "source",
+      displayName: "Source",
+      rootKind: "virtual",
+      rootRef: "virtual:source",
+      createdAt: 1_000,
+    });
+    const input = {
+      projectId: "proj_source",
+      kind: "thread" as const,
+      ref: "thread:phase-5-a3",
+    };
+    await runtime.runTool({
+      toolId: "project.add_source",
+      input,
+      sessionId: "session-1",
+      executionId: "source-approved",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "source-approved",
+      sessionId: "session-1",
+      toolId: "project.add_source",
+      toolName: "Add Project Source",
+      scopeHash: tools.get("project.add_source").scopeOf(input),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: input,
+      now,
+      ttlMs: 500,
+    });
+
+    expect(pending.summary).toBe(
+      "project_id: proj_source; kind: thread; ref: thread:phase-5-a3; indexes_now: false",
+    );
+    now = 1_100;
+
+    const approved = await resumeApproval({
+      db,
+      runtime,
+      executionId: "source-approved",
+      decision: "APPROVED_ONCE",
+      approvalToken: pending.approvalToken,
+      now,
+    });
+
+    expect(approved.body).toMatchObject({
+      ok: true,
+      executionId: "source-approved",
+      decision: "APPROVED_ONCE",
+      status: "COMPLETED",
+      message: "Project source added.",
+    });
+    expect(approved.body).not.toHaveProperty("data");
+    expect(approved.body).not.toHaveProperty("result");
+    expect(listProjectSources(db, "proj_source")).toEqual([
+      expect.objectContaining({
+        project_id: "proj_source",
+        kind: "thread",
+        ref: "thread:phase-5-a3",
+        last_indexed_at: null,
+        source_hash: null,
+      }),
+    ]);
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM long_term_memory").get(),
+    ).toMatchObject({ count: 0 });
+  });
+
+  it("project.add_source fails safely for missing project and invalid kind", async () => {
+    const missingProjectInput = {
+      projectId: "proj_missing",
+      kind: "thread" as const,
+      ref: "thread:missing",
+    };
+    await runtime.runTool({
+      toolId: "project.add_source",
+      input: missingProjectInput,
+      sessionId: "session-1",
+      executionId: "source-missing-project",
+      decision: allowDecision,
+    });
+    const pending = ensurePendingToolApproval({
+      db,
+      executionId: "source-missing-project",
+      sessionId: "session-1",
+      toolId: "project.add_source",
+      toolName: "Add Project Source",
+      scopeHash: tools.get("project.add_source").scopeOf(missingProjectInput),
+      requiredSafetyTag: "CONFIRM_ALWAYS",
+      safetyTag: "ALLOW",
+      toolInput: missingProjectInput,
+      now,
+      ttlMs: 500,
+    });
+    now = 1_100;
+
+    await expect(
+      resumeApproval({
+        db,
+        runtime,
+        executionId: "source-missing-project",
+        decision: "APPROVED_ONCE",
+        approvalToken: pending.approvalToken,
+        now,
+      }),
+    ).resolves.toMatchObject({
+      body: {
+        ok: false,
+        status: "DENIED",
+        message: "Project is not registered.",
+      },
+    });
+    expect(countProjectSources(db, "proj_missing")).toBe(0);
+
+    await expect(
+      runtime.runTool({
+        toolId: "project.add_source",
+        input: {
+          projectId: "proj_missing",
+          kind: "network_url",
+          ref: "https://example.test/project",
+        },
+        sessionId: "session-1",
+        executionId: "source-invalid-kind",
+        decision: allowDecision,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: "DENIED",
+      data: { reason: "invalid_tool_input" },
+    });
   });
 });

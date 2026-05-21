@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   createProjectRegistrationDraft,
   projectFromRow,
+  projectSourceFromRow,
   validateProjectRootKind,
+  validateProjectSourceKind,
   validateProjectStatus,
 } from ".";
 
@@ -18,6 +20,7 @@ describe("project registry domain models", () => {
         created_at: 1_000,
         archived_at: null,
         status: "active",
+        source_count: 2,
       }),
     ).toEqual({
       id: "proj_opaque",
@@ -29,6 +32,27 @@ describe("project registry domain models", () => {
       archivedAt: null,
       status: "active",
       indexedAt: null,
+      sourceCount: 2,
+    });
+  });
+
+  it("maps source ledger rows into typed pointer models", () => {
+    expect(
+      projectSourceFromRow({
+        id: "psrc_1",
+        project_id: "proj_opaque",
+        kind: "file",
+        ref: "README.md",
+        last_indexed_at: null,
+        source_hash: null,
+      }),
+    ).toEqual({
+      id: "psrc_1",
+      projectId: "proj_opaque",
+      kind: "file",
+      ref: "README.md",
+      lastIndexedAt: null,
+      sourceHash: null,
     });
   });
 
@@ -50,7 +74,9 @@ describe("project registry domain models", () => {
   it("validates root kinds and statuses", () => {
     expect(validateProjectRootKind("obsidian")).toBe("obsidian");
     expect(validateProjectStatus("paused")).toBe("paused");
+    expect(validateProjectSourceKind("thread")).toBe("thread");
     expect(() => validateProjectRootKind("network")).toThrow();
     expect(() => validateProjectStatus("running")).toThrow();
+    expect(() => validateProjectSourceKind("network_url")).toThrow();
   });
 });
