@@ -28,6 +28,13 @@ export {
   evaluateEnvironmentAction,
 } from "./policy";
 export {
+  ENVIRONMENT_READ_MODEL_DEFAULT_LIMIT,
+  ENVIRONMENT_READ_MODEL_MAX_LIMIT,
+  environmentDescribeRegistry,
+  environmentGet,
+  environmentList,
+} from "./service";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -66,3 +73,18 @@ export type {
   RoomPolicy,
   TrustClassActionRule,
 } from "./policy";
+export type {
+  EnvironmentCapabilityPolicySignal,
+  EnvironmentCapabilitySummary,
+  EnvironmentDeviceSummary,
+  EnvironmentGetInput,
+  EnvironmentGetReadModel,
+  EnvironmentListReadModel,
+  EnvironmentReadModelBase,
+  EnvironmentReadModelLimits,
+  EnvironmentReadServiceInput,
+  EnvironmentRegistryDescriptionReadModel,
+  EnvironmentRegistryFreshness,
+  EnvironmentRoomSummary,
+  EnvironmentTrustClassSummary,
+} from "./service";

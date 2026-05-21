@@ -1,21 +1,23 @@
 import type DatabaseType from "better-sqlite3";
 import {
+  DEFAULT_ENVIRONMENT_CAPABILITIES,
+  DEFAULT_ENVIRONMENT_TRUST_CLASSES,
+  DEFAULT_PHASE6_FEATURE_FLAGS,
+  createEnvironmentRegistry,
+  defaultEnvironmentTrustClass,
+} from "../environment/registry";
+import {
   CapabilitySchema,
   DeviceSchema,
   RoomSchema,
   TrustClassSchema,
-  createEnvironmentRegistry,
-  DEFAULT_ENVIRONMENT_CAPABILITIES,
-  DEFAULT_ENVIRONMENT_TRUST_CLASSES,
-  DEFAULT_PHASE6_FEATURE_FLAGS,
-  defaultEnvironmentTrustClass,
   type Capability,
   type Device,
   type EnvironmentRegistry,
   type EnvironmentTrustClass,
   type Room,
   type TrustClass,
-} from "../environment";
+} from "../environment/types";
 
 export interface EnvironmentRegistryMetadataRow {
   key: string;
