@@ -43,3 +43,33 @@ export type {
   RoutineTelemetryEventType,
   RoutineTrustClass,
 } from "./registry";
+
+export {
+  DAILY_SELF_AUDIT_ROUTINE_ID,
+  DEFAULT_ROUTINE_SCHEDULING_POLICY_TABLE,
+  ROUTINE_SCHEDULE_POLICY_TELEMETRY_EVENT_TYPES,
+  ROUTINE_SCHEDULING_DECISIONS,
+  ROUTINE_SCHEDULING_POLICY_REASONS,
+  RoutineScheduleEligibilityDecisionSchema,
+  RoutineScheduleEligibilityInputSchema,
+  RoutineSchedulePolicyTelemetryEventSchema,
+  RoutineSchedulePolicyTelemetryEventTypeSchema,
+  RoutineSchedulingDecisionSchema,
+  RoutineSchedulingPolicyReasonSchema,
+  RoutineSchedulingPolicySchema,
+  RoutineSchedulingPolicyTableSchema,
+  createRoutineSchedulePolicyTelemetryEvent,
+  evaluateRoutineScheduleEligibility,
+  getAllowedRoutineScheduleKinds,
+} from "./scheduling-policy";
+
+export type {
+  RoutineScheduleEligibilityDecision,
+  RoutineScheduleEligibilityInput,
+  RoutineSchedulePolicyTelemetryEvent,
+  RoutineSchedulePolicyTelemetryEventType,
+  RoutineSchedulingDecision,
+  RoutineSchedulingPolicy,
+  RoutineSchedulingPolicyReason,
+  RoutineSchedulingPolicyTable,
+} from "./scheduling-policy";
