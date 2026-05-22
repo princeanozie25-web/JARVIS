@@ -80,6 +80,15 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  ENVIRONMENT_LOCAL_COMMAND_ACTION_KINDS,
+  ENVIRONMENT_LOCAL_COMMAND_PREFLIGHT_RESULTS,
+  EnvironmentLocalCommandActionKindSchema,
+  EnvironmentLocalCommandContractSchema,
+  EnvironmentLocalCommandPreflightResultSchema,
+  EnvironmentLocalCommandPreflightSchema,
+  preflightEnvironmentLocalCommand,
+} from "./action-command-contract";
+export {
   ENVIRONMENT_ACTION_EXECUTION_ADAPTER_KINDS,
   ENVIRONMENT_ACTION_EXECUTION_REASONS,
   ENVIRONMENT_ACTION_EXECUTION_STATUSES,
@@ -226,6 +235,13 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  EnvironmentLocalCommandActionKind,
+  EnvironmentLocalCommandContract,
+  EnvironmentLocalCommandPreflight,
+  EnvironmentLocalCommandPreflightResult,
+  PreflightEnvironmentLocalCommandInput,
+} from "./action-command-contract";
 export type {
   CreateFakeLocalEnvironmentActionAdapterInput,
   EnvironmentActionExecutionAdapter,
