@@ -35,6 +35,26 @@ export {
   environmentList,
 } from "./service";
 export {
+  ENVIRONMENT_OBSERVED_VALUE_BANDS,
+  ENVIRONMENT_OBSERVED_VALUE_CATEGORIES,
+  ENVIRONMENT_PASSIVE_STATE_ORIGIN_KINDS,
+  ENVIRONMENT_PASSIVE_STATE_SOURCE_KINDS,
+  ENVIRONMENT_STATE_LAYERS,
+  EnvironmentObservedValueBandSchema,
+  EnvironmentObservedValueCategorySchema,
+  EnvironmentObservedValueSchema,
+  EnvironmentPassiveStateOriginKindSchema,
+  EnvironmentPassiveStateSourceKindSchema,
+  EnvironmentStateFreshnessSchema,
+  EnvironmentStateLayerSchema,
+  EnvironmentStateProvenanceSchema,
+  EnvironmentStateUnknownSchema,
+  PassiveEnvironmentStateRecordSchema,
+  classifyEnvironmentStateLayer,
+  resolvePassiveEnvironmentState,
+  validatePassiveEnvironmentStateRecord,
+} from "./state";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -88,3 +108,17 @@ export type {
   EnvironmentRoomSummary,
   EnvironmentTrustClassSummary,
 } from "./service";
+export type {
+  EnvironmentObservedValue,
+  EnvironmentObservedValueBand,
+  EnvironmentObservedValueCategory,
+  EnvironmentPassiveStateOriginKind,
+  EnvironmentPassiveStateSourceKind,
+  EnvironmentStateFreshness,
+  EnvironmentStateLayer,
+  EnvironmentStateProvenance,
+  EnvironmentStateUnknown,
+  PassiveEnvironmentStateRecord,
+  PassiveEnvironmentStateResolution,
+  PassiveEnvironmentStateValidationResult,
+} from "./state";
