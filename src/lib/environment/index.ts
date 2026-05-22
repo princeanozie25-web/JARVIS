@@ -80,6 +80,23 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  ENVIRONMENT_ACTION_INTENT_ACTOR_KINDS,
+  ENVIRONMENT_ACTION_INTENT_APPROVAL_EXPECTATIONS,
+  ENVIRONMENT_ACTION_INTENT_OPERATIONS,
+  ENVIRONMENT_ACTION_INTENT_SOURCE_SURFACES,
+  ENVIRONMENT_ACTION_INTENT_TARGET_KINDS,
+  EnvironmentActionIntentActorKindSchema,
+  EnvironmentActionIntentActorSchema,
+  EnvironmentActionIntentApprovalExpectationSchema,
+  EnvironmentActionIntentOperationSchema,
+  EnvironmentActionIntentPhaseMarkersSchema,
+  EnvironmentActionIntentSchema,
+  EnvironmentActionIntentSourceSurfaceSchema,
+  EnvironmentActionIntentTargetKindSchema,
+  createEnvironmentActionIntent,
+  validateEnvironmentActionIntent,
+} from "./action-intent";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -168,3 +185,14 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  EnvironmentActionIntent,
+  EnvironmentActionIntentActor,
+  EnvironmentActionIntentActorKind,
+  EnvironmentActionIntentApprovalExpectation,
+  EnvironmentActionIntentOperation,
+  EnvironmentActionIntentPhaseMarkers,
+  EnvironmentActionIntentSourceSurface,
+  EnvironmentActionIntentTargetKind,
+  EnvironmentActionIntentValidationResult,
+} from "./action-intent";
