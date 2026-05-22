@@ -1,4 +1,29 @@
 export {
+  DEFAULT_VISION_SESSION_FEATURE_FLAGS,
+  VISION_SESSION_DISABLED_FEATURES,
+  VISION_SESSION_EVENT_TYPES,
+  VISION_SESSION_REASONS,
+  VISION_SESSION_STATES,
+  VISION_SESSION_SURFACES,
+  VisionFailureReplayReferenceSchema,
+  VisionSessionDisabledFeatureSchema,
+  VisionSessionEventTypeSchema,
+  VisionSessionFeatureFlagsSchema,
+  VisionSessionReasonSchema,
+  VisionSessionRecordSchema,
+  VisionSessionStateSchema,
+  VisionSessionSurfaceSchema,
+  VisionSessionTelemetryEventSchema,
+  cancelVisionSession,
+  completeVisionSession,
+  createVisionSessionTelemetryEvent,
+  expireVisionSession,
+  failVisionSession,
+  requestVisionSession,
+  startVisionSession,
+} from "./session";
+
+export {
   DEFAULT_VISION_FAILURE_REPLAY_FEATURE_FLAGS,
   VISION_REPLAY_APPROVAL_DECISIONS,
   VISION_REPLAY_CONFIDENCE_BANDS,
@@ -26,6 +51,18 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionFailureReplayReference,
+  VisionSessionDisabledFeature,
+  VisionSessionEventType,
+  VisionSessionFeatureFlags,
+  VisionSessionReason,
+  VisionSessionRecord,
+  VisionSessionState,
+  VisionSessionSurface,
+  VisionSessionTelemetryEvent,
+} from "./session";
 
 export type {
   VisionFailureReplayFeatureFlags,
