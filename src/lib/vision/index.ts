@@ -1,4 +1,26 @@
 export {
+  DEFAULT_VISION_FRAME_FEATURE_FLAGS,
+  VISION_FRAME_DISABLED_FEATURES,
+  VISION_FRAME_INGESTION_REASONS,
+  VISION_FRAME_INGESTION_STATUSES,
+  VISION_FRAME_SOURCE_TYPES,
+  VISION_FRAME_TELEMETRY_EVENT_TYPES,
+  VisionFrameDescriptorSchema,
+  VisionFrameDisabledFeatureSchema,
+  VisionFrameFeatureFlagsSchema,
+  VisionFrameIngestionReasonSchema,
+  VisionFrameIngestionResultSchema,
+  VisionFrameIngestionStatusSchema,
+  VisionFrameSourceTypeSchema,
+  VisionFrameTelemetryEventSchema,
+  VisionFrameTelemetryEventTypeSchema,
+  createVisionFrameDescriptor,
+  createVisionFrameTelemetryEvent,
+  ingestVisionFrameDescriptor,
+  validateVisionFrameDescriptor,
+} from "./frame-ingestion";
+
+export {
   DEFAULT_VISION_SESSION_FEATURE_FLAGS,
   VISION_SESSION_DISABLED_FEATURES,
   VISION_SESSION_EVENT_TYPES,
@@ -51,6 +73,18 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionFrameDescriptor,
+  VisionFrameDisabledFeature,
+  VisionFrameFeatureFlags,
+  VisionFrameIngestionReason,
+  VisionFrameIngestionResult,
+  VisionFrameIngestionStatus,
+  VisionFrameSourceType,
+  VisionFrameTelemetryEvent,
+  VisionFrameTelemetryEventType,
+} from "./frame-ingestion";
 
 export type {
   VisionFailureReplayReference,
