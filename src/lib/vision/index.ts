@@ -1,4 +1,29 @@
 export {
+  DEFAULT_VISION_FALLBACK_FEATURE_FLAGS,
+  DEFAULT_VISION_FALLBACK_POLICY,
+  VISION_FALLBACK_BUDGET_STATES,
+  VISION_FALLBACK_CONSENT_STATES,
+  VISION_FALLBACK_DECISIONS,
+  VISION_FALLBACK_DISABLED_FEATURES,
+  VISION_FALLBACK_REASONS,
+  VISION_FALLBACK_TELEMETRY_EVENT_TYPES,
+  VisionFallbackBudgetStateSchema,
+  VisionFallbackConsentStateSchema,
+  VisionFallbackDecisionRecordSchema,
+  VisionFallbackDecisionSchema,
+  VisionFallbackDisabledFeatureSchema,
+  VisionFallbackFeatureFlagsSchema,
+  VisionFallbackPolicySchema,
+  VisionFallbackReasonSchema,
+  VisionFallbackReplayStepSchema,
+  VisionFallbackTelemetryEventSchema,
+  VisionFallbackTelemetryEventTypeSchema,
+  createVisionFallbackReplayStep,
+  createVisionFallbackTelemetryEvent,
+  evaluateVisionFallback,
+} from "./fallback-governance";
+
+export {
   DEFAULT_VISION_CONTEXT_CAPS,
   DEFAULT_VISION_CONTEXT_FEATURE_FLAGS,
   VISION_CONTEXT_DISABLED_FEATURES,
@@ -137,6 +162,20 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionFallbackBudgetState,
+  VisionFallbackConsentState,
+  VisionFallbackDecision,
+  VisionFallbackDecisionRecord,
+  VisionFallbackDisabledFeature,
+  VisionFallbackFeatureFlags,
+  VisionFallbackPolicy,
+  VisionFallbackReason,
+  VisionFallbackReplayStep,
+  VisionFallbackTelemetryEvent,
+  VisionFallbackTelemetryEventType,
+} from "./fallback-governance";
 
 export type {
   VisionContextCaps,
