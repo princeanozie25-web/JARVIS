@@ -1,4 +1,29 @@
 export {
+  DEFAULT_VISION_RUNTIME_BOUNDARY_FEATURE_FLAGS,
+  VISION_RUNTIME_ALLOWED_OPERATION_CLASSES,
+  VISION_RUNTIME_BLOCKED_AUTHORITY_CLASSES,
+  VISION_RUNTIME_BOUNDARY_DECISIONS,
+  VISION_RUNTIME_BOUNDARY_DISABLED_FEATURES,
+  VISION_RUNTIME_BOUNDARY_REASONS,
+  VISION_RUNTIME_BOUNDARY_TELEMETRY_EVENT_TYPES,
+  VisionRuntimeAllowedOperationClassSchema,
+  VisionRuntimeBlockedAuthorityClassSchema,
+  VisionRuntimeBoundaryDecisionRecordSchema,
+  VisionRuntimeBoundaryDecisionSchema,
+  VisionRuntimeBoundaryDisabledFeatureSchema,
+  VisionRuntimeBoundaryFeatureFlagsSchema,
+  VisionRuntimeBoundaryReasonSchema,
+  VisionRuntimeBoundaryReplayStepSchema,
+  VisionRuntimeBoundaryTelemetryEventSchema,
+  VisionRuntimeBoundaryTelemetryEventTypeSchema,
+  VisionRuntimeOperationClassSchema,
+  assertVisionRuntimeBoundary,
+  createVisionRuntimeBoundaryReplayStep,
+  createVisionRuntimeBoundaryTelemetryEvent,
+  evaluateVisionRuntimeBoundary,
+} from "./runtime-boundary-guard";
+
+export {
   DEFAULT_VISION_FALLBACK_FEATURE_FLAGS,
   DEFAULT_VISION_FALLBACK_POLICY,
   VISION_FALLBACK_BUDGET_STATES,
@@ -162,6 +187,20 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionRuntimeAllowedOperationClass,
+  VisionRuntimeBlockedAuthorityClass,
+  VisionRuntimeBoundaryDecision,
+  VisionRuntimeBoundaryDecisionRecord,
+  VisionRuntimeBoundaryDisabledFeature,
+  VisionRuntimeBoundaryFeatureFlags,
+  VisionRuntimeBoundaryReason,
+  VisionRuntimeBoundaryReplayStep,
+  VisionRuntimeBoundaryTelemetryEvent,
+  VisionRuntimeBoundaryTelemetryEventType,
+  VisionRuntimeOperationClass,
+} from "./runtime-boundary-guard";
 
 export type {
   VisionFallbackBudgetState,
