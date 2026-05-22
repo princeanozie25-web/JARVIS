@@ -46,6 +46,30 @@ export const ENVIRONMENT_PASSIVE_STATE_ORIGIN_KINDS = [
   "metadata_import",
 ] as const;
 
+export const ENVIRONMENT_CURRENT_STATE_REASONS = [
+  "current_observation",
+  "state_absent",
+  "state_stale",
+  "state_expired",
+  "state_conflict",
+  "low_confidence",
+  "freshness_unknown",
+] as const;
+
+export const ENVIRONMENT_EVALUATED_FRESHNESS_STATUSES = [
+  "fresh",
+  "stale",
+  "expired",
+  "unknown",
+] as const;
+
+export const DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG = {
+  staleAfterMs: 5 * 60 * 1_000,
+  expireAfterMs: 30 * 60 * 1_000,
+  minConfidence: 0.5,
+  conflictWindowMs: 1_000,
+} as const;
+
 export type EnvironmentStateLayer = (typeof ENVIRONMENT_STATE_LAYERS)[number];
 export type EnvironmentObservedValueCategory =
   (typeof ENVIRONMENT_OBSERVED_VALUE_CATEGORIES)[number];
@@ -55,6 +79,10 @@ export type EnvironmentPassiveStateSourceKind =
   (typeof ENVIRONMENT_PASSIVE_STATE_SOURCE_KINDS)[number];
 export type EnvironmentPassiveStateOriginKind =
   (typeof ENVIRONMENT_PASSIVE_STATE_ORIGIN_KINDS)[number];
+export type EnvironmentCurrentStateReason =
+  (typeof ENVIRONMENT_CURRENT_STATE_REASONS)[number];
+export type EnvironmentEvaluatedFreshnessStatus =
+  (typeof ENVIRONMENT_EVALUATED_FRESHNESS_STATUSES)[number];
 
 export const EnvironmentStateLayerSchema = z.enum(ENVIRONMENT_STATE_LAYERS);
 export const EnvironmentObservedValueCategorySchema = z.enum(
@@ -68,6 +96,12 @@ export const EnvironmentPassiveStateSourceKindSchema = z.enum(
 );
 export const EnvironmentPassiveStateOriginKindSchema = z.enum(
   ENVIRONMENT_PASSIVE_STATE_ORIGIN_KINDS,
+);
+export const EnvironmentCurrentStateReasonSchema = z.enum(
+  ENVIRONMENT_CURRENT_STATE_REASONS,
+);
+export const EnvironmentEvaluatedFreshnessStatusSchema = z.enum(
+  ENVIRONMENT_EVALUATED_FRESHNESS_STATUSES,
 );
 
 export const EnvironmentObservedValueSchema = z
@@ -120,11 +154,55 @@ export const EnvironmentStateUnknownSchema = z.strictObject({
   capabilityId: EnvironmentCapabilityIdSchema,
   stateLayer: z.literal("observed_state"),
   status: z.literal("unknown"),
-  reason: z.literal("state_absent"),
+  reason: EnvironmentCurrentStateReasonSchema.exclude(["current_observation"]),
   metadataOnly: z.literal(true),
   canonical: z.literal(false),
   authoritative: z.literal(false),
   physicalSideEffects: z.literal(false),
+});
+
+export const PassiveEnvironmentStateFreshnessConfigSchema = z
+  .strictObject({
+    staleAfterMs: z
+      .number()
+      .int()
+      .positive()
+      .default(DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.staleAfterMs),
+    expireAfterMs: z
+      .number()
+      .int()
+      .positive()
+      .default(
+        DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.expireAfterMs,
+      ),
+    minConfidence: z
+      .number()
+      .min(0)
+      .max(1)
+      .default(
+        DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.minConfidence,
+      ),
+    conflictWindowMs: z
+      .number()
+      .int()
+      .nonnegative()
+      .default(
+        DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.conflictWindowMs,
+      ),
+  })
+  .refine((config) => config.expireAfterMs >= config.staleAfterMs, {
+    message: "expireAfterMs must be greater than or equal to staleAfterMs",
+    path: ["expireAfterMs"],
+  });
+
+export const EvaluatedPassiveEnvironmentStateFreshnessSchema = z.strictObject({
+  status: EnvironmentEvaluatedFreshnessStatusSchema,
+  observedAgeMs: z.number().int().nonnegative().nullable(),
+  staleAfterMs: z.number().int().positive(),
+  expireAfterMs: z.number().int().positive(),
+  metadataOnly: z.literal(true),
+  canonical: z.literal(false),
+  authoritative: z.literal(false),
 });
 
 export type EnvironmentObservedValue = z.infer<
@@ -142,10 +220,42 @@ export type PassiveEnvironmentStateRecord = z.infer<
 export type EnvironmentStateUnknown = z.infer<
   typeof EnvironmentStateUnknownSchema
 >;
+export type PassiveEnvironmentStateFreshnessConfig = z.infer<
+  typeof PassiveEnvironmentStateFreshnessConfigSchema
+>;
+export type EvaluatedPassiveEnvironmentStateFreshness = z.infer<
+  typeof EvaluatedPassiveEnvironmentStateFreshnessSchema
+>;
 
 export type PassiveEnvironmentStateResolution =
   | { found: true; record: PassiveEnvironmentStateRecord }
   | { found: false; unknown: EnvironmentStateUnknown };
+
+export type CurrentPassiveEnvironmentStateResolution =
+  | {
+      found: true;
+      current: PassiveEnvironmentStateRecord;
+      freshness: EvaluatedPassiveEnvironmentStateFreshness;
+      currentTruth: false;
+      policySensitiveUsable: boolean;
+      reason: "current_observation";
+      metadataOnly: true;
+      canonical: false;
+      authoritative: false;
+      physicalSideEffects: false;
+    }
+  | {
+      found: false;
+      unknown: EnvironmentStateUnknown;
+      lastKnown: PassiveEnvironmentStateRecord | null;
+      freshness: EvaluatedPassiveEnvironmentStateFreshness | null;
+      currentTruth: false;
+      policySensitiveUsable: false;
+      metadataOnly: true;
+      canonical: false;
+      authoritative: false;
+      physicalSideEffects: false;
+    };
 
 export interface PassiveEnvironmentStateValidationResult {
   ok: boolean;
@@ -209,6 +319,166 @@ export function resolvePassiveEnvironmentState(input: {
       authoritative: false,
       physicalSideEffects: false,
     },
+  };
+}
+
+function normalizeFreshnessConfig(
+  config: Partial<PassiveEnvironmentStateFreshnessConfig> | undefined,
+): PassiveEnvironmentStateFreshnessConfig {
+  return PassiveEnvironmentStateFreshnessConfigSchema.parse(config ?? {});
+}
+
+function unknownState(input: {
+  deviceId: string;
+  capabilityId: EnvironmentCapabilityId;
+  reason: Exclude<EnvironmentCurrentStateReason, "current_observation">;
+}): EnvironmentStateUnknown {
+  return {
+    deviceId: EnvironmentIdSchema.parse(input.deviceId),
+    capabilityId: EnvironmentCapabilityIdSchema.parse(input.capabilityId),
+    stateLayer: "observed_state",
+    status: "unknown",
+    reason: input.reason,
+    metadataOnly: true,
+    canonical: false,
+    authoritative: false,
+    physicalSideEffects: false,
+  };
+}
+
+export function evaluatePassiveEnvironmentStateFreshness(input: {
+  record?: PassiveEnvironmentStateRecord | null;
+  nowMs: number;
+  config?: Partial<PassiveEnvironmentStateFreshnessConfig>;
+}): EvaluatedPassiveEnvironmentStateFreshness {
+  const config = normalizeFreshnessConfig(input.config);
+  if (!input.record) {
+    return {
+      status: "unknown",
+      observedAgeMs: null,
+      staleAfterMs: config.staleAfterMs,
+      expireAfterMs: config.expireAfterMs,
+      metadataOnly: true,
+      canonical: false,
+      authoritative: false,
+    };
+  }
+
+  const record = PassiveEnvironmentStateRecordSchema.parse(input.record);
+  const observedAgeMs = Math.max(0, input.nowMs - record.observedAt);
+  let status: EnvironmentEvaluatedFreshnessStatus = "fresh";
+  if (record.freshness.status === "unknown") status = "unknown";
+  else if (observedAgeMs >= config.expireAfterMs) status = "expired";
+  else if (
+    record.freshness.status === "stale" ||
+    observedAgeMs >= config.staleAfterMs
+  ) {
+    status = "stale";
+  }
+
+  return {
+    status,
+    observedAgeMs,
+    staleAfterMs: config.staleAfterMs,
+    expireAfterMs: config.expireAfterMs,
+    metadataOnly: true,
+    canonical: false,
+    authoritative: false,
+  };
+}
+
+function observedValuesEqual(
+  left: PassiveEnvironmentStateRecord,
+  right: PassiveEnvironmentStateRecord,
+): boolean {
+  return (
+    JSON.stringify(left.observedValue) === JSON.stringify(right.observedValue)
+  );
+}
+
+function findConflict(input: {
+  newest: PassiveEnvironmentStateRecord;
+  records: PassiveEnvironmentStateRecord[];
+  conflictWindowMs: number;
+}): PassiveEnvironmentStateRecord | undefined {
+  return input.records.find(
+    (record) =>
+      record.id !== input.newest.id &&
+      Math.abs(input.newest.observedAt - record.observedAt) <=
+        input.conflictWindowMs &&
+      !observedValuesEqual(input.newest, record),
+  );
+}
+
+export function resolveCurrentPassiveEnvironmentState(input: {
+  records: PassiveEnvironmentStateRecord[];
+  deviceId: string;
+  capabilityId: EnvironmentCapabilityId;
+  nowMs: number;
+  config?: Partial<PassiveEnvironmentStateFreshnessConfig>;
+  policySensitive?: boolean;
+}): CurrentPassiveEnvironmentStateResolution {
+  const config = normalizeFreshnessConfig(input.config);
+  const matching = input.records
+    .map((record) => PassiveEnvironmentStateRecordSchema.parse(record))
+    .filter(
+      (record) =>
+        record.deviceId === input.deviceId &&
+        record.capabilityId === input.capabilityId,
+    )
+    .sort((a, b) => b.observedAt - a.observedAt || a.id.localeCompare(b.id));
+
+  const newest = matching[0] ?? null;
+  const freshness = evaluatePassiveEnvironmentStateFreshness({
+    record: newest,
+    nowMs: input.nowMs,
+    config,
+  });
+
+  const fail = (
+    reason: Exclude<EnvironmentCurrentStateReason, "current_observation">,
+  ): CurrentPassiveEnvironmentStateResolution => ({
+    found: false,
+    unknown: unknownState({
+      deviceId: input.deviceId,
+      capabilityId: input.capabilityId,
+      reason,
+    }),
+    lastKnown: newest,
+    freshness,
+    currentTruth: false,
+    policySensitiveUsable: false,
+    metadataOnly: true,
+    canonical: false,
+    authoritative: false,
+    physicalSideEffects: false,
+  });
+
+  if (!newest) return fail("state_absent");
+  if (newest.confidence < config.minConfidence) return fail("low_confidence");
+
+  const conflict = findConflict({
+    newest,
+    records: matching,
+    conflictWindowMs: config.conflictWindowMs,
+  });
+  if (conflict) return fail("state_conflict");
+
+  if (freshness.status === "unknown") return fail("freshness_unknown");
+  if (freshness.status === "expired") return fail("state_expired");
+  if (freshness.status === "stale") return fail("state_stale");
+
+  return {
+    found: true,
+    current: newest,
+    freshness,
+    currentTruth: false,
+    policySensitiveUsable: input.policySensitive === true,
+    reason: "current_observation",
+    metadataOnly: true,
+    canonical: false,
+    authoritative: false,
+    physicalSideEffects: false,
   };
 }
 

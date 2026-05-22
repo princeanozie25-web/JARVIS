@@ -3,10 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PHASE6_FEATURE_FLAGS,
+  DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG,
   PHASE6_DISABLED_FEATURES,
   PassiveEnvironmentStateRecordSchema,
   classifyEnvironmentStateLayer,
   createEnvironmentRegistry,
+  evaluatePassiveEnvironmentStateFreshness,
+  resolveCurrentPassiveEnvironmentState,
   resolvePassiveEnvironmentState,
   validatePassiveEnvironmentStateRecord,
   type EnvironmentRegistry,
@@ -232,5 +235,244 @@ describe("Phase 6B1 passive environment state schema", () => {
       expect(source).not.toContain("resolvePassiveEnvironmentState");
       expect(source).not.toContain("environment/state");
     }
+  });
+});
+
+describe("Phase 6B2 passive environment freshness and unknown propagation", () => {
+  it("keeps fresh state usable as observed metadata without promoting it to current truth", () => {
+    const record = stateRecord({ observedAt: 10_000, confidence: 0.9 });
+
+    expect(
+      evaluatePassiveEnvironmentStateFreshness({
+        record,
+        nowMs: 20_000,
+      }),
+    ).toEqual({
+      status: "fresh",
+      observedAgeMs: 10_000,
+      staleAfterMs:
+        DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.staleAfterMs,
+      expireAfterMs:
+        DEFAULT_PASSIVE_ENVIRONMENT_STATE_FRESHNESS_CONFIG.expireAfterMs,
+      metadataOnly: true,
+      canonical: false,
+      authoritative: false,
+    });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [record],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 20_000,
+        policySensitive: true,
+      }),
+    ).toMatchObject({
+      found: true,
+      current: record,
+      currentTruth: false,
+      policySensitiveUsable: true,
+      reason: "current_observation",
+      metadataOnly: true,
+      canonical: false,
+      authoritative: false,
+      physicalSideEffects: false,
+    });
+  });
+
+  it("resolves stale state to unknown for current-state queries", () => {
+    const stale = stateRecord({ observedAt: 1_000 });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [stale],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 10_000,
+        config: {
+          staleAfterMs: 5_000,
+          expireAfterMs: 20_000,
+        },
+        policySensitive: true,
+      }),
+    ).toMatchObject({
+      found: false,
+      unknown: {
+        status: "unknown",
+        reason: "state_stale",
+      },
+      lastKnown: stale,
+      freshness: {
+        status: "stale",
+      },
+      currentTruth: false,
+      policySensitiveUsable: false,
+    });
+  });
+
+  it("resolves expired state to unknown", () => {
+    const expired = stateRecord({ observedAt: 1_000 });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [expired],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 40_000,
+        config: {
+          staleAfterMs: 5_000,
+          expireAfterMs: 20_000,
+        },
+      }),
+    ).toMatchObject({
+      found: false,
+      unknown: {
+        status: "unknown",
+        reason: "state_expired",
+      },
+      freshness: {
+        status: "expired",
+      },
+      currentTruth: false,
+    });
+  });
+
+  it("resolves missing state to unknown", () => {
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 10_000,
+      }),
+    ).toMatchObject({
+      found: false,
+      unknown: {
+        status: "unknown",
+        reason: "state_absent",
+      },
+      lastKnown: null,
+      freshness: {
+        status: "unknown",
+        observedAgeMs: null,
+      },
+    });
+  });
+
+  it("resolves conflicting fresh records to unknown", () => {
+    const on = stateRecord({
+      id: "state:on",
+      observedAt: 10_000,
+      observedValue: { kind: "category", category: "on" },
+    });
+    const off = stateRecord({
+      id: "state:off",
+      observedAt: 10_500,
+      observedValue: { kind: "category", category: "off" },
+    });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [on, off],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 11_000,
+        config: { conflictWindowMs: 1_000 },
+      }),
+    ).toMatchObject({
+      found: false,
+      unknown: {
+        reason: "state_conflict",
+      },
+      currentTruth: false,
+      policySensitiveUsable: false,
+    });
+  });
+
+  it("resolves low-confidence state to unknown below threshold", () => {
+    const lowConfidence = stateRecord({
+      observedAt: 10_000,
+      confidence: 0.4,
+    });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [lowConfidence],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 11_000,
+        config: { minConfidence: 0.5 },
+      }),
+    ).toMatchObject({
+      found: false,
+      unknown: {
+        reason: "low_confidence",
+      },
+      lastKnown: lowConfidence,
+      currentTruth: false,
+    });
+  });
+
+  it("never promotes last-known state to current truth", () => {
+    const lastKnown = stateRecord({ observedAt: 1_000 });
+    const result = resolveCurrentPassiveEnvironmentState({
+      records: [lastKnown],
+      deviceId: "device:lamp",
+      capabilityId: "light.observe",
+      nowMs: 40_000,
+      config: {
+        staleAfterMs: 5_000,
+        expireAfterMs: 20_000,
+      },
+    });
+
+    expect(result).toMatchObject({
+      found: false,
+      lastKnown,
+      currentTruth: false,
+      policySensitiveUsable: false,
+    });
+    expect(JSON.stringify(result)).not.toContain('"currentTruth":true');
+  });
+
+  it("excludes stale and expired values from policy-sensitive outputs", () => {
+    const stale = stateRecord({ id: "state:stale", observedAt: 1_000 });
+    const expired = stateRecord({ id: "state:expired", observedAt: 1_000 });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [stale],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 10_000,
+        config: {
+          staleAfterMs: 5_000,
+          expireAfterMs: 20_000,
+        },
+        policySensitive: true,
+      }),
+    ).toMatchObject({
+      found: false,
+      policySensitiveUsable: false,
+      unknown: { reason: "state_stale" },
+    });
+
+    expect(
+      resolveCurrentPassiveEnvironmentState({
+        records: [expired],
+        deviceId: "device:lamp",
+        capabilityId: "light.observe",
+        nowMs: 40_000,
+        config: {
+          staleAfterMs: 5_000,
+          expireAfterMs: 20_000,
+        },
+        policySensitive: true,
+      }),
+    ).toMatchObject({
+      found: false,
+      policySensitiveUsable: false,
+      unknown: { reason: "state_expired" },
+    });
   });
 });
