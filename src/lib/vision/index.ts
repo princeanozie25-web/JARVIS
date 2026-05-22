@@ -1,4 +1,26 @@
 export {
+  VISION_AUDIT_CATEGORIES,
+  VISION_AUDIT_MODULES,
+  VISION_AUDIT_TELEMETRY_EVENT_TYPES,
+  VISION_AUDIT_VIOLATION_CODES,
+  VISION_AUDIT_WARNING_CODES,
+  VisionAuditCategorySchema,
+  VisionAuditDisabledFeatureStatusSchema,
+  VisionAuditGateReplayStepSchema,
+  VisionAuditGateResultSchema,
+  VisionAuditGateTelemetryEventSchema,
+  VisionAuditModuleCoverageSchema,
+  VisionAuditModuleSchema,
+  VisionAuditTelemetryEventTypeSchema,
+  VisionAuditViolationCodeSchema,
+  VisionAuditWarningCodeSchema,
+  VisionDeveloperObservabilitySummarySchema,
+  createVisionAuditGateReplayStep,
+  createVisionAuditGateTelemetryEvent,
+  evaluateVisionAuditGate,
+} from "./audit-gate";
+
+export {
   VISION_MANIFEST_ALLOWED_REPLAY_EDGE_CLASSES,
   VISION_MANIFEST_ALLOWED_REPLAY_NODE_CLASSES,
   VISION_MANIFEST_ALLOWED_TELEMETRY_FIELDS,
@@ -218,6 +240,20 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionAuditCategory,
+  VisionAuditDisabledFeatureStatus,
+  VisionAuditGateReplayStep,
+  VisionAuditGateResult,
+  VisionAuditGateTelemetryEvent,
+  VisionAuditModule,
+  VisionAuditModuleCoverage,
+  VisionAuditTelemetryEventType,
+  VisionAuditViolationCode,
+  VisionAuditWarningCode,
+  VisionDeveloperObservabilitySummary,
+} from "./audit-gate";
 
 export type {
   VisionDeveloperObservabilityManifest,
