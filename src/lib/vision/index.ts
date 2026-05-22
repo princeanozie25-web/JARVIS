@@ -1,4 +1,34 @@
 export {
+  DEFAULT_VISION_PROVIDER_FEATURE_FLAGS,
+  VISION_LOCAL_PROVIDER_CONTRACTS,
+  VISION_LOCAL_PROVIDER_IDS,
+  VISION_PROVIDER_CAPABILITIES,
+  VISION_PROVIDER_DISABLED_FEATURES,
+  VISION_PROVIDER_ELIGIBILITY_REASONS,
+  VISION_PROVIDER_ELIGIBILITY_STATUSES,
+  VISION_PROVIDER_RESULT_CLASSES,
+  VISION_PROVIDER_TELEMETRY_EVENT_TYPES,
+  VisionLocalProviderContractSchema,
+  VisionLocalProviderIdSchema,
+  VisionProviderCapabilitySchema,
+  VisionProviderDisabledFeatureSchema,
+  VisionProviderEligibilityDecisionSchema,
+  VisionProviderEligibilityReasonSchema,
+  VisionProviderEligibilityStatusSchema,
+  VisionProviderFeatureFlagsSchema,
+  VisionProviderReplayStepSchema,
+  VisionProviderResultClassSchema,
+  VisionProviderResultSchema,
+  VisionProviderTelemetryEventSchema,
+  VisionProviderTelemetryEventTypeSchema,
+  confidenceBandForScore,
+  createVisionProviderReplayStep,
+  createVisionProviderResult,
+  createVisionProviderTelemetryEvent,
+  findEligibleVisionProviders,
+} from "./local-provider-contract";
+
+export {
   DEFAULT_VISION_FRAME_FEATURE_FLAGS,
   VISION_FRAME_DISABLED_FEATURES,
   VISION_FRAME_INGESTION_REASONS,
@@ -73,6 +103,22 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionLocalProviderContract,
+  VisionLocalProviderId,
+  VisionProviderCapability,
+  VisionProviderDisabledFeature,
+  VisionProviderEligibilityDecision,
+  VisionProviderEligibilityReason,
+  VisionProviderEligibilityStatus,
+  VisionProviderFeatureFlags,
+  VisionProviderReplayStep,
+  VisionProviderResult,
+  VisionProviderResultClass,
+  VisionProviderTelemetryEvent,
+  VisionProviderTelemetryEventType,
+} from "./local-provider-contract";
 
 export type {
   VisionFrameDescriptor,
