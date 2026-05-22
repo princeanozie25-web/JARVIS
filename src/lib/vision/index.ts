@@ -1,4 +1,35 @@
 export {
+  VISION_MANIFEST_ALLOWED_REPLAY_EDGE_CLASSES,
+  VISION_MANIFEST_ALLOWED_REPLAY_NODE_CLASSES,
+  VISION_MANIFEST_ALLOWED_TELEMETRY_FIELDS,
+  VISION_MANIFEST_DISABLED_FEATURES,
+  VISION_MANIFEST_FORBIDDEN_PAYLOAD_CLASSES,
+  VISION_MANIFEST_PHASES,
+  VISION_MANIFEST_TELEMETRY_EVENT_TYPES,
+  VISION_MANIFEST_VIOLATION_CODES,
+  VisionDeveloperObservabilityManifestSchema,
+  VisionDisabledFeatureManifestSchema,
+  VisionManifestAllowedReplayEdgeClassSchema,
+  VisionManifestAllowedReplayNodeClassSchema,
+  VisionManifestAllowedTelemetryFieldSchema,
+  VisionManifestDisabledFeatureSchema,
+  VisionManifestForbiddenPayloadClassSchema,
+  VisionManifestPhaseSchema,
+  VisionManifestReplayStepSchema,
+  VisionManifestTelemetryEventSchema,
+  VisionManifestTelemetryEventTypeSchema,
+  VisionManifestViolationCodeSchema,
+  VisionPrivacyTelemetryManifestSchema,
+  VisionPrivacyTelemetryManifestValidationSchema,
+  VisionRedactionPolicyManifestSchema,
+  VisionReplayGraphManifestSchema,
+  createDefaultVisionPrivacyTelemetryManifest,
+  createVisionManifestReplayStep,
+  createVisionManifestTelemetryEvent,
+  validateVisionPrivacyTelemetryManifest,
+} from "./privacy-telemetry-manifest";
+
+export {
   DEFAULT_VISION_RUNTIME_BOUNDARY_FEATURE_FLAGS,
   VISION_RUNTIME_ALLOWED_OPERATION_CLASSES,
   VISION_RUNTIME_BLOCKED_AUTHORITY_CLASSES,
@@ -187,6 +218,25 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionDeveloperObservabilityManifest,
+  VisionDisabledFeatureManifest,
+  VisionManifestAllowedReplayEdgeClass,
+  VisionManifestAllowedReplayNodeClass,
+  VisionManifestAllowedTelemetryField,
+  VisionManifestDisabledFeature,
+  VisionManifestForbiddenPayloadClass,
+  VisionManifestPhase,
+  VisionManifestReplayStep,
+  VisionManifestTelemetryEvent,
+  VisionManifestTelemetryEventType,
+  VisionManifestViolationCode,
+  VisionPrivacyTelemetryManifest,
+  VisionPrivacyTelemetryManifestValidation,
+  VisionRedactionPolicyManifest,
+  VisionReplayGraphManifest,
+} from "./privacy-telemetry-manifest";
 
 export type {
   VisionRuntimeAllowedOperationClass,
