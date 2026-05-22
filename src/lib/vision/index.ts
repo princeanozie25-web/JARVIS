@@ -1,4 +1,38 @@
 export {
+  DEFAULT_VISION_CONTEXT_CAPS,
+  DEFAULT_VISION_CONTEXT_FEATURE_FLAGS,
+  VISION_CONTEXT_DISABLED_FEATURES,
+  VISION_CONTEXT_TELEMETRY_EVENT_TYPES,
+  VisionContextCapsSchema,
+  VisionContextClassSummarySchema,
+  VisionContextDisabledFeatureSchema,
+  VisionContextFeatureFlagsSchema,
+  VisionContextProvenanceSchema,
+  VisionContextReplayStepSchema,
+  VisionContextSnapshotSchema,
+  VisionContextTelemetryEventSchema,
+  VisionContextTelemetryEventTypeSchema,
+  assembleVisionContext,
+  createVisionContextReplayStep,
+  createVisionContextTelemetryEvent,
+} from "./context-assembly";
+
+export {
+  DEFAULT_VISION_OBSERVATION_FEATURE_FLAGS,
+  VISION_OBSERVATION_CLASSES,
+  VISION_OBSERVATION_DISABLED_FEATURES,
+  VisionObservationAggregateSchema,
+  VisionObservationClassSchema,
+  VisionObservationDisabledFeatureSchema,
+  VisionObservationFeatureFlagsSchema,
+  VisionObservationReplayStepSchema,
+  VisionObservationSchema,
+  aggregateVisionObservations,
+  createVisionObservation,
+  createVisionObservationReplayStep,
+} from "./observation";
+
+export {
   DEFAULT_VISION_PROVIDER_FEATURE_FLAGS,
   VISION_LOCAL_PROVIDER_CONTRACTS,
   VISION_LOCAL_PROVIDER_IDS,
@@ -103,6 +137,27 @@ export {
   buildVisionFailureReplayGraph,
   createVisionFailureReplayRecord,
 } from "./failure-replay";
+
+export type {
+  VisionContextCaps,
+  VisionContextClassSummary,
+  VisionContextDisabledFeature,
+  VisionContextFeatureFlags,
+  VisionContextProvenance,
+  VisionContextReplayStep,
+  VisionContextSnapshot,
+  VisionContextTelemetryEvent,
+  VisionContextTelemetryEventType,
+} from "./context-assembly";
+
+export type {
+  VisionObservation,
+  VisionObservationAggregate,
+  VisionObservationClass,
+  VisionObservationDisabledFeature,
+  VisionObservationFeatureFlags,
+  VisionObservationReplayStep,
+} from "./observation";
 
 export type {
   VisionLocalProviderContract,
