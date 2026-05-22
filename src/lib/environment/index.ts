@@ -80,6 +80,20 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  ENVIRONMENT_ACTION_APPROVAL_SURFACES,
+  ENVIRONMENT_ACTION_LIFECYCLE_STATES,
+  ENVIRONMENT_ACTION_LIFECYCLE_TRANSITION_REASONS,
+  EnvironmentActionApprovalMetadataSchema,
+  EnvironmentActionApprovalSurfaceSchema,
+  EnvironmentActionLifecycleProposalSchema,
+  EnvironmentActionLifecycleStateSchema,
+  EnvironmentActionLifecycleTransitionReasonSchema,
+  approveEnvironmentActionLifecycleProposal,
+  cancelEnvironmentActionLifecycleProposal,
+  createEnvironmentActionLifecycleProposal,
+  expireEnvironmentActionLifecycleProposal,
+} from "./action-lifecycle";
+export {
   ENVIRONMENT_DRY_RUN_PLAN_DECISIONS,
   ENVIRONMENT_DRY_RUN_PLAN_STATE_REASONS,
   EnvironmentDryRunActionPlanSchema,
@@ -196,6 +210,14 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  EnvironmentActionApprovalMetadata,
+  EnvironmentActionApprovalSurface,
+  EnvironmentActionLifecycleProposal,
+  EnvironmentActionLifecycleState,
+  EnvironmentActionLifecycleTransitionReason,
+  EnvironmentActionLifecycleTransitionResult,
+} from "./action-lifecycle";
 export type {
   EnvironmentDryRunActionPlan,
   EnvironmentDryRunPlanDecision,
