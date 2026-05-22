@@ -80,6 +80,22 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  DEFAULT_ENVIRONMENT_LOCAL_COMMAND_EXECUTION_CONSENT,
+  ENVIRONMENT_LOCAL_COMMAND_ADAPTER_KINDS,
+  ENVIRONMENT_LOCAL_COMMAND_EXECUTION_STATUSES,
+  ENVIRONMENT_LOCAL_COMMAND_VERIFICATION_STATUSES,
+  EnvironmentLocalCommandAdapterContractSchema,
+  EnvironmentLocalCommandAdapterKindSchema,
+  EnvironmentLocalCommandExecutionConsentSchema,
+  EnvironmentLocalCommandExecutionResultSchema,
+  EnvironmentLocalCommandExecutionStatusSchema,
+  EnvironmentLocalCommandVerificationResultSchema,
+  EnvironmentLocalCommandVerificationStatusSchema,
+  createEnvironmentLocalCommandAdapterContract,
+  executeEnvironmentLocalCommandBoundary,
+  verifyEnvironmentLocalCommandBoundary,
+} from "./action-local-command";
+export {
   ENVIRONMENT_LOCAL_COMMAND_ACTION_KINDS,
   ENVIRONMENT_LOCAL_COMMAND_PREFLIGHT_RESULTS,
   EnvironmentLocalCommandActionKindSchema,
@@ -235,6 +251,17 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  CreateEnvironmentLocalCommandAdapterContractInput,
+  EnvironmentLocalCommandAdapterContract,
+  EnvironmentLocalCommandAdapterKind,
+  EnvironmentLocalCommandExecutionConsent,
+  EnvironmentLocalCommandExecutionResult,
+  EnvironmentLocalCommandExecutionStatus,
+  EnvironmentLocalCommandVerificationResult,
+  EnvironmentLocalCommandVerificationStatus,
+  ExecuteEnvironmentLocalCommandBoundaryInput,
+} from "./action-local-command";
 export type {
   EnvironmentLocalCommandActionKind,
   EnvironmentLocalCommandContract,
