@@ -73,3 +73,69 @@ export type {
   RoutineSchedulingPolicyReason,
   RoutineSchedulingPolicyTable,
 } from "./scheduling-policy";
+
+export {
+  DEFAULT_TICK_SOURCE_CONFIG,
+  ROUTINE_ALLOWED_TICK_SOURCE_MODES,
+  ROUTINE_DISABLED_TICK_SOURCE_MODES,
+  ROUTINE_SCHEDULER_TICK_DECISIONS,
+  ROUTINE_SCHEDULER_TICK_REASONS,
+  ROUTINE_SCHEDULER_TICK_TELEMETRY_EVENT_TYPES,
+  ROUTINE_TICK_SOURCE_MODES,
+  CreateSchedulerTickInputSchema,
+  RoutineAllowedTickSourceModeSchema,
+  RoutineDisabledTickSourceModeSchema,
+  RoutineSchedulerTickDecisionSchema,
+  RoutineSchedulerTickReasonSchema,
+  RoutineSchedulerTickSchema,
+  RoutineSchedulerTickTelemetryEventSchema,
+  RoutineSchedulerTickTelemetryEventTypeSchema,
+  RoutineSchedulerTickValidationSchema,
+  RoutineTickSourceModeSchema,
+  TickSourceConfigSchema,
+  createSchedulerTick,
+  createSchedulerTickTelemetryEvent,
+  validateSchedulerTick,
+} from "./tick-source";
+
+export type {
+  CreateSchedulerTickInput,
+  RoutineAllowedTickSourceMode,
+  RoutineDisabledTickSourceMode,
+  RoutineSchedulerTick,
+  RoutineSchedulerTickDecision,
+  RoutineSchedulerTickReason,
+  RoutineSchedulerTickTelemetryEvent,
+  RoutineSchedulerTickTelemetryEventType,
+  RoutineSchedulerTickValidation,
+  RoutineTickSourceMode,
+  TickSourceConfig,
+} from "./tick-source";
+
+export {
+  DEFAULT_ROUTINE_CONCURRENCY_POLICY,
+  ROUTINE_RUN_LEASE_REASONS,
+  ROUTINE_RUN_LEASE_STATES,
+  ROUTINE_RUN_LEASE_TELEMETRY_EVENT_TYPES,
+  EvaluateRoutineRunLeaseInputSchema,
+  RoutineConcurrencyPolicySchema,
+  RoutineRunLeaseReasonSchema,
+  RoutineRunLeaseSchema,
+  RoutineRunLeaseStateSchema,
+  RoutineRunLeaseTelemetryEventSchema,
+  RoutineRunLeaseTelemetryEventTypeSchema,
+  cancelRoutineRunLease,
+  createRoutineRunLeaseTelemetryEvent,
+  evaluateRoutineRunLease,
+  expireRoutineRunLease,
+} from "./run-lease";
+
+export type {
+  EvaluateRoutineRunLeaseInput,
+  RoutineConcurrencyPolicy,
+  RoutineRunLease,
+  RoutineRunLeaseReason,
+  RoutineRunLeaseState,
+  RoutineRunLeaseTelemetryEvent,
+  RoutineRunLeaseTelemetryEventType,
+} from "./run-lease";
