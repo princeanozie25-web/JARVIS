@@ -80,6 +80,22 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  ENVIRONMENT_ACTION_EXECUTION_ADAPTER_KINDS,
+  ENVIRONMENT_ACTION_EXECUTION_REASONS,
+  ENVIRONMENT_ACTION_EXECUTION_STATUSES,
+  ENVIRONMENT_ACTION_VERIFICATION_STATUSES,
+  EnvironmentActionExecutionAdapterKindSchema,
+  EnvironmentActionExecutionAdapterSchema,
+  EnvironmentActionExecutionReasonSchema,
+  EnvironmentActionExecutionResultSchema,
+  EnvironmentActionExecutionStatusSchema,
+  EnvironmentActionVerificationResultSchema,
+  EnvironmentActionVerificationStatusSchema,
+  createFakeLocalEnvironmentActionAdapter,
+  executeEnvironmentActionWithFakeLocalAdapter,
+  verifyFakeLocalEnvironmentActionExecution,
+} from "./action-execution";
+export {
   ENVIRONMENT_ACTION_APPROVAL_SURFACES,
   ENVIRONMENT_ACTION_LIFECYCLE_STATES,
   ENVIRONMENT_ACTION_LIFECYCLE_TRANSITION_REASONS,
@@ -210,6 +226,17 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  CreateFakeLocalEnvironmentActionAdapterInput,
+  EnvironmentActionExecutionAdapter,
+  EnvironmentActionExecutionAdapterKind,
+  EnvironmentActionExecutionReason,
+  EnvironmentActionExecutionResult,
+  EnvironmentActionExecutionStatus,
+  EnvironmentActionVerificationResult,
+  EnvironmentActionVerificationStatus,
+  ExecuteEnvironmentActionWithFakeLocalAdapterInput,
+} from "./action-execution";
 export type {
   EnvironmentActionApprovalMetadata,
   EnvironmentActionApprovalSurface,
