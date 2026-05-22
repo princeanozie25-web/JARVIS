@@ -80,6 +80,17 @@ export {
   deriveEnvironmentPresence,
 } from "./presence";
 export {
+  ENVIRONMENT_DRY_RUN_PLAN_DECISIONS,
+  ENVIRONMENT_DRY_RUN_PLAN_STATE_REASONS,
+  EnvironmentDryRunActionPlanSchema,
+  EnvironmentDryRunPlanDecisionSchema,
+  EnvironmentDryRunPlanPhaseMarkersSchema,
+  EnvironmentDryRunPlanPolicySummarySchema,
+  EnvironmentDryRunPlanStateReasonSchema,
+  EnvironmentDryRunPlanStateSummarySchema,
+  createDryRunEnvironmentActionPlan,
+} from "./action-planner";
+export {
   ENVIRONMENT_ACTION_INTENT_ACTOR_KINDS,
   ENVIRONMENT_ACTION_INTENT_APPROVAL_EXPECTATIONS,
   ENVIRONMENT_ACTION_INTENT_OPERATIONS,
@@ -185,6 +196,15 @@ export type {
   EnvironmentPresenceStatus,
   EnvironmentPresenceTargetKind,
 } from "./presence";
+export type {
+  EnvironmentDryRunActionPlan,
+  EnvironmentDryRunPlanDecision,
+  EnvironmentDryRunPlanPhaseMarkers,
+  EnvironmentDryRunPlanPolicySummary,
+  EnvironmentDryRunPlanStateReason,
+  EnvironmentDryRunPlanStateSummary,
+  EnvironmentDryRunPlannerResult,
+} from "./action-planner";
 export type {
   EnvironmentActionIntent,
   EnvironmentActionIntentActor,
