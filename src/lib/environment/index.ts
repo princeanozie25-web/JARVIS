@@ -70,6 +70,16 @@ export {
   ingestPassiveEnvironmentState,
 } from "./state-ingestion";
 export {
+  ENVIRONMENT_PRESENCE_REASONS,
+  ENVIRONMENT_PRESENCE_STATUSES,
+  ENVIRONMENT_PRESENCE_TARGET_KINDS,
+  EnvironmentPresenceReasonSchema,
+  EnvironmentPresenceSignalSchema,
+  EnvironmentPresenceStatusSchema,
+  EnvironmentPresenceTargetKindSchema,
+  deriveEnvironmentPresence,
+} from "./presence";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -151,3 +161,10 @@ export type {
   PassiveEnvironmentStateAdapter,
   PassiveEnvironmentStateAdapterReadResult,
 } from "./state-ingestion";
+export type {
+  DeriveEnvironmentPresenceInput,
+  EnvironmentPresenceReason,
+  EnvironmentPresenceSignal,
+  EnvironmentPresenceStatus,
+  EnvironmentPresenceTargetKind,
+} from "./presence";
