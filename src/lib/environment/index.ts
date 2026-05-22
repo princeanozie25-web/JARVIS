@@ -64,6 +64,12 @@ export {
   validatePassiveEnvironmentStateRecord,
 } from "./state";
 export {
+  PASSIVE_ENVIRONMENT_ADAPTER_KINDS,
+  PASSIVE_ENVIRONMENT_INGEST_STATUSES,
+  createFakePassiveEnvironmentStateAdapter,
+  ingestPassiveEnvironmentState,
+} from "./state-ingestion";
+export {
   CapabilitySchema,
   DeviceSchema,
   ENVIRONMENT_CAPABILITY_IDS,
@@ -136,3 +142,12 @@ export type {
   PassiveEnvironmentStateResolution,
   PassiveEnvironmentStateValidationResult,
 } from "./state";
+export type {
+  FakePassiveEnvironmentStateAdapterInput,
+  PassiveEnvironmentAdapterKind,
+  PassiveEnvironmentIngestItemResult,
+  PassiveEnvironmentIngestResult,
+  PassiveEnvironmentIngestStatus,
+  PassiveEnvironmentStateAdapter,
+  PassiveEnvironmentStateAdapterReadResult,
+} from "./state-ingestion";
