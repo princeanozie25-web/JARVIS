@@ -290,3 +290,56 @@ export type {
   SelfAuditReportAssemblyTelemetryEvent,
   SelfAuditReportAssemblyTelemetryEventType,
 } from "./self-audit-assembly";
+
+export {
+  COST_USAGE_LATENCY_BANDS,
+  COST_USAGE_REDACTION_STATUSES,
+  COST_USAGE_TELEMETRY_EVENT_TYPES,
+  COST_USAGE_TOKEN_BINS,
+  CostUsageAggregateSchema,
+  CostUsageAggregationWindowSchema,
+  CostUsageInputEventSchema,
+  CostUsageLatencyBandSchema,
+  CostUsageRedactionStatusSchema,
+  CostUsageTelemetryEventSchema,
+  CostUsageTelemetryEventTypeSchema,
+  CostUsageTokenBinSchema,
+  aggregateCostUsage,
+  createCostUsageTelemetryEvent,
+} from "./cost-usage";
+
+export type {
+  CostUsageAggregate,
+  CostUsageAggregationWindow,
+  CostUsageInputEvent,
+  CostUsageLatencyBand,
+  CostUsageRedactionStatus,
+  CostUsageTelemetryEvent,
+  CostUsageTelemetryEventType,
+  CostUsageTokenBin,
+} from "./cost-usage";
+
+export {
+  PROJECT_PROGRESS_EVENT_CLASSES,
+  PROJECT_PROGRESS_REDACTION_STATUSES,
+  PROJECT_PROGRESS_TELEMETRY_EVENT_TYPES,
+  ProjectProgressEventClassSchema,
+  ProjectProgressInputEventSchema,
+  ProjectProgressRedactionStatusSchema,
+  ProjectProgressSummarySchema,
+  ProjectProgressTelemetryEventSchema,
+  ProjectProgressTelemetryEventTypeSchema,
+  ProjectProgressWindowSchema,
+  createProjectProgressTelemetryEvent,
+  summarizeProjectProgress,
+} from "./project-progress";
+
+export type {
+  ProjectProgressEventClass,
+  ProjectProgressInputEvent,
+  ProjectProgressRedactionStatus,
+  ProjectProgressSummary,
+  ProjectProgressTelemetryEvent,
+  ProjectProgressTelemetryEventType,
+  ProjectProgressWindow,
+} from "./project-progress";
