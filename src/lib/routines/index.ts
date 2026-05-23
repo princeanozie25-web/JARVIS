@@ -343,3 +343,35 @@ export type {
   ProjectProgressTelemetryEventType,
   ProjectProgressWindow,
 } from "./project-progress";
+
+export {
+  NEXT_ACTION_PRIORITIES,
+  NEXT_ACTION_REDACTION_STATUSES,
+  NEXT_ACTION_SUGGESTION_CLASSES,
+  NEXT_ACTION_SUGGESTION_STATUSES,
+  NEXT_ACTION_TELEMETRY_EVENT_TYPES,
+  NextActionPrioritySchema,
+  NextActionRedactionStatusSchema,
+  NextActionSuggestionClassSchema,
+  NextActionSuggestionInputSchema,
+  NextActionSuggestionSchema,
+  NextActionSuggestionStatusSchema,
+  NextActionSuggestionTelemetryEventSchema,
+  NextActionTelemetryEventTypeSchema,
+  SuggestionEngineResultSchema,
+  createNextActionSuggestionsTelemetryEvent,
+  generateNextActionSuggestions,
+  rankNextActionPriority,
+} from "./next-action-suggestions";
+
+export type {
+  NextActionPriority,
+  NextActionRedactionStatus,
+  NextActionSuggestion,
+  NextActionSuggestionClass,
+  NextActionSuggestionInput,
+  NextActionSuggestionStatus,
+  NextActionSuggestionTelemetryEvent,
+  NextActionTelemetryEventType,
+  SuggestionEngineResult,
+} from "./next-action-suggestions";
