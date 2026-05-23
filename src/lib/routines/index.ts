@@ -139,3 +139,40 @@ export type {
   RoutineRunLeaseTelemetryEvent,
   RoutineRunLeaseTelemetryEventType,
 } from "./run-lease";
+
+export {
+  DEFAULT_ROUTINE_KILL_SWITCH_STATE,
+  ROUTINE_KILL_SWITCH_DECISIONS,
+  ROUTINE_KILL_SWITCH_OPERATIONS,
+  ROUTINE_KILL_SWITCH_REASONS,
+  ROUTINE_KILL_SWITCH_REQUEST_ORIGINS,
+  ROUTINE_KILL_SWITCH_STATES,
+  ROUTINE_KILL_SWITCH_TELEMETRY_EVENT_TYPES,
+  RoutineKillSwitchDecisionNameSchema,
+  RoutineKillSwitchDecisionSchema,
+  RoutineKillSwitchEvaluationInputSchema,
+  RoutineKillSwitchOperationSchema,
+  RoutineKillSwitchReasonSchema,
+  RoutineKillSwitchRequestOriginSchema,
+  RoutineKillSwitchStateNameSchema,
+  RoutineKillSwitchStateSchema,
+  RoutineKillSwitchTelemetryEventSchema,
+  RoutineKillSwitchTelemetryEventTypeSchema,
+  assertRoutineKillSwitchAllows,
+  createRoutineKillSwitchState,
+  createRoutineKillSwitchTelemetryEvent,
+  evaluateRoutineKillSwitch,
+} from "./kill-switch";
+
+export type {
+  RoutineKillSwitchDecision,
+  RoutineKillSwitchDecisionName,
+  RoutineKillSwitchEvaluationInput,
+  RoutineKillSwitchOperation,
+  RoutineKillSwitchReason,
+  RoutineKillSwitchRequestOrigin,
+  RoutineKillSwitchState,
+  RoutineKillSwitchStateName,
+  RoutineKillSwitchTelemetryEvent,
+  RoutineKillSwitchTelemetryEventType,
+} from "./kill-switch";
