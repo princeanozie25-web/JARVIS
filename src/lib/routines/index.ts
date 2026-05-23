@@ -445,3 +445,26 @@ export type {
   CalibrationRealizedOutcomeClass,
   CalibrationRelativeDeltaBand,
 } from "./calibration-diff";
+
+export {
+  SUGGESTION_INBOX_STATUSES,
+  SUGGESTION_INBOX_TELEMETRY_EVENT_TYPES,
+  SuggestionInboxItemSchema,
+  SuggestionInboxStatusSchema,
+  SuggestionInboxTelemetryEventSchema,
+  SuggestionInboxTelemetryEventTypeSchema,
+  SuggestionInboxTransitionResultSchema,
+  SuggestionInboxTransitionSchema,
+  createSuggestionInboxItem,
+  createSuggestionInboxTelemetryEvent,
+  transitionSuggestionInboxItem,
+} from "./suggestion-inbox";
+
+export type {
+  SuggestionInboxItem,
+  SuggestionInboxStatus,
+  SuggestionInboxTelemetryEvent,
+  SuggestionInboxTelemetryEventType,
+  SuggestionInboxTransition,
+  SuggestionInboxTransitionResult,
+} from "./suggestion-inbox";
