@@ -468,3 +468,32 @@ export type {
   SuggestionInboxTransition,
   SuggestionInboxTransitionResult,
 } from "./suggestion-inbox";
+
+export {
+  SUGGESTION_APPROVAL_BRIDGE_ALLOWED_ORIGINS,
+  SUGGESTION_APPROVAL_BRIDGE_BLOCKED_ORIGINS,
+  SUGGESTION_APPROVAL_BRIDGE_DECISION_STATES,
+  SUGGESTION_APPROVAL_BRIDGE_ORIGINS,
+  SUGGESTION_APPROVAL_BRIDGE_REASONS,
+  SUGGESTION_APPROVAL_BRIDGE_TELEMETRY_EVENT_TYPES,
+  SuggestionApprovalBridgeDecisionSchema,
+  SuggestionApprovalBridgeDecisionStateSchema,
+  SuggestionApprovalBridgeOriginSchema,
+  SuggestionApprovalBridgeReasonSchema,
+  SuggestionApprovalBridgeRequestSchema,
+  SuggestionApprovalBridgeTelemetryEventSchema,
+  SuggestionApprovalBridgeTelemetryEventTypeSchema,
+  createSuggestionApprovalBridgeRequest,
+  createSuggestionApprovalBridgeTelemetryEvent,
+  evaluateSuggestionApprovalBridge,
+} from "./suggestion-approval-bridge";
+
+export type {
+  SuggestionApprovalBridgeDecision,
+  SuggestionApprovalBridgeDecisionState,
+  SuggestionApprovalBridgeOrigin,
+  SuggestionApprovalBridgeReason,
+  SuggestionApprovalBridgeRequest,
+  SuggestionApprovalBridgeTelemetryEvent,
+  SuggestionApprovalBridgeTelemetryEventType,
+} from "./suggestion-approval-bridge";
