@@ -464,6 +464,11 @@ export {
   type TraceRecordValidationReason,
 } from "./trace-record";
 export {
+  projectTraceRecordToReplayViewer,
+  projectTraceRecordToTimelineItem,
+  projectTraceRecordsToTimelineViewModel,
+} from "./trace-projections";
+export {
   COMMAND_CENTER_OBSERVABILITY_ALLOWED_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_FORBIDDEN_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_QUERY_CATEGORIES,
