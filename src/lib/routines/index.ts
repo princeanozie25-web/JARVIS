@@ -536,3 +536,26 @@ export type {
   RoutinePrivacyTelemetryManifest,
   RoutinePrivacyValidationReason,
 } from "./privacy-telemetry-manifest";
+
+export {
+  DEFAULT_ROUTINE_DISABLED_FEATURE_GUARD,
+  ROUTINE_CLOSEOUT_DISABLED_FEATURES,
+  ROUTINE_DISABLED_FEATURE_GUARD_TELEMETRY_EVENT_TYPES,
+  RoutineCloseoutDisabledFeatureSchema,
+  RoutineDisabledFeatureChecklistSchema,
+  RoutineDisabledFeatureGuardSchema,
+  RoutineDisabledFeatureGuardTelemetryEventSchema,
+  RoutineDisabledFeatureGuardTelemetryEventTypeSchema,
+  RoutineDisabledFeatureGuardValidationSchema,
+  createRoutineDisabledFeatureGuardTelemetryEvent,
+  validateRoutineDisabledFeatureGuard,
+} from "./disabled-feature-guard";
+
+export type {
+  RoutineCloseoutDisabledFeature,
+  RoutineDisabledFeatureChecklist,
+  RoutineDisabledFeatureGuard,
+  RoutineDisabledFeatureGuardTelemetryEvent,
+  RoutineDisabledFeatureGuardTelemetryEventType,
+  RoutineDisabledFeatureGuardValidation,
+} from "./disabled-feature-guard";
