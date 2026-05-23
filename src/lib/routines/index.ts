@@ -209,3 +209,35 @@ export type {
   RoutineIdempotencyKey,
   RoutineIdempotencyKeySummary,
 } from "./dedupe";
+
+export {
+  DEFAULT_SELF_AUDIT_COLLECTOR_CONTRACTS,
+  SELF_AUDIT_COLLECTOR_SURFACES,
+  SELF_AUDIT_COLLECTOR_TELEMETRY_EVENT_TYPES,
+  SELF_AUDIT_COLLECTOR_VALIDATION_REASONS,
+  SELF_AUDIT_FORBIDDEN_FIELDS,
+  SELF_AUDIT_SAFE_FIELDS,
+  SelfAuditCollectorContractSchema,
+  SelfAuditCollectorResultSchema,
+  SelfAuditCollectorSurfaceSchema,
+  SelfAuditCollectorTelemetryEventSchema,
+  SelfAuditCollectorTelemetryEventTypeSchema,
+  SelfAuditCollectorValidationReasonSchema,
+  SelfAuditCollectorValidationSchema,
+  SelfAuditForbiddenFieldSchema,
+  SelfAuditSafeFieldSchema,
+  createSelfAuditCollectorTelemetryEvent,
+  validateSelfAuditCollectorContract,
+} from "./self-audit-collectors";
+
+export type {
+  SelfAuditCollectorContract,
+  SelfAuditCollectorResult,
+  SelfAuditCollectorSurface,
+  SelfAuditCollectorTelemetryEvent,
+  SelfAuditCollectorTelemetryEventType,
+  SelfAuditCollectorValidation,
+  SelfAuditCollectorValidationReason,
+  SelfAuditForbiddenField,
+  SelfAuditSafeField,
+} from "./self-audit-collectors";
