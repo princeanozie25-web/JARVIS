@@ -459,6 +459,21 @@ export {
   type RuntimeDependencyViewerViewModel,
 } from "./audit-runtime-dependency";
 export {
+  RUNTIME_DEPENDENCY_STATIC_GRAPH_SOURCE_KINDS,
+  RUNTIME_DEPENDENCY_STATIC_GRAPH_VALIDATION_REASONS,
+  RuntimeDependencyStaticGraphSchema,
+  RuntimeDependencyStaticGraphSourceKindSchema,
+  RuntimeDependencyStaticGraphValidationReasonSchema,
+  RuntimeDependencyStaticGraphValidationSchema,
+  createDefaultRuntimeDependencyStaticGraph,
+  projectRuntimeDependencyStaticGraphToAuditViewer,
+  validateRuntimeDependencyStaticGraph,
+  type RuntimeDependencyStaticGraph,
+  type RuntimeDependencyStaticGraphSourceKind,
+  type RuntimeDependencyStaticGraphValidation,
+  type RuntimeDependencyStaticGraphValidationReason,
+} from "./runtime-dependency-static-graph";
+export {
   DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
