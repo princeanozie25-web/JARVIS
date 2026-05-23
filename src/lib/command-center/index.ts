@@ -469,6 +469,24 @@ export {
   projectTraceRecordsToTimelineViewModel,
 } from "./trace-projections";
 export {
+  DEFAULT_PHASE_9F_REPLAY_TRACE_GUARD_STATE,
+  PHASE_9F_REPLAY_TRACE_CLOSEOUT_GUARDS,
+  PHASE_9F_REPLAY_TRACE_CLOSEOUT_VERDICTS,
+  PHASE_9F_REPLAY_TRACE_FORBIDDEN_CAPABILITY_FIELDS,
+  Phase9FReplayTraceCloseoutGuardSchema,
+  Phase9FReplayTraceCloseoutReportSchema,
+  Phase9FReplayTraceCloseoutVerdictSchema,
+  Phase9FReplayTraceForbiddenCapabilityFieldSchema,
+  Phase9FReplayTraceGuardStateSchema,
+  createPhase9FReplayTraceCloseoutReport,
+  type Phase9FReplayTraceCloseoutGuard,
+  type Phase9FReplayTraceCloseoutInput,
+  type Phase9FReplayTraceCloseoutReport,
+  type Phase9FReplayTraceCloseoutVerdict,
+  type Phase9FReplayTraceForbiddenCapabilityField,
+  type Phase9FReplayTraceGuardState,
+} from "./replay-trace-closeout";
+export {
   COMMAND_CENTER_OBSERVABILITY_ALLOWED_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_FORBIDDEN_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_QUERY_CATEGORIES,
