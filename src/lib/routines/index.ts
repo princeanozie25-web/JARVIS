@@ -375,3 +375,37 @@ export type {
   NextActionTelemetryEventType,
   SuggestionEngineResult,
 } from "./next-action-suggestions";
+
+export {
+  CALIBRATION_BASELINE_REDACTION_STATUSES,
+  CALIBRATION_BASELINE_TELEMETRY_EVENT_TYPES,
+  CALIBRATION_BASELINE_VALIDATION_REASONS,
+  CALIBRATION_BASELINE_WINDOW_KINDS,
+  CALIBRATION_METRIC_GROUPS,
+  BaselineWindowKindSchema,
+  CalibrationBaselineMetricSchema,
+  CalibrationBaselineRedactionStatusSchema,
+  CalibrationBaselineSchema,
+  CalibrationBaselineSummarySchema,
+  CalibrationBaselineTelemetryEventSchema,
+  CalibrationBaselineTelemetryEventTypeSchema,
+  CalibrationBaselineValidationReasonSchema,
+  CalibrationBaselineValidationSchema,
+  CalibrationMetricGroupSchema,
+  createCalibrationBaselineTelemetryEvent,
+  summarizeCalibrationBaseline,
+  validateCalibrationBaseline,
+} from "./calibration-baseline";
+
+export type {
+  BaselineWindowKind,
+  CalibrationBaseline,
+  CalibrationBaselineMetric,
+  CalibrationBaselineRedactionStatus,
+  CalibrationBaselineSummary,
+  CalibrationBaselineTelemetryEvent,
+  CalibrationBaselineTelemetryEventType,
+  CalibrationBaselineValidation,
+  CalibrationBaselineValidationReason,
+  CalibrationMetricGroup,
+} from "./calibration-baseline";
