@@ -559,3 +559,33 @@ export type {
   RoutineDisabledFeatureGuardTelemetryEventType,
   RoutineDisabledFeatureGuardValidation,
 } from "./disabled-feature-guard";
+
+export {
+  DEFAULT_ROUTINE_CLOSEOUT_AUDIT_GATE,
+  ROUTINE_CLOSEOUT_AUDIT_CATEGORIES,
+  ROUTINE_CLOSEOUT_AUDIT_TELEMETRY_EVENT_TYPES,
+  ROUTINE_CLOSEOUT_AUDIT_VIOLATIONS,
+  RoutineCloseoutAuditCategorySchema,
+  RoutineCloseoutAuditCoverageSchema,
+  RoutineCloseoutAuditGateResultSchema,
+  RoutineCloseoutAuditGateSchema,
+  RoutineCloseoutAuditGateTelemetryEventSchema,
+  RoutineCloseoutAuditTelemetryEventTypeSchema,
+  RoutineCloseoutAuditViolationSchema,
+  RoutineCloseoutAuthoritySurfaceSummarySchema,
+  RoutineCloseoutDisabledFeatureStatusSchema,
+  createRoutineCloseoutAuditGateTelemetryEvent,
+  evaluateRoutineCloseoutAuditGate,
+} from "./closeout-audit-gate";
+
+export type {
+  RoutineCloseoutAuditCategory,
+  RoutineCloseoutAuditCoverage,
+  RoutineCloseoutAuditGate,
+  RoutineCloseoutAuditGateResult,
+  RoutineCloseoutAuditGateTelemetryEvent,
+  RoutineCloseoutAuditTelemetryEventType,
+  RoutineCloseoutAuditViolation,
+  RoutineCloseoutAuthoritySurfaceSummary,
+  RoutineCloseoutDisabledFeatureStatus,
+} from "./closeout-audit-gate";
