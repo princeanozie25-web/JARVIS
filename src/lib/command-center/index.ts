@@ -377,6 +377,21 @@ export {
   type GovernanceBoundaryViewerViewModel,
 } from "./audit-governance-boundary";
 export {
+  GOVERNANCE_POLICY_GRAPH_SOURCE_OF_TRUTH_VALUES,
+  GOVERNANCE_POLICY_GRAPH_VALIDATION_REASONS,
+  GovernancePolicyGraphSchema,
+  GovernancePolicyGraphSourceOfTruthSchema,
+  GovernancePolicyGraphValidationReasonSchema,
+  GovernancePolicyGraphValidationSchema,
+  createDefaultGovernancePolicyGraph,
+  projectGovernancePolicyGraphToAuditViewer,
+  validateGovernancePolicyGraph,
+  type GovernancePolicyGraph,
+  type GovernancePolicyGraphSourceOfTruth,
+  type GovernancePolicyGraphValidation,
+  type GovernancePolicyGraphValidationReason,
+} from "./governance-policy-graph";
+export {
   RUNTIME_DEPENDENCY_COUNT_BINS,
   RUNTIME_DEPENDENCY_COUPLING_RISK_CLASSES,
   RUNTIME_DEPENDENCY_EDGE_CLASSES,
