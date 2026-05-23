@@ -51,6 +51,18 @@ export {
   type CommandCenterObservabilityValidationReason,
 } from "./observability-contract";
 export {
+  PHASE_9B_OBSERVABILITY_CLOSEOUT_GUARDS,
+  PHASE_9B_OBSERVABILITY_CLOSEOUT_VERDICTS,
+  Phase9BObservabilityCloseoutGuardSchema,
+  Phase9BObservabilityCloseoutReportSchema,
+  Phase9BObservabilityCloseoutVerdictSchema,
+  createPhase9BObservabilityCloseoutReport,
+  type Phase9BObservabilityCloseoutGuard,
+  type Phase9BObservabilityCloseoutInput,
+  type Phase9BObservabilityCloseoutReport,
+  type Phase9BObservabilityCloseoutVerdict,
+} from "./observability-closeout";
+export {
   COMMAND_CENTER_OBSERVABILITY_ADAPTER_VALIDATION_REASONS,
   COMMAND_CENTER_OBSERVABILITY_SOURCE_PHASES,
   DEFAULT_COMMAND_CENTER_OBSERVABILITY_SOURCE_ADAPTER_REGISTRY,
