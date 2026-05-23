@@ -409,3 +409,39 @@ export type {
   CalibrationBaselineValidationReason,
   CalibrationMetricGroup,
 } from "./calibration-baseline";
+
+export {
+  CALIBRATION_CONFIDENCE_BANDS,
+  CALIBRATION_DIFF_DIRECTIONS,
+  CALIBRATION_DIFF_TELEMETRY_EVENT_TYPES,
+  CALIBRATION_DRIFT_FLAGS,
+  CALIBRATION_REALIZED_OUTCOME_CLASSES,
+  CALIBRATION_RELATIVE_DELTA_BANDS,
+  CalibrationConfidenceBandSchema,
+  CalibrationCurrentMetricSchema,
+  CalibrationCurrentMetricsSchema,
+  CalibrationDiffDirectionSchema,
+  CalibrationDiffSchema,
+  CalibrationDiffTelemetryEventSchema,
+  CalibrationDiffTelemetryEventTypeSchema,
+  CalibrationDriftFlagNameSchema,
+  CalibrationDriftFlagSchema,
+  CalibrationRealizedOutcomeClassSchema,
+  CalibrationRelativeDeltaBandSchema,
+  compareCalibrationToBaseline,
+  createCalibrationDiffTelemetryEvent,
+} from "./calibration-diff";
+
+export type {
+  CalibrationConfidenceBand,
+  CalibrationCurrentMetric,
+  CalibrationCurrentMetrics,
+  CalibrationDiff,
+  CalibrationDiffDirection,
+  CalibrationDiffTelemetryEvent,
+  CalibrationDiffTelemetryEventType,
+  CalibrationDriftFlag,
+  CalibrationDriftFlagName,
+  CalibrationRealizedOutcomeClass,
+  CalibrationRelativeDeltaBand,
+} from "./calibration-diff";
