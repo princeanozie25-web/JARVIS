@@ -271,3 +271,22 @@ export type {
   SelfAuditReportValidationReason,
   SelfAuditReportWindow,
 } from "./self-audit-report";
+
+export {
+  SELF_AUDIT_REPORT_ASSEMBLY_TELEMETRY_EVENT_TYPES,
+  AssembleSelfAuditReportInputSchema,
+  SelfAuditReportAssemblyMetadataSchema,
+  SelfAuditReportAssemblyResultSchema,
+  SelfAuditReportAssemblyTelemetryEventSchema,
+  SelfAuditReportAssemblyTelemetryEventTypeSchema,
+  assembleSelfAuditReport,
+  createSelfAuditReportAssemblyTelemetryEvent,
+} from "./self-audit-assembly";
+
+export type {
+  AssembleSelfAuditReportInput,
+  SelfAuditReportAssemblyMetadata,
+  SelfAuditReportAssemblyResult,
+  SelfAuditReportAssemblyTelemetryEvent,
+  SelfAuditReportAssemblyTelemetryEventType,
+} from "./self-audit-assembly";
