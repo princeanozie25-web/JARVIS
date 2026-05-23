@@ -533,6 +533,23 @@ export {
   type DemoModeIsolationPolicyValidationReason,
 } from "./demo-mode";
 export {
+  SYNTHETIC_DEMO_DATASET_VALIDATION_REASONS,
+  SYNTHETIC_DEMO_FORBIDDEN_LIVE_REFERENCE_FIELDS,
+  SyntheticDemoDatasetSchema,
+  SyntheticDemoDatasetValidationReasonSchema,
+  SyntheticDemoDatasetValidationSchema,
+  SyntheticDemoForbiddenLiveReferenceFieldSchema,
+  SyntheticDemoRestStateSchema,
+  createDefaultSyntheticDemoDataset,
+  deriveSyntheticDemoDatasetFromDemoModeDataSource,
+  validateSyntheticDemoDataset,
+  type SyntheticDemoDataset,
+  type SyntheticDemoDatasetValidation,
+  type SyntheticDemoDatasetValidationReason,
+  type SyntheticDemoForbiddenLiveReferenceField,
+  type SyntheticDemoRestState,
+} from "./synthetic-demo-dataset";
+export {
   DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
