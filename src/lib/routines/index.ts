@@ -241,3 +241,33 @@ export type {
   SelfAuditForbiddenField,
   SelfAuditSafeField,
 } from "./self-audit-collectors";
+
+export {
+  SELF_AUDIT_REPORT_REDACTION_STATUSES,
+  SELF_AUDIT_REPORT_SECTIONS,
+  SELF_AUDIT_REPORT_TELEMETRY_EVENT_TYPES,
+  SELF_AUDIT_REPORT_VALIDATION_REASONS,
+  SelfAuditReportRedactionStatusSchema,
+  SelfAuditReportSchema,
+  SelfAuditReportSectionNameSchema,
+  SelfAuditReportSectionSchema,
+  SelfAuditReportTelemetryEventSchema,
+  SelfAuditReportTelemetryEventTypeSchema,
+  SelfAuditReportValidationReasonSchema,
+  SelfAuditReportValidationSchema,
+  SelfAuditReportWindowSchema,
+  createSelfAuditReportTelemetryEvent,
+  validateSelfAuditReport,
+} from "./self-audit-report";
+
+export type {
+  SelfAuditReport,
+  SelfAuditReportRedactionStatus,
+  SelfAuditReportSection,
+  SelfAuditReportSectionName,
+  SelfAuditReportTelemetryEvent,
+  SelfAuditReportTelemetryEventType,
+  SelfAuditReportValidation,
+  SelfAuditReportValidationReason,
+  SelfAuditReportWindow,
+} from "./self-audit-report";
