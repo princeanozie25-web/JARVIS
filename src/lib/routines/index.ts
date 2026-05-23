@@ -176,3 +176,36 @@ export type {
   RoutineKillSwitchTelemetryEvent,
   RoutineKillSwitchTelemetryEventType,
 } from "./kill-switch";
+
+export {
+  ROUTINE_DEDUPE_DECISIONS,
+  ROUTINE_DEDUPE_REASONS,
+  ROUTINE_DEDUPE_TELEMETRY_EVENT_TYPES,
+  CreateRoutineIdempotencyKeyInputSchema,
+  EvaluateRoutineDedupeInputSchema,
+  RoutineDedupeDecisionNameSchema,
+  RoutineDedupeDecisionSchema,
+  RoutineDedupeReasonSchema,
+  RoutineDedupeTelemetryEventSchema,
+  RoutineDedupeTelemetryEventTypeSchema,
+  RoutineDedupeWindowSchema,
+  RoutineIdempotencyKeySchema,
+  RoutineIdempotencyKeySummarySchema,
+  createRoutineDedupeTelemetryEvent,
+  createRoutineIdempotencyKey,
+  evaluateRoutineDedupe,
+  summarizeRoutineIdempotencyKey,
+} from "./dedupe";
+
+export type {
+  CreateRoutineIdempotencyKeyInput,
+  EvaluateRoutineDedupeInput,
+  RoutineDedupeDecision,
+  RoutineDedupeDecisionName,
+  RoutineDedupeReason,
+  RoutineDedupeTelemetryEvent,
+  RoutineDedupeTelemetryEventType,
+  RoutineDedupeWindow,
+  RoutineIdempotencyKey,
+  RoutineIdempotencyKeySummary,
+} from "./dedupe";
