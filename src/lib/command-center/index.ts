@@ -411,6 +411,24 @@ export {
   type RuntimeDependencyViewerViewModel,
 } from "./audit-runtime-dependency";
 export {
+  DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
+  PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
+  PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
+  PHASE_9E_AUDIT_SCREEN_FORBIDDEN_AFFORDANCE_FIELDS,
+  Phase9EAuditScreenCloseoutGuardSchema,
+  Phase9EAuditScreenCloseoutReportSchema,
+  Phase9EAuditScreenCloseoutVerdictSchema,
+  Phase9EAuditScreenForbiddenAffordanceFieldSchema,
+  Phase9EAuditScreenGuardStateSchema,
+  createPhase9EAuditScreenCloseoutReport,
+  type Phase9EAuditScreenCloseoutGuard,
+  type Phase9EAuditScreenCloseoutInput,
+  type Phase9EAuditScreenCloseoutReport,
+  type Phase9EAuditScreenCloseoutVerdict,
+  type Phase9EAuditScreenForbiddenAffordanceField,
+  type Phase9EAuditScreenGuardState,
+} from "./audit-closeout";
+export {
   COMMAND_CENTER_OBSERVABILITY_ALLOWED_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_FORBIDDEN_ACTIONS,
   COMMAND_CENTER_OBSERVABILITY_QUERY_CATEGORIES,
