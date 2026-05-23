@@ -497,3 +497,42 @@ export type {
   SuggestionApprovalBridgeTelemetryEvent,
   SuggestionApprovalBridgeTelemetryEventType,
 } from "./suggestion-approval-bridge";
+
+export {
+  DEFAULT_ROUTINE_PRIVACY_TELEMETRY_MANIFEST,
+  ROUTINE_PRIVACY_ALLOWED_TELEMETRY_FIELDS,
+  ROUTINE_PRIVACY_DISABLED_FEATURES,
+  ROUTINE_PRIVACY_FORBIDDEN_TELEMETRY_FIELDS,
+  ROUTINE_PRIVACY_RAW_PAYLOAD_FORBIDDEN_LIST,
+  ROUTINE_PRIVACY_TELEMETRY_EVENT_TYPES,
+  ROUTINE_PRIVACY_VALIDATION_REASONS,
+  RoutineDeveloperObservabilityPostureSchema,
+  RoutineDisabledFeatureManifestSchema,
+  RoutinePrivacyAllowedTelemetryFieldSchema,
+  RoutinePrivacyDisabledFeatureSchema,
+  RoutinePrivacyForbiddenTelemetryFieldSchema,
+  RoutinePrivacyManifestTelemetryEventSchema,
+  RoutinePrivacyManifestValidationSchema,
+  RoutinePrivacyRawPayloadForbiddenSchema,
+  RoutinePrivacyStoragePostureSchema,
+  RoutinePrivacyTelemetryEventTypeSchema,
+  RoutinePrivacyTelemetryManifestSchema,
+  RoutinePrivacyValidationReasonSchema,
+  createRoutinePrivacyManifestTelemetryEvent,
+  validateRoutinePrivacyTelemetryManifest,
+} from "./privacy-telemetry-manifest";
+
+export type {
+  RoutineDeveloperObservabilityPosture,
+  RoutineDisabledFeatureManifest,
+  RoutinePrivacyAllowedTelemetryField,
+  RoutinePrivacyDisabledFeature,
+  RoutinePrivacyForbiddenTelemetryField,
+  RoutinePrivacyManifestTelemetryEvent,
+  RoutinePrivacyManifestValidation,
+  RoutinePrivacyRawPayloadForbidden,
+  RoutinePrivacyStoragePosture,
+  RoutinePrivacyTelemetryEventType,
+  RoutinePrivacyTelemetryManifest,
+  RoutinePrivacyValidationReason,
+} from "./privacy-telemetry-manifest";
