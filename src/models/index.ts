@@ -62,6 +62,19 @@ export type {
   NormalizedModelResolverInput,
 } from "./resolver";
 
+export { createModelRuntime, createModelRuntimeProviderKey } from "./runtime";
+export type {
+  ModelRuntime,
+  ModelRuntimeExecuteRequest,
+  ModelRuntimeExecuteResult,
+  ModelRuntimeFailedModel,
+  ModelRuntimeFallbackPlanner,
+  ModelRuntimeOptions,
+  ModelRuntimeProviderMap,
+  ModelRuntimeResolver,
+  ModelRuntimeResultMetadata,
+} from "./runtime";
+
 export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
