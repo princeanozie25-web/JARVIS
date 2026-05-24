@@ -147,6 +147,8 @@ describe("Phase 10B.3 room adapter contract", () => {
       "approval_expired",
       "adapter_unavailable",
       "timeout",
+      "auth_error",
+      "partial_success",
       "cancelled",
       "verification_failed",
       "hardware_io_disabled",

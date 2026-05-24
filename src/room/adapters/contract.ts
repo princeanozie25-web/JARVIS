@@ -29,6 +29,8 @@ export const ROOM_ADAPTER_FAILURE_CLASSES = [
   "approval_expired",
   "adapter_unavailable",
   "timeout",
+  "auth_error",
+  "partial_success",
   "cancelled",
   "verification_failed",
   "hardware_io_disabled",

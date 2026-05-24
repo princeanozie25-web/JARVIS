@@ -10,9 +10,17 @@ import {
   type RoomAdapterContractDescriptor,
   type RoomAdapterDryRunPlan,
   type RoomAdapterExecutionContext,
+  type RoomAdapterFailureClass,
   type RoomAdapterHealthStatus,
   type RoomAdapterOperationResult,
 } from "./contract";
+import {
+  FakeFailureController,
+  fakeFailureClassFor,
+  markFakeStateStale,
+  type FakeDeviceFailureMode,
+  type FakeFailureSeed,
+} from "./fake-failures";
 import { parseRoomProfile } from "../schema";
 import type {
   Capability,
@@ -32,12 +40,14 @@ export interface FakeRoomAdapterInput {
   readonly devices?: readonly Device[];
   readonly sensors?: readonly Sensor[];
   readonly adapterId?: string;
+  readonly failures?: FakeFailureController | readonly FakeFailureSeed[];
 }
 
 export class FakeRoomAdapter implements RoomAdapterContract {
   readonly descriptor: RoomAdapterContractDescriptor;
   private readonly adapterId: string;
   private readonly entities = new Map<string, KnownEntity>();
+  private readonly failures: FakeFailureController;
 
   constructor(input: FakeRoomAdapterInput) {
     const devices = input.profile
@@ -47,6 +57,10 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       ? parseRoomProfile(input.profile).sensors
       : [...(input.sensors ?? [])];
     this.adapterId = input.adapterId ?? "fake-room-adapter";
+    this.failures =
+      input.failures instanceof FakeFailureController
+        ? input.failures
+        : new FakeFailureController(input.failures ?? []);
 
     for (const device of devices) {
       this.entities.set(device.id, {
@@ -89,14 +103,27 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     const supported = entity
       ? capabilitiesFor(entity).includes(input.capability)
       : false;
+    const blockingFailure =
+      entity && supported
+        ? this.failures.firstBlockingFailure(input.deviceId)
+        : null;
+    const state =
+      entity && supported && !blockingFailure
+        ? this.readableState(input.deviceId, entity.state)
+        : null;
     return this.result({
       operation: "read_state",
       mode: "read_only",
       deviceId: input.deviceId,
       capability: input.capability,
-      state: entity && supported ? clone(entity.state) : null,
-      ok: Boolean(entity && supported),
-      failureClass: entity && supported ? null : "unsupported_capability",
+      state,
+      ok: Boolean(entity && supported && !blockingFailure),
+      failureClass:
+        entity && supported
+          ? blockingFailure
+            ? fakeFailureClassFor(blockingFailure)
+            : null
+          : "unsupported_capability",
       approvalRequired: false,
       approvalId: null,
     });
@@ -111,6 +138,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.device_id,
       command.capability,
     );
+    this.throwIfPlanningBlocked(command.device_id);
     const intended = applyCommandToState(entity.state, command);
 
     return RoomAdapterDryRunPlanSchema.parse({
@@ -138,6 +166,22 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.device_id,
       command.capability,
     );
+    const blockingFailure = this.failures.firstBlockingFailure(
+      command.device_id,
+    );
+    if (blockingFailure) {
+      return this.result({
+        operation: "execute_command",
+        mode: command.mode,
+        deviceId: command.device_id,
+        capability: command.capability,
+        state: clone(entity.state),
+        ok: false,
+        failureClass: fakeFailureClassFor(blockingFailure),
+        approvalRequired: isMutatingCapability(command.capability),
+        approvalId: input.context.approvalId ?? null,
+      });
+    }
     if (!isMutatingCapability(command.capability)) {
       return this.result({
         operation: "execute_command",
@@ -188,6 +232,22 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.device_id,
       command.capability,
     );
+    const blockingFailure = this.failures.firstBlockingFailure(
+      command.device_id,
+    );
+    if (blockingFailure) {
+      return this.result({
+        operation: "verify_state",
+        mode: input.context.mode,
+        deviceId: command.device_id,
+        capability: command.capability,
+        state: clone(entity.state),
+        ok: false,
+        failureClass: fakeFailureClassFor(blockingFailure),
+        approvalRequired: isMutatingCapability(command.capability),
+        approvalId: input.context.approvalId ?? null,
+      });
+    }
     return this.result({
       operation: "verify_state",
       mode: input.context.mode,
@@ -205,14 +265,29 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     context: RoomAdapterExecutionContext;
   }): Promise<RoomAdapterHealthStatus> {
     void input;
+    const blockingFailure = this.failures.firstBlockingFailure();
     return RoomAdapterHealthStatusSchema.parse({
       adapter_id: this.adapterId,
-      status: "healthy",
+      status: blockingFailure ? "unavailable" : "healthy",
       checked_at_ms: 0,
-      failure_class: null,
+      failure_class: blockingFailure
+        ? fakeFailureClassFor(blockingFailure)
+        : null,
       hardware_io_performed: false,
       network_called: false,
     });
+  }
+
+  enableFailure(mode: FakeDeviceFailureMode, targetId?: string): void {
+    this.failures.enable(mode, targetId);
+  }
+
+  clearFailure(mode?: FakeDeviceFailureMode, targetId?: string): void {
+    this.failures.clear(mode, targetId);
+  }
+
+  clearAllFailures(): void {
+    this.failures.clearAll();
   }
 
   private requireSupportedEntity(
@@ -235,11 +310,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     capability: Capability;
     state: DeviceState | SensorState | null;
     ok: boolean;
-    failureClass:
-      | null
-      | "unsupported_capability"
-      | "invalid_command"
-      | "approval_missing";
+    failureClass: RoomAdapterFailureClass | null;
     approvalRequired: boolean;
     approvalId: string | null;
   }): RoomAdapterOperationResult {
@@ -298,6 +369,23 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       approval_id: approvalId,
       metadata_only: true,
     } as const;
+  }
+
+  private readableState(
+    deviceId: string,
+    state: DeviceState | SensorState,
+  ): DeviceState | SensorState {
+    return this.failures.isStale(deviceId)
+      ? markFakeStateStale(state)
+      : clone(state);
+  }
+
+  private throwIfPlanningBlocked(deviceId: string): void {
+    const blockingFailure = this.failures.firstBlockingFailure(deviceId);
+    if (!blockingFailure) return;
+    throw new Error(
+      `Fake room adapter planning blocked by ${fakeFailureClassFor(blockingFailure)}.`,
+    );
   }
 }
 
