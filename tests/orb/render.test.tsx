@@ -5,13 +5,17 @@ import { describe, expect, it, vi } from "vitest";
 
 import RestPage from "../../src/app/rest/page";
 import { Orb } from "../../src/components/orb/Orb";
-import { IDLE_ORB_STATE } from "../../src/components/orb/types";
+import {
+  IDLE_ORB_STATE,
+  restOrbTokensToViewModel,
+} from "../../src/components/orb/state-tokens";
 
 const ORB_SOURCE_FILES = [
   "src/app/rest/page.tsx",
   "app/rest/page.tsx",
   "src/components/orb/Orb.tsx",
   "src/components/orb/types.ts",
+  "src/components/orb/state-tokens.ts",
 ] as const;
 
 function renderRestPage() {
@@ -29,8 +33,12 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     expect(html).toContain("JARVIS Room OS - Rest Mode");
     expect(html).toContain("Idle. Local shell only.");
     expect(html).toContain('data-orb-mode="idle"');
+    expect(html).toContain('data-load-band="idle"');
+    expect(html).toContain('data-governance-posture="all_green"');
+    expect(html).toContain('data-heartbeat="stable"');
     expect(html).toContain('data-local-only="true"');
     expect(html).toContain('data-authority="none"');
+    expect(html).toContain('data-metadata-only="true"');
   });
 
   it("orb component renders the deterministic idle state", () => {
@@ -43,9 +51,68 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
       mode: "idle",
       label: "JARVIS Room OS - Rest Mode",
       statusText: "Idle. Local shell only.",
+      detailText:
+        "Load idle. No recent event. Governance all_green. Heartbeat stable.",
+      loadBand: "idle",
+      lastEventClass: "none",
+      governancePosture: "all_green",
+      heartbeat: "stable",
+      tone: "quiet",
+      metadataOnly: true,
+      rawPayloadIncluded: false,
       localOnly: true,
       authority: "none",
+      withheld: false,
     });
+  });
+
+  it("orb renders each supported mode without controls", () => {
+    const modes = [
+      restOrbTokensToViewModel({
+        mode: "idle",
+        load_band: "idle",
+        last_event_class: "none",
+        governance_posture: "all_green",
+        heartbeat: "stable",
+      }),
+      restOrbTokensToViewModel({
+        mode: "working",
+        load_band: "active",
+        last_event_class: "routine_completed",
+        governance_posture: "all_green",
+        heartbeat: "stable",
+      }),
+      restOrbTokensToViewModel({
+        mode: "audit",
+        load_band: "light",
+        last_event_class: "approval_pending",
+        governance_posture: "gated_active",
+        heartbeat: "delayed",
+      }),
+      restOrbTokensToViewModel({
+        mode: "degraded",
+        load_band: "idle",
+        last_event_class: "vision_degraded",
+        governance_posture: "gated_active",
+        heartbeat: "delayed",
+      }),
+      restOrbTokensToViewModel({
+        mode: "kill_switch",
+        load_band: "idle",
+        last_event_class: "error",
+        governance_posture: "kill_switch_on",
+        heartbeat: "unavailable",
+      }),
+    ];
+
+    for (const state of modes) {
+      const html = renderToStaticMarkup(<Orb state={state} />);
+
+      expect(html).toContain(`data-orb-mode="${state.mode}"`);
+      expect(html).not.toMatch(/<button\b/i);
+      expect(html).not.toMatch(/\brole="button"/i);
+      expect(html).not.toMatch(/\b(run|retry|approve|execute)\b/i);
+    }
   });
 
   it("renders no buttons, form controls, or authority affordances", () => {

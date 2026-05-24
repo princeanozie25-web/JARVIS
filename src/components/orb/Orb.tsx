@@ -1,5 +1,5 @@
 import type { OrbVisualState } from "./types";
-import { IDLE_ORB_STATE } from "./types";
+import { IDLE_ORB_STATE } from "./state-tokens";
 
 export interface OrbProps {
   state?: OrbVisualState;
@@ -10,8 +10,13 @@ export function Orb({ state = IDLE_ORB_STATE }: OrbProps) {
     <section
       aria-label={state.label}
       data-orb-mode={state.mode}
+      data-load-band={state.loadBand}
+      data-governance-posture={state.governancePosture}
+      data-heartbeat={state.heartbeat}
       data-local-only={String(state.localOnly)}
       data-authority={state.authority}
+      data-metadata-only={String(state.metadataOnly)}
+      data-withheld={String(state.withheld)}
       className="flex min-h-[420px] w-full flex-col items-center justify-center gap-8 text-center"
     >
       <div
@@ -27,6 +32,9 @@ export function Orb({ state = IDLE_ORB_STATE }: OrbProps) {
           {state.label}
         </h1>
         <p className="text-sm text-cyan-100/70">{state.statusText}</p>
+        <p className="mx-auto max-w-xl text-xs text-slate-400">
+          {state.detailText}
+        </p>
       </div>
     </section>
   );

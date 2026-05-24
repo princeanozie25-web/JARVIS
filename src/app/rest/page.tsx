@@ -1,5 +1,5 @@
 import { Orb } from "@/components/orb/Orb";
-import { IDLE_ORB_STATE } from "@/components/orb/types";
+import { IDLE_ORB_STATE } from "@/components/orb/state-tokens";
 
 export default function RestPage() {
   return (
