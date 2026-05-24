@@ -24,11 +24,17 @@ function statusClass(status: WorkingPanelViewModel["status"]) {
 
 export interface WorkingShellProps {
   model?: WorkingShellModel;
+  projectionPanels?: readonly WorkingPanelViewModel[];
 }
 
 export function WorkingShell({
   model = WORKING_SHELL_MODEL,
+  projectionPanels,
 }: WorkingShellProps) {
+  const panels = projectionPanels
+    ? createProjectionBackedPanels(model.panels, projectionPanels)
+    : model.panels;
+
   return (
     <section
       aria-label="JARVIS Working cockpit shell"
@@ -91,7 +97,7 @@ export function WorkingShell({
         aria-label="Working panel registry layout"
         className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
       >
-        {model.panels.map((panel) => (
+        {panels.map((panel) => (
           <article
             key={panel.panel_id}
             aria-label={panel.title}
@@ -165,4 +171,95 @@ export function WorkingShell({
       </div>
     </section>
   );
+}
+
+function createProjectionBackedPanels(
+  fallbackPanels: readonly WorkingPanelViewModel[],
+  suppliedPanels: readonly WorkingPanelViewModel[],
+): readonly WorkingPanelViewModel[] {
+  return fallbackPanels.map((fallback) => {
+    const supplied = suppliedPanels.find(
+      (panel) => panel.panel_id === fallback.panel_id,
+    );
+    if (!supplied || !isSafeProjectionPanel(supplied)) {
+      return withheldPanel(fallback);
+    }
+    return {
+      ...fallback,
+      title: supplied.title,
+      description: supplied.description,
+      status: supplied.status,
+      eyebrow: supplied.eyebrow,
+      placeholder_rows: supplied.placeholder_rows.map((row) => ({
+        label: row.label,
+        value: row.value,
+      })),
+      metadataOnly: true,
+      localOnly: true,
+      shellAuthority: "none",
+      withheld: supplied.withheld,
+      projectionBacked: supplied.projectionBacked === true,
+    };
+  });
+}
+
+function isSafeProjectionPanel(panel: WorkingPanelViewModel): boolean {
+  return (
+    panel.data_classification === "metadata_only" &&
+    panel.authority === "read_only" &&
+    panel.refresh_policy === "static_placeholder" &&
+    panel.metadataOnly === true &&
+    panel.localOnly === true &&
+    panel.shellAuthority === "none" &&
+    panel.withheld === false &&
+    panel.placeholder_rows.length > 0 &&
+    isSafeMetadataValue(panel)
+  );
+}
+
+function withheldPanel(panel: WorkingPanelViewModel): WorkingPanelViewModel {
+  return {
+    ...panel,
+    status: "withheld",
+    withheld: true,
+    projectionBacked: false,
+    placeholder_rows: [{ label: "State", value: "withheld" }],
+  };
+}
+
+function isSafeMetadataValue(value: unknown): boolean {
+  return !containsUnsafePayload(value, new Set());
+}
+
+function containsUnsafePayload(value: unknown, seen: Set<object>): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return isSecretText(value);
+  if (typeof value !== "object") return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsUnsafePayload(item, seen));
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (isUnsafeKeyValue(key, child)) return true;
+    if (containsUnsafePayload(child, seen)) return true;
+  }
+  return false;
+}
+
+function isUnsafeKeyValue(key: string, value: unknown): boolean {
+  if (
+    /raw|payload_json|prompt|output|transcript|frame|secret|token/i.test(key)
+  ) {
+    if (value === null || value === false) return false;
+    if (key === "raw_payload_included" && value === false) return false;
+    return true;
+  }
+  return false;
+}
+
+function isSecretText(value: string): boolean {
+  return /(api[_-]?key|password|secret|token|sk-)/i.test(value);
 }
