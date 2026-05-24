@@ -13,7 +13,14 @@ import {
   type RoomAdapterFailureClass,
   type RoomAdapterHealthStatus,
   type RoomAdapterOperationResult,
+  type RoomAdapterProvenance,
 } from "./contract";
+import {
+  FakeDeviceEventEmitter,
+  type FakeDeviceEvent,
+  type FakeDeviceEventStatus,
+  type FakeDeviceEventType,
+} from "./fake-events";
 import {
   FakeFailureController,
   fakeFailureClassFor,
@@ -41,6 +48,7 @@ export interface FakeRoomAdapterInput {
   readonly sensors?: readonly Sensor[];
   readonly adapterId?: string;
   readonly failures?: FakeFailureController | readonly FakeFailureSeed[];
+  readonly events?: FakeDeviceEventEmitter;
 }
 
 export class FakeRoomAdapter implements RoomAdapterContract {
@@ -48,15 +56,18 @@ export class FakeRoomAdapter implements RoomAdapterContract {
   private readonly adapterId: string;
   private readonly entities = new Map<string, KnownEntity>();
   private readonly failures: FakeFailureController;
+  private readonly events: FakeDeviceEventEmitter;
+  private readonly profileId: string | null;
+  private readonly roomId: string | null;
 
   constructor(input: FakeRoomAdapterInput) {
-    const devices = input.profile
-      ? parseRoomProfile(input.profile).devices
-      : [...(input.devices ?? [])];
-    const sensors = input.profile
-      ? parseRoomProfile(input.profile).sensors
-      : [...(input.sensors ?? [])];
+    const profile = input.profile ? parseRoomProfile(input.profile) : null;
+    const devices = profile ? profile.devices : [...(input.devices ?? [])];
+    const sensors = profile ? profile.sensors : [...(input.sensors ?? [])];
     this.adapterId = input.adapterId ?? "fake-room-adapter";
+    this.profileId = profile?.profile_id ?? null;
+    this.roomId = profile?.room_id ?? null;
+    this.events = input.events ?? new FakeDeviceEventEmitter();
     this.failures =
       input.failures instanceof FakeFailureController
         ? input.failures
@@ -111,7 +122,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       entity && supported && !blockingFailure
         ? this.readableState(input.deviceId, entity.state)
         : null;
-    return this.result({
+    const result = this.result({
       operation: "read_state",
       mode: "read_only",
       deviceId: input.deviceId,
@@ -127,6 +138,27 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       approvalRequired: false,
       approvalId: null,
     });
+    this.emitOperationEvent({
+      eventType: "state_read",
+      deviceId: entity?.kind === "device" ? input.deviceId : null,
+      sensorId: entity?.kind === "sensor" ? input.deviceId : null,
+      capability: input.capability,
+      status: result.ok ? "ok" : "failed",
+      failureClass: result.failure_class,
+      provenance: result.provenance,
+    });
+    if (blockingFailure && entity) {
+      this.emitOperationEvent({
+        eventType: "failure_simulated",
+        deviceId: entity.kind === "device" ? input.deviceId : null,
+        sensorId: entity.kind === "sensor" ? input.deviceId : null,
+        capability: input.capability,
+        status: "failed",
+        failureClass: result.failure_class,
+        provenance: result.provenance,
+      });
+    }
+    return result;
   }
 
   async planCommand(input: {
@@ -141,7 +173,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     this.throwIfPlanningBlocked(command.device_id);
     const intended = applyCommandToState(entity.state, command);
 
-    return RoomAdapterDryRunPlanSchema.parse({
+    const plan = RoomAdapterDryRunPlanSchema.parse({
       plan_id: `plan-${command.command_id}`,
       command,
       provenance: this.provenance(command, "dry_run", null),
@@ -155,6 +187,18 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       network_called: false,
       persisted: false,
     });
+    this.emitOperationEvent({
+      eventType: "command_planned",
+      deviceId: entity.kind === "device" ? command.device_id : null,
+      sensorId: entity.kind === "sensor" ? command.device_id : null,
+      capability: command.capability,
+      commandId: command.command_id,
+      planId: plan.plan_id,
+      status: "planned",
+      failureClass: null,
+      provenance: plan.provenance,
+    });
+    return plan;
   }
 
   async executeCommand(input: {
@@ -170,7 +214,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.device_id,
     );
     if (blockingFailure) {
-      return this.result({
+      const result = this.result({
         operation: "execute_command",
         mode: command.mode,
         deviceId: command.device_id,
@@ -181,9 +225,21 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         approvalRequired: isMutatingCapability(command.capability),
         approvalId: input.context.approvalId ?? null,
       });
+      this.emitCommandResultEvent(command, entity, result);
+      this.emitOperationEvent({
+        eventType: "failure_simulated",
+        deviceId: entity.kind === "device" ? command.device_id : null,
+        sensorId: entity.kind === "sensor" ? command.device_id : null,
+        capability: command.capability,
+        commandId: command.command_id,
+        status: "failed",
+        failureClass: result.failure_class,
+        provenance: result.provenance,
+      });
+      return result;
     }
     if (!isMutatingCapability(command.capability)) {
-      return this.result({
+      const result = this.result({
         operation: "execute_command",
         mode: command.mode,
         deviceId: command.device_id,
@@ -194,9 +250,11 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         approvalRequired: false,
         approvalId: null,
       });
+      this.emitCommandResultEvent(command, entity, result);
+      return result;
     }
     if (command.mode !== "approved_execution" || !input.context.approvalId) {
-      return this.result({
+      const result = this.result({
         operation: "execute_command",
         mode: command.mode,
         deviceId: command.device_id,
@@ -207,10 +265,12 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         approvalRequired: true,
         approvalId: input.context.approvalId ?? null,
       });
+      this.emitCommandResultEvent(command, entity, result);
+      return result;
     }
 
     entity.state = applyCommandToState(entity.state, command);
-    return this.result({
+    const result = this.result({
       operation: "execute_command",
       mode: "approved_execution",
       deviceId: command.device_id,
@@ -221,6 +281,8 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       approvalRequired: true,
       approvalId: input.context.approvalId,
     });
+    this.emitCommandResultEvent(command, entity, result);
+    return result;
   }
 
   async verifyState(input: {
@@ -236,7 +298,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.device_id,
     );
     if (blockingFailure) {
-      return this.result({
+      const result = this.result({
         operation: "verify_state",
         mode: input.context.mode,
         deviceId: command.device_id,
@@ -247,8 +309,20 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         approvalRequired: isMutatingCapability(command.capability),
         approvalId: input.context.approvalId ?? null,
       });
+      this.emitVerificationEvent(command, entity, result);
+      this.emitOperationEvent({
+        eventType: "failure_simulated",
+        deviceId: entity.kind === "device" ? command.device_id : null,
+        sensorId: entity.kind === "sensor" ? command.device_id : null,
+        capability: command.capability,
+        commandId: command.command_id,
+        status: "failed",
+        failureClass: result.failure_class,
+        provenance: result.provenance,
+      });
+      return result;
     }
-    return this.result({
+    const result = this.result({
       operation: "verify_state",
       mode: input.context.mode,
       deviceId: command.device_id,
@@ -259,6 +333,8 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       approvalRequired: isMutatingCapability(command.capability),
       approvalId: input.context.approvalId ?? null,
     });
+    this.emitVerificationEvent(command, entity, result);
+    return result;
   }
 
   async healthCheck(input?: {
@@ -266,7 +342,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
   }): Promise<RoomAdapterHealthStatus> {
     void input;
     const blockingFailure = this.failures.firstBlockingFailure();
-    return RoomAdapterHealthStatusSchema.parse({
+    const health = RoomAdapterHealthStatusSchema.parse({
       adapter_id: this.adapterId,
       status: blockingFailure ? "unavailable" : "healthy",
       checked_at_ms: 0,
@@ -276,6 +352,27 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       hardware_io_performed: false,
       network_called: false,
     });
+    this.emitOperationEvent({
+      eventType: "health_checked",
+      deviceId: null,
+      sensorId: null,
+      capability: null,
+      status: "checked",
+      failureClass: health.failure_class,
+      provenance: null,
+    });
+    if (blockingFailure) {
+      this.emitOperationEvent({
+        eventType: "failure_simulated",
+        deviceId: null,
+        sensorId: null,
+        capability: null,
+        status: "failed",
+        failureClass: health.failure_class,
+        provenance: null,
+      });
+    }
+    return health;
   }
 
   enableFailure(mode: FakeDeviceFailureMode, targetId?: string): void {
@@ -290,6 +387,14 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     this.failures.clearAll();
   }
 
+  getEvents(): FakeDeviceEvent[] {
+    return this.events.snapshot();
+  }
+
+  clearEvents(): void {
+    this.events.clear();
+  }
+
   private requireSupportedEntity(
     deviceId: string,
     capability: Capability,
@@ -301,6 +406,68 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       );
     }
     return entity;
+  }
+
+  private emitCommandResultEvent(
+    command: RoomAdapterCommand,
+    entity: KnownEntity,
+    result: RoomAdapterOperationResult,
+  ): void {
+    this.emitOperationEvent({
+      eventType: result.ok ? "command_executed" : "command_rejected",
+      deviceId: entity.kind === "device" ? command.device_id : null,
+      sensorId: entity.kind === "sensor" ? command.device_id : null,
+      capability: command.capability,
+      commandId: command.command_id,
+      status: result.ok ? "ok" : "rejected",
+      failureClass: result.failure_class,
+      provenance: result.provenance,
+    });
+  }
+
+  private emitVerificationEvent(
+    command: RoomAdapterCommand,
+    entity: KnownEntity,
+    result: RoomAdapterOperationResult,
+  ): void {
+    this.emitOperationEvent({
+      eventType: "verification_read",
+      deviceId: entity.kind === "device" ? command.device_id : null,
+      sensorId: entity.kind === "sensor" ? command.device_id : null,
+      capability: command.capability,
+      commandId: command.command_id,
+      status: result.ok ? "ok" : "failed",
+      failureClass: result.failure_class,
+      provenance: result.provenance,
+    });
+  }
+
+  private emitOperationEvent(input: {
+    eventType: FakeDeviceEventType;
+    deviceId: string | null;
+    sensorId: string | null;
+    capability: Capability | null;
+    commandId?: string | null;
+    planId?: string | null;
+    status: FakeDeviceEventStatus;
+    failureClass: RoomAdapterFailureClass | null;
+    provenance: RoomAdapterProvenance | null;
+  }): void {
+    this.events.emit({
+      event_type: input.eventType,
+      adapter_id: this.adapterId,
+      adapter_kind: "fake",
+      room_id: this.roomId,
+      profile_id: this.profileId,
+      device_id: input.deviceId,
+      sensor_id: input.sensorId,
+      capability: input.capability,
+      command_id: input.commandId ?? null,
+      plan_id: input.planId ?? null,
+      result_status: input.status,
+      failure_class: input.failureClass,
+      provenance: input.provenance,
+    });
   }
 
   private result(input: {
