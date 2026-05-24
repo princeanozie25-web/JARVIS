@@ -131,6 +131,13 @@ export const RoomAdapterCommandSchema = z
         message: "Mutating capabilities cannot run in read_only mode.",
       });
     }
+    if (!mutating && command.mode !== "read_only") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mode"],
+        message: "Observe-only capabilities must stay in read_only mode.",
+      });
+    }
     if (mutating && !command.approval.required) {
       ctx.addIssue({
         code: "custom",

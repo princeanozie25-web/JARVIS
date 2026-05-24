@@ -29,6 +29,7 @@ export const ROOM_CAPABILITIES = [
   "presence.observe",
   "motion.observe",
   "temperature.observe",
+  "meter.observe",
   "humidity.observe",
   "camera.mock_frame",
   "screen.ocr",
