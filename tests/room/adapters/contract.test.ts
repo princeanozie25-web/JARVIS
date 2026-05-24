@@ -27,6 +27,7 @@ function deviceState() {
     power: "off",
     brightness_percent: 0,
     color_hex: null,
+    color_temperature_kelvin: null,
     derived: false,
     freshness: freshness(),
   } as const;

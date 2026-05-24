@@ -41,6 +41,7 @@ export const ROOM_MUTATING_CAPABILITIES = [
   "power.switch",
   "light.dimmer",
   "light.color",
+  "light.temperature",
 ] as const satisfies readonly Capability[];
 
 export const RoomAdapterOperationNameSchema = z.enum(
@@ -117,7 +118,13 @@ export const RoomAdapterCommandSchema = z
     mode: RoomAdapterCommandModeSchema,
     device_id: RoomAdapterIdSchema,
     capability: CapabilitySchema,
-    action: z.enum(["read", "set_power", "set_brightness", "set_color"]),
+    action: z.enum([
+      "read",
+      "set_power",
+      "set_brightness",
+      "set_color",
+      "set_temperature",
+    ]),
     value: z.union([z.boolean(), z.number(), z.string(), z.null()]),
     one_command_one_action: z.literal(true),
     approval: RoomAdapterApprovalRequirementSchema,
@@ -315,6 +322,8 @@ function expectedActionForCapability(
       return "set_brightness";
     case "light.color":
       return "set_color";
+    case "light.temperature":
+      return "set_temperature";
     default:
       return "read";
   }

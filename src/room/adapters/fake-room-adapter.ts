@@ -427,6 +427,14 @@ function applyCommandToState(
         throw new Error("Color must be a string.");
       next.color_hex = command.value;
       break;
+    case "light.temperature":
+      if (typeof command.value !== "number")
+        throw new Error("Color temperature must be numeric.");
+      next.color_temperature_kelvin = Math.min(
+        6500,
+        Math.max(2000, Math.round(command.value)),
+      );
+      break;
     default:
       return next;
   }

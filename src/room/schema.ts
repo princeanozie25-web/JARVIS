@@ -51,6 +51,13 @@ export const DeviceStateSchema = z.strictObject({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullable()
     .default(null),
+  color_temperature_kelvin: z
+    .number()
+    .int()
+    .min(2000)
+    .max(6500)
+    .nullable()
+    .default(null),
   derived: z.boolean(),
   freshness: FreshnessBoundarySchema,
 });
