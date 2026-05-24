@@ -5,9 +5,15 @@ import type {
   ModelProviderFailureClass,
   ModelProviderHealth,
   ModelProviderRequest,
+  ModelProviderResponse,
   ModelProviderStreamEvent,
 } from "./contract";
-import type { OllamaClient, OllamaClientError } from "./ollama-client";
+import type {
+  OllamaClient,
+  OllamaClientError,
+  OllamaCompleteInput,
+  OllamaCompleteResult,
+} from "./ollama-client";
 
 export const OLLAMA_MODEL_PROVIDER_DEFAULT_CAPABILITIES = [
   "chat",
@@ -77,22 +83,54 @@ export function createOllamaModelProvider(
       supports_abort: true,
       supports_timeout: true,
       governance_notes:
-        "Ollama scaffold only; health metadata may come from an injected probe, while inference and streaming fail closed.",
+        "Ollama local complete calls require an injected client; health metadata may come from an injected probe, while streaming fails closed.",
       implementation_enabled: false,
       network_access_enabled: false,
       telemetry_persistence_enabled: false,
     },
     complete: async (request) => {
-      throw createProviderError(
-        config,
-        request,
-        "provider_error",
-        "Ollama inference is not implemented in Phase 13B.1.",
-      );
+      return clone(await completeWithClient(config, request));
     },
     stream: (request) => streamFailure(config, request),
     health: async () => clone(await createHealth(config)),
   };
+}
+
+async function completeWithClient(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+): Promise<ModelProviderResponse> {
+  try {
+    validateCompleteRequest(config, request);
+
+    if (!config.client) {
+      throw createProviderError(
+        config,
+        request,
+        "unavailable",
+        "Ollama complete requires an injected client.",
+      );
+    }
+
+    const result = await config.client.complete({
+      request_id: request.request_id,
+      model: request.model_id,
+      input: toOllamaInput(config, request),
+      options: {
+        temperature: request.options.temperature,
+        top_p: request.options.top_p,
+        max_output_tokens: request.options.max_output_tokens,
+        stop_sequences: request.options.stop_sequences,
+      },
+      timeout_ms: request.timeout_ms,
+      abort_signal: request.abort_signal,
+      metadata_only: true,
+    });
+
+    return createResponse(config, request, result);
+  } catch (error) {
+    throw normalizeProviderError(config, request, error);
+  }
 }
 
 async function* streamFailure(
@@ -231,7 +269,7 @@ async function createClientHealth(
 function createProviderError(
   config: NormalizedOllamaProviderOptions,
   request: ModelProviderRequest,
-  failureClass: Extract<ModelProviderFailureClass, "provider_error">,
+  failureClass: ModelProviderFailureClass,
   message: string,
 ): ModelProviderError {
   return {
@@ -240,10 +278,137 @@ function createProviderError(
     provider_id: config.id,
     failure_class: failureClass,
     message,
-    retryable: false,
+    retryable:
+      failureClass === "unavailable" ||
+      failureClass === "timeout" ||
+      failureClass === "provider_error" ||
+      failureClass === "unknown",
     degraded: true,
     redaction_status: "metadata_only",
   };
+}
+
+function createResponse(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+  result: OllamaCompleteResult,
+): ModelProviderResponse {
+  return {
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: config.id,
+    output: {
+      kind: "text",
+      content: result.output,
+    },
+    latency_ms: result.latency_ms,
+    token_usage: {
+      input_tokens: result.token_usage.input_tokens,
+      output_tokens: result.token_usage.output_tokens,
+      total_tokens: result.token_usage.total_tokens,
+    },
+    finish_reason: "stop",
+    degraded: false,
+    redaction_status: result.redaction_status,
+  };
+}
+
+function validateCompleteRequest(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+) {
+  if (request.abort_signal?.aborted) {
+    throw createProviderError(
+      config,
+      request,
+      "cancelled",
+      "Ollama complete request was cancelled.",
+    );
+  }
+
+  if (!Number.isInteger(request.timeout_ms) || request.timeout_ms <= 0) {
+    throw createProviderError(
+      config,
+      request,
+      "invalid_request",
+      "timeout_ms must be a positive integer.",
+    );
+  }
+
+  if (!config.capabilities.includes(request.capability)) {
+    throw createProviderError(
+      config,
+      request,
+      "invalid_request",
+      "Requested capability is not supported by the Ollama provider.",
+    );
+  }
+
+  if (request.input.kind !== "text" && request.input.kind !== "messages") {
+    throw createProviderError(
+      config,
+      request,
+      "invalid_request",
+      "Ollama complete only supports text and message inputs.",
+    );
+  }
+}
+
+function toOllamaInput(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+): OllamaCompleteInput {
+  if (request.input.kind === "text") {
+    return {
+      kind: "text",
+      content: request.input.content,
+    };
+  }
+
+  if (request.input.kind === "messages") {
+    return {
+      kind: "messages",
+      messages: request.input.messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+      })),
+    };
+  }
+
+  throw createProviderError(
+    config,
+    request,
+    "invalid_request",
+    "Ollama complete only supports text and message inputs.",
+  );
+}
+
+function normalizeProviderError(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+  error: unknown,
+): ModelProviderError {
+  if (isModelProviderError(error)) return clone(error);
+
+  if (isOllamaClientError(error)) {
+    return {
+      request_id: request.request_id,
+      model_id: request.model_id,
+      provider_id: config.id,
+      failure_class: error.failure_class,
+      message: error.message,
+      retryable: error.retryable,
+      degraded: true,
+      redaction_status: "metadata_only",
+    };
+  }
+
+  return createProviderError(
+    config,
+    request,
+    "provider_error",
+    "Ollama provider failed closed with an unknown client error.",
+  );
 }
 
 function normalizeOptions(
@@ -266,6 +431,16 @@ function isOllamaClientError(error: unknown): error is OllamaClientError {
   return (
     typeof error === "object" &&
     error !== null &&
+    "failure_class" in error &&
+    "redaction_status" in error
+  );
+}
+
+function isModelProviderError(error: unknown): error is ModelProviderError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "provider_id" in error &&
     "failure_class" in error &&
     "redaction_status" in error
   );
