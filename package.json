@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "doctor": "tsx scripts/doctor.ts",
     "eval": "node --env-file=.env.local --import tsx scripts/run-eval.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
