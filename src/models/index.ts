@@ -42,6 +42,21 @@ export type {
 } from "./registry";
 
 export {
+  MODEL_RESOLVER_FAILURE_REASONS,
+  MODEL_RESOLVER_REJECTION_REASONS,
+  resolveModel,
+} from "./resolver";
+export type {
+  ModelResolverCandidate,
+  ModelResolverFailure,
+  ModelResolverFailureReason,
+  ModelResolverInput,
+  ModelResolverRejectionReason,
+  ModelResolverResult,
+  NormalizedModelResolverInput,
+} from "./resolver";
+
+export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
   MODEL_PROVIDER_REDACTION_STATUSES,
