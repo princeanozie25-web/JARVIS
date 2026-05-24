@@ -1,0 +1,105 @@
+schema_version: 1
+models:
+  - id: llama3.2:3b
+    provider: ollama
+    tier: T1
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+    context_window: 8192
+    visibility: enabled
+    priority: 10
+    supports_streaming: true
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: Llama 3.2 3B
+      description: Small local chat model entry for Phase 13 registry metadata.
+      approximate_memory_mb: 3072
+      cost_class: local_free
+      governance_notes: Metadata only; loading does not probe Ollama or install models.
+  - id: qwen2.5:7b
+    provider: ollama
+    tier: T2
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - tool_reasoning
+    context_window: 32768
+    visibility: enabled
+    priority: 20
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+    metadata:
+      display_name: Qwen 2.5 7B
+      description: Local reasoning-capable model entry for registry ordering tests.
+      approximate_memory_mb: 8192
+      cost_class: local_free
+      governance_notes: Metadata only; no provider execution or runtime orchestration is enabled.
+  - id: claude-haiku
+    provider: anthropic
+    tier: T3
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - tool_reasoning
+    context_window: 200000
+    visibility: disabled
+    priority: 100
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+    metadata:
+      display_name: Claude Haiku
+      description: Cloud model metadata retained disabled for governance-safe routing reads.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled by default; registry loading must not call Anthropic APIs.
+  - id: claude-opus
+    provider: anthropic
+    tier: T4
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - vision
+      - tool_reasoning
+    context_window: 200000
+    visibility: disabled
+    priority: 110
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    metadata:
+      display_name: Claude Opus
+      description: Higher-tier cloud model metadata retained disabled for future routing policy work.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled by default; registry loading must not call Anthropic APIs.
+  - id: mock-local-model
+    provider: mock
+    tier: T1
+    runtime_class: mock
+    capabilities:
+      - chat
+      - classify
+    context_window: 4096
+    visibility: enabled
+    priority: 0
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: Mock Local Model
+      description: Mock registry entry for tests and non-executing local development flows.
+      approximate_memory_mb: 0
+      cost_class: mock_free
+      governance_notes: Mock metadata only; no inference path or provider adapter is wired.
