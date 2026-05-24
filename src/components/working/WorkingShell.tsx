@@ -1,84 +1,9 @@
-import type { WorkingPanelPlaceholder, WorkingShellModel } from "./types";
+import { WORKING_SHELL_MODEL } from "./panel-registry";
+import type { WorkingPanelViewModel, WorkingShellModel } from "./types";
 
-export const WORKING_SHELL_MODEL: WorkingShellModel = Object.freeze({
-  title: "JARVIS Working",
-  subtitle: "Read-only cockpit shell. Static placeholder regions only.",
-  posture: "read_only_placeholder",
-  localOnly: true,
-  metadataOnly: true,
-  authority: "none",
-  panels: Object.freeze([
-    {
-      id: "system_status",
-      title: "System status",
-      eyebrow: "Local shell",
-      summary:
-        "Host readiness indicators will appear here after observation wiring.",
-      status: "placeholder",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "room_state",
-      title: "Room state",
-      eyebrow: "Room OS",
-      summary:
-        "Room topology summaries are withheld until read-only projections exist.",
-      status: "withheld",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "recent_activity",
-      title: "Recent activity",
-      eyebrow: "Timeline",
-      summary: "Append-only event summaries will render here in a later slice.",
-      status: "placeholder",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "model_router_status",
-      title: "Model/router status",
-      eyebrow: "Routing",
-      summary: "Routing status remains disconnected from this shell.",
-      status: "not_wired",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "suggestions_inbox",
-      title: "Suggestions inbox",
-      eyebrow: "Assistance",
-      summary:
-        "Suggestion summaries are visual placeholders with no action surface.",
-      status: "placeholder",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "cost_usage",
-      title: "Cost/usage",
-      eyebrow: "Budget",
-      summary: "Usage bands will stay metadata-only when connected later.",
-      status: "placeholder",
-      metadataOnly: true,
-      authority: "none",
-    },
-    {
-      id: "safety_governance",
-      title: "Safety/governance",
-      eyebrow: "Policy",
-      summary:
-        "Governance posture is visible only; no decisions are made here.",
-      status: "withheld",
-      metadataOnly: true,
-      authority: "none",
-    },
-  ] satisfies WorkingPanelPlaceholder[]),
-});
+export { WORKING_SHELL_MODEL } from "./panel-registry";
 
-function formatStatus(status: WorkingPanelPlaceholder["status"]) {
+function formatStatus(status: WorkingPanelViewModel["status"]) {
   return status.replaceAll("_", " ");
 }
 
@@ -131,12 +56,14 @@ export function WorkingShell({
       <div className="grid gap-4 lg:grid-cols-3">
         {model.panels.map((panel) => (
           <article
-            key={panel.id}
+            key={panel.panel_id}
             aria-label={panel.title}
-            data-panel-id={panel.id}
+            data-panel-id={panel.panel_id}
             data-panel-status={panel.status}
             data-metadata-only={String(panel.metadataOnly)}
-            data-authority={panel.authority}
+            data-authority={panel.shellAuthority}
+            data-registry-authority={panel.authority}
+            data-refresh-policy={panel.refresh_policy}
             className="min-h-44 border border-white/10 bg-slate-950/55 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.28)]"
           >
             <div className="flex items-start justify-between gap-4">
@@ -153,10 +80,23 @@ export function WorkingShell({
               </span>
             </div>
             <p className="mt-5 text-sm leading-6 text-slate-300/72">
-              {panel.summary}
+              {panel.description}
             </p>
-            <p className="mt-6 text-xs uppercase tracking-[0.18em] text-slate-500">
-              Metadata only · no authority
+            <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
+              {panel.placeholder_rows.map((row) => (
+                <div
+                  key={row.label}
+                  className="border border-white/10 bg-white/[0.03] px-3 py-2"
+                >
+                  <dt className="uppercase tracking-[0.16em] text-slate-500">
+                    {row.label}
+                  </dt>
+                  <dd className="mt-1 text-slate-200">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-5 text-xs uppercase tracking-[0.18em] text-slate-500">
+              Metadata only - read only
             </p>
           </article>
         ))}

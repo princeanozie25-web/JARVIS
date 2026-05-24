@@ -13,6 +13,7 @@ const WORKING_SOURCE_FILES = [
   "src/app/working/page.tsx",
   "app/working/page.tsx",
   "src/components/working/WorkingShell.tsx",
+  "src/components/working/panel-registry.ts",
   "src/components/working/types.ts",
 ] as const;
 
@@ -58,7 +59,7 @@ describe("Phase 12B.1 Working screen shell", () => {
     expect(html).toContain('data-panel-id="system_status"');
     expect(html).toContain('data-panel-id="room_state"');
     expect(html).toContain('data-panel-id="recent_activity"');
-    expect(html).toContain('data-panel-id="model_router_status"');
+    expect(html).toContain('data-panel-id="model_router"');
     expect(html).toContain('data-panel-id="suggestions_inbox"');
     expect(html).toContain('data-panel-id="cost_usage"');
     expect(html).toContain('data-panel-id="safety_governance"');
@@ -78,9 +79,10 @@ describe("Phase 12B.1 Working screen shell", () => {
       authority: "none",
       panels: expect.arrayContaining([
         expect.objectContaining({
-          id: "system_status",
+          panel_id: "system_status",
           metadataOnly: true,
-          authority: "none",
+          authority: "read_only",
+          shellAuthority: "none",
         }),
       ]),
     });
