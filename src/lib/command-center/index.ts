@@ -710,6 +710,26 @@ export {
   type RedactionCoverageValidatorId,
 } from "./redaction-coverage-matrix";
 export {
+  DEFAULT_PHASE_9K_PRIVACY_GUARD_STATE,
+  PHASE_9K_PRIVACY_CLOSEOUT_GUARDS,
+  PHASE_9K_PRIVACY_CLOSEOUT_VERDICTS,
+  PHASE_9K_PRIVACY_FORBIDDEN_CAPABILITY_FIELDS,
+  Phase9KPrivacyCloseoutGuardSchema,
+  Phase9KPrivacyCloseoutVerdictSchema,
+  Phase9KPrivacyForbiddenCapabilityFieldSchema,
+  Phase9KPrivacyGuardStateSchema,
+  Phase9KPrivacyTelemetryCloseoutReportSchema,
+  coercePhase9KCoverageSummary,
+  createPhase9KPrivacyTelemetryCloseoutReport,
+  listPhase9KForbiddenPayloadClasses,
+  type Phase9KPrivacyCloseoutGuard,
+  type Phase9KPrivacyCloseoutVerdict,
+  type Phase9KPrivacyForbiddenCapabilityField,
+  type Phase9KPrivacyGuardState,
+  type Phase9KPrivacyTelemetryCloseoutInput,
+  type Phase9KPrivacyTelemetryCloseoutReport,
+} from "./privacy-closeout";
+export {
   DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
