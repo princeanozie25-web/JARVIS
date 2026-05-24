@@ -1,0 +1,49 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "JARVIS Command Center",
+  "version": "0.1.0",
+  "identifier": "dev.princeanozie.jarvis",
+  "build": {
+    "beforeDevCommand": {
+      "script": "npm run dev:local",
+      "cwd": "..",
+      "wait": false
+    },
+    "beforeBuildCommand": "",
+    "devUrl": "http://127.0.0.1:3000",
+    "frontendDist": "http://127.0.0.1:3000",
+    "removeUnusedCommands": true
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "JARVIS Command Center",
+        "url": "http://127.0.0.1:3000",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' http://127.0.0.1:3000 http://localhost:3000; connect-src 'self' http://127.0.0.1:3000 http://localhost:3000 ws://127.0.0.1:3000 ws://localhost:3000; img-src 'self' data: blob: http://127.0.0.1:3000 http://localhost:3000; style-src 'self' 'unsafe-inline' http://127.0.0.1:3000 http://localhost:3000; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://127.0.0.1:3000 http://localhost:3000",
+      "capabilities": ["default"],
+      "assetProtocol": {
+        "enable": false,
+        "scope": []
+      },
+      "dangerousDisableAssetCspModification": false
+    },
+    "withGlobalTauri": false,
+    "macOSPrivateApi": false
+  },
+  "bundle": {
+    "active": false,
+    "createUpdaterArtifacts": false,
+    "targets": []
+  },
+  "plugins": {}
+}

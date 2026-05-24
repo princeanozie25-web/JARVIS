@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Phase 12A.1 local shell capability. No IPC commands or plugin permissions are granted.",
+  "windows": ["main"],
+  "permissions": []
+}

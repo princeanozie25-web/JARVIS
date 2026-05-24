@@ -5,9 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "dev:local": "next dev --hostname 127.0.0.1",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "doctor": "tsx scripts/doctor.ts",
     "eval": "node --env-file=.env.local --import tsx scripts/run-eval.ts",
     "format": "prettier --write .",
@@ -30,6 +34,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
