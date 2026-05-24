@@ -1,8 +1,10 @@
-import type { OrbVisualState } from "./types";
-import { IDLE_ORB_STATE } from "./state-tokens";
+import type { OrbVisualState, RestOrbStateTokens } from "./types";
+import { IDLE_ORB_STATE, restOrbTokensToViewModel } from "./state-tokens";
 
 export interface OrbProps {
   state?: OrbVisualState;
+  projectionTokens?: RestOrbStateTokens;
+  projectionState?: OrbVisualState;
 }
 
 const toneClasses = {
@@ -32,27 +34,36 @@ function formatToken(value: string) {
   return value.replaceAll("_", " ");
 }
 
-export function Orb({ state = IDLE_ORB_STATE }: OrbProps) {
-  const tone = toneClasses[state.tone];
+export function Orb({
+  state = IDLE_ORB_STATE,
+  projectionTokens,
+  projectionState,
+}: OrbProps) {
+  const renderedState = resolveVisualState(
+    state,
+    projectionTokens,
+    projectionState,
+  );
+  const tone = toneClasses[renderedState.tone];
   const metadata = [
-    ["Mode", state.mode],
-    ["Load", state.loadBand],
-    ["Governance", state.governancePosture],
-    ["Heartbeat", state.heartbeat],
-    ["Event", state.lastEventClass],
+    ["Mode", renderedState.mode],
+    ["Load", renderedState.loadBand],
+    ["Governance", renderedState.governancePosture],
+    ["Heartbeat", renderedState.heartbeat],
+    ["Event", renderedState.lastEventClass],
   ] as const;
 
   return (
     <section
-      aria-label={state.label}
-      data-orb-mode={state.mode}
-      data-load-band={state.loadBand}
-      data-governance-posture={state.governancePosture}
-      data-heartbeat={state.heartbeat}
-      data-local-only={String(state.localOnly)}
-      data-authority={state.authority}
-      data-metadata-only={String(state.metadataOnly)}
-      data-withheld={String(state.withheld)}
+      aria-label={renderedState.label}
+      data-orb-mode={renderedState.mode}
+      data-load-band={renderedState.loadBand}
+      data-governance-posture={renderedState.governancePosture}
+      data-heartbeat={renderedState.heartbeat}
+      data-local-only={String(renderedState.localOnly)}
+      data-authority={renderedState.authority}
+      data-metadata-only={String(renderedState.metadataOnly)}
+      data-withheld={String(renderedState.withheld)}
       className="flex min-h-[560px] w-full flex-col items-center justify-center gap-9 text-center"
     >
       <div className="relative grid h-[21rem] w-[21rem] place-items-center sm:h-[26rem] sm:w-[26rem]">
@@ -84,11 +95,11 @@ export function Orb({ state = IDLE_ORB_STATE }: OrbProps) {
           Command Center Foundation
         </p>
         <h1 className="text-4xl font-semibold tracking-normal text-white sm:text-5xl">
-          {state.label}
+          {renderedState.label}
         </h1>
-        <p className="text-base text-cyan-100/78">{state.statusText}</p>
+        <p className="text-base text-cyan-100/78">{renderedState.statusText}</p>
         <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-300/72">
-          {state.detailText}
+          {renderedState.detailText}
         </p>
       </div>
 
@@ -112,4 +123,89 @@ export function Orb({ state = IDLE_ORB_STATE }: OrbProps) {
       </dl>
     </section>
   );
+}
+
+const UNSAFE_PROJECTION_TOKENS: RestOrbStateTokens = Object.freeze({
+  mode: "idle",
+  load_band: "idle",
+  last_event_class: "error",
+  governance_posture: "gated_active",
+  heartbeat: "unavailable",
+});
+
+function resolveVisualState(
+  fallbackState: OrbVisualState,
+  projectionTokens: RestOrbStateTokens | undefined,
+  projectionState: OrbVisualState | undefined,
+): OrbVisualState {
+  if (projectionTokens) {
+    return restOrbTokensToViewModel(projectionTokens);
+  }
+  if (projectionState) {
+    return isSafeProjectionState(projectionState)
+      ? restOrbTokensToViewModel(tokensFromVisualState(projectionState))
+      : restOrbTokensToViewModel(UNSAFE_PROJECTION_TOKENS);
+  }
+  return isSafeProjectionState(fallbackState)
+    ? fallbackState
+    : restOrbTokensToViewModel(UNSAFE_PROJECTION_TOKENS);
+}
+
+function tokensFromVisualState(state: OrbVisualState): RestOrbStateTokens {
+  return {
+    mode: state.mode,
+    load_band: state.loadBand,
+    last_event_class: state.lastEventClass,
+    governance_posture: state.governancePosture,
+    heartbeat: state.heartbeat,
+  };
+}
+
+function isSafeProjectionState(state: OrbVisualState): boolean {
+  return (
+    state.metadataOnly === true &&
+    state.rawPayloadIncluded === false &&
+    state.localOnly === true &&
+    state.authority === "none" &&
+    state.withheld === false &&
+    isSafeMetadataValue(state)
+  );
+}
+
+function isSafeMetadataValue(value: unknown): boolean {
+  return !containsUnsafePayload(value, new Set());
+}
+
+function containsUnsafePayload(value: unknown, seen: Set<object>): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return isSecretText(value);
+  if (typeof value !== "object") return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsUnsafePayload(item, seen));
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (isUnsafeKeyValue(key, child)) return true;
+    if (containsUnsafePayload(child, seen)) return true;
+  }
+  return false;
+}
+
+function isUnsafeKeyValue(key: string, value: unknown): boolean {
+  if (
+    /raw|payload_json|prompt|output|transcript|frame|secret|token/i.test(key)
+  ) {
+    if (value === null || value === false) return false;
+    if (key === "rawPayloadIncluded" && value === false) return false;
+    if (key === "raw_payload_included" && value === false) return false;
+    return true;
+  }
+  return false;
+}
+
+function isSecretText(value: string): boolean {
+  return /(api[_-]?key|password|secret|token|sk-)/i.test(value);
 }
