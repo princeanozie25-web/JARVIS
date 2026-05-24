@@ -1,0 +1,216 @@
+schema_version: 1
+profile_id: bedroom-workspace-default
+room_id: bedroom-workspace
+name: Bedroom Workspace
+deployment_scope: one_room
+local_only: true
+zones:
+  - id: desk
+    name: Desk
+    purpose: Coding, writing, and active work.
+  - id: bed
+    name: Bed
+    purpose: Rest and low-interruption mode.
+  - id: door
+    name: Door
+    purpose: Entry and movement boundary.
+  - id: ambient
+    name: Ambient
+    purpose: Room-wide background lighting and context.
+devices:
+  - id: desk_lamp
+    name: Desk Lamp
+    zone_id: desk
+    kind: light
+    capabilities:
+      - power.observe
+      - power.switch
+      - light.observe
+      - light.dimmer
+    adapter:
+      adapter_id: fake-desk-lamp
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    trust_class: safe_mutate
+    state:
+      power: off
+      brightness_percent: 0
+      color_hex: null
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 30000
+        expires_at_ms: 30000
+        source: mock
+  - id: bed_lamp
+    name: Bed Lamp
+    zone_id: bed
+    kind: light
+    capabilities:
+      - power.observe
+      - power.switch
+      - light.observe
+      - light.dimmer
+    adapter:
+      adapter_id: fake-bed-lamp
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    trust_class: safe_mutate
+    state:
+      power: off
+      brightness_percent: 0
+      color_hex: null
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 30000
+        expires_at_ms: 30000
+        source: mock
+  - id: led_strip
+    name: LED Strip
+    zone_id: ambient
+    kind: light
+    capabilities:
+      - power.observe
+      - power.switch
+      - light.observe
+      - light.dimmer
+      - light.color
+    adapter:
+      adapter_id: fake-led-strip
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    trust_class: safe_mutate
+    state:
+      power: off
+      brightness_percent: 0
+      color_hex: "#00aaff"
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 30000
+        expires_at_ms: 30000
+        source: mock
+  - id: smart_plug
+    name: Smart Plug
+    zone_id: desk
+    kind: plug
+    capabilities:
+      - power.observe
+      - power.switch
+    adapter:
+      adapter_id: fake-smart-plug
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    state:
+      power: off
+      brightness_percent: null
+      color_hex: null
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 30000
+        expires_at_ms: 30000
+        source: mock
+sensors:
+  - id: motion_door
+    name: Door Motion
+    zone_id: door
+    kind: motion
+    capabilities:
+      - motion.observe
+    adapter:
+      adapter_id: fake-door-motion
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    state:
+      value: false
+      unit: null
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 15000
+        expires_at_ms: 15000
+        source: mock
+  - id: presence_desk
+    name: Desk Presence
+    zone_id: desk
+    kind: presence
+    capabilities:
+      - presence.observe
+    adapter:
+      adapter_id: fake-desk-presence
+      kind: fake
+      local_only: true
+      real_adapter: false
+      network_access: false
+      hardware_io: false
+    state:
+      value: false
+      unit: null
+      derived: false
+      freshness:
+        observed_at_ms: 0
+        stale_after_ms: 15000
+        expires_at_ms: 15000
+        source: mock
+policy:
+  local_first: true
+  fake_first: true
+  one_room_first: true
+  public_network_exposure: false
+  real_hardware_enabled: false
+  real_adapters_enabled: false
+  background_capture_enabled: false
+  autonomous_execution_enabled: false
+  rules:
+    - id: deny-real-hardware
+      scope: room
+      target_id: bedroom-workspace
+      effect: deny
+      reason: Phase 10B uses fake devices only; real hardware is not wired.
+      declarative_only: true
+      executes_action: false
+    - id: require-approval-for-fake-mutation
+      scope: room
+      target_id: bedroom-workspace
+      effect: require_approval
+      reason: Fake safe-mutate capability remains declarative until adapter phases.
+      declarative_only: true
+      executes_action: false
+  approval:
+    approval_required_for:
+      - safe_mutate
+      - restricted_mutate
+    auto_approval_enabled: false
+    voice_only_approval_enabled: false
+    dry_run_required: true
+  retention:
+    audit: forever
+    telemetry_days: 30
+    replay_metadata_days: 90
+    raw_payload_retention: false
+substrate_only: true
+registry_loading_implemented: false
+adapters_implemented: false
+hardware_io_enabled: false
+network_calls_enabled: false
+persistence_enabled: false
+ui_rendering_enabled: false
+provider_wiring_enabled: false
+mutation_surface_enabled: false
