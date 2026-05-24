@@ -7,6 +7,7 @@ import type {
   ModelProviderRequest,
   ModelProviderStreamEvent,
 } from "./contract";
+import type { OllamaClient, OllamaClientError } from "./ollama-client";
 
 export const OLLAMA_MODEL_PROVIDER_DEFAULT_CAPABILITIES = [
   "chat",
@@ -39,6 +40,9 @@ export interface OllamaProviderOptions {
   readonly id?: string;
   readonly capabilities?: readonly ModelCapability[];
   readonly now?: () => number;
+  readonly client?: OllamaClient;
+  readonly healthRequestId?: string;
+  readonly healthTimeoutMs?: number;
   readonly healthProbe?: () =>
     | OllamaProviderProbeResult
     | Promise<OllamaProviderProbeResult>;
@@ -48,6 +52,9 @@ interface NormalizedOllamaProviderOptions {
   readonly id: string;
   readonly capabilities: readonly ModelCapability[];
   readonly now: () => number;
+  readonly client?: OllamaClient;
+  readonly healthRequestId: string;
+  readonly healthTimeoutMs: number;
   readonly healthProbe?: OllamaProviderOptions["healthProbe"];
 }
 
@@ -110,6 +117,10 @@ async function* streamFailure(
 async function createHealth(
   config: NormalizedOllamaProviderOptions,
 ): Promise<ModelProviderHealth> {
+  if (config.client) {
+    return createClientHealth(config);
+  }
+
   if (!config.healthProbe) {
     return {
       provider_id: config.id,
@@ -157,6 +168,66 @@ async function createHealth(
   }
 }
 
+async function createClientHealth(
+  config: NormalizedOllamaProviderOptions,
+): Promise<ModelProviderHealth> {
+  if (!config.client) {
+    return {
+      provider_id: config.id,
+      ok: false,
+      runtime_class: "local",
+      available_models: [],
+      checked_at: config.now(),
+      degraded: true,
+      error_class: "unavailable",
+    };
+  }
+
+  try {
+    const result = await config.client.listModels({
+      request_id: config.healthRequestId,
+      timeout_ms: config.healthTimeoutMs,
+      metadata_only: true,
+    });
+    const availableModels = result.models.map((model) => model.name);
+
+    if (availableModels.length === 0) {
+      return {
+        provider_id: config.id,
+        ok: false,
+        runtime_class: "local",
+        available_models: [],
+        checked_at: result.checked_at,
+        degraded: true,
+        error_class: "model_missing",
+      };
+    }
+
+    return {
+      provider_id: config.id,
+      ok: true,
+      runtime_class: "local",
+      available_models: availableModels,
+      checked_at: result.checked_at,
+      degraded: result.degraded,
+    };
+  } catch (error) {
+    const errorClass = isOllamaClientError(error)
+      ? error.failure_class
+      : "provider_error";
+
+    return {
+      provider_id: config.id,
+      ok: false,
+      runtime_class: "local",
+      available_models: [],
+      checked_at: config.now(),
+      degraded: true,
+      error_class: errorClass,
+    };
+  }
+}
+
 function createProviderError(
   config: NormalizedOllamaProviderOptions,
   request: ModelProviderRequest,
@@ -184,8 +255,20 @@ function normalizeOptions(
       options.capabilities ?? OLLAMA_MODEL_PROVIDER_DEFAULT_CAPABILITIES,
     ),
     now: options.now ?? (() => 0),
+    client: options.client,
+    healthRequestId: options.healthRequestId ?? "ollama-health-check",
+    healthTimeoutMs: options.healthTimeoutMs ?? 5_000,
     healthProbe: options.healthProbe,
   };
+}
+
+function isOllamaClientError(error: unknown): error is OllamaClientError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "failure_class" in error &&
+    "redaction_status" in error
+  );
 }
 
 function clone<T>(value: T): T {

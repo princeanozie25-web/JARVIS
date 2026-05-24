@@ -3,8 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  createFakeOllamaClient,
   createOllamaModelProvider,
   loadDefaultModelRegistry,
+  type OllamaClient,
+  type OllamaClientCallOptions,
 } from "../../../src/models";
 import type {
   ModelProviderRequest,
@@ -89,6 +92,97 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
     });
   });
 
+  it("construction does not call injected client.listModels", () => {
+    let calls = 0;
+    const backingClient = createFakeOllamaClient();
+    const client: OllamaClient = {
+      listModels: async (options) => {
+        calls += 1;
+        return backingClient.listModels(options);
+      },
+      complete: backingClient.complete,
+      stream: backingClient.stream,
+    };
+
+    createOllamaModelProvider({ client });
+
+    expect(calls).toBe(0);
+  });
+
+  it("health calls injected client.listModels exactly when invoked", async () => {
+    const calls: OllamaClientCallOptions[] = [];
+    const backingClient = createFakeOllamaClient({ now: () => 777 });
+    const client: OllamaClient = {
+      listModels: async (options) => {
+        calls.push(options);
+        return backingClient.listModels(options);
+      },
+      complete: backingClient.complete,
+      stream: backingClient.stream,
+    };
+    const provider = createOllamaModelProvider({
+      client,
+      healthRequestId: "health-client-request-1",
+      healthTimeoutMs: 1_234,
+    });
+
+    expect(calls).toEqual([]);
+    await expect(provider.health()).resolves.toMatchObject({
+      ok: true,
+      available_models: ["llama3.2:3b", "qwen2.5:7b"],
+      checked_at: 777,
+    });
+    expect(calls).toEqual([
+      {
+        request_id: "health-client-request-1",
+        timeout_ms: 1_234,
+        metadata_only: true,
+      },
+    ]);
+  });
+
+  it("health returns ok:true and available_models from the injected client", async () => {
+    const provider = createOllamaModelProvider({
+      client: createFakeOllamaClient({
+        models: [
+          { name: "llama3.2:3b" },
+          { name: "qwen2.5:7b" },
+          { name: "custom-local-model" },
+        ],
+        now: () => 888,
+      }),
+    });
+
+    await expect(provider.health()).resolves.toEqual({
+      provider_id: "ollama",
+      ok: true,
+      runtime_class: "local",
+      available_models: ["llama3.2:3b", "qwen2.5:7b", "custom-local-model"],
+      checked_at: 888,
+      degraded: false,
+    });
+  });
+
+  it.each(["unavailable", "model_missing", "provider_error"] as const)(
+    "health maps %s client failures fail-closed",
+    async (failureMode) => {
+      const provider = createOllamaModelProvider({
+        now: () => 999,
+        client: createFakeOllamaClient({ failureMode }),
+      });
+
+      await expect(provider.health()).resolves.toEqual({
+        provider_id: "ollama",
+        ok: false,
+        runtime_class: "local",
+        available_models: [],
+        checked_at: 999,
+        degraded: true,
+        error_class: failureMode,
+      });
+    },
+  );
+
   it("health returns ok:true when the injected probe returns models", async () => {
     const provider = createOllamaModelProvider({
       now: () => 111,
@@ -170,6 +264,18 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
       healthProbe: () => ({
         ok: true,
         available_models: ["llama3.2:3b"],
+      }),
+    });
+    const first = await provider.health();
+    (first.available_models as string[]).push("mutated-model");
+
+    expect((await provider.health()).available_models).toEqual(["llama3.2:3b"]);
+  });
+
+  it("client-backed health returns defensive-copy safe available models", async () => {
+    const provider = createOllamaModelProvider({
+      client: createFakeOllamaClient({
+        models: [{ name: "llama3.2:3b" }],
       }),
     });
     const first = await provider.health();
