@@ -730,6 +730,26 @@ export {
   type Phase9KPrivacyTelemetryCloseoutReport,
 } from "./privacy-closeout";
 export {
+  PHASE_9_FINAL_CLOSEOUT_VALIDATION_REASONS,
+  PHASE_9_FINAL_CLOSEOUT_VERDICTS,
+  PHASE_9_SUBSECTION_CLOSEOUT_IDS,
+  Phase9FinalCloseoutReportSchema,
+  Phase9FinalCloseoutValidationReasonSchema,
+  Phase9FinalCloseoutValidationSchema,
+  Phase9FinalCloseoutVerdictSchema,
+  Phase9SubsectionCloseoutIdSchema,
+  Phase9SubsectionCloseoutReportSchema,
+  createPhase9FinalCloseoutReport,
+  validatePhase9FinalCloseoutReport,
+  type Phase9FinalCloseoutInput,
+  type Phase9FinalCloseoutReport,
+  type Phase9FinalCloseoutValidation,
+  type Phase9FinalCloseoutValidationReason,
+  type Phase9FinalCloseoutVerdict,
+  type Phase9SubsectionCloseoutId,
+  type Phase9SubsectionCloseoutReport,
+} from "./final-closeout";
+export {
   DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
