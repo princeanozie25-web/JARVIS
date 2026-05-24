@@ -152,6 +152,7 @@ function rowsFromTelemetry(
 function rowsFromDisabledFeatureMetadata(
   panel: AuditPanelViewModel,
 ): readonly AuditPlaceholderRow[] | null {
+  if (panel.withheld) return null;
   if (!isSafePanel(panel)) return null;
   return [
     { label: "Disabled", value: String(panel.disabled_affordances.length) },
