@@ -3,10 +3,16 @@ import type { AuditPanelViewModel } from "@/components/audit/types";
 import type { RestOrbStateTokens } from "@/components/orb/types";
 import { listWorkingPanels } from "@/components/working/panel-registry";
 import type { WorkingPanelViewModel } from "@/components/working/types";
+import {
+  REQUIRED_DEMO_MARKER,
+  createDemoSafetyEnvelope,
+  validateDemoSafety,
+  type DemoSafetyEnvelope,
+} from "./demo-safety";
 
-export const SYNTHETIC_OBSERVABILITY_MARKER = "Synthetic demo-safe metadata";
+export const SYNTHETIC_OBSERVABILITY_MARKER = REQUIRED_DEMO_MARKER;
 
-export const SYNTHETIC_REST_ORB_TOKENS: RestOrbStateTokens = Object.freeze({
+const REST_ORB_TOKENS: RestOrbStateTokens = Object.freeze({
   mode: "working",
   load_band: "active",
   last_event_class: "routine_completed",
@@ -14,24 +20,46 @@ export const SYNTHETIC_REST_ORB_TOKENS: RestOrbStateTokens = Object.freeze({
   heartbeat: "stable",
 });
 
+export const SYNTHETIC_REST_ORB_DATASET =
+  createDemoSafetyEnvelope(REST_ORB_TOKENS);
+
+export const SYNTHETIC_REST_ORB_TOKENS: RestOrbStateTokens =
+  validatedSyntheticData(SYNTHETIC_REST_ORB_DATASET, {
+    mode: "degraded",
+    load_band: "idle",
+    last_event_class: "error",
+    governance_posture: "gated_active",
+    heartbeat: "unavailable",
+  });
+
 export function syntheticWorkingPanels(): readonly WorkingPanelViewModel[] {
-  return listWorkingPanels().map((panel) => ({
+  const panels: WorkingPanelViewModel[] = listWorkingPanels().map((panel) => ({
     ...panel,
     status: "placeholder",
     withheld: false,
     projectionBacked: true,
     placeholder_rows: rowsForWorkingPanel(panel.panel_id),
   }));
+
+  return validatedSyntheticData(
+    createDemoSafetyEnvelope(panels),
+    listWorkingPanels().map(withheldWorkingPanel),
+  );
 }
 
 export function syntheticAuditPanels(): readonly AuditPanelViewModel[] {
-  return listAuditPanels().map((panel) => ({
+  const panels: AuditPanelViewModel[] = listAuditPanels().map((panel) => ({
     ...panel,
     status: "placeholder",
     withheld: false,
     projectionBacked: true,
     placeholder_rows: rowsForAuditPanel(panel.panel_id),
   }));
+
+  return validatedSyntheticData(
+    createDemoSafetyEnvelope(panels),
+    listAuditPanels().map(withheldAuditPanel),
+  );
 }
 
 export function malformedSyntheticWorkingPanels(): readonly WorkingPanelViewModel[] {
@@ -46,6 +74,44 @@ export function malformedSyntheticWorkingPanels(): readonly WorkingPanelViewMode
         }
       : panel,
   );
+}
+
+export function validateSyntheticDataset<T>(
+  envelope: Partial<DemoSafetyEnvelope<T>>,
+) {
+  return validateDemoSafety(envelope);
+}
+
+function validatedSyntheticData<T>(
+  envelope: DemoSafetyEnvelope<T>,
+  fallback: T,
+): T {
+  const validation = validateDemoSafety(envelope);
+  return validation.ok && validation.data !== null
+    ? validation.data
+    : structuredClone(fallback);
+}
+
+function withheldWorkingPanel(
+  panel: WorkingPanelViewModel,
+): WorkingPanelViewModel {
+  return {
+    ...panel,
+    status: "withheld",
+    withheld: true,
+    projectionBacked: false,
+    placeholder_rows: [{ label: "State", value: "withheld" }],
+  };
+}
+
+function withheldAuditPanel(panel: AuditPanelViewModel): AuditPanelViewModel {
+  return {
+    ...panel,
+    status: "withheld",
+    withheld: true,
+    projectionBacked: false,
+    placeholder_rows: [{ label: "State", value: "withheld" }],
+  };
 }
 
 function rowsForWorkingPanel(
@@ -117,7 +183,7 @@ function rowsForAuditPanel(
     case "redaction_status":
       return [
         { label: "Payloads", value: "withheld" },
-        { label: "Secrets", value: "withheld" },
+        { label: "Sensitive", value: "withheld" },
       ];
     case "disabled_feature_matrix":
       return [
