@@ -7,6 +7,21 @@ function formatStatus(status: WorkingPanelViewModel["status"]) {
   return status.replaceAll("_", " ");
 }
 
+function formatBadge(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function statusClass(status: WorkingPanelViewModel["status"]) {
+  switch (status) {
+    case "placeholder":
+      return "border-cyan-100/20 bg-cyan-300/[0.055] text-cyan-100/80";
+    case "withheld":
+      return "border-amber-100/20 bg-amber-300/[0.055] text-amber-100/80";
+    case "not_wired":
+      return "border-slate-100/15 bg-slate-300/[0.045] text-slate-200/70";
+  }
+}
+
 export interface WorkingShellProps {
   model?: WorkingShellModel;
 }
@@ -23,37 +38,59 @@ export function WorkingShell({
       data-authority={model.authority}
       className="grid gap-6"
     >
-      <header className="grid gap-3 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/70">
-            Command Center
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold text-white sm:text-5xl">
-            {model.title}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300/75">
-            {model.subtitle}
-          </p>
+      <header className="relative overflow-hidden border border-white/10 bg-white/[0.035] p-6 shadow-[0_28px_90px_rgba(2,6,23,0.36)]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.12),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.055),transparent_40%)]"
+        />
+        <div className="relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/70">
+              Command Center Cockpit
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-normal text-white sm:text-5xl">
+              {model.title}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300/75">
+              {model.subtitle}
+            </p>
+          </div>
+          <dl
+            aria-label="Working shell metadata badges"
+            className="grid grid-cols-1 gap-2 text-left text-xs sm:grid-cols-3 lg:min-w-[30rem]"
+          >
+            <div className="border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-2">
+              <dt className="uppercase tracking-[0.18em] text-slate-500">
+                Authority
+              </dt>
+              <dd className="mt-1 text-slate-100">
+                {formatBadge("read_only")}
+              </dd>
+            </div>
+            <div className="border border-emerald-100/15 bg-emerald-300/[0.04] px-3 py-2">
+              <dt className="uppercase tracking-[0.18em] text-slate-500">
+                Data
+              </dt>
+              <dd className="mt-1 text-slate-100">
+                {formatBadge("metadata_only")}
+              </dd>
+            </div>
+            <div className="border border-slate-100/15 bg-slate-300/[0.035] px-3 py-2">
+              <dt className="uppercase tracking-[0.18em] text-slate-500">
+                Refresh
+              </dt>
+              <dd className="mt-1 text-slate-100">
+                {formatBadge("static_placeholder")}
+              </dd>
+            </div>
+          </dl>
         </div>
-        <dl className="grid grid-cols-3 gap-2 text-left text-xs">
-          <div className="border border-white/10 bg-white/[0.035] px-3 py-2">
-            <dt className="uppercase tracking-[0.18em] text-slate-500">Mode</dt>
-            <dd className="mt-1 text-slate-100">Working</dd>
-          </div>
-          <div className="border border-white/10 bg-white/[0.035] px-3 py-2">
-            <dt className="uppercase tracking-[0.18em] text-slate-500">Data</dt>
-            <dd className="mt-1 text-slate-100">Static</dd>
-          </div>
-          <div className="border border-white/10 bg-white/[0.035] px-3 py-2">
-            <dt className="uppercase tracking-[0.18em] text-slate-500">
-              Authority
-            </dt>
-            <dd className="mt-1 text-slate-100">None</dd>
-          </div>
-        </dl>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div
+        aria-label="Working panel registry layout"
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+      >
         {model.panels.map((panel) => (
           <article
             key={panel.panel_id}
@@ -64,8 +101,12 @@ export function WorkingShell({
             data-authority={panel.shellAuthority}
             data-registry-authority={panel.authority}
             data-refresh-policy={panel.refresh_policy}
-            className="min-h-44 border border-white/10 bg-slate-950/55 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.28)]"
+            className="relative min-h-56 overflow-hidden border border-white/10 bg-slate-950/62 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.3)]"
           >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/30 to-transparent"
+            />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/60">
@@ -75,13 +116,34 @@ export function WorkingShell({
                   {panel.title}
                 </h2>
               </div>
-              <span className="border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.16em] text-slate-400">
+              <span
+                className={`border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.16em] ${statusClass(
+                  panel.status,
+                )}`}
+              >
                 {formatStatus(panel.status)}
               </span>
             </div>
             <p className="mt-5 text-sm leading-6 text-slate-300/72">
               {panel.description}
             </p>
+            <div
+              aria-label={`${panel.title} metadata badges`}
+              className="mt-5 flex flex-wrap gap-2"
+            >
+              {[
+                panel.authority,
+                panel.data_classification,
+                panel.refresh_policy,
+              ].map((badge) => (
+                <span
+                  key={badge}
+                  className="border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-slate-400"
+                >
+                  {formatBadge(badge)}
+                </span>
+              ))}
+            </div>
             <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
               {panel.placeholder_rows.map((row) => (
                 <div
@@ -96,7 +158,7 @@ export function WorkingShell({
               ))}
             </dl>
             <p className="mt-5 text-xs uppercase tracking-[0.18em] text-slate-500">
-              Metadata only - read only
+              Visual placeholder - no authority
             </p>
           </article>
         ))}

@@ -195,7 +195,7 @@ export function getWorkingPanel(panelId: string): WorkingPanelViewModel {
 }
 
 export const WORKING_SHELL_MODEL: WorkingShellModel = Object.freeze({
-  title: "JARVIS Working",
+  title: "JARVIS Room OS — Working Mode",
   subtitle: "Read-only cockpit shell. Static placeholder regions only.",
   posture: "read_only_placeholder",
   localOnly: true,

@@ -43,11 +43,25 @@ describe("Phase 12B.1 Working screen shell", () => {
 
     expect(html).toContain('data-working-layout="read-only-cockpit"');
     expect(html).toContain('data-working-shell="read-only"');
-    expect(html).toContain("JARVIS Working");
+    expect(html).toContain("JARVIS Room OS");
+    expect(html).toContain("Working Mode");
+    expect(html).toContain("Command Center Cockpit");
     expect(html).toContain("Read-only cockpit shell");
     expect(html).toContain('data-local-only="true"');
     expect(html).toContain('data-metadata-only="true"');
     expect(html).toContain('data-authority="none"');
+  });
+
+  it("renders polished registry layout and metadata badges", () => {
+    const html = renderWorkingPage();
+
+    expect(html).toContain('aria-label="Working shell metadata badges"');
+    expect(html).toContain('aria-label="Working panel registry layout"');
+    expect(html).toContain("read only");
+    expect(html).toContain("metadata only");
+    expect(html).toContain("static placeholder");
+    expect(html).toContain('data-refresh-policy="static_placeholder"');
+    expect(html).toContain('data-registry-authority="read_only"');
   });
 
   it("renders every placeholder panel region", () => {
@@ -96,7 +110,9 @@ describe("Phase 12B.1 Working screen shell", () => {
     expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
     expect(html).not.toMatch(/<a\b/i);
     expect(html).not.toMatch(/\brole="button"/i);
-    expect(html).not.toMatch(/\b(approve|run|retry|execute)\b/i);
+    expect(html).not.toMatch(
+      /\b(approve|run|retry|execute|mutate|schedule)\b/i,
+    );
   });
 
   it("does not render raw payload language", () => {
