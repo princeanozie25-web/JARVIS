@@ -775,6 +775,26 @@ export {
   type Phase9DisabledFeatureMatrixVerdict,
 } from "./final-disabled-feature-matrix";
 export {
+  PHASE_9_FINAL_VERDICT_COMPONENT_VERDICTS,
+  PHASE_9_FINAL_VERDICT_GATE_VALIDATION_REASONS,
+  PHASE_9_FINAL_VERDICT_GATE_VERDICTS,
+  Phase9FinalVerdictComponentVerdictSchema,
+  Phase9FinalVerdictGateSchema,
+  Phase9FinalVerdictGateTestBarSchema,
+  Phase9FinalVerdictGateValidationReasonSchema,
+  Phase9FinalVerdictGateValidationSchema,
+  Phase9FinalVerdictGateVerdictSchema,
+  createPhase9FinalVerdictGate,
+  validatePhase9FinalVerdictGate,
+  type Phase9FinalVerdictComponentVerdict,
+  type Phase9FinalVerdictGate,
+  type Phase9FinalVerdictGateInput,
+  type Phase9FinalVerdictGateTestBar,
+  type Phase9FinalVerdictGateValidation,
+  type Phase9FinalVerdictGateValidationReason,
+  type Phase9FinalVerdictGateVerdict,
+} from "./final-verdict-gate";
+export {
   DEFAULT_PHASE_9E_AUDIT_SCREEN_GUARD_STATE,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_GUARDS,
   PHASE_9E_AUDIT_SCREEN_CLOSEOUT_VERDICTS,
