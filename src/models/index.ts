@@ -42,11 +42,17 @@ export type {
 } from "./registry";
 
 export {
+  MODEL_FALLBACK_GOVERNANCE_FLAGS,
   MODEL_RESOLVER_FAILURE_REASONS,
   MODEL_RESOLVER_REJECTION_REASONS,
+  buildFallbackPlan,
   resolveModel,
 } from "./resolver";
 export type {
+  ModelFallbackGovernanceFlag,
+  ModelFallbackPlan,
+  ModelFallbackPlanOptions,
+  ModelFallbackRejectionTrace,
   ModelResolverCandidate,
   ModelResolverFailure,
   ModelResolverFailureReason,

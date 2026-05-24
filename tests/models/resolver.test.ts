@@ -3,16 +3,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFallbackPlan,
   createModelRegistryFromYaml,
   loadDefaultModelRegistry,
   resolveModel,
 } from "../../src/models";
-import type { ModelResolverResult } from "../../src/models";
+import type { ModelFallbackPlan, ModelResolverResult } from "../../src/models";
 
 function rejected(result: ModelResolverResult, id: string): readonly string[] {
   const candidate = result.candidates.find((entry) => entry.entry.id === id);
   if (!candidate) throw new Error(`Expected candidate ${id}.`);
   return candidate.rejection_reasons;
+}
+
+function planRejected(plan: ModelFallbackPlan, id: string): readonly string[] {
+  const candidate = plan.candidates.find((entry) => entry.entry.id === id);
+  if (!candidate) throw new Error(`Expected candidate ${id}.`);
+  return candidate.rejection_reasons;
+}
+
+function fallbackIds(plan: ModelFallbackPlan): string[] {
+  return plan.fallback_chain.map((candidate) => candidate.entry.id);
 }
 
 describe("Phase 13C.1 model resolver", () => {
@@ -335,7 +346,346 @@ models:
       /from\s+["'](?:openai|@anthropic-ai\/sdk|ollama|node:http|node:https)["']/,
     );
     expect(source).not.toMatch(
-      /fallback|orchestrat|install|download|\/api\/pull/i,
+      /fallback(?:Execution|Executor|Execute|Run\b|Runner|Invoke)|autoFallback|orchestrat|install|download|\/api\/pull/i,
+    );
+  });
+});
+
+describe("Phase 13C.2 resolver fallback planning", () => {
+  it("builds a deterministic local-only fallback chain", () => {
+    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      runtime_class: "local",
+      excluded_model_ids: ["mock-local-model"],
+    });
+
+    expect(plan.selected_primary?.entry.id).toBe("llama3.2:3b");
+    expect(fallbackIds(plan)).toEqual(["qwen2.5:7b"]);
+    expect(
+      plan.fallback_chain.every(
+        (candidate) => candidate.entry.runtime_class !== "cloud",
+      ),
+    ).toBe(true);
+    expect(plan.failure).toBeNull();
+  });
+
+  it("excludes cloud models by default and does not implicitly escalate local to cloud", () => {
+    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      runtime_class: "local",
+      excluded_model_ids: ["mock-local-model"],
+    });
+
+    expect(plan.selected_primary?.entry.runtime_class).toBe("local");
+    expect(fallbackIds(plan)).not.toContain("claude-haiku");
+    expect(fallbackIds(plan)).not.toContain("claude-opus");
+    expect(plan.rejection_reasons.cloud_not_allowed).toEqual([
+      "claude-haiku",
+      "claude-opus",
+    ]);
+    expect(plan.governance_flags).toContain("cloud_opt_in_required");
+  });
+
+  it("explicit cloud opt-in preserves disabled governance until allow_disabled is also explicit", () => {
+    const cloudOnly = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      allow_cloud: true,
+    });
+    const disabledOnly = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      allow_disabled: true,
+    });
+    const fullyOptedIn = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      allow_cloud: true,
+      allow_disabled: true,
+    });
+
+    expect(fallbackIds(cloudOnly)).not.toContain("claude-haiku");
+    expect(planRejected(cloudOnly, "claude-haiku")).toEqual(["disabled"]);
+    expect(fallbackIds(disabledOnly)).not.toContain("claude-haiku");
+    expect(planRejected(disabledOnly, "claude-haiku")).toEqual([
+      "cloud_not_allowed",
+    ]);
+    expect(fallbackIds(fullyOptedIn)).toEqual([
+      "llama3.2:3b",
+      "qwen2.5:7b",
+      "claude-haiku",
+      "claude-opus",
+    ]);
+  });
+
+  it("orders fallback planning by priority, preferred tier, runtime preference, local-first, then id", () => {
+    const registry = createModelRegistryFromYaml(`
+schema_version: 1
+models:
+  - id: b-local
+    provider: ollama
+    tier: T1
+    runtime_class: local
+    capabilities: [chat]
+    context_window: 2048
+    visibility: enabled
+    priority: 20
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: B Local
+      description: Local model metadata.
+      approximate_memory_mb: 1024
+      cost_class: local_free
+      governance_notes: Metadata only.
+  - id: a-local
+    provider: ollama
+    tier: T2
+    runtime_class: local
+    capabilities: [chat]
+    context_window: 2048
+    visibility: enabled
+    priority: 20
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: A Local
+      description: Local model metadata.
+      approximate_memory_mb: 1024
+      cost_class: local_free
+      governance_notes: Metadata only.
+  - id: mock-low
+    provider: mock
+    tier: T1
+    runtime_class: mock
+    capabilities: [chat]
+    context_window: 2048
+    visibility: enabled
+    priority: 10
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: Mock Low
+      description: Mock model metadata.
+      approximate_memory_mb: 0
+      cost_class: mock_free
+      governance_notes: Metadata only.
+  - id: c-local
+    provider: ollama
+    tier: T2
+    runtime_class: local
+    capabilities: [chat]
+    context_window: 2048
+    visibility: enabled
+    priority: 20
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: C Local
+      description: Local model metadata.
+      approximate_memory_mb: 1024
+      cost_class: local_free
+      governance_notes: Metadata only.
+`);
+
+    const first = buildFallbackPlan(registry, {
+      capability: "chat",
+      preferred_tier: "T2",
+      runtime_class: "local",
+    });
+    const second = buildFallbackPlan(registry, {
+      capability: "chat",
+      preferred_tier: "T2",
+      runtime_class: "local",
+    });
+
+    expect(first).toEqual(second);
+    expect(first.selected_primary?.entry.id).toBe("mock-low");
+    expect(fallbackIds(first)).toEqual(["a-local", "c-local", "b-local"]);
+  });
+
+  it("reports capability exhaustion with typed governance flags", () => {
+    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "embed",
+    });
+
+    expect(plan.selected_primary).toBeNull();
+    expect(plan.fallback_chain).toEqual([]);
+    expect(plan.failure).toEqual({
+      reason: "no_eligible_models",
+      message: "No registry entries matched the resolver policy.",
+    });
+    expect(plan.governance_flags).toEqual([
+      "no_eligible_models",
+      "capability_unavailable",
+    ]);
+    expect(plan.rejection_reasons.capability_mismatch).toEqual([
+      "mock-local-model",
+      "llama3.2:3b",
+      "qwen2.5:7b",
+      "claude-haiku",
+      "claude-opus",
+    ]);
+  });
+
+  it("reports streaming, tools, and vision exhaustion without bypassing requirements", () => {
+    const registry = createModelRegistryFromYaml(`
+schema_version: 1
+models:
+  - id: plain-chat
+    provider: ollama
+    tier: T1
+    runtime_class: local
+    capabilities: [chat]
+    context_window: 2048
+    visibility: enabled
+    priority: 1
+    supports_streaming: false
+    supports_tools: false
+    supports_vision: false
+    metadata:
+      display_name: Plain Chat
+      description: Local model metadata.
+      approximate_memory_mb: 1024
+      cost_class: local_free
+      governance_notes: Metadata only.
+`);
+
+    const streaming = buildFallbackPlan(registry, {
+      capability: "chat",
+      required_streaming: true,
+    });
+    const tools = buildFallbackPlan(registry, {
+      capability: "chat",
+      required_tools: true,
+    });
+    const vision = buildFallbackPlan(registry, {
+      capability: "chat",
+      required_vision: true,
+    });
+
+    expect(streaming.governance_flags).toEqual([
+      "no_eligible_models",
+      "streaming_unavailable",
+    ]);
+    expect(tools.governance_flags).toEqual([
+      "no_eligible_models",
+      "tools_unavailable",
+    ]);
+    expect(vision.governance_flags).toEqual([
+      "no_eligible_models",
+      "vision_unavailable",
+    ]);
+    expect(planRejected(streaming, "plain-chat")).toEqual([
+      "streaming_required",
+    ]);
+    expect(planRejected(tools, "plain-chat")).toEqual(["tools_required"]);
+    expect(planRejected(vision, "plain-chat")).toEqual(["vision_required"]);
+  });
+
+  it("removes excluded model ids from the primary and fallback chain while preserving rejection metadata", () => {
+    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+      runtime_class: "local",
+      excluded_model_ids: ["llama3.2:3b", "qwen2.5:7b"],
+    });
+
+    expect(plan.selected_primary?.entry.id).toBe("mock-local-model");
+    expect(fallbackIds(plan)).toEqual([]);
+    expect(plan.rejection_reasons.excluded).toEqual([
+      "llama3.2:3b",
+      "qwen2.5:7b",
+    ]);
+  });
+
+  it("returns defensive-copy safe fallback plan outputs", () => {
+    const registry = loadDefaultModelRegistry();
+    const first = buildFallbackPlan(registry, {
+      capability: "chat",
+      runtime_class: "local",
+      excluded_model_ids: ["mock-local-model"],
+    });
+    if (!first.selected_primary) throw new Error("Expected primary.");
+
+    first.selected_primary.entry.metadata.display_name = "Mutated";
+    first.fallback_chain[0].entry.capabilities.push("vision");
+
+    const second = buildFallbackPlan(registry, {
+      capability: "chat",
+      runtime_class: "local",
+      excluded_model_ids: ["mock-local-model"],
+    });
+    expect(second.selected_primary?.entry.metadata.display_name).toBe(
+      "Llama 3.2 3B",
+    );
+    expect(second.fallback_chain[0].entry.capabilities).not.toContain("vision");
+  });
+
+  it("supports deterministic injected planning timestamps only when provided", () => {
+    const withoutTimestamp = buildFallbackPlan(loadDefaultModelRegistry(), {
+      capability: "chat",
+    });
+    const withTimestamp = buildFallbackPlan(
+      loadDefaultModelRegistry(),
+      { capability: "chat" },
+      { now: () => 12345 },
+    );
+
+    expect(withoutTimestamp).not.toHaveProperty("planning_timestamp");
+    expect(withTimestamp.planning_timestamp).toBe(12345);
+  });
+
+  it("fails closed on malformed fallback inputs", () => {
+    expect(
+      buildFallbackPlan(loadDefaultModelRegistry(), {
+        capability: "bogus",
+      }),
+    ).toEqual({
+      selected_primary: null,
+      fallback_chain: [],
+      rejected_candidates: [],
+      candidates: [],
+      rejection_reasons: {
+        disabled: [],
+        cloud_not_allowed: [],
+        capability_mismatch: [],
+        streaming_required: [],
+        tools_required: [],
+        vision_required: [],
+        excluded: [],
+        priority_too_high: [],
+      },
+      governance_flags: ["no_eligible_models"],
+      failure: {
+        reason: "invalid_request",
+        message: "Model resolver input was malformed.",
+      },
+      input: null,
+    });
+  });
+
+  it("keeps fallback planning free of provider execution, network, SDK, router, telemetry, event-store, UI, and Tauri wiring", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/models/resolver.ts"),
+      "utf8",
+    );
+
+    expect(source).not.toMatch(
+      /providers\/(?:ollama|mock)|createOllama|createMock|health\(|complete\(|stream\(/,
+    );
+    expect(source).not.toMatch(
+      /\bfetch\s*\(|globalThis\.fetch|WebSocket|EventSource|XMLHttpRequest|process\.env/,
+    );
+    expect(source).not.toMatch(
+      /from\s+["'](?:openai|@anthropic-ai\/sdk|ollama|node:http|node:https)["']/,
+    );
+    expect(source).not.toMatch(
+      /from\s+["'].*router|router\.|event-store|eventStore|writeTelemetry|persistTelemetry|telemetryStore/i,
+    );
+    expect(source).not.toMatch(/document\.|window\.|React|tsx|tauri|invoke\(/i);
+    expect(source).not.toMatch(
+      /fallback(?:Execution|Executor|Execute|Run\b|Runner|Invoke)|autoFallback|orchestrat|install|download|\/api\/pull/i,
     );
   });
 });
