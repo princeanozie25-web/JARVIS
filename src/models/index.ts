@@ -86,3 +86,23 @@ export type {
   OllamaProviderOptions,
   OllamaProviderProbeResult,
 } from "./providers/ollama-provider";
+
+export {
+  createFakeOllamaClient,
+  createOllamaClientError,
+} from "./providers/ollama-client";
+export type {
+  FakeOllamaClientOptions,
+  OllamaClient,
+  OllamaClientCallOptions,
+  OllamaClientError,
+  OllamaClientFailureClass,
+  OllamaClientMessage,
+  OllamaCompleteInput,
+  OllamaCompleteRequest,
+  OllamaCompleteResult,
+  OllamaListModelsResult,
+  OllamaModelDescriptor,
+  OllamaStreamEvent,
+  OllamaTokenUsage,
+} from "./providers/ollama-client";
