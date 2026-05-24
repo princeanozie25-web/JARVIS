@@ -1,159 +1,145 @@
 # JARVIS
 
-> A personal AI operating environment. Multi-model orchestration for chat, reasoning, room control, voice, and project execution — built local-first when local quality holds.
+A governed, local-first AI operating environment. Built in phases. Architecture-first.
 
-**Status:** Phase 1.5 landed — typed core + provider abstraction + streaming + cost guard + rate limit + telemetry + SQLite + model registry  
-**Build log:** May 2026 → graduation (July 2027)  
-**Stack:** Next.js 16 · React 19 · TypeScript · Node 20 · OpenAI SDK · Anthropic SDK · better-sqlite3 · Ollama (next)
+![Tests](https://img.shields.io/badge/tests-1772%20passing-brightgreen)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
 
-> **Runtime decision (16 May 2026):** JARVIS is built on a TypeScript/Next.js runtime (Path A). The architecture document was originally drafted with a Python/FastAPI sketch — that's been formally reconciled in [ARCHITECTURE.md §0](ARCHITECTURE.md#0-runtime-stack-decision--path-a-typescript-first). All architecture principles, the router, the phase order, and the quality bars are unchanged.
+## What This Is
 
----
+JARVIS is a personal AI operating environment with governance, memory, tools, voice, project intelligence, environment state, vision contracts, scheduled assistance, and observability built into one TypeScript runtime.
+It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-out project.
+The core idea is governance first: every capability is routed through safety, approval, privacy, telemetry, and cost boundaries before it can matter.
+It was built as a deliberate architectural exercise over nine phases, not as a weekend feature demo.
 
-## What this is
+## Current Status
 
-JARVIS is a local-first AI assistant being built from scratch as a final-year project at Manchester Metropolitan University. It orchestrates multiple AI providers (OpenAI, Anthropic, later Ollama) behind a unified `ChatProvider` interface, with a focus on quality-bounded routing, cost discipline, safety gates, and observability.
+| Built and Frozen (✅)                                 | Deliberately Not Enabled (❌) |
+| ----------------------------------------------------- | ----------------------------- |
+| Governance architecture                               | Wake word                     |
+| Runtime governance                                    | Always-listening              |
+| Safety enforcement                                    | Autonomous execution          |
+| Tool orchestration                                    | Background camera             |
+| Persistent memory architecture                        | Auto-approval of any action   |
+| Project continuity model                              | Unapproved device actions     |
+| Voice orchestration layer (push-to-talk)              | Cloud providers by default    |
+| Realtime interruption system                          | Remote/public dashboard       |
+| Runtime/voice boundaries                              |                               |
+| Privacy architecture                                  |                               |
+| Telemetry governance                                  |                               |
+| Local-first architecture                              |                               |
+| Cloud policy governance                               |                               |
+| Approval governance                                   |                               |
+| Cost governance                                       |                               |
+| Project intelligence layer                            |                               |
+| Environmental/smart-room scaffolding                  |                               |
+| Vision layer (screenshot OCR, object detection)       |                               |
+| Scheduled self-audit system                           |                               |
+| Observability Command Center (Rest / Working / Audit) |                               |
 
-The end-state goal: a real personal AI environment that runs my desk and room, helps with project work, briefs me on news, controls lighting and sensors — all while staying inside hard monthly spend caps enforced by the orchestrator itself.
+The disabled list is not a gap - it is the architecture. Governance first, capability second.
 
-This repository is a **public build log**. It started rough in May 2026. By July 2027 it should be a fully integrated multi-modal AI system.
+## Architecture
 
-## Why this exists
+JARVIS was built through nine frozen phases: core governance/runtime substrate, typed providers, streaming, cost guards, memory, Obsidian-oriented continuity, runtime safety, terminal execution, governed voice, project intelligence, environmental scaffolding, vision contracts, scheduled assistance, and the Phase 9 Command Center.
+The full architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), with the next operationalization era in [docs/ARCHITECTURE_OPERATIONALIZATION.md](docs/ARCHITECTURE_OPERATIONALIZATION.md).
 
-Most "AI assistant" demos route every request to the most expensive frontier model. That's lazy architecture and unsustainable cost-wise. JARVIS exists to demonstrate that a well-routed system can:
+Key decisions:
 
-- Stay local-first **when local quality matches frontier quality** — not as a cost shortcut
-- Escalate to cloud models only when the task genuinely needs it
-- Make every routing decision observable, auditable, and replayable
-- Enforce cost caps at the orchestrator level so autonomous workflows can't run away
-- Integrate physical hardware (lights, sensors, voice) without giving up software discipline
+- Governance-before-capability doctrine: safety gates are substrate, not decoration.
+- Mock-first / provider-later pattern: providers and devices prove contracts before real integrations land.
+- Approval lifecycle as the only path to side effects.
+- Read-only observability: the Command Center can inspect, replay, and explain, but cannot mutate.
+- Local-first by default, with cloud routes explicitly opt-in, budget-gated, consent-gated, and audited.
 
-Building this is also how I'm proving to myself — and to recruiters — that I can architect, ship, and maintain a non-trivial AI system end-to-end.
+## Tech Stack
 
-## What runs today
+| Layer                                      | Choice                             | Why                                                                                                   |
+| ------------------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Frontend                                   | Next.js 16 + React 19 + TypeScript | Current app runtime and UI layer, with strict typed contracts across client and server.               |
+| Styling                                    | Tailwind CSS 4                     | Current styling layer for fast UI iteration without a separate component framework.                   |
+| Testing                                    | Vitest                             | Current test runner for colocated unit, boundary, contract, and closeout tests.                       |
+| Providers                                  | OpenAI SDK + Anthropic SDK         | Current cloud provider wrappers behind a shared provider interface.                                   |
+| Database                                   | SQLite via `better-sqlite3`        | Current local persistence foundation; operationalization expands this into append-only event storage. |
+| Voice (planned operationalization)         | `whisper.cpp` for STT, Piper TTS   | Offline push-to-talk voice without always-listening or cloud audio by default.                        |
+| Local models (planned operationalization)  | Ollama                             | Local model runtime behind the existing registry/router pattern.                                      |
+| Desktop shell (planned operationalization) | Tauri                              | Local desktop packaging with loopback-only exposure and OS permissions under governance.              |
 
-**Phase 1A — Typed Core Loop** ✓
-**Phase 1.5 — Pre-router prerequisites** ✓
+## Project Structure
 
-- Typed input → chat UI → `/api/chat` (Next.js App Router) → provider → streamed SSE response → progressive UI render
-- Two cloud providers behind one `ChatProvider` interface: OpenAI (`openai`) and Anthropic (`@anthropic-ai/sdk`)
-- Typed `StreamEvent` discriminated union (`text`, `usage`, `done`, `error`, plus reserved `tool_call_*` slots)
-- `AbortSignal` threaded from client → route → provider; Stop button works mid-stream
-- Time-to-first-token captured per call; full latency, model id, input/output tokens, cost recorded
-- Cost guard with daily/weekly/monthly USD caps (in-memory today, SQLite-backed soon)
-- Rate limiter (sliding window, 20 req/min per client key)
-- Zod request validation (size + count caps)
-- Versioned system prompt loader with content-hash logging
-- Telemetry write-through: in-memory ring buffer + `data/jarvis.db` (`telemetry_events` table)
-- Sessions and messages persisted in SQLite (`sessions`, `messages` tables, foreign-key cascade)
-- Model registry: provider, modelName, tier, capabilities, pricing — single source of truth at [src/lib/models/entries.ts](src/lib/models/entries.ts)
-- Unified cost calculation reads pricing from the model registry
-- Vitest test suite (currently 23 tests across 6 files)
-- Prettier + Husky + lint-staged pre-commit gate (`lint-staged` → `lint` → `test`)
-
-The router itself (intent → safety → capability → cost) is the next phase. Everything above is what had to land before that work could begin.
-
-## Architectural principles
-
-The full architecture lives in [ARCHITECTURE.md](ARCHITECTURE.md). The non-negotiables:
-
-- **Local-first with quality guarantees** — local models handle tasks only when they match frontier-model quality on a calibration suite
-- **Model-agnostic routing** — a model registry resolves capability requests to the cheapest model that meets the quality bar; provider names are not hardcoded
-- **Streaming by default** — typed SSE events from the first phase that introduces them
-- **Safety gates** — destructive actions require explicit confirmation and are logged
-- **Cost-bound from Phase 0** — hard daily/weekly/monthly spending caps enforced by the orchestrator itself
-- **Mock-first hardware** — room control logic testable without any device connected
-- **Observable to itself** — self-diagnostic, failure replay, and comparison mode are core, not future features
-- **State is explicit** — no implicit cross-session state; persistence is named and bounded
-
-## Roadmap
-
-| Phase | Capability                                                        | Status  |
-| ----- | ----------------------------------------------------------------- | ------- |
-| 0     | Foundations, cost caps, test framework, Docker dev env (later)    | Built   |
-| 1A    | Typed core loop (typed input → cloud reasoning → reply)           | ✓       |
-| 1.5   | Provider abstraction, streaming, telemetry, registry, SQLite      | ✓       |
-| 1B    | Ollama provider behind the same `ChatProvider` interface          | Next    |
-| 1C    | Calibration suite per task class (quality bars in code)           | Planned |
-| 1D    | Router skeleton (intent / safety / capability / cost stages)      | Planned |
-| 2     | Local desktop tools (files, apps, documents) — Electron shell     | Planned |
-| 3     | Memory + Obsidian integration; vector store decision              | Planned |
-| 4     | Voice interface (streaming STT, streaming TTS, interrupts)        | Planned |
-| 5     | Project assistant + plugin architecture                           | Planned |
-| 6     | Smart room (Hue, presence sensors, ambient feedback) — mock-first | Planned |
-| 7     | Vision layer (YOLOv8n, MediaPipe, OCR)                            | Planned |
-| 8     | Daily self-audit + scheduled routines                             | Planned |
-| 9     | Dashboard, demo mode, interview mode                              | Planned |
-
-## Tech stack
-
-| Layer                  | Tools                                                                                        |
-| ---------------------- | -------------------------------------------------------------------------------------------- |
-| Runtime                | Node 20, Next.js 16, React 19, TypeScript                                                    |
-| Cloud AI               | OpenAI SDK (`gpt-4o-mini` default), Anthropic SDK (`claude-haiku-4-5-20251001` default)      |
-| Local AI runtime       | Ollama over HTTP (Phase 1B)                                                                  |
-| Local models (planned) | Qwen3, Mistral, Gemma — resolved via [src/lib/models/entries.ts](src/lib/models/entries.ts)  |
-| Persistence            | SQLite via `better-sqlite3` at `data/jarvis.db` — `sessions`, `messages`, `telemetry_events` |
-| Streaming wire         | SSE (`text/event-stream`) with typed `StreamEvent` payloads                                  |
-| Validation             | Zod                                                                                          |
-| Tests                  | Vitest                                                                                       |
-| Quality gates          | Prettier, ESLint, Husky pre-commit (lint-staged → lint → test)                               |
-| Vision (future)        | YOLOv8n, MediaPipe, Tesseract / PaddleOCR — runtime decision in Phase 7                      |
-| Hardware (future)      | Philips Hue, Aqara FP2, Nanoleaf, Tapo, HomePod mini                                         |
-
-## Setup
-
-```bash
-# Clone
-git clone https://github.com/princeanozie25-web/JARVIS.git
-cd JARVIS
-
-# Install dependencies (Node 20+)
-npm install
-
-# Configure secrets — create .env.local with:
-#   OPENAI_API_KEY=sk-...
-#   ANTHROPIC_API_KEY=sk-ant-...
-# Both keys are required at server boot.
-#
-# Optional Phase 2 tool scaffold settings:
-#   JARVIS_TOOLS_ENABLED=false
-#   JARVIS_WORKSPACE_ROOT=C:\Users\<you>\jarvis-workspace
-#   JARVIS_BIND_HOST=localhost
-# If JARVIS_TOOLS_ENABLED=true, the tool runtime refuses to start unless the
-# configured bind host is loopback/local-only (localhost, 127.x.x.x, or ::1).
-
-# Run the dev server
-npm run dev
+```text
+jarvis/
+  app/                         Next.js App Router, API routes, chat surface
+    api/                       Chat, approvals, memory, runtime commands, consent, goals, timeline
+  src/
+    components/                React panels for approvals, voice, memory, projects, review queues
+    lib/
+      command-center/          Phase 9 Rest / Working / Audit contracts, replay, governance, demo mode
+      voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
+      stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
+      tools/                   Tool registry, read/write guards, approvals, local path safety
+      runtime-commands/        Approval-gated terminal/runtime command lifecycle
+      memory/                  Vault, retrieval, vectors, embeddings, surfaced telemetry
+      projects/                Project registry, marker extraction, context assembly, closeout guard
+      environment/             Device registry, trust classes, action planning, execution contracts
+      vision/                  Session, OCR/object-detection contracts, failure replay, privacy manifest
+      routines/                Scheduled self-audit, suggestions, kill switch, closeout guards
+      db/                      SQLite schema and data access modules
+      router/                  Intent, safety, capability, enforcement, selection
+      telemetry/               Runtime telemetry types and sinks
+  docs/                        Architecture and operationalization plans
+  prompts/                     Versioned system prompts
+  scripts/                     Eval and audit utility scripts
+  models/                      Model/provider assets and registry-adjacent files
+  *.test.ts / *.test.tsx       Tests are colocated with source; there is no top-level tests/ folder
+  next.config.ts               Next.js config
+  vitest.config.ts             Vitest config
+  package.json                 Scripts, dependencies, lint-staged config
 ```
 
-Open <http://localhost:3000>. The chat UI streams responses from whichever provider is selected in the dropdown. Hit `Stop` mid-stream to abort.
+## Getting Started
 
-### Scripts
+Prerequisites: Node.js 20+ and pnpm. The repo currently also includes an npm lockfile, so npm equivalents work.
 
-| Command                | What it does                   |
-| ---------------------- | ------------------------------ |
-| `npm run dev`          | Next dev server on :3000       |
-| `npm run build`        | Production build               |
-| `npm start`            | Run the production build       |
-| `npm run lint`         | ESLint over the repo           |
-| `npm test`             | Vitest (single run)            |
-| `npm run format`       | Prettier write across the repo |
-| `npm run format:check` | Prettier check (CI-style)      |
+```bash
+git clone https://github.com/princeanozie25-web/JARVIS.git
+cd JARVIS
+pnpm install
+pnpm dev
+pnpm test
+pnpm lint
+```
 
-### Persistence
+Open `http://localhost:3000` for the current local app surface.
+There is no standalone `demo` script yet; Phase 9 demo/recruiter mode exists as tested Command Center contracts and view models.
 
-- SQLite file is created lazily at `data/jarvis.db` on first request; `data/` is gitignored.
-- Schema (`sessions`, `messages`, `telemetry_events`) is applied automatically via `applyMigrations` on connection open.
-- To inspect: `sqlite3 data/jarvis.db ".tables"` then standard SQL.
+## Testing
 
-## About
+Current posture: 1,772 passing tests across 207 test files, with TypeScript strict and lint passing.
+The tests cover governance invariants, redaction, no-mutation proofs, disabled-feature guards, approval boundaries, voice/runtime separation, adapter conformance, replay safety, cost controls, and closeout gates.
 
-Built by **Prince Anozie** — final-year Cyber Security student at Manchester Metropolitan University, focused on the intersection of cybersecurity and AI engineering.
+```bash
+pnpm test
+```
 
-- LinkedIn: [linkedin.com/in/princeanozie](https://linkedin.com/in/princeanozie)
-- GitHub: [@princeanozie25-web](https://github.com/princeanozie25-web)
+Every phase has closeout gates before it is frozen. A feature is not considered done until its tests prove both what works and what must remain disabled.
 
----
+## For Recruiters / Non-Technical Readers
 
-_This is a public build log. Demo videos and progress updates are posted monthly on LinkedIn. If you're a recruiter and want to see something specific running, [reach out](https://linkedin.com/in/princeanozie) — I can demo whatever phase is current._
+JARVIS demonstrates architecture-before-features discipline. The builder put safety gates, approval flows, privacy boundaries, telemetry rules, and cost controls in place before chasing impressive demos. The 1,772 tests are not padding; many of them prove that risky features are disabled, redacted, blocked, or unable to mutate state.
+
+The "what is disabled" list matters because most AI projects add features as fast as possible. JARVIS deliberately leaves out wake word, always-listening, autonomous execution, background camera access, and unapproved device control. That reflects production-grade thinking about trust, safety, and blast radius.
+
+Most student AI projects are prompt in, response out, call it a day. JARVIS has a governance layer, approval lifecycle, cost guards, redaction pipeline, read-only observability, adapter contracts, project continuity, voice boundaries, and 1,772 tests. What separates a good CV from a great one is the discipline behind the code, not the feature count.
+
+The next era is operationalization: Phases 10-20 move the system from governed scaffolds into real local services. That means Ollama for local models, push-to-talk STT/TTS, Hue lights behind approval gates, an interactive architecture graph, a telemetry cockpit, a governance visualizer, and a red-team layer via CAI. All of it sits behind the same governance contracts already in place.
+
+## Related Documents
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - full v3.1/v3.2 architecture and delivery roadmap.
+- [docs/ARCHITECTURE_OPERATIONALIZATION.md](docs/ARCHITECTURE_OPERATIONALIZATION.md) - Phases 10-20 operationalization plan.
+
+## Author Note
+
+Built by Prince Anozie, MMU final-year Computer Science / Cybersecurity student.
