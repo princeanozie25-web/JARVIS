@@ -1,107 +1,13 @@
-import type { AuditRegionPlaceholder, AuditShellModel } from "./types";
+import { AUDIT_SHELL_MODEL } from "./panel-registry";
+import type { AuditPanelViewModel, AuditShellModel } from "./types";
 
-export const AUDIT_SHELL_MODEL: AuditShellModel = Object.freeze({
-  title: "JARVIS Room OS — Audit Mode",
-  subtitle: "Read-only forensics shell. Static placeholder regions only.",
-  posture: "read_only_forensics_shell",
-  localOnly: true,
-  metadataOnly: true,
-  authority: "none",
-  regions: Object.freeze([
-    {
-      region_id: "replay_timeline",
-      title: "Replay timeline",
-      eyebrow: "Forensics",
-      description: "Timeline metadata placeholder for future trace inspection.",
-      status: "placeholder",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Timeline", value: "static" },
-        { label: "Payloads", value: "withheld" },
-      ]),
-    },
-    {
-      region_id: "trace_viewer",
-      title: "Trace viewer",
-      eyebrow: "Evidence",
-      description: "Trace metadata remains disconnected from stored events.",
-      status: "not_connected",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Trace", value: "placeholder" },
-        { label: "Bodies", value: "withheld" },
-      ]),
-    },
-    {
-      region_id: "governance_boundary_viewer",
-      title: "Governance boundary viewer",
-      eyebrow: "Policy",
-      description:
-        "Boundary visualization placeholder with no decision surface.",
-      status: "placeholder",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Boundary", value: "visible" },
-        { label: "Authority", value: "none" },
-      ]),
-    },
-    {
-      region_id: "runtime_dependency_viewer",
-      title: "Runtime dependency viewer",
-      eyebrow: "Runtime",
-      description:
-        "Dependency graph placeholder; graph logic is not connected.",
-      status: "not_connected",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Graph", value: "placeholder" },
-        { label: "Edges", value: "metadata only" },
-      ]),
-    },
-    {
-      region_id: "redaction_status",
-      title: "Redaction status",
-      eyebrow: "Privacy",
-      description: "Redaction posture placeholder without raw content display.",
-      status: "withheld",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Payload", value: "withheld" },
-        { label: "Display", value: "metadata only" },
-      ]),
-    },
-    {
-      region_id: "disabled_feature_matrix",
-      title: "Disabled-feature matrix",
-      eyebrow: "Safety",
-      description: "Frozen feature posture placeholder for audit review.",
-      status: "placeholder",
-      posture: "inspection_only",
-      dataClassification: "metadata_only",
-      authority: "none",
-      rows: Object.freeze([
-        { label: "Matrix", value: "static" },
-        { label: "Controls", value: "absent" },
-      ]),
-    },
-  ] satisfies AuditRegionPlaceholder[]),
-});
+export { AUDIT_SHELL_MODEL } from "./panel-registry";
 
-function formatStatus(status: AuditRegionPlaceholder["status"]) {
+function formatStatus(status: AuditPanelViewModel["status"]) {
   return status.replaceAll("_", " ");
 }
 
-function statusClass(status: AuditRegionPlaceholder["status"]) {
+function statusClass(status: AuditPanelViewModel["status"]) {
   switch (status) {
     case "placeholder":
       return "border-cyan-100/20 bg-cyan-300/[0.055] text-cyan-100/80";
@@ -170,20 +76,20 @@ export function AuditShell({ model = AUDIT_SHELL_MODEL }: AuditShellProps) {
       </header>
 
       <div
-        aria-label="Audit placeholder regions"
+        aria-label="Audit panel registry layout"
         className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3"
       >
-        {model.regions.map((region) => (
+        {model.panels.map((panel) => (
           <article
-            key={region.region_id}
-            aria-label={region.title}
-            data-audit-region-id={region.region_id}
-            data-region-status={region.status}
-            data-posture={region.posture}
-            data-metadata-only={String(
-              region.dataClassification === "metadata_only",
-            )}
-            data-authority={region.authority}
+            key={panel.panel_id}
+            aria-label={panel.title}
+            data-audit-panel-id={panel.panel_id}
+            data-panel-status={panel.status}
+            data-posture={panel.posture}
+            data-metadata-only={String(panel.metadataOnly)}
+            data-authority={panel.shellAuthority}
+            data-registry-authority={panel.authority}
+            data-refresh-policy={panel.refresh_policy}
             className="relative min-h-56 overflow-hidden border border-white/10 bg-slate-950/62 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.3)]"
           >
             <div
@@ -193,25 +99,25 @@ export function AuditShell({ model = AUDIT_SHELL_MODEL }: AuditShellProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/60">
-                  {region.eyebrow}
+                  {panel.eyebrow}
                 </p>
                 <h2 className="mt-3 text-xl font-semibold text-white">
-                  {region.title}
+                  {panel.title}
                 </h2>
               </div>
               <span
                 className={`border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.16em] ${statusClass(
-                  region.status,
+                  panel.status,
                 )}`}
               >
-                {formatStatus(region.status)}
+                {formatStatus(panel.status)}
               </span>
             </div>
             <p className="mt-5 text-sm leading-6 text-slate-300/72">
-              {region.description}
+              {panel.description}
             </p>
             <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
-              {region.rows.map((row) => (
+              {panel.placeholder_rows.map((row) => (
                 <div
                   key={row.label}
                   className="border border-white/10 bg-white/[0.03] px-3 py-2"

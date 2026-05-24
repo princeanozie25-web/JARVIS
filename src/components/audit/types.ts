@@ -1,24 +1,50 @@
-export type AuditRegionId =
+export type AuditPanelId =
   | "replay_timeline"
   | "trace_viewer"
-  | "governance_boundary_viewer"
-  | "runtime_dependency_viewer"
+  | "governance_boundary"
+  | "runtime_dependency"
   | "redaction_status"
   | "disabled_feature_matrix";
 
-export interface AuditRegionPlaceholder {
-  region_id: AuditRegionId;
+export type AuditDataClassification = "metadata_only";
+export type AuditAuthority = "read_only";
+export type AuditRefreshPolicy = "static_placeholder";
+export type AuditDisabledAffordance =
+  | "run"
+  | "retry"
+  | "approve"
+  | "execute"
+  | "mutate"
+  | "schedule"
+  | "replay_execute"
+  | "graph_execute";
+export type AuditPanelStatus = "placeholder" | "withheld" | "not_connected";
+
+export interface AuditPlaceholderRow {
+  label: string;
+  value: string;
+}
+
+export interface AuditPanelDefinition {
+  panel_id: AuditPanelId;
   title: string;
-  eyebrow: string;
   description: string;
-  status: "placeholder" | "withheld" | "not_connected";
+  source_phase: "12C.2";
+  data_classification: AuditDataClassification;
+  authority: AuditAuthority;
+  refresh_policy: AuditRefreshPolicy;
+  disabled_affordances: readonly AuditDisabledAffordance[];
+  placeholder_rows: readonly AuditPlaceholderRow[];
+}
+
+export interface AuditPanelViewModel extends AuditPanelDefinition {
+  eyebrow: string;
+  status: AuditPanelStatus;
   posture: "inspection_only";
-  dataClassification: "metadata_only";
-  authority: "none";
-  rows: readonly {
-    label: string;
-    value: string;
-  }[];
+  metadataOnly: true;
+  localOnly: true;
+  shellAuthority: "none";
+  withheld: boolean;
 }
 
 export interface AuditShellModel {
@@ -28,5 +54,5 @@ export interface AuditShellModel {
   localOnly: true;
   metadataOnly: true;
   authority: "none";
-  regions: readonly AuditRegionPlaceholder[];
+  panels: readonly AuditPanelViewModel[];
 }

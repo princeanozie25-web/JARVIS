@@ -13,6 +13,7 @@ const AUDIT_SOURCE_FILES = [
   "src/app/audit/page.tsx",
   "app/audit/page.tsx",
   "src/components/audit/AuditShell.tsx",
+  "src/components/audit/panel-registry.ts",
   "src/components/audit/types.ts",
 ] as const;
 
@@ -56,12 +57,13 @@ describe("Phase 12C.1 Audit screen shell", () => {
     for (const title of REQUIRED_REGIONS) {
       expect(html).toContain(title);
     }
-    expect(html).toContain('data-audit-region-id="replay_timeline"');
-    expect(html).toContain('data-audit-region-id="trace_viewer"');
-    expect(html).toContain('data-audit-region-id="governance_boundary_viewer"');
-    expect(html).toContain('data-audit-region-id="runtime_dependency_viewer"');
-    expect(html).toContain('data-audit-region-id="redaction_status"');
-    expect(html).toContain('data-audit-region-id="disabled_feature_matrix"');
+    expect(html).toContain('aria-label="Audit panel registry layout"');
+    expect(html).toContain('data-audit-panel-id="replay_timeline"');
+    expect(html).toContain('data-audit-panel-id="trace_viewer"');
+    expect(html).toContain('data-audit-panel-id="governance_boundary"');
+    expect(html).toContain('data-audit-panel-id="runtime_dependency"');
+    expect(html).toContain('data-audit-panel-id="redaction_status"');
+    expect(html).toContain('data-audit-panel-id="disabled_feature_matrix"');
   });
 
   it("uses deterministic static placeholder data only", () => {
@@ -76,12 +78,13 @@ describe("Phase 12C.1 Audit screen shell", () => {
       localOnly: true,
       metadataOnly: true,
       authority: "none",
-      regions: expect.arrayContaining([
+      panels: expect.arrayContaining([
         expect.objectContaining({
-          region_id: "replay_timeline",
+          panel_id: "replay_timeline",
           posture: "inspection_only",
-          dataClassification: "metadata_only",
-          authority: "none",
+          data_classification: "metadata_only",
+          authority: "read_only",
+          shellAuthority: "none",
         }),
       ]),
     });
@@ -96,7 +99,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(html).not.toMatch(/<a\b/i);
     expect(html).not.toMatch(/\brole="button"/i);
     expect(html).not.toMatch(
-      /\b(approve|run|retry|execute|mutate|schedule)\b/i,
+      /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
     );
   });
 
