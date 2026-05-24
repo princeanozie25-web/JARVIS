@@ -26,6 +26,7 @@ export const ROOM_CAPABILITIES = [
   "light.observe",
   "light.dimmer",
   "light.color",
+  "light.temperature",
   "presence.observe",
   "motion.observe",
   "temperature.observe",

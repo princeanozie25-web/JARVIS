@@ -27,6 +27,7 @@ devices:
       - power.switch
       - light.observe
       - light.dimmer
+      - light.temperature
     adapter:
       adapter_id: fake-desk-lamp
       kind: fake
@@ -54,6 +55,7 @@ devices:
       - power.switch
       - light.observe
       - light.dimmer
+      - light.temperature
     adapter:
       adapter_id: fake-bed-lamp
       kind: fake
@@ -82,6 +84,7 @@ devices:
       - light.observe
       - light.dimmer
       - light.color
+      - light.temperature
     adapter:
       adapter_id: fake-led-strip
       kind: fake
