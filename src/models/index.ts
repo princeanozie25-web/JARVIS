@@ -76,3 +76,13 @@ export type {
   MockModelProviderFailureMode,
   MockModelProviderOptions,
 } from "./providers/mock-provider";
+
+export {
+  OLLAMA_MODEL_PROVIDER_DEFAULT_CAPABILITIES,
+  createOllamaModelProvider,
+} from "./providers/ollama-provider";
+export type {
+  OllamaProviderHealthErrorClass,
+  OllamaProviderOptions,
+  OllamaProviderProbeResult,
+} from "./providers/ollama-provider";
