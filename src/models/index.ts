@@ -89,6 +89,7 @@ export type {
 
 export {
   createFakeOllamaClient,
+  createOllamaHttpClient,
   createOllamaClientError,
 } from "./providers/ollama-client";
 export type {
@@ -103,6 +104,9 @@ export type {
   OllamaCompleteResult,
   OllamaListModelsResult,
   OllamaModelDescriptor,
+  OllamaFetchImpl,
+  OllamaFetchResponse,
+  OllamaHttpClientOptions,
   OllamaStreamEvent,
   OllamaTokenUsage,
 } from "./providers/ollama-client";

@@ -119,6 +119,32 @@ export interface OllamaClient {
   stream(request: OllamaCompleteRequest): AsyncIterable<OllamaStreamEvent>;
 }
 
+export type OllamaFetchImpl = (
+  input: string,
+  init?: {
+    readonly method?: string;
+    readonly headers?: Record<string, string>;
+    readonly body?: string;
+    readonly signal?: AbortSignal;
+  },
+) => Promise<OllamaFetchResponse>;
+
+export interface OllamaFetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly statusText?: string;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+}
+
+export interface OllamaHttpClientOptions {
+  readonly base_url?: string;
+  readonly timeout_ms?: number;
+  readonly fetch_impl?: OllamaFetchImpl;
+  readonly now?: () => number;
+  readonly allow_non_localhost?: boolean;
+}
+
 export interface FakeOllamaClientOptions {
   readonly models?: readonly OllamaModelDescriptor[];
   readonly failureMode?: OllamaClientFailureClass | null;
@@ -136,6 +162,49 @@ interface NormalizedFakeOllamaClientOptions {
   readonly latencyMs: number;
   readonly now: () => number;
   readonly waitForLatency?: FakeOllamaClientOptions["waitForLatency"];
+}
+
+interface NormalizedOllamaHttpClientOptions {
+  readonly baseUrl: string;
+  readonly timeoutMs: number;
+  readonly fetchImpl: OllamaFetchImpl;
+  readonly now: () => number;
+}
+
+export function createOllamaHttpClient(
+  options: OllamaHttpClientOptions = {},
+): OllamaClient {
+  const config = normalizeHttpOptions(options);
+
+  return {
+    listModels: async (callOptions) => {
+      const response = await fetchJson(config, "/api/tags", {
+        method: "GET",
+        callOptions,
+      });
+      return {
+        request_id: callOptions.request_id,
+        models: normalizeListModelsResponse(response),
+        checked_at: config.now(),
+        degraded: false,
+      };
+    },
+    complete: async (request) => {
+      const response = await fetchJson(config, "/api/generate", {
+        method: "POST",
+        callOptions: request,
+        body: {
+          model: request.model,
+          prompt: inputToPrompt(request.input),
+          stream: false,
+          options: normalizeGenerateOptions(request.options),
+        },
+        model: request.model,
+      });
+      return normalizeGenerateResponse(config, request, response);
+    },
+    stream: (request) => streamHttpResponse(config, request),
+  };
 }
 
 export function createFakeOllamaClient(
@@ -168,6 +237,90 @@ export function createFakeOllamaClient(
   };
 }
 
+async function* streamHttpResponse(
+  config: NormalizedOllamaHttpClientOptions,
+  request: OllamaCompleteRequest,
+): AsyncIterable<OllamaStreamEvent> {
+  try {
+    const text = await fetchText(config, "/api/generate", {
+      method: "POST",
+      callOptions: request,
+      body: {
+        model: request.model,
+        prompt: inputToPrompt(request.input),
+        stream: true,
+        options: normalizeGenerateOptions(request.options),
+      },
+      model: request.model,
+    });
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    let index = 0;
+    let finalResult: OllamaCompleteResult | null = null;
+
+    for (const line of lines) {
+      const parsed = parseJsonObject(line, request);
+      if (typeof parsed.response === "string" && parsed.response.length > 0) {
+        yield {
+          type: "token",
+          request_id: request.request_id,
+          model: request.model,
+          created_at_ms: config.now(),
+          delta: parsed.response,
+          index,
+          redaction_status: "metadata_only",
+        };
+        index += 1;
+      }
+      if (parsed.done === true) {
+        finalResult = normalizeGenerateResponse(config, request, parsed);
+      }
+    }
+
+    if (!finalResult) {
+      throw createClientError(
+        request,
+        "provider_error",
+        "Ollama stream ended without a final done event.",
+      );
+    }
+
+    yield {
+      type: "done",
+      request_id: request.request_id,
+      model: request.model,
+      created_at_ms: config.now(),
+      result: finalResult,
+    };
+  } catch (error) {
+    const clientError = normalizeClientError(error, request);
+    if (
+      clientError.failure_class === "cancelled" ||
+      clientError.failure_class === "timeout"
+    ) {
+      yield {
+        type: "cancelled",
+        request_id: request.request_id,
+        model: request.model,
+        created_at_ms: config.now(),
+        reason:
+          clientError.failure_class === "timeout" ? "timeout" : "abort_signal",
+        error_class: clientError.failure_class,
+      };
+      return;
+    }
+    yield {
+      type: "error",
+      request_id: request.request_id,
+      model: request.model,
+      created_at_ms: config.now(),
+      error: clientError,
+    };
+  }
+}
+
 export function createOllamaClientError(input: {
   readonly request_id?: string;
   readonly model?: string;
@@ -184,6 +337,307 @@ export function createOllamaClientError(input: {
     redaction_status: "metadata_only",
   };
 }
+
+async function fetchJson(
+  config: NormalizedOllamaHttpClientOptions,
+  path: string,
+  request: {
+    readonly method: "GET" | "POST";
+    readonly callOptions: OllamaClientCallOptions;
+    readonly body?: unknown;
+    readonly model?: string;
+  },
+): Promise<Record<string, unknown>> {
+  const text = await fetchText(config, path, request);
+  return parseJsonObject(text, request.callOptions, request.model);
+}
+
+async function fetchText(
+  config: NormalizedOllamaHttpClientOptions,
+  path: string,
+  request: {
+    readonly method: "GET" | "POST";
+    readonly callOptions: OllamaClientCallOptions;
+    readonly body?: unknown;
+    readonly model?: string;
+  },
+): Promise<string> {
+  validateHttpCall(request.callOptions, request.model);
+  const timeout = createTimeoutSignal(
+    request.callOptions.timeout_ms || config.timeoutMs,
+    request.callOptions.abort_signal,
+  );
+
+  try {
+    const response = await config.fetchImpl(`${config.baseUrl}${path}`, {
+      method: request.method,
+      headers:
+        request.method === "POST"
+          ? { "content-type": "application/json" }
+          : undefined,
+      body:
+        request.body === undefined ? undefined : JSON.stringify(request.body),
+      signal: timeout.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw createClientError(
+        { ...request.callOptions, model: request.model },
+        classifyHttpFailure(response.status, body),
+        `Ollama HTTP request failed with status ${response.status}.`,
+      );
+    }
+
+    return response.text();
+  } catch (error) {
+    throw normalizeTransportError(error, request.callOptions, request.model);
+  } finally {
+    timeout.cleanup();
+  }
+}
+
+function validateHttpCall(options: OllamaClientCallOptions, model?: string) {
+  if (!options.metadata_only) {
+    throw createClientError(
+      { ...options, model },
+      "invalid_request",
+      "Ollama HTTP client calls must be marked metadata_only.",
+    );
+  }
+  if (!Number.isInteger(options.timeout_ms) || options.timeout_ms <= 0) {
+    throw createClientError(
+      { ...options, model },
+      "invalid_request",
+      "timeout_ms must be a positive integer.",
+    );
+  }
+  if (options.abort_signal?.aborted) {
+    throw createClientError(
+      { ...options, model },
+      "cancelled",
+      "Ollama HTTP client call was cancelled.",
+    );
+  }
+}
+
+function normalizeTransportError(
+  error: unknown,
+  options: OllamaClientCallOptions,
+  model?: string,
+): OllamaClientError {
+  if (isOllamaClientError(error)) return error;
+  if (isAbortLikeError(error)) {
+    return createClientError(
+      { ...options, model },
+      options.abort_signal?.aborted ? "cancelled" : "timeout",
+      "Ollama HTTP client call was aborted.",
+    );
+  }
+  return createClientError(
+    { ...options, model },
+    "unavailable",
+    "Ollama HTTP client could not reach the local service.",
+  );
+}
+
+function normalizeListModelsResponse(
+  response: Record<string, unknown>,
+): OllamaModelDescriptor[] {
+  if (!Array.isArray(response.models)) {
+    throw createOllamaClientError({
+      failure_class: "provider_error",
+      message: "Ollama list models response was malformed.",
+    });
+  }
+
+  return response.models.map((entry) => {
+    if (!entry || typeof entry !== "object" || !("name" in entry)) {
+      throw createOllamaClientError({
+        failure_class: "provider_error",
+        message: "Ollama model descriptor was malformed.",
+      });
+    }
+    const record = entry as Record<string, unknown>;
+    if (typeof record.name !== "string") {
+      throw createOllamaClientError({
+        failure_class: "provider_error",
+        message: "Ollama model name was malformed.",
+      });
+    }
+    return {
+      name: record.name,
+      modified_at:
+        typeof record.modified_at === "string" ? record.modified_at : undefined,
+      size_bytes: typeof record.size === "number" ? record.size : undefined,
+      digest: typeof record.digest === "string" ? record.digest : undefined,
+    };
+  });
+}
+
+function normalizeGenerateResponse(
+  config: NormalizedOllamaHttpClientOptions | NormalizedFakeOllamaClientOptions,
+  request: OllamaCompleteRequest,
+  response: Record<string, unknown>,
+): OllamaCompleteResult {
+  if (typeof response.response !== "string" || response.done !== true) {
+    throw createClientError(
+      request,
+      "provider_error",
+      "Ollama generate response was malformed.",
+    );
+  }
+  const inputTokens =
+    typeof response.prompt_eval_count === "number"
+      ? response.prompt_eval_count
+      : 0;
+  const outputTokens =
+    typeof response.eval_count === "number" ? response.eval_count : 0;
+
+  return {
+    request_id: request.request_id,
+    model: request.model,
+    output: response.response,
+    latency_ms: latencyMsFromResponse(config, response),
+    token_usage: {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      total_tokens: inputTokens + outputTokens,
+    },
+    done: true,
+    redaction_status: "metadata_only",
+  };
+}
+
+function latencyMsFromResponse(
+  config: NormalizedOllamaHttpClientOptions | NormalizedFakeOllamaClientOptions,
+  response: Record<string, unknown>,
+): number {
+  if (typeof response.total_duration === "number") {
+    return Math.max(0, Math.round(response.total_duration / 1_000_000));
+  }
+  return "latencyMs" in config ? config.latencyMs : 0;
+}
+
+function parseJsonObject(
+  text: string,
+  options: OllamaClientCallOptions,
+  model?: string,
+): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Expected object.");
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw createClientError(
+      { ...options, model },
+      "provider_error",
+      "Ollama response JSON was malformed.",
+    );
+  }
+}
+
+function classifyHttpFailure(
+  status: number,
+  body: string,
+): OllamaClientFailureClass {
+  if (status === 404 || /not\s+found|not found|model/i.test(body)) {
+    return "model_missing";
+  }
+  if (status === 408 || status === 504) return "timeout";
+  if (status >= 500) return "unavailable";
+  return "provider_error";
+}
+
+function inputToPrompt(input: OllamaCompleteInput): string {
+  if (input.kind === "text") return input.content;
+  return input.messages
+    .map((message) => `${message.role}: ${message.content}`)
+    .join("\n");
+}
+
+function normalizeGenerateOptions(
+  options: OllamaCompleteRequest["options"],
+): Record<string, unknown> | undefined {
+  if (!options) return undefined;
+  return {
+    temperature: options.temperature,
+    top_p: options.top_p,
+    num_predict: options.max_output_tokens,
+    stop: options.stop_sequences,
+  };
+}
+
+function createTimeoutSignal(
+  timeoutMs: number,
+  parentSignal?: AbortSignal,
+): { readonly signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const abort = () => controller.abort();
+  parentSignal?.addEventListener("abort", abort, { once: true });
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timeoutId);
+      parentSignal?.removeEventListener("abort", abort);
+    },
+  };
+}
+
+function isAbortLikeError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    String((error as { name: unknown }).name) === "AbortError"
+  );
+}
+
+function normalizeHttpOptions(
+  options: OllamaHttpClientOptions,
+): NormalizedOllamaHttpClientOptions {
+  const baseUrl = normalizeBaseUrl(
+    options.base_url ?? "http://127.0.0.1:11434",
+    options.allow_non_localhost ?? false,
+  );
+  const timeoutMs = options.timeout_ms ?? 5_000;
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(
+      "Ollama HTTP client timeout_ms must be a positive integer.",
+    );
+  }
+
+  return {
+    baseUrl,
+    timeoutMs,
+    fetchImpl: options.fetch_impl ?? defaultFetchImpl,
+    now: options.now ?? (() => 0),
+  };
+}
+
+function normalizeBaseUrl(baseUrl: string, allowNonLocalhost: boolean): string {
+  const parsed = new URL(baseUrl);
+  const localHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+  if (!allowNonLocalhost && !localHosts.has(parsed.hostname)) {
+    throw new Error("Ollama HTTP client base_url must be localhost.");
+  }
+  return parsed.toString().replace(/\/$/, "");
+}
+
+const defaultFetchImpl: OllamaFetchImpl = async (input, init) => {
+  const response = await globalThis.fetch(input, init);
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    json: () => response.json() as Promise<unknown>,
+    text: () => response.text(),
+  };
+};
 
 async function* streamFakeResponse(
   config: NormalizedFakeOllamaClientOptions,
