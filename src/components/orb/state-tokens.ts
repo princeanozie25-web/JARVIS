@@ -122,7 +122,7 @@ function modeLabel(
       };
     case "idle":
       return {
-        label: "JARVIS Room OS - Rest Mode",
+        label: "JARVIS Room OS — Rest Mode",
         statusText: "Idle. Local shell only.",
         tone: "quiet",
       };

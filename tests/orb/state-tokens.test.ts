@@ -54,7 +54,7 @@ describe("Phase 12A.3 Rest orb state tokens", () => {
       lastEventClass: "none",
       governancePosture: "all_green",
       heartbeat: "stable",
-      label: "JARVIS Room OS - Rest Mode",
+      label: "JARVIS Room OS — Rest Mode",
       authority: "none",
       withheld: false,
     });
