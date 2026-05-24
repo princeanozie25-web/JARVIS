@@ -38,8 +38,20 @@ export interface AppendScaffoldEventInput {
   readonly metadataJson?: string;
 }
 
+export interface AppendRoomEventInput extends AppendScaffoldEventInput {
+  readonly roomEventId: string;
+  readonly roomId: string | null;
+  readonly profileId: string | null;
+  readonly adapterId: string | null;
+  readonly deviceId: string | null;
+  readonly sensorId: string | null;
+  readonly capability: string | null;
+  readonly failureClass: string | null;
+}
+
 export interface EventStore {
   appendEvent(input: AppendScaffoldEventInput): void;
+  appendRoomEvent(input: AppendRoomEventInput): void;
   inspectMigrations(): AppliedMigration[];
   inspectSchema(): EventStoreSchemaSummary;
   close(): void;
@@ -87,6 +99,7 @@ export function initializeEventStore(options: EventStoreOptions): EventStore {
 
   return {
     appendEvent: (input) => appendEvent(db, input),
+    appendRoomEvent: (input) => appendRoomEvent(db, input),
     inspectMigrations: () => inspectMigrations(db),
     inspectSchema: () => inspectSchema(db),
     close: () => db.close(),
@@ -181,6 +194,43 @@ function appendEvent(
     input.metadataJson ?? "{}",
     input.occurredAtMs,
   );
+}
+
+function appendRoomEvent(
+  db: Database.Database,
+  input: AppendRoomEventInput,
+): void {
+  const transaction = db.transaction(() => {
+    appendEvent(db, input);
+    db.prepare(
+      `
+        INSERT INTO room_events (
+          room_event_id,
+          event_id,
+          room_id,
+          profile_id,
+          adapter_id,
+          device_id,
+          sensor_id,
+          capability,
+          failure_class,
+          metadata_only
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `,
+    ).run(
+      input.roomEventId,
+      input.eventId,
+      input.roomId,
+      input.profileId,
+      input.adapterId,
+      input.deviceId,
+      input.sensorId,
+      input.capability,
+      input.failureClass,
+    );
+  });
+
+  transaction();
 }
 
 function inspectMigrations(db: Database.Database): AppliedMigration[] {
