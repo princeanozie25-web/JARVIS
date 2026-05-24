@@ -319,7 +319,7 @@ describe("Phase 12D.5 projection adapter closeout guards", () => {
     }
   });
 
-  it("keeps Rest, Working, and Audit shells static and not live-wired to projection adapters", () => {
+  it("keeps Rest, Working, and Audit routes free of projection adapters and live transports", () => {
     const source = readFiles(UI_SHELL_FILES);
     const html = [
       renderToStaticMarkup(createElement(RestPage)),
@@ -333,7 +333,7 @@ describe("Phase 12D.5 projection adapter closeout guards", () => {
     expect(source).not.toMatch(
       /setInterval|setTimeout|poll|fetch\(|WebSocket|EventSource|invoke\(/i,
     );
-    expect(html).toContain("No live telemetry binding");
+    expect(html).toContain("Synthetic demo-safe metadata");
     expect(html).toContain("Static placeholder regions only.");
     expect(html).not.toMatch(/<button\b|<form\b|<input\b|role="button"/i);
   });

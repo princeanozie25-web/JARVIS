@@ -1,5 +1,8 @@
 import { Orb } from "@/components/orb/Orb";
-import { IDLE_ORB_STATE } from "@/components/orb/state-tokens";
+import {
+  SYNTHETIC_OBSERVABILITY_MARKER,
+  SYNTHETIC_REST_ORB_TOKENS,
+} from "@/lib/observability/synthetic-data";
 
 export default function RestPage() {
   return (
@@ -19,16 +22,16 @@ export default function RestPage() {
       <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col">
         <header className="flex items-center justify-between border-b border-white/10 pb-5 text-xs uppercase tracking-[0.22em] text-slate-400">
           <span>JARVIS</span>
-          <span>Local shell</span>
+          <span>{SYNTHETIC_OBSERVABILITY_MARKER}</span>
         </header>
 
         <section className="flex flex-1 items-center justify-center py-8">
-          <Orb state={IDLE_ORB_STATE} />
+          <Orb projectionTokens={SYNTHETIC_REST_ORB_TOKENS} />
         </section>
 
         <footer className="grid gap-3 border-t border-white/10 pt-5 text-xs text-slate-400 sm:grid-cols-3">
           <span>Metadata-only visual layer</span>
-          <span className="sm:text-center">No live telemetry binding</span>
+          <span className="sm:text-center">Synthetic demo-safe only</span>
           <span className="sm:text-right">No execution authority</span>
         </footer>
       </div>

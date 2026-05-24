@@ -1,4 +1,8 @@
 import { AuditShell } from "@/components/audit/AuditShell";
+import {
+  SYNTHETIC_OBSERVABILITY_MARKER,
+  syntheticAuditPanels,
+} from "@/lib/observability/synthetic-data";
 
 export default function AuditPage() {
   return (
@@ -16,7 +20,10 @@ export default function AuditPage() {
       />
 
       <div className="relative mx-auto min-h-[calc(100vh-4rem)] max-w-7xl">
-        <AuditShell />
+        <p className="mb-4 text-xs uppercase tracking-[0.22em] text-cyan-200/70">
+          {SYNTHETIC_OBSERVABILITY_MARKER}
+        </p>
+        <AuditShell projectionPanels={syntheticAuditPanels()} />
       </div>
     </main>
   );

@@ -32,13 +32,15 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
 
     expect(html).toContain('data-rest-layout="command-center-showpiece"');
     expect(html).toContain("Command Center Foundation");
-    expect(html).toContain("JARVIS Room OS — Rest Mode");
-    expect(html).toContain("Idle. Local shell only.");
+    expect(html).toContain("JARVIS Room OS - Working Signal");
+    expect(html).toContain(
+      "Activity indicated. No execution controls exposed.",
+    );
     expect(html).toContain("Metadata-only visual layer");
-    expect(html).toContain("No live telemetry binding");
+    expect(html).toContain("Synthetic demo-safe only");
     expect(html).toContain("No execution authority");
-    expect(html).toContain('data-orb-mode="idle"');
-    expect(html).toContain('data-load-band="idle"');
+    expect(html).toContain('data-orb-mode="working"');
+    expect(html).toContain('data-load-band="active"');
     expect(html).toContain('data-governance-posture="all_green"');
     expect(html).toContain('data-heartbeat="stable"');
     expect(html).toContain('data-local-only="true"');

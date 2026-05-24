@@ -1,4 +1,8 @@
 import { WorkingShell } from "@/components/working/WorkingShell";
+import {
+  SYNTHETIC_OBSERVABILITY_MARKER,
+  syntheticWorkingPanels,
+} from "@/lib/observability/synthetic-data";
 
 export default function WorkingPage() {
   return (
@@ -16,7 +20,10 @@ export default function WorkingPage() {
       />
 
       <div className="relative mx-auto min-h-[calc(100vh-4rem)] max-w-7xl">
-        <WorkingShell />
+        <p className="mb-4 text-xs uppercase tracking-[0.22em] text-cyan-200/70">
+          {SYNTHETIC_OBSERVABILITY_MARKER}
+        </p>
+        <WorkingShell projectionPanels={syntheticWorkingPanels()} />
       </div>
     </main>
   );
