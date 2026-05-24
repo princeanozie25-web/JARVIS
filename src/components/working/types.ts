@@ -43,6 +43,7 @@ export interface WorkingPanelViewModel extends WorkingPanelDefinition {
   localOnly: true;
   shellAuthority: "none";
   withheld: boolean;
+  projectionBacked?: boolean;
 }
 
 export interface WorkingShellModel {

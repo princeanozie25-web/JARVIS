@@ -45,6 +45,7 @@ export interface AuditPanelViewModel extends AuditPanelDefinition {
   localOnly: true;
   shellAuthority: "none";
   withheld: boolean;
+  projectionBacked?: boolean;
 }
 
 export interface AuditShellModel {
