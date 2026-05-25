@@ -168,3 +168,29 @@ export type {
   TtsValidationFailureReason,
   TtsValidationResult,
 } from "./tts";
+
+export {
+  FASTER_WHISPER_CONFIG_VALIDATION_REASONS,
+  FASTER_WHISPER_CONTRACT_LIMITS,
+  STT_CANCELLATION_REASONS,
+  STT_CONFIDENCE_BANDS,
+  STT_VALIDATION_FAILURE_REASONS,
+  validateFasterWhisperProviderConfig,
+  validateSttTranscriptionRequest,
+} from "./stt";
+export type {
+  FasterWhisperConfigValidationReason,
+  FasterWhisperConfigValidationResult,
+  FasterWhisperProviderConfig,
+  SttAudioMetadata,
+  SttCancellationReason,
+  SttConfidenceBand,
+  SttProvider,
+  SttProviderConfig,
+  SttProviderHealth,
+  SttTranscriptionOptions,
+  SttTranscriptionRequest,
+  SttTranscriptionResult,
+  SttValidationFailureReason,
+  SttValidationResult,
+} from "./stt";
