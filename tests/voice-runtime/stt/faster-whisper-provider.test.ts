@@ -165,7 +165,9 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
 
     expect(buildFasterWhisperArgs(fasterWhisperConfig(), "audio.wav")).toEqual([
       "-c",
-      expect.stringContaining("WhisperModel(args.model_path)"),
+      expect.stringContaining(
+        "WhisperModel(model_target,device='cpu',compute_type='int8')",
+      ),
       "--audio-ref",
       "audio.wav",
       "--model-path",
@@ -184,7 +186,9 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
         executablePath: "python",
         args: [
           "-c",
-          expect.stringContaining("WhisperModel(args.model_path)"),
+          expect.stringContaining(
+            "WhisperModel(model_target,device='cpu',compute_type='int8')",
+          ),
           "--audio-ref",
           FAKE_STT_VALID_AUDIO_REQUEST.audio.audio_ref,
           "--model-path",
@@ -483,6 +487,73 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
       transcript: "a".repeat(4_000),
       latency_ms: 50,
     });
+  });
+
+  it("python helper uses model_name first and falls back to model_path, never literal 'model'", () => {
+    const args = buildFasterWhisperArgs(
+      fasterWhisperConfig({
+        modelName: "base",
+        modelPath:
+          "C:/Users/princ/.cache/huggingface/hub/models--Systran--faster-whisper-base",
+      }),
+      "C:/AI/piper/test.wav",
+    );
+
+    const helper = args[1] ?? "";
+    expect(helper).toContain(
+      "model_target=args.model_name.strip() or args.model_path.strip()",
+    );
+    expect(helper).toContain(
+      "WhisperModel(model_target,device='cpu',compute_type='int8')",
+    );
+    expect(helper).toContain(
+      "raise SystemExit('faster-whisper requires --model-name or --model-path')",
+    );
+    expect(helper).not.toContain("WhisperModel(args.model_path)");
+    expect(helper).not.toMatch(/WhisperModel\(\s*['"]model['"]\s*\)/);
+    expect(helper).not.toMatch(/WhisperModel\(\s*['"][^'"]*['"]\s*\)/);
+
+    const modelNameIndex = args.indexOf("--model-name");
+    const modelPathIndex = args.indexOf("--model-path");
+    const audioRefIndex = args.indexOf("--audio-ref");
+    expect(args[modelNameIndex + 1]).toBe("base");
+    expect(args[modelPathIndex + 1]).toBe(
+      "C:/Users/princ/.cache/huggingface/hub/models--Systran--faster-whisper-base",
+    );
+    expect(args[audioRefIndex + 1]).toBe("C:/AI/piper/test.wav");
+    expect(args[modelNameIndex + 1]).not.toBe(args[modelPathIndex + 1]);
+    expect(args[modelNameIndex + 1]).not.toBe(args[audioRefIndex + 1]);
+    expect(args[modelPathIndex + 1]).not.toBe(args[audioRefIndex + 1]);
+    for (const arg of args) {
+      expect(arg).not.toBe("model");
+    }
+  });
+
+  it("python helper accepts empty model_path so model_name can stand alone", () => {
+    const helper = buildFasterWhisperArgs(
+      fasterWhisperConfig({ modelName: "base" }),
+      "C:/AI/piper/test.wav",
+    )[1];
+
+    expect(helper).toContain("dest='model_path',default=''");
+    expect(helper).toContain("dest='model_name',default=''");
+    expect(helper).not.toContain("dest='model_path',required=True");
+    expect(helper).not.toContain("dest='model_name',required=True");
+  });
+
+  it("spawns child with shell:false and windowsHide:true (no shell interpolation)", async () => {
+    const harness = createHarness();
+    await harness.provider.transcribe(FAKE_STT_VALID_AUDIO_REQUEST, {
+      metadata_only: true,
+    });
+
+    expect(harness.spawnCalls).toHaveLength(1);
+    expect(harness.spawnCalls[0].options).toEqual({
+      shell: false,
+      stdio: "pipe",
+      windowsHide: true,
+    });
+    expect(harness.spawnCalls[0].options.shell).toBe(false);
   });
 
   it("does not execute on malformed config and health does not spawn", async () => {
