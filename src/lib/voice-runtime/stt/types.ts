@@ -58,6 +58,16 @@ export interface SttTranscriptionResult {
   readonly latency_ms: number;
   readonly degraded: boolean;
   readonly confidence_band: SttConfidenceBand;
+  readonly diagnostics?: SttExecutionDiagnostics;
+  readonly metadata_only: true;
+}
+
+export interface SttExecutionDiagnostics {
+  readonly stdout_preview?: string;
+  readonly stderr_preview?: string;
+  readonly exit_code?: number | null;
+  readonly signal?: string | null;
+  readonly truncated: boolean;
   readonly metadata_only: true;
 }
 

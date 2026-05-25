@@ -7,6 +7,7 @@ export type {
   SttAudioMetadata,
   SttCancellationReason,
   SttConfidenceBand,
+  SttExecutionDiagnostics,
   SttProviderConfig,
   SttProviderHealth,
   SttTranscriptionOptions,
@@ -50,3 +51,15 @@ export {
   FAKE_STT_UNAVAILABLE_PROVIDER_HEALTH,
   FAKE_STT_VALID_AUDIO_REQUEST,
 } from "./fixtures";
+
+export {
+  FasterWhisperSttProviderError,
+  buildFasterWhisperArgs,
+  createFasterWhisperSttProvider,
+} from "./faster-whisper-provider";
+export type {
+  FasterWhisperProcessRunner,
+  FasterWhisperSpawnOptions,
+  FasterWhisperSpawnedProcess,
+  FasterWhisperSttProviderOptions,
+} from "./faster-whisper-provider";
