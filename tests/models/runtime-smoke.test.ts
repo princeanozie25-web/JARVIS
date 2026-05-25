@@ -91,6 +91,21 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
         successful_model: "llama3.2:3b",
         fallback_used: false,
         latency_ms: 25,
+        execution_summary: {
+          execution_id: "model-runtime-smoke",
+          request_id: "model-runtime-smoke",
+          selected_model_id: "llama3.2:3b",
+          selected_provider: "ollama",
+          successful_model: "llama3.2:3b",
+          token_usage: {
+            input_tokens: expect.any(Number),
+            output_tokens: expect.any(Number),
+            total_tokens: expect.any(Number),
+          },
+          redaction_status: "metadata_only",
+          runtime_class: "local",
+          provider_kind: "ollama",
+        },
       },
     });
     expect(lines).toEqual([

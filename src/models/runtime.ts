@@ -13,15 +13,23 @@ import {
   MODEL_RUNTIME_CLASSES,
   MODEL_TIERS,
 } from "./types";
-import type { ModelCapability, ModelRegistryEntry } from "./types";
+import type {
+  ModelCapability,
+  ModelProviderKind,
+  ModelRegistryEntry,
+  ModelRuntimeClass,
+} from "./types";
 import type {
   ModelProvider,
   ModelProviderError,
   ModelProviderFailureClass,
+  ModelProviderFinishReason,
   ModelProviderInput,
   ModelProviderProvenance,
+  ModelProviderRedactionStatus,
   ModelProviderRequestOptions,
   ModelProviderResponse,
+  ModelProviderTokenUsage,
 } from "./providers/contract";
 
 export type ModelRuntimeProviderMap =
@@ -74,6 +82,31 @@ export interface ModelRuntimeResultMetadata {
   readonly latency_ms: number;
   readonly degraded: boolean;
   readonly failure_class?: ModelProviderFailureClass;
+  readonly execution_summary: ModelRuntimeExecutionSummary;
+}
+
+export interface ModelRuntimeExecutionSummary {
+  readonly execution_id: string;
+  readonly request_id: string;
+  readonly capability: ModelCapability | null;
+  readonly selected_model_id: string | null;
+  readonly selected_provider: string | null;
+  readonly attempted_models: readonly string[];
+  readonly successful_model: string | null;
+  readonly failed_models: readonly ModelRuntimeFailedModel[];
+  readonly fallback_used: boolean;
+  readonly fallback_chain: readonly string[];
+  readonly failure_class?: ModelProviderFailureClass;
+  readonly latency_ms: number;
+  readonly token_usage: ModelProviderTokenUsage;
+  readonly degraded: boolean;
+  readonly finish_reason: ModelProviderFinishReason | null;
+  readonly governance_flags: readonly ModelFallbackGovernanceFlag[];
+  readonly redaction_status: ModelProviderRedactionStatus;
+  readonly runtime_class: ModelRuntimeClass | null;
+  readonly provider_kind: ModelProviderKind | null;
+  readonly started_at?: number;
+  readonly ended_at?: number;
 }
 
 export interface ModelRuntimeExecuteResult {
@@ -108,6 +141,12 @@ const RuntimeExecuteRequestSchema = z.strictObject({
   timeout_ms: z.number().int().positive(),
   abort_signal: z.custom<AbortSignal>(isAbortSignal).optional(),
 });
+
+const ZERO_TOKEN_USAGE: ModelProviderTokenUsage = {
+  input_tokens: 0,
+  output_tokens: 0,
+  total_tokens: 0,
+};
 
 interface NormalizedRuntimeOptions {
   readonly registry: ModelRegistryLoader;
@@ -168,6 +207,7 @@ async function execute(
       startedAt,
       endedAt: config.now(),
       selectedModelId: null,
+      capability: executeRequest.capability,
       failureClass:
         resolution.failure?.reason === "invalid_request"
           ? "invalid_request"
@@ -218,20 +258,36 @@ async function execute(
         provenance: createProvenance(executeRequest, startedAt),
       });
 
+      const endedAt = config.now();
+      const fallbackChain = attemptEntries
+        .slice(1)
+        .map((fallbackEntry) => fallbackEntry.id);
       return clone({
         request_id: executeRequest.request_id,
         ok: true,
         response,
-        metadata: {
+        metadata: createMetadata({
+          executionId: executeRequest.request_id,
+          requestId: executeRequest.request_id,
+          capability: executeRequest.capability,
           selected_model_id: primaryEntry.id,
+          selected_provider: response.provider_id,
           attempted_models: attemptedModels,
           successful_model: entry.id,
           failed_models: failedModels,
           fallback_used: index > 0,
+          fallback_chain: fallbackChain,
           governance_flags: fallbackPlan.governance_flags,
-          latency_ms: elapsedMs(startedAt, config.now()),
+          latency_ms: elapsedMs(startedAt, endedAt),
           degraded: response.degraded || index > 0,
-        },
+          token_usage: response.token_usage,
+          finish_reason: response.finish_reason,
+          redaction_status: response.redaction_status,
+          runtime_class: entry.runtime_class,
+          provider_kind: entry.provider,
+          started_at: startedAt,
+          ended_at: endedAt,
+        }),
       });
     } catch (error) {
       failedModels.push(
@@ -241,21 +297,37 @@ async function execute(
   }
 
   const lastFailure = failedModels.at(-1);
+  const endedAt = config.now();
+  const fallbackChain = attemptEntries
+    .slice(1)
+    .map((fallbackEntry) => fallbackEntry.id);
   return clone({
     request_id: executeRequest.request_id,
     ok: false,
     response: null,
-    metadata: {
+    metadata: createMetadata({
+      executionId: executeRequest.request_id,
+      requestId: executeRequest.request_id,
+      capability: executeRequest.capability,
       selected_model_id: primaryEntry.id,
+      selected_provider: lastFailure?.provider_id ?? null,
       attempted_models: attemptedModels,
       successful_model: null,
       failed_models: failedModels,
       fallback_used: false,
+      fallback_chain: fallbackChain,
       governance_flags: fallbackPlan.governance_flags,
-      latency_ms: elapsedMs(startedAt, config.now()),
+      latency_ms: elapsedMs(startedAt, endedAt),
       degraded: true,
       failure_class: lastFailure?.failure_class ?? "provider_error",
-    },
+      token_usage: ZERO_TOKEN_USAGE,
+      finish_reason: "error",
+      redaction_status: "metadata_only",
+      runtime_class: primaryEntry.runtime_class,
+      provider_kind: primaryEntry.provider,
+      started_at: startedAt,
+      ended_at: endedAt,
+    }),
   });
 }
 
@@ -337,34 +409,113 @@ function createFailureResult(input: {
   readonly startedAt: number;
   readonly endedAt: number;
   readonly selectedModelId?: string | null;
+  readonly selectedProvider?: string | null;
+  readonly capability?: ModelCapability | null;
   readonly failureClass: ModelProviderFailureClass;
   readonly message: string;
   readonly governanceFlags?: readonly ModelFallbackGovernanceFlag[];
+  readonly runtimeClass?: ModelRuntimeClass | null;
+  readonly providerKind?: ModelProviderKind | null;
+  readonly fallbackChain?: readonly string[];
 }): ModelRuntimeExecuteResult {
+  const failedModels: ModelRuntimeFailedModel[] = input.selectedModelId
+    ? [
+        {
+          model_id: input.selectedModelId,
+          failure_class: input.failureClass,
+          message: input.message,
+        },
+      ]
+    : [];
   return clone({
     request_id: input.requestId,
     ok: false,
     response: null,
-    metadata: {
+    metadata: createMetadata({
+      executionId: input.requestId,
+      requestId: input.requestId,
+      capability: input.capability ?? null,
       selected_model_id: input.selectedModelId ?? null,
+      selected_provider: input.selectedProvider ?? null,
       attempted_models: [],
       successful_model: null,
-      failed_models: input.selectedModelId
-        ? [
-            {
-              model_id: input.selectedModelId,
-              failure_class: input.failureClass,
-              message: input.message,
-            },
-          ]
-        : [],
+      failed_models: failedModels,
       fallback_used: false,
+      fallback_chain: input.fallbackChain ?? [],
       governance_flags: input.governanceFlags ?? [],
       latency_ms: elapsedMs(input.startedAt, input.endedAt),
       degraded: true,
       failure_class: input.failureClass,
-    },
+      token_usage: ZERO_TOKEN_USAGE,
+      finish_reason: "error",
+      redaction_status: "metadata_only",
+      runtime_class: input.runtimeClass ?? null,
+      provider_kind: input.providerKind ?? null,
+      started_at: input.startedAt,
+      ended_at: input.endedAt,
+    }),
   });
+}
+
+function createMetadata(input: {
+  readonly executionId: string;
+  readonly requestId: string;
+  readonly capability: ModelCapability | null;
+  readonly selected_model_id: string | null;
+  readonly selected_provider: string | null;
+  readonly attempted_models: readonly string[];
+  readonly successful_model: string | null;
+  readonly failed_models: readonly ModelRuntimeFailedModel[];
+  readonly fallback_used: boolean;
+  readonly fallback_chain: readonly string[];
+  readonly governance_flags: readonly ModelFallbackGovernanceFlag[];
+  readonly latency_ms: number;
+  readonly degraded: boolean;
+  readonly failure_class?: ModelProviderFailureClass;
+  readonly token_usage: ModelProviderTokenUsage;
+  readonly finish_reason: ModelProviderFinishReason | null;
+  readonly redaction_status: ModelProviderRedactionStatus;
+  readonly runtime_class: ModelRuntimeClass | null;
+  readonly provider_kind: ModelProviderKind | null;
+  readonly started_at?: number;
+  readonly ended_at?: number;
+}): ModelRuntimeResultMetadata {
+  const summary: ModelRuntimeExecutionSummary = {
+    execution_id: input.executionId,
+    request_id: input.requestId,
+    capability: input.capability,
+    selected_model_id: input.selected_model_id,
+    selected_provider: input.selected_provider,
+    attempted_models: input.attempted_models,
+    successful_model: input.successful_model,
+    failed_models: input.failed_models,
+    fallback_used: input.fallback_used,
+    fallback_chain: input.fallback_chain,
+    latency_ms: input.latency_ms,
+    token_usage: input.token_usage,
+    degraded: input.degraded,
+    finish_reason: input.finish_reason,
+    governance_flags: input.governance_flags,
+    redaction_status: input.redaction_status,
+    runtime_class: input.runtime_class,
+    provider_kind: input.provider_kind,
+    started_at: input.started_at,
+    ended_at: input.ended_at,
+    ...(input.failure_class ? { failure_class: input.failure_class } : {}),
+  };
+
+  return {
+    selected_model_id: input.selected_model_id,
+    attempted_models: input.attempted_models,
+    successful_model: input.successful_model,
+    failed_models: input.failed_models,
+    fallback_used: input.fallback_used,
+    governance_flags: input.governance_flags,
+    latency_ms: input.latency_ms,
+    degraded: input.degraded,
+    execution_summary: summary,
+    ...(input.failure_class ? { failure_class: input.failure_class } : {}),
+  };
 }
 
 function normalizeProviders(

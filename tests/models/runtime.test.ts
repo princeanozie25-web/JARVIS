@@ -249,6 +249,53 @@ describe("Phase 13C.3 local model runtime", () => {
     });
   });
 
+  it("returns a normalized successful execution summary without raw payloads", async () => {
+    const primary = createRecordingProvider({ responseLatencyMs: 11 });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      now: createClock(100, 125),
+    });
+
+    const result = await runtime.execute(runtimeRequest());
+
+    expect(result.metadata.execution_summary).toEqual({
+      execution_id: "runtime-request-1",
+      request_id: "runtime-request-1",
+      capability: "chat",
+      selected_model_id: "local-primary",
+      selected_provider: "ollama-test-provider",
+      attempted_models: ["local-primary"],
+      successful_model: "local-primary",
+      failed_models: [],
+      fallback_used: false,
+      fallback_chain: ["local-fallback"],
+      latency_ms: 25,
+      token_usage: {
+        input_tokens: 2,
+        output_tokens: 1,
+        total_tokens: 3,
+      },
+      degraded: false,
+      finish_reason: "stop",
+      governance_flags: [
+        "cloud_opt_in_required",
+        "disabled_model_opt_in_required",
+      ],
+      redaction_status: "metadata_only",
+      runtime_class: "local",
+      provider_kind: "ollama",
+      started_at: 100,
+      ended_at: 125,
+    });
+    expect(JSON.stringify(result.metadata)).not.toContain("Runtime check");
+    expect(JSON.stringify(result.metadata)).not.toContain(
+      "runtime:local-primary",
+    );
+  });
+
   it("fails closed when the selected provider is missing", async () => {
     const runtime = createModelRuntime({
       registry: localRegistry(),
@@ -275,6 +322,25 @@ describe("Phase 13C.3 local model runtime", () => {
         ],
         failure_class: "unavailable",
         degraded: true,
+        execution_summary: {
+          execution_id: "runtime-request-1",
+          selected_model_id: "local-primary",
+          selected_provider: null,
+          attempted_models: ["local-primary", "local-fallback"],
+          successful_model: null,
+          fallback_used: false,
+          fallback_chain: ["local-fallback"],
+          failure_class: "unavailable",
+          token_usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+          },
+          finish_reason: "error",
+          redaction_status: "metadata_only",
+          runtime_class: "local",
+          provider_kind: "ollama",
+        },
       },
     });
   });
@@ -298,6 +364,22 @@ describe("Phase 13C.3 local model runtime", () => {
         failure_class: "model_missing",
         degraded: true,
         governance_flags: ["no_eligible_models", "capability_unavailable"],
+        execution_summary: {
+          execution_id: "runtime-request-1",
+          capability: "embed",
+          selected_model_id: null,
+          attempted_models: [],
+          failed_models: [],
+          failure_class: "model_missing",
+          token_usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+          },
+          runtime_class: null,
+          provider_kind: null,
+          redaction_status: "metadata_only",
+        },
       },
     });
   });
@@ -333,6 +415,24 @@ describe("Phase 13C.3 local model runtime", () => {
         ],
         fallback_used: true,
         degraded: true,
+        execution_summary: {
+          selected_model_id: "local-primary",
+          selected_provider: "fallback-provider",
+          attempted_models: ["local-primary", "local-fallback"],
+          successful_model: "local-fallback",
+          fallback_used: true,
+          fallback_chain: ["local-fallback"],
+          failed_models: [
+            {
+              model_id: "local-primary",
+              provider_id: "ollama-test-provider",
+              failure_class: "provider_error",
+            },
+          ],
+          degraded: true,
+          runtime_class: "local",
+          provider_kind: "ollama",
+        },
       },
     });
     expect(primary.calls).toHaveLength(1);
@@ -496,6 +596,11 @@ describe("Phase 13C.3 local model runtime", () => {
     ).resolves.toMatchObject({
       metadata: {
         failure_class: "timeout",
+        execution_summary: {
+          failure_class: "timeout",
+          finish_reason: "error",
+          redaction_status: "metadata_only",
+        },
       },
     });
     await expect(
@@ -508,6 +613,11 @@ describe("Phase 13C.3 local model runtime", () => {
     ).resolves.toMatchObject({
       metadata: {
         failure_class: "cancelled",
+        execution_summary: {
+          failure_class: "cancelled",
+          finish_reason: "error",
+          redaction_status: "metadata_only",
+        },
       },
     });
     expect(timeoutProvider.calls[0].timeout_ms).toBe(17);
@@ -536,6 +646,41 @@ describe("Phase 13C.3 local model runtime", () => {
       firstRun.metadata.attempted_models,
     );
     expect(firstRun.metadata.fallback_used).toBe(true);
+  });
+
+  it("returns defensive-copy safe execution metadata", async () => {
+    const primary = createRecordingProvider({ failureClass: "unavailable" });
+    const fallback = createRecordingProvider();
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+        [key("local-fallback")]: fallback.provider,
+      },
+    });
+
+    const first = await runtime.execute(runtimeRequest());
+    (first.metadata.execution_summary.attempted_models as string[]).push(
+      "mutated-model",
+    );
+    (first.metadata.execution_summary.failed_models as unknown[]).push({
+      model_id: "mutated-model",
+      provider_id: "mutated-provider",
+      failure_class: "provider_error",
+      message: "mutated",
+    });
+
+    const second = await runtime.execute(runtimeRequest());
+    expect(second.metadata.execution_summary.attempted_models).toEqual([
+      "local-primary",
+      "local-fallback",
+    ]);
+    expect(second.metadata.execution_summary.failed_models).toEqual([
+      expect.objectContaining({
+        model_id: "local-primary",
+        failure_class: "unavailable",
+      }),
+    ]);
   });
 
   it("does not call provider.complete during runtime construction", () => {

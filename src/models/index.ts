@@ -67,6 +67,7 @@ export type {
   ModelRuntime,
   ModelRuntimeExecuteRequest,
   ModelRuntimeExecuteResult,
+  ModelRuntimeExecutionSummary,
   ModelRuntimeFailedModel,
   ModelRuntimeFallbackPlanner,
   ModelRuntimeOptions,
