@@ -29,3 +29,24 @@ export type {
   FasterWhisperConfigValidationResult,
   FasterWhisperProviderConfig,
 } from "./faster-whisper-contract";
+
+export {
+  FAKE_STT_PROVIDER_MODES,
+  FakeSttProviderError,
+  createFakeSttProvider,
+} from "./fake-provider";
+export type {
+  FakeSttProviderMode,
+  FakeSttProviderOptions,
+} from "./fake-provider";
+
+export {
+  FAKE_STT_DEGRADED_PROVIDER_HEALTH,
+  FAKE_STT_HEALTHY_PROVIDER_HEALTH,
+  FAKE_STT_OVERSIZED_AUDIO_REQUEST,
+  FAKE_STT_PROVIDER_CONFIG,
+  FAKE_STT_TIMEOUT_CANCELLATION_REASON,
+  FAKE_STT_TRANSCRIPT,
+  FAKE_STT_UNAVAILABLE_PROVIDER_HEALTH,
+  FAKE_STT_VALID_AUDIO_REQUEST,
+} from "./fixtures";
