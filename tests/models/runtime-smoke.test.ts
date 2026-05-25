@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createFakeOllamaClient,
+  createModelRuntime,
   createModelRegistryFromYaml,
+  type ModelRuntimeOptions,
 } from "../../src/models";
 
 function smokeRegistry() {
@@ -56,6 +58,7 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     const smoke = await import("../../scripts/model-runtime-smoke");
 
     expect(smoke.runModelRuntimeSmoke).toEqual(expect.any(Function));
+    expect(smoke.runModelRuntimeStreamingSmoke).toEqual(expect.any(Function));
     expect(smoke.runModelRuntimeSmokeCli).toEqual(expect.any(Function));
     expect(logSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
@@ -125,6 +128,68 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     );
   });
 
+  it("executes the mocked streaming smoke path through createModelRuntime.stream", async () => {
+    const { runModelRuntimeStreamingSmoke } =
+      await import("../../scripts/model-runtime-smoke");
+    const lines: string[] = [];
+    let streamCalls = 0;
+
+    const report = await runModelRuntimeStreamingSmoke({
+      loadRegistry: smokeRegistry,
+      createClient: () =>
+        createFakeOllamaClient({
+          latencyMs: 7,
+        }),
+      createRuntime: (options: ModelRuntimeOptions) => {
+        const runtime = createModelRuntime(options);
+        return {
+          execute: runtime.execute,
+          stream: (request) => {
+            streamCalls += 1;
+            return runtime.stream(request);
+          },
+        };
+      },
+      now: createClock(100, 125),
+      writeLine: (line) => lines.push(line),
+    });
+
+    expect(streamCalls).toBe(1);
+    expect(report.terminal_event).toMatchObject({
+      type: "done",
+      request_id: "model-runtime-stream-smoke",
+      selected_model_id: "llama3.2:3b",
+      provider_id: "ollama",
+      attempted_models: ["llama3.2:3b"],
+      fallback_used: false,
+      redaction_status: "metadata_only",
+      token_usage: {
+        input_tokens: expect.any(Number),
+        output_tokens: expect.any(Number),
+        total_tokens: expect.any(Number),
+      },
+    });
+    expect(report.token_event_count).toBeGreaterThan(0);
+    expect(report.stream_preview.length).toBeLessThanOrEqual(120);
+    expect(lines).toEqual([
+      "JARVIS model runtime streaming smoke",
+      "status: streaming",
+      "selected_model_id: llama3.2:3b",
+      "provider_id: ollama",
+      "attempted_models: llama3.2:3b",
+      "fallback_used: false",
+      "status: ok",
+      expect.stringMatching(/^token_events: \d+$/),
+      expect.stringMatching(/^token_usage: input=\d+ output=\d+ total=\d+$/),
+      "latency_ms: 25",
+      "degraded: false",
+      expect.stringMatching(/^stream_preview: .{1,120}$/),
+    ]);
+    expect(lines.join("\n")).not.toContain(
+      "Say exactly: JARVIS governed local runtime online.",
+    );
+  });
+
   it("fails closed with a helpful message when local Ollama is unavailable", async () => {
     const { runModelRuntimeSmoke } =
       await import("../../scripts/model-runtime-smoke");
@@ -156,6 +221,35 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     );
   });
 
+  it("fails closed with a helpful streaming message when local Ollama is unavailable", async () => {
+    const { runModelRuntimeStreamingSmoke } =
+      await import("../../scripts/model-runtime-smoke");
+
+    await expect(
+      runModelRuntimeStreamingSmoke({
+        loadRegistry: smokeRegistry,
+        createClient: () =>
+          createFakeOllamaClient({
+            failureMode: "unavailable",
+          }),
+        writeLine: () => {},
+      }),
+    ).rejects.toThrow(
+      /Local Ollama model runtime streaming smoke failed with unavailable/,
+    );
+    await expect(
+      runModelRuntimeStreamingSmoke({
+        loadRegistry: smokeRegistry,
+        createClient: () =>
+          createFakeOllamaClient({
+            failureMode: "model_missing",
+          }),
+      }),
+    ).rejects.toThrow(
+      /No model pull, install, telemetry persistence, or event store persistence was attempted/,
+    );
+  });
+
   it("registers an opt-in manual npm script only", () => {
     const packageJson = JSON.parse(
       readFileSync(join(process.cwd(), "package.json"), "utf8"),
@@ -164,6 +258,14 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     expect(packageJson.scripts["smoke:model-runtime"]).toBe(
       "tsx scripts/model-runtime-smoke.ts",
     );
+    expect(packageJson.scripts["smoke:model-runtime:stream"]).toBe(
+      "tsx scripts/model-runtime-smoke.ts --stream",
+    );
+    expect(packageJson.scripts.prepare).toBe("husky");
+    expect(packageJson.scripts.prepare).not.toContain("smoke:model-runtime");
+    expect(packageJson.scripts.dev).not.toContain("smoke:model-runtime");
+    expect(packageJson.scripts.build).not.toContain("smoke:model-runtime");
+    expect(packageJson.scripts.test).not.toContain("smoke:model-runtime");
   });
 
   it("uses localhost-only Ollama client defaults and does not auto-configure from env", () => {
@@ -177,7 +279,7 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     expect(source).toContain("http://127.0.0.1:11434");
   });
 
-  it("does not wire router, UI, Tauri, telemetry, event store, background loops, streaming runtime, model pull, or installs", () => {
+  it("does not wire router, UI, Tauri, telemetry, event store, background loops, cloud, model pull, or installs", () => {
     const source = readFileSync(
       join(process.cwd(), "scripts/model-runtime-smoke.ts"),
       "utf8",
@@ -194,7 +296,8 @@ describe("Phase 13C.4 model runtime smoke harness", () => {
     expect(source).not.toMatch(
       /setInterval|setTimeout|while\s*\(\s*true\s*\)|worker|queue|pollHealth|healthPoll/i,
     );
-    expect(source).not.toMatch(/\.stream\(|streaming runtime/i);
+    expect(source).toContain("runtime.stream");
+    expect(source).not.toMatch(/allow_cloud|runtime_class:\s*["']cloud["']/i);
     expect(source).not.toMatch(
       /\/api\/pull|ollama\.pull|pullModel|modelPull|auto-?install|npm\s+install/i,
     );
