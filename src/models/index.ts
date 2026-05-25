@@ -83,6 +83,16 @@ export type {
 } from "./runtime";
 
 export {
+  ModelCallEventError,
+  ModelCallEventSchema,
+  createModelCallEvent,
+} from "./model-call-event";
+export type {
+  CreateModelCallEventOptions,
+  ModelCallEvent,
+} from "./model-call-event";
+
+export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
   MODEL_PROVIDER_REDACTION_STATUSES,
