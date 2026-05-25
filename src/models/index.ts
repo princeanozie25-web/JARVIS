@@ -118,6 +118,13 @@ export type {
   RecentModelCallsProjection,
 } from "./model-call-projection";
 
+export { createModelRuntimeObservabilityView } from "./model-runtime-observability";
+export type {
+  ModelRuntimeObservabilityInput,
+  ModelRuntimeObservabilityRecentCall,
+  ModelRuntimeObservabilityView,
+} from "./model-runtime-observability";
+
 export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
