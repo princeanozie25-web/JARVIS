@@ -7,6 +7,7 @@ export type {
   TtsAudioChunkMetadata,
   TtsCancellationReason,
   TtsContentClass,
+  TtsExecutionDiagnostics,
   TtsProviderConfig,
   TtsProviderHealth,
   TtsSynthesisOptions,
@@ -49,3 +50,15 @@ export {
   FAKE_TTS_UNAVAILABLE_PROVIDER_HEALTH,
   FAKE_TTS_UNSAFE_CONTENT_REQUEST,
 } from "./fixtures";
+
+export {
+  PiperTtsProviderError,
+  buildPiperArgs,
+  createPiperTtsProvider,
+} from "./piper-provider";
+export type {
+  PiperProcessRunner,
+  PiperSpawnOptions,
+  PiperSpawnedProcess,
+  PiperTtsProviderOptions,
+} from "./piper-provider";

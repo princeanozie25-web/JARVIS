@@ -59,11 +59,21 @@ export interface TtsAudioChunkMetadata {
   readonly metadata_only: true;
 }
 
+export interface TtsExecutionDiagnostics {
+  readonly stdout_preview?: string;
+  readonly stderr_preview?: string;
+  readonly exit_code?: number | null;
+  readonly signal?: string | null;
+  readonly truncated: boolean;
+  readonly metadata_only: true;
+}
+
 export interface TtsSynthesisResult {
   readonly request_id: string;
   readonly chunk: TtsAudioChunkMetadata;
   readonly latency_ms: number;
   readonly degraded: boolean;
+  readonly diagnostics?: TtsExecutionDiagnostics;
   readonly metadata_only: true;
 }
 
