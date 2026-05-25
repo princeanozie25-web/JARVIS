@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  createModelCallEvent,
+  type CreateModelCallEventOptions,
+  type ModelCallEvent,
+} from "./model-call-event";
+import {
+  appendModelCallEvent,
+  type ModelCallEventPersistenceResult,
+} from "./model-call-store";
 import type { ModelRegistryLoader } from "./registry";
 import {
   buildFallbackPlan,
@@ -54,6 +63,27 @@ export interface ModelRuntimeOptions {
   readonly resolver?: ModelRuntimeResolver;
   readonly fallbackPlanner?: ModelRuntimeFallbackPlanner;
   readonly now?: () => number;
+  readonly persistence?: ModelRuntimePersistenceOptions;
+}
+
+export type ModelRuntimeCreateModelCallEvent = (
+  summary: ModelRuntimeExecutionSummary,
+  options?: CreateModelCallEventOptions,
+) => ModelCallEvent;
+
+export type ModelRuntimeAppendModelCallEvent = (
+  event: ModelCallEvent,
+) => ModelCallEventPersistenceResult | Promise<ModelCallEventPersistenceResult>;
+
+export type ModelRuntimeModelCallStore = Parameters<
+  typeof appendModelCallEvent
+>[0];
+
+export interface ModelRuntimePersistenceOptions {
+  readonly store?: ModelRuntimeModelCallStore;
+  readonly createEvent?: ModelRuntimeCreateModelCallEvent;
+  readonly appendEvent?: ModelRuntimeAppendModelCallEvent;
+  readonly eventOptions?: CreateModelCallEventOptions;
 }
 
 export interface ModelRuntimeExecuteRequest {
@@ -84,6 +114,15 @@ export interface ModelRuntimeResultMetadata {
   readonly degraded: boolean;
   readonly failure_class?: ModelProviderFailureClass;
   readonly execution_summary: ModelRuntimeExecutionSummary;
+  readonly persistence?: ModelRuntimePersistenceMetadata;
+}
+
+export interface ModelRuntimePersistenceMetadata {
+  readonly attempted: boolean;
+  readonly persisted: boolean;
+  readonly event_id: string | null;
+  readonly metadata_only: true;
+  readonly error_class?: "persistence_failed";
 }
 
 export interface ModelRuntimeExecutionSummary {
@@ -208,6 +247,7 @@ interface NormalizedRuntimeOptions {
   readonly resolver: ModelRuntimeResolver;
   readonly fallbackPlanner: ModelRuntimeFallbackPlanner;
   readonly now: () => number;
+  readonly persistence?: ModelRuntimePersistenceOptions;
 }
 
 export function createModelRuntime(options: ModelRuntimeOptions): ModelRuntime {
@@ -217,6 +257,7 @@ export function createModelRuntime(options: ModelRuntimeOptions): ModelRuntime {
     resolver: options.resolver ?? resolveModel,
     fallbackPlanner: options.fallbackPlanner ?? buildFallbackPlan,
     now: options.now ?? (() => 0),
+    persistence: options.persistence,
   };
 
   return {
@@ -239,13 +280,16 @@ async function execute(
   const parsed = RuntimeExecuteRequestSchema.safeParse(request);
 
   if (!parsed.success) {
-    return createFailureResult({
-      requestId: runtimeRequestId(request),
-      startedAt,
-      endedAt: config.now(),
-      failureClass: "invalid_request",
-      message: "Model runtime execution request was malformed.",
-    });
+    return finalizeExecuteResult(
+      config,
+      createFailureResult({
+        requestId: runtimeRequestId(request),
+        startedAt,
+        endedAt: config.now(),
+        failureClass: "invalid_request",
+        message: "Model runtime execution request was malformed.",
+      }),
+    );
   }
 
   const executeRequest = parsed.data;
@@ -257,21 +301,24 @@ async function execute(
   const primaryEntry = resolution.selected;
 
   if (!primaryEntry) {
-    return createFailureResult({
-      requestId: executeRequest.request_id,
-      startedAt,
-      endedAt: config.now(),
-      selectedModelId: null,
-      capability: executeRequest.capability,
-      failureClass:
-        resolution.failure?.reason === "invalid_request"
-          ? "invalid_request"
-          : "model_missing",
-      message:
-        resolution.failure?.message ??
-        "No eligible model was available for execution.",
-      governanceFlags: fallbackPlan.governance_flags,
-    });
+    return finalizeExecuteResult(
+      config,
+      createFailureResult({
+        requestId: executeRequest.request_id,
+        startedAt,
+        endedAt: config.now(),
+        selectedModelId: null,
+        capability: executeRequest.capability,
+        failureClass:
+          resolution.failure?.reason === "invalid_request"
+            ? "invalid_request"
+            : "model_missing",
+        message:
+          resolution.failure?.message ??
+          "No eligible model was available for execution.",
+        governanceFlags: fallbackPlan.governance_flags,
+      }),
+    );
   }
 
   const attemptedModels: string[] = [];
@@ -317,7 +364,7 @@ async function execute(
       const fallbackChain = attemptEntries
         .slice(1)
         .map((fallbackEntry) => fallbackEntry.id);
-      return clone({
+      return finalizeExecuteResult(config, {
         request_id: executeRequest.request_id,
         ok: true,
         response,
@@ -356,7 +403,7 @@ async function execute(
   const fallbackChain = attemptEntries
     .slice(1)
     .map((fallbackEntry) => fallbackEntry.id);
-  return clone({
+  return finalizeExecuteResult(config, {
     request_id: executeRequest.request_id,
     ok: false,
     response: null,
@@ -384,6 +431,70 @@ async function execute(
       ended_at: endedAt,
     }),
   });
+}
+
+async function finalizeExecuteResult(
+  config: NormalizedRuntimeOptions,
+  result: ModelRuntimeExecuteResult,
+): Promise<ModelRuntimeExecuteResult> {
+  if (!config.persistence) return clone(result);
+
+  const persistence = await persistModelCallSummary(
+    config.persistence,
+    result.metadata.execution_summary,
+  );
+
+  return clone({
+    ...result,
+    metadata: {
+      ...result.metadata,
+      persistence,
+    },
+  });
+}
+
+async function persistModelCallSummary(
+  persistence: ModelRuntimePersistenceOptions,
+  summary: ModelRuntimeExecutionSummary,
+): Promise<ModelRuntimePersistenceMetadata> {
+  try {
+    const createEvent = persistence.createEvent ?? createModelCallEvent;
+    const appendEvent =
+      persistence.appendEvent ?? createStoreAppendEvent(persistence.store);
+    if (!appendEvent) {
+      throw new Error(
+        "Model runtime persistence append hook was not provided.",
+      );
+    }
+
+    const event = createEvent(clone(summary), persistence.eventOptions);
+    const appendResult = await appendEvent(clone(event));
+    if (!isModelCallEventPersistenceResult(appendResult)) {
+      throw new Error("Model runtime persistence append result was malformed.");
+    }
+
+    return clone({
+      attempted: true,
+      persisted: true,
+      event_id: appendResult.event_id,
+      metadata_only: true,
+    });
+  } catch {
+    return clone({
+      attempted: true,
+      persisted: false,
+      event_id: null,
+      metadata_only: true,
+      error_class: "persistence_failed",
+    });
+  }
+}
+
+function createStoreAppendEvent(
+  store: ModelRuntimeModelCallStore | undefined,
+): ModelRuntimeAppendModelCallEvent | null {
+  if (!store) return null;
+  return (event) => appendModelCallEvent(store, event);
 }
 
 async function* stream(
@@ -1071,6 +1182,25 @@ function runtimeRequestId(request: unknown): string {
     return (request as { request_id: string }).request_id;
   }
   return "invalid-runtime-request";
+}
+
+function isModelCallEventPersistenceResult(
+  value: unknown,
+): value is ModelCallEventPersistenceResult {
+  if (!value || typeof value !== "object") return false;
+  const result = value as Record<string, unknown>;
+  return (
+    result.appended === true &&
+    typeof result.event_id === "string" &&
+    typeof result.model_call_id === "string" &&
+    typeof result.request_id === "string" &&
+    typeof result.execution_id === "string" &&
+    result.metadata_only === true &&
+    result.raw_payload_written === false &&
+    result.prompt_payload_retained === false &&
+    result.cloud_call === false &&
+    result.local_only === true
+  );
 }
 
 function isModelProviderError(error: unknown): error is ModelProviderError {

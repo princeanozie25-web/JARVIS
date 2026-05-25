@@ -3,9 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  createModelCallEvent,
   createModelRegistryFromYaml,
   createModelRuntime,
   createModelRuntimeProviderKey,
+  type ModelCallEvent,
+  type ModelCallEventPersistenceResult,
   type ModelProvider,
   type ModelProviderError,
   type ModelProviderFailureClass,
@@ -13,6 +16,7 @@ import {
   type ModelProviderResponse,
   type ModelProviderStreamEvent,
   type ModelRuntimeStreamEvent,
+  type ModelRuntimeModelCallStore,
 } from "../../src/models";
 
 function localRegistry() {
@@ -317,6 +321,25 @@ function createProviderError(
     retryable: failureClass === "timeout" || failureClass === "unavailable",
     degraded: true,
     redaction_status: "metadata_only",
+  };
+}
+
+function createPersistenceResult(
+  event: ModelCallEvent,
+): ModelCallEventPersistenceResult {
+  return {
+    appended: true,
+    event_id: event.event_id,
+    model_call_id: `model-call:${event.event_id}`,
+    request_id: event.request_id,
+    execution_id: event.execution_id,
+    selected_model_id: event.selected_model_id,
+    selected_provider: event.selected_provider,
+    metadata_only: true,
+    raw_payload_written: false,
+    prompt_payload_retained: false,
+    cloud_call: false,
+    local_only: true,
   };
 }
 
@@ -811,6 +834,246 @@ describe("Phase 13C.3 local model runtime", () => {
     ]);
   });
 
+  it("does not persist model call events by default", async () => {
+    const primary = createRecordingProvider();
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+    });
+
+    const result = await runtime.execute(runtimeRequest());
+
+    expect(result.ok).toBe(true);
+    expect(result.metadata.persistence).toBeUndefined();
+  });
+
+  it("persists successful execute summaries only when an explicit hook is provided", async () => {
+    const persistedEvents: ModelCallEvent[] = [];
+    const primary = createRecordingProvider();
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      persistence: {
+        createEvent: (summary) =>
+          createModelCallEvent(summary, {
+            eventIdFactory: () => "event-success",
+            now: () => 777,
+          }),
+        appendEvent: (event) => {
+          persistedEvents.push(structuredClone(event));
+          return createPersistenceResult(event);
+        },
+      },
+    });
+
+    const result = await runtime.execute(runtimeRequest());
+
+    expect(result.metadata.persistence).toEqual({
+      attempted: true,
+      persisted: true,
+      event_id: "event-success",
+      metadata_only: true,
+    });
+    expect(persistedEvents).toEqual([
+      expect.objectContaining({
+        event_id: "event-success",
+        request_id: "runtime-request-1",
+        selected_model_id: "local-primary",
+        selected_provider: "ollama-test-provider",
+        successful_model: "local-primary",
+        redaction_status: "metadata_only",
+        created_at: 777,
+      }),
+    ]);
+    expect(JSON.stringify(persistedEvents[0])).not.toContain("Runtime check");
+    expect(JSON.stringify(persistedEvents[0])).not.toContain(
+      "runtime:local-primary",
+    );
+  });
+
+  it("can use the model-call store bridge when a store is explicitly injected", async () => {
+    const appended: unknown[] = [];
+    const store: ModelRuntimeModelCallStore = {
+      appendModelCall: (input) => {
+        appended.push(structuredClone(input));
+      },
+    };
+    const primary = createRecordingProvider();
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      persistence: {
+        store,
+        eventOptions: {
+          eventIdFactory: () => "event-store-bridge",
+          now: () => 1001,
+        },
+      },
+    });
+
+    const result = await runtime.execute(runtimeRequest());
+
+    expect(result.metadata.persistence).toEqual({
+      attempted: true,
+      persisted: true,
+      event_id: "event-store-bridge",
+      metadata_only: true,
+    });
+    expect(appended).toEqual([
+      expect.objectContaining({
+        eventId: "event-store-bridge",
+        eventType: "model.call",
+        source: "model_call_event_bridge",
+        aggregateId: "runtime-request-1",
+        modelCallId: "model-call:event-store-bridge",
+        providerId: "ollama-test-provider",
+        modelId: "local-primary",
+      }),
+    ]);
+    expect(JSON.stringify(appended[0])).not.toContain("Runtime check");
+    expect(JSON.stringify(appended[0])).not.toContain("runtime:local-primary");
+  });
+
+  it("persists failed execute summaries as metadata-only events when opted in", async () => {
+    const persistedEvents: ModelCallEvent[] = [];
+    const primary = createRecordingProvider({
+      failureClass: "provider_error",
+    });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      persistence: {
+        createEvent: (summary) =>
+          createModelCallEvent(summary, {
+            eventIdFactory: () => "event-failed",
+            now: () => 888,
+          }),
+        appendEvent: (event) => {
+          persistedEvents.push(structuredClone(event));
+          return createPersistenceResult(event);
+        },
+      },
+    });
+
+    const result = await runtime.execute(
+      runtimeRequest({ resolver_options: { max_priority: 15 } }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.metadata.persistence).toEqual({
+      attempted: true,
+      persisted: true,
+      event_id: "event-failed",
+      metadata_only: true,
+    });
+    expect(persistedEvents).toEqual([
+      expect.objectContaining({
+        event_id: "event-failed",
+        successful_model: null,
+        failure_class: "provider_error",
+        failed_models: [
+          expect.objectContaining({
+            model_id: "local-primary",
+            failure_class: "provider_error",
+          }),
+        ],
+        token_usage: {
+          input_tokens: 0,
+          output_tokens: 0,
+          total_tokens: 0,
+        },
+        redaction_status: "metadata_only",
+      }),
+    ]);
+    expect(JSON.stringify(persistedEvents[0])).not.toContain("Runtime check");
+  });
+
+  it("handles persistence failures safely without background retries", async () => {
+    const primary = createRecordingProvider();
+    let appendCalls = 0;
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      persistence: {
+        createEvent: (summary) =>
+          createModelCallEvent(summary, {
+            eventIdFactory: () => "event-failure",
+            now: () => 999,
+          }),
+        appendEvent: () => {
+          appendCalls += 1;
+          throw new Error("sk-secret Runtime check runtime:local-primary");
+        },
+      },
+    });
+
+    const result = await runtime.execute(runtimeRequest());
+
+    expect(result.ok).toBe(true);
+    expect(appendCalls).toBe(1);
+    expect(result.metadata.persistence).toEqual({
+      attempted: true,
+      persisted: false,
+      event_id: null,
+      metadata_only: true,
+      error_class: "persistence_failed",
+    });
+    expect(JSON.stringify(result.metadata.persistence)).not.toContain(
+      "sk-secret",
+    );
+    expect(JSON.stringify(result.metadata.persistence)).not.toContain(
+      "Runtime check",
+    );
+    expect(JSON.stringify(result.metadata.persistence)).not.toContain(
+      "runtime:local-primary",
+    );
+  });
+
+  it("does not persist during construction and appends only after provider completion", async () => {
+    const order: string[] = [];
+    const recorded = createRecordingProvider();
+    const provider: ModelProvider = {
+      ...recorded.provider,
+      complete: async (request) => {
+        order.push("provider");
+        return recorded.provider.complete(request);
+      },
+    };
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: provider,
+      },
+      persistence: {
+        createEvent: (summary) =>
+          createModelCallEvent(summary, {
+            eventIdFactory: () => "event-ordered",
+            now: () => 111,
+          }),
+        appendEvent: (event) => {
+          order.push("append");
+          return createPersistenceResult(event);
+        },
+      },
+    });
+
+    expect(order).toEqual([]);
+
+    await runtime.execute(runtimeRequest());
+
+    expect(order).toEqual(["provider", "append"]);
+  });
+
   it("streams a selected local provider explicitly", async () => {
     const primary = createRecordingProvider({ responseLatencyMs: 11 });
     const runtime = createModelRuntime({
@@ -864,6 +1127,37 @@ describe("Phase 13C.3 local model runtime", () => {
     expect(primary.calls).toEqual([]);
     expect(JSON.stringify(events)).not.toContain("Runtime check");
     expect(JSON.stringify(events)).not.toContain("runtime:local-primary");
+  });
+
+  it("does not persist streaming summaries while streaming persistence is deferred", async () => {
+    const primary = createRecordingProvider();
+    let createCalls = 0;
+    let appendCalls = 0;
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      persistence: {
+        createEvent: (summary) => {
+          createCalls += 1;
+          return createModelCallEvent(summary, {
+            eventIdFactory: () => "event-stream",
+            now: () => 123,
+          });
+        },
+        appendEvent: (event) => {
+          appendCalls += 1;
+          return createPersistenceResult(event);
+        },
+      },
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(events.at(-1)?.type).toBe("done");
+    expect(createCalls).toBe(0);
+    expect(appendCalls).toBe(0);
   });
 
   it("emits a terminal runtime stream event exactly once", async () => {

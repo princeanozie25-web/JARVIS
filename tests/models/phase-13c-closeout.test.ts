@@ -232,7 +232,7 @@ describe("Phase 13C runtime closeout", () => {
       /from\s+["'].*router|router\.|mutateRouter|routeModel|routeRequest/i,
     );
     expect(source).not.toMatch(
-      /from\s+["'].*(?:event-store|eventStore)|event-store|eventStore|writeEvent|appendEvent/i,
+      /from\s+["'].*(?:event-store|eventStore)|event-store|eventStore|writeEvent/i,
     );
     expect(source).not.toMatch(
       /from\s+["'].*telemetry|writeTelemetry|persistTelemetry|telemetryStore|telemetryWriter/i,

@@ -65,12 +65,17 @@ export type {
 export { createModelRuntime, createModelRuntimeProviderKey } from "./runtime";
 export type {
   ModelRuntime,
+  ModelRuntimeAppendModelCallEvent,
+  ModelRuntimeCreateModelCallEvent,
   ModelRuntimeExecuteRequest,
   ModelRuntimeExecuteResult,
   ModelRuntimeExecutionSummary,
   ModelRuntimeFailedModel,
   ModelRuntimeFallbackPlanner,
+  ModelRuntimeModelCallStore,
   ModelRuntimeOptions,
+  ModelRuntimePersistenceMetadata,
+  ModelRuntimePersistenceOptions,
   ModelRuntimeProviderMap,
   ModelRuntimeResolver,
   ModelRuntimeResultMetadata,
