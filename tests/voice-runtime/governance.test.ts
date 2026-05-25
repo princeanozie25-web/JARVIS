@@ -91,16 +91,20 @@ describe("Phase 14A.1 voice runtime governance scaffolding", () => {
 
   it("keeps telemetry allowlist metadata-only and excludes transcript/raw audio fields", () => {
     expect(VOICE_TELEMETRY_ALLOWED_FIELDS).toEqual([
+      "event_type",
       "session_id",
-      "duration_ms",
-      "latency_ms",
+      "turn_id",
       "provider_id",
       "provider_kind",
-      "degraded",
-      "cancellation_reason",
+      "duration_ms",
+      "latency_ms",
       "capture_state",
       "playback_state",
-      "metadata_only",
+      "degraded",
+      "cancellation_reason",
+      "error_class",
+      "redaction_status",
+      "timestamp",
     ]);
     expect(VOICE_TELEMETRY_ALLOWED_FIELDS).not.toContain("transcript");
     expect(VOICE_TELEMETRY_ALLOWED_FIELDS).not.toContain("raw_audio");
@@ -108,10 +112,12 @@ describe("Phase 14A.1 voice runtime governance scaffolding", () => {
     expect(VOICE_TELEMETRY_FORBIDDEN_FIELDS).toEqual(
       expect.arrayContaining([
         "raw_audio",
-        "waveform_bytes",
+        "waveform",
         "transcript",
-        "speaker_embeddings",
-        "biometric_identifiers",
+        "speaker_embedding",
+        "biometric_identifier",
+        "prompt",
+        "response",
       ]),
     );
   });

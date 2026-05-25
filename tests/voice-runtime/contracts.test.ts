@@ -250,6 +250,7 @@ describe("Phase 14A.1 voice runtime contracts", () => {
 
   it("accepts metadata-only telemetry and rejects transcript or raw-audio fields", () => {
     const event: VoiceTelemetryEvent = {
+      event_type: "voice_turn_completed",
       session_id: "voice-session-1",
       duration_ms: 1000,
       latency_ms: 50,
@@ -259,7 +260,8 @@ describe("Phase 14A.1 voice runtime contracts", () => {
       cancellation_reason: "user_cancelled",
       capture_state: "cancelled",
       playback_state: "interrupted",
-      metadata_only: true,
+      redaction_status: "metadata_only",
+      timestamp: "2026-05-25T12:00:00.000Z",
     };
 
     expect(isVoiceTelemetryMetadataOnlyEvent(event)).toBe(true);

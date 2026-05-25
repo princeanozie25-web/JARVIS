@@ -42,9 +42,35 @@ export type { VoiceRuntimeGovernanceInvariant } from "./governance";
 export {
   VOICE_TELEMETRY_ALLOWED_FIELDS,
   VOICE_TELEMETRY_FORBIDDEN_FIELDS,
+  VOICE_TELEMETRY_REDACTION_STATUSES,
+  VOICE_TELEMETRY_SANITIZATION_REASONS,
+  assertVoiceTelemetrySafe,
   isVoiceTelemetryMetadataOnlyEvent,
+  isVoiceTelemetrySafe,
+  sanitizeVoiceTelemetryEvent,
 } from "./telemetry";
-export type { VoiceTelemetryEvent } from "./telemetry";
+export type {
+  VoiceTelemetryAllowedField,
+  VoiceTelemetryEvent,
+  VoiceTelemetryForbiddenField,
+  VoiceTelemetryRedactionStatus,
+  VoiceTelemetrySanitizationReason,
+  VoiceTelemetrySanitizationResult,
+} from "./telemetry";
+
+export {
+  VOICE_PRIVACY_CONTENT_CLASSES,
+  VOICE_PRIVACY_DENIAL_REASONS,
+  VOICE_PRIVACY_SPEAKABLE_CONTENT_CLASSES,
+  assertVoiceContentSpeakableByDefault,
+  classifyVoiceContentPrivacy,
+  isVoiceContentSpeakableByDefault,
+} from "./privacy";
+export type {
+  VoicePrivacyContentClass,
+  VoicePrivacyDecision,
+  VoicePrivacyDenialReason,
+} from "./privacy";
 
 export {
   DEFAULT_VOICE_RUNTIME_POLICY_CONFIG,
