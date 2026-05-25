@@ -164,17 +164,15 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     );
 
     expect(buildFasterWhisperArgs(fasterWhisperConfig(), "audio.wav")).toEqual([
-      "-m",
-      "faster_whisper",
+      "-c",
+      expect.stringContaining("WhisperModel(args.model_path)"),
       "audio.wav",
-      "--model",
-      "base.en",
-      "--model_dir",
+      "--model_path",
       "C:/models/faster-whisper/base.en",
+      "--model_name",
+      "base.en",
       "--beam_size",
       "5",
-      "--output_format",
-      "json",
       "--language",
       "en",
       "--vad_filter",
@@ -184,17 +182,15 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
       {
         executablePath: "python",
         args: [
-          "-m",
-          "faster_whisper",
+          "-c",
+          expect.stringContaining("WhisperModel(args.model_path)"),
           FAKE_STT_VALID_AUDIO_REQUEST.audio.audio_ref,
-          "--model",
-          "base.en",
-          "--model_dir",
+          "--model_path",
           "C:/models/faster-whisper/base.en",
+          "--model_name",
+          "base.en",
           "--beam_size",
           "5",
-          "--output_format",
-          "json",
           "--language",
           "en",
           "--vad_filter",
@@ -220,6 +216,28 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     expect(JSON.stringify(result)).not.toMatch(
       /raw_audio|audio_bytes|waveform|pcm|RIFF|base64/,
     );
+  });
+
+  it("keeps invocation array-based without the invalid package __main__ path", () => {
+    const args = buildFasterWhisperArgs(
+      fasterWhisperConfig(),
+      "C:/audio/smoke.wav",
+    );
+
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "-c",
+        "C:/audio/smoke.wav",
+        "--model_path",
+        "C:/models/faster-whisper/base.en",
+      ]),
+    );
+    expect(args).not.toContain("-m");
+    expect(args).not.toContain("faster_whisper");
+    expect(args[1]).toEqual(expect.stringContaining("from faster_whisper"));
+    expect(args[1]).not.toContain("C:/audio/smoke.wav");
+    expect(args[1]).not.toContain("C:/models/faster-whisper/base.en");
+    expect(args).not.toContain("python -m faster_whisper");
   });
 
   it("does not spawn for missing, oversized, or malformed request metadata", async () => {

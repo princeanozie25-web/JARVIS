@@ -19,6 +19,25 @@ import type {
 const DIAGNOSTIC_LIMIT = 512;
 const TRANSCRIPT_LIMIT = 4_000;
 const TRACEBACK_WITHHELD = "[python traceback withheld]";
+const FASTER_WHISPER_PYTHON_HELPER = [
+  "import argparse,json,time",
+  "from faster_whisper import WhisperModel",
+  "parser=argparse.ArgumentParser()",
+  "parser.add_argument('audio_ref')",
+  "parser.add_argument('--model_path',required=True)",
+  "parser.add_argument('--model_name',required=True)",
+  "parser.add_argument('--beam_size',type=int,required=True)",
+  "parser.add_argument('--language')",
+  "parser.add_argument('--vad_filter',choices=['true','false'],default='false')",
+  "args=parser.parse_args()",
+  "started=time.perf_counter()",
+  "model=WhisperModel(args.model_path)",
+  "segments,info=model.transcribe(args.audio_ref,beam_size=args.beam_size,language=args.language or None,vad_filter=args.vad_filter=='true')",
+  "transcript=''.join(segment.text for segment in segments).strip()",
+  "language=getattr(info,'language',None) or args.language or 'unknown'",
+  "latency_ms=int((time.perf_counter()-started)*1000)",
+  "print(json.dumps({'transcript':transcript,'language':language,'latency_ms':latency_ms,'confidence_band':'unknown','degraded':False}),flush=True)",
+].join("\n");
 
 export interface FasterWhisperSpawnOptions {
   readonly shell: false;
@@ -195,7 +214,24 @@ export function buildFasterWhisperArgs(
   config: FasterWhisperProviderConfig,
   audioRef: string,
 ): readonly string[] {
-  const baseArgs = [
+  if (config.pythonCommand !== undefined) {
+    return [
+      "-c",
+      FASTER_WHISPER_PYTHON_HELPER,
+      audioRef,
+      "--model_path",
+      config.modelPath,
+      "--model_name",
+      config.modelName,
+      "--beam_size",
+      String(config.beamSize),
+      ...(config.language === undefined ? [] : ["--language", config.language]),
+      "--vad_filter",
+      config.vadEnabled ? "true" : "false",
+    ];
+  }
+
+  return [
     audioRef,
     "--model",
     config.modelName,
@@ -205,10 +241,6 @@ export function buildFasterWhisperArgs(
     String(config.beamSize),
     "--output_format",
     "json",
-  ];
-  return [
-    ...(config.pythonCommand === undefined ? [] : ["-m", "faster_whisper"]),
-    ...baseArgs,
     ...(config.language === undefined ? [] : ["--language", config.language]),
     ...(config.vadEnabled ? ["--vad_filter", "true"] : []),
   ];
