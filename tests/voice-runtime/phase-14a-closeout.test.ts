@@ -68,7 +68,9 @@ describe("Phase 14A voice runtime scaffold closeout guards", () => {
     expect(source).not.toMatch(
       /from\s+["']node:child_process["']|spawn\s*\(|exec\s*\(|execFile\s*\(/i,
     );
-    expect(source).not.toMatch(/ffmpeg|piper|faster-whisper|faster_whisper/i);
+    expect(source).not.toMatch(
+      /ffmpeg|piper\s+(?:--|["'])|faster-whisper|faster_whisper/i,
+    );
     expect(source).not.toMatch(
       /tauri|invoke\s*\(|global-hotkey|globalShortcut/i,
     );

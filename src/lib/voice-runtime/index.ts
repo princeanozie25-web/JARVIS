@@ -113,3 +113,29 @@ export type {
   VoicePrivacyDecision,
   VoicePrivacyDenialReason,
 } from "./privacy";
+
+export {
+  PIPER_CONFIG_VALIDATION_REASONS,
+  PIPER_CONTRACT_LIMITS,
+  TTS_CANCELLATION_REASONS,
+  TTS_CONTENT_CLASSES,
+  TTS_VALIDATION_FAILURE_REASONS,
+  validatePiperProviderConfig,
+  validateTtsSynthesisRequest,
+} from "./tts";
+export type {
+  PiperConfigValidationReason,
+  PiperConfigValidationResult,
+  PiperProviderConfig,
+  TtsAudioChunkMetadata,
+  TtsCancellationReason,
+  TtsContentClass,
+  TtsProvider,
+  TtsProviderConfig,
+  TtsProviderHealth,
+  TtsSynthesisOptions,
+  TtsSynthesisRequest,
+  TtsSynthesisResult,
+  TtsValidationFailureReason,
+  TtsValidationResult,
+} from "./tts";
