@@ -104,6 +104,21 @@ export {
 export type { ModelCallEventPersistenceResult } from "./model-call-store";
 
 export {
+  getModelCallRollup,
+  getRecentModelCalls,
+} from "./model-call-projection";
+export type {
+  ModelCallCountBucket,
+  ModelCallLatencySummary,
+  ModelCallProjectionOptions,
+  ModelCallRollupProjection,
+  ModelCallStatus,
+  RecentModelCallRecord,
+  RecentModelCallsOptions,
+  RecentModelCallsProjection,
+} from "./model-call-projection";
+
+export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
   MODEL_PROVIDER_REDACTION_STATUSES,
