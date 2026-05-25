@@ -74,6 +74,12 @@ export type {
   ModelRuntimeProviderMap,
   ModelRuntimeResolver,
   ModelRuntimeResultMetadata,
+  ModelRuntimeStreamCancelledEvent,
+  ModelRuntimeStreamDoneEvent,
+  ModelRuntimeStreamErrorEvent,
+  ModelRuntimeStreamEvent,
+  ModelRuntimeStreamStartEvent,
+  ModelRuntimeStreamTokenEvent,
 } from "./runtime";
 
 export {

@@ -275,7 +275,7 @@ describe("Phase 13C runtime closeout", () => {
     expect(source).not.toMatch(
       /setInterval|while\s*\(\s*true\s*\)|worker|queue/i,
     );
-    expect(source).not.toMatch(/\.stream\(|streaming runtime/i);
+    expect(source).toContain("provider.stream");
   });
 
   it("requires explicit runtime invocation for execution", async () => {

@@ -29,6 +29,7 @@ import type {
   ModelProviderRedactionStatus,
   ModelProviderRequestOptions,
   ModelProviderResponse,
+  ModelProviderStreamEvent,
   ModelProviderTokenUsage,
 } from "./providers/contract";
 
@@ -116,8 +117,61 @@ export interface ModelRuntimeExecuteResult {
   readonly metadata: ModelRuntimeResultMetadata;
 }
 
+export type ModelRuntimeStreamEvent =
+  | ModelRuntimeStreamStartEvent
+  | ModelRuntimeStreamTokenEvent
+  | ModelRuntimeStreamDoneEvent
+  | ModelRuntimeStreamErrorEvent
+  | ModelRuntimeStreamCancelledEvent;
+
+interface ModelRuntimeStreamEventBase {
+  readonly request_id: string;
+  readonly selected_model_id: string | null;
+  readonly provider_id: string | null;
+  readonly attempted_models: readonly string[];
+  readonly fallback_used: boolean;
+  readonly redaction_status: ModelProviderRedactionStatus;
+  readonly governance_flags: readonly ModelFallbackGovernanceFlag[];
+}
+
+export interface ModelRuntimeStreamStartEvent extends ModelRuntimeStreamEventBase {
+  readonly type: "start";
+}
+
+export interface ModelRuntimeStreamTokenEvent extends ModelRuntimeStreamEventBase {
+  readonly type: "token";
+  readonly delta: string;
+  readonly token_index: number;
+}
+
+export interface ModelRuntimeStreamDoneEvent extends ModelRuntimeStreamEventBase {
+  readonly type: "done";
+  readonly finish_reason: ModelProviderFinishReason;
+  readonly token_usage: ModelProviderTokenUsage;
+  readonly latency_ms: number;
+  readonly degraded: boolean;
+}
+
+export interface ModelRuntimeStreamErrorEvent extends ModelRuntimeStreamEventBase {
+  readonly type: "error";
+  readonly failure_class: ModelProviderFailureClass;
+  readonly message: string;
+  readonly degraded: true;
+}
+
+export interface ModelRuntimeStreamCancelledEvent extends ModelRuntimeStreamEventBase {
+  readonly type: "cancelled";
+  readonly failure_class: Extract<
+    ModelProviderFailureClass,
+    "cancelled" | "timeout"
+  >;
+  readonly reason: "abort_signal" | "timeout" | "provider_cancelled";
+  readonly degraded: true;
+}
+
 export interface ModelRuntime {
   execute(request: unknown): Promise<ModelRuntimeExecuteResult>;
+  stream(request: unknown): AsyncIterable<ModelRuntimeStreamEvent>;
 }
 
 const RuntimeResolverOptionsSchema = z.strictObject({
@@ -167,6 +221,7 @@ export function createModelRuntime(options: ModelRuntimeOptions): ModelRuntime {
 
   return {
     execute: async (request) => execute(config, request),
+    stream: (request) => stream(config, request),
   };
 }
 
@@ -331,6 +386,327 @@ async function execute(
   });
 }
 
+async function* stream(
+  config: NormalizedRuntimeOptions,
+  request: unknown,
+): AsyncIterable<ModelRuntimeStreamEvent> {
+  const startedAt = config.now();
+  const parsed = RuntimeExecuteRequestSchema.safeParse(request);
+
+  if (!parsed.success) {
+    yield createRuntimeStreamErrorEvent({
+      requestId: runtimeRequestId(request),
+      selectedModelId: null,
+      providerId: null,
+      attemptedModels: [],
+      fallbackUsed: false,
+      governanceFlags: [],
+      failureClass: "invalid_request",
+      message: "Model runtime stream request was malformed.",
+    });
+    return;
+  }
+
+  const streamRequest = parsed.data;
+  const resolverInput = createStreamResolverInput(streamRequest);
+  const resolution = config.resolver(config.registry, resolverInput);
+  const fallbackPlan = config.fallbackPlanner(config.registry, resolverInput, {
+    now: config.now,
+  });
+  const primaryEntry = resolution.selected;
+
+  if (!primaryEntry) {
+    yield createRuntimeStreamErrorEvent({
+      requestId: streamRequest.request_id,
+      selectedModelId: null,
+      providerId: null,
+      attemptedModels: [],
+      fallbackUsed: false,
+      governanceFlags: fallbackPlan.governance_flags,
+      failureClass:
+        resolution.failure?.reason === "invalid_request"
+          ? "invalid_request"
+          : "model_missing",
+      message:
+        resolution.failure?.message ??
+        "No eligible streaming model was available for execution.",
+    });
+    return;
+  }
+
+  const attemptedModels: string[] = [];
+  const attemptEntries = createAttemptEntries(primaryEntry, fallbackPlan);
+  let lastFailure: {
+    readonly providerId: string | null;
+    readonly failureClass: ModelProviderFailureClass;
+    readonly message: string;
+  } | null = null;
+
+  for (const [index, entry] of attemptEntries.entries()) {
+    attemptedModels.push(entry.id);
+    const fallbackUsed = index > 0;
+
+    if (entry.runtime_class === "cloud") {
+      lastFailure = {
+        providerId: null,
+        failureClass: "policy_blocked",
+        message: "Cloud model streaming is not enabled in the local runtime.",
+      };
+      continue;
+    }
+
+    const provider = config.providers.get(createModelRuntimeProviderKey(entry));
+
+    if (!provider) {
+      lastFailure = {
+        providerId: null,
+        failureClass: "unavailable",
+        message: "No provider was injected for the selected streaming model.",
+      };
+      continue;
+    }
+
+    let emittedTokens = 0;
+    let startEmitted = false;
+    let continueFallback = false;
+    const providerRequest = createRuntimeProviderRequest(
+      streamRequest,
+      entry,
+      startedAt,
+    );
+
+    try {
+      for await (const providerEvent of provider.stream(providerRequest)) {
+        if (!isModelProviderStreamEvent(providerEvent)) {
+          if (emittedTokens === 0) {
+            lastFailure = {
+              providerId: provider.id,
+              failureClass: "provider_error",
+              message: "Provider emitted a malformed stream event.",
+            };
+            continueFallback = true;
+            break;
+          }
+
+          yield createRuntimeStreamErrorEvent({
+            requestId: streamRequest.request_id,
+            selectedModelId: entry.id,
+            providerId: provider.id,
+            attemptedModels,
+            fallbackUsed,
+            governanceFlags: fallbackPlan.governance_flags,
+            failureClass: "provider_error",
+            message: "Provider emitted a malformed stream event.",
+          });
+          return;
+        }
+
+        if (providerEvent.type === "token") {
+          if (!startEmitted) {
+            yield createRuntimeStreamStartEvent({
+              requestId: streamRequest.request_id,
+              selectedModelId: entry.id,
+              providerId: provider.id,
+              attemptedModels,
+              fallbackUsed,
+              governanceFlags: fallbackPlan.governance_flags,
+            });
+            startEmitted = true;
+          }
+          yield createRuntimeStreamTokenEvent({
+            requestId: streamRequest.request_id,
+            selectedModelId: entry.id,
+            providerId: provider.id,
+            attemptedModels,
+            fallbackUsed,
+            governanceFlags: fallbackPlan.governance_flags,
+            delta: providerEvent.delta,
+            tokenIndex: providerEvent.index,
+            redactionStatus: providerEvent.redaction_status,
+          });
+          emittedTokens += 1;
+          continue;
+        }
+
+        if (providerEvent.type === "done") {
+          if (!startEmitted) {
+            yield createRuntimeStreamStartEvent({
+              requestId: streamRequest.request_id,
+              selectedModelId: entry.id,
+              providerId: provider.id,
+              attemptedModels,
+              fallbackUsed,
+              governanceFlags: fallbackPlan.governance_flags,
+            });
+          }
+          yield createRuntimeStreamDoneEvent({
+            requestId: streamRequest.request_id,
+            selectedModelId: entry.id,
+            providerId: provider.id,
+            attemptedModels,
+            fallbackUsed,
+            governanceFlags: fallbackPlan.governance_flags,
+            response: providerEvent.response,
+            latencyMs: elapsedMs(startedAt, config.now()),
+          });
+          return;
+        }
+
+        if (providerEvent.type === "cancelled") {
+          yield createRuntimeStreamCancelledEvent({
+            requestId: streamRequest.request_id,
+            selectedModelId: entry.id,
+            providerId: provider.id,
+            attemptedModels,
+            fallbackUsed,
+            governanceFlags: fallbackPlan.governance_flags,
+            failureClass: providerEvent.error_class,
+            reason: providerEvent.reason,
+          });
+          return;
+        }
+
+        if (
+          providerEvent.error.failure_class === "cancelled" ||
+          providerEvent.error.failure_class === "timeout"
+        ) {
+          yield createRuntimeStreamCancelledEvent({
+            requestId: streamRequest.request_id,
+            selectedModelId: entry.id,
+            providerId: provider.id,
+            attemptedModels,
+            fallbackUsed,
+            governanceFlags: fallbackPlan.governance_flags,
+            failureClass: providerEvent.error.failure_class,
+            reason:
+              providerEvent.error.failure_class === "timeout"
+                ? "timeout"
+                : "abort_signal",
+          });
+          return;
+        }
+
+        if (
+          emittedTokens === 0 &&
+          shouldFallbackBeforeToken(providerEvent.error)
+        ) {
+          lastFailure = {
+            providerId: provider.id,
+            failureClass: providerEvent.error.failure_class,
+            message: providerEvent.error.message,
+          };
+          continueFallback = true;
+          break;
+        }
+
+        yield createRuntimeStreamErrorEvent({
+          requestId: streamRequest.request_id,
+          selectedModelId: entry.id,
+          providerId: provider.id,
+          attemptedModels,
+          fallbackUsed,
+          governanceFlags: fallbackPlan.governance_flags,
+          failureClass: providerEvent.error.failure_class,
+          message: providerEvent.error.message,
+        });
+        return;
+      }
+    } catch (error) {
+      const failure = normalizeFailedModel(
+        entry,
+        provider.id,
+        error,
+        streamRequest,
+      );
+      if (
+        failure.failure_class === "cancelled" ||
+        failure.failure_class === "timeout"
+      ) {
+        yield createRuntimeStreamCancelledEvent({
+          requestId: streamRequest.request_id,
+          selectedModelId: entry.id,
+          providerId: provider.id,
+          attemptedModels,
+          fallbackUsed,
+          governanceFlags: fallbackPlan.governance_flags,
+          failureClass: failure.failure_class,
+          reason:
+            failure.failure_class === "timeout" ? "timeout" : "abort_signal",
+        });
+        return;
+      }
+
+      if (emittedTokens === 0) {
+        lastFailure = {
+          providerId: provider.id,
+          failureClass: failure.failure_class,
+          message: failure.message,
+        };
+        continueFallback = true;
+      } else {
+        yield createRuntimeStreamErrorEvent({
+          requestId: streamRequest.request_id,
+          selectedModelId: entry.id,
+          providerId: provider.id,
+          attemptedModels,
+          fallbackUsed,
+          governanceFlags: fallbackPlan.governance_flags,
+          failureClass: failure.failure_class,
+          message: failure.message,
+        });
+        return;
+      }
+    }
+
+    if (continueFallback) continue;
+
+    if (emittedTokens === 0) {
+      lastFailure = {
+        providerId: provider.id,
+        failureClass: "provider_error",
+        message: "Provider stream ended without a terminal event.",
+      };
+      continue;
+    }
+
+    yield createRuntimeStreamErrorEvent({
+      requestId: streamRequest.request_id,
+      selectedModelId: entry.id,
+      providerId: provider.id,
+      attemptedModels,
+      fallbackUsed,
+      governanceFlags: fallbackPlan.governance_flags,
+      failureClass: "provider_error",
+      message: "Provider stream ended without a terminal event.",
+    });
+    return;
+  }
+
+  const lastAttemptedModel = attemptedModels.at(-1) ?? primaryEntry.id;
+  const lastAttemptedEntry =
+    attemptEntries.find((entry) => entry.id === lastAttemptedModel) ??
+    primaryEntry;
+  const failureClass =
+    lastFailure?.failureClass ??
+    (lastAttemptedEntry.runtime_class === "cloud"
+      ? "policy_blocked"
+      : "unavailable");
+  yield createRuntimeStreamErrorEvent({
+    requestId: streamRequest.request_id,
+    selectedModelId: primaryEntry.id,
+    providerId: lastFailure?.providerId ?? null,
+    attemptedModels,
+    fallbackUsed: false,
+    governanceFlags: fallbackPlan.governance_flags,
+    failureClass,
+    message:
+      lastFailure?.message ??
+      (failureClass === "policy_blocked"
+        ? "Cloud model streaming is not enabled in the local runtime."
+        : "No provider stream produced a terminal response."),
+  });
+}
+
 function createAttemptEntries(
   primaryEntry: ModelRegistryEntry,
   fallbackPlan: ModelFallbackPlan,
@@ -367,6 +743,33 @@ function createResolverInput(
   };
 }
 
+function createStreamResolverInput(
+  request: z.infer<typeof RuntimeExecuteRequestSchema>,
+): ModelResolverInput {
+  return {
+    ...request.resolver_options,
+    capability: request.capability,
+    required_streaming: true,
+  };
+}
+
+function createRuntimeProviderRequest(
+  request: z.infer<typeof RuntimeExecuteRequestSchema>,
+  entry: ModelRegistryEntry,
+  requestedAtMs: number,
+) {
+  return {
+    request_id: request.request_id,
+    model_id: entry.id,
+    capability: request.capability,
+    input: request.input,
+    options: request.options ?? {},
+    timeout_ms: request.timeout_ms,
+    abort_signal: request.abort_signal,
+    provenance: createProvenance(request, requestedAtMs),
+  };
+}
+
 function createProvenance(
   request: z.infer<typeof RuntimeExecuteRequestSchema>,
   requestedAtMs: number,
@@ -378,6 +781,135 @@ function createProvenance(
     correlation_id: request.request_id,
     requested_at_ms: requestedAtMs,
     caller: "test_harness",
+  };
+}
+
+function shouldFallbackBeforeToken(error: ModelProviderError): boolean {
+  return (
+    error.failure_class !== "cancelled" &&
+    error.failure_class !== "timeout" &&
+    error.failure_class !== "budget_blocked" &&
+    error.failure_class !== "policy_blocked"
+  );
+}
+
+function createRuntimeStreamStartEvent(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+}): ModelRuntimeStreamStartEvent {
+  return clone({
+    ...createRuntimeStreamEventBase(input),
+    type: "start",
+  });
+}
+
+function createRuntimeStreamTokenEvent(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+  readonly delta: string;
+  readonly tokenIndex: number;
+  readonly redactionStatus: ModelProviderRedactionStatus;
+}): ModelRuntimeStreamTokenEvent {
+  return clone({
+    ...createRuntimeStreamEventBase({
+      ...input,
+      redactionStatus: input.redactionStatus,
+    }),
+    type: "token",
+    delta: input.delta,
+    token_index: input.tokenIndex,
+  });
+}
+
+function createRuntimeStreamDoneEvent(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+  readonly response: ModelProviderResponse;
+  readonly latencyMs: number;
+}): ModelRuntimeStreamDoneEvent {
+  return clone({
+    ...createRuntimeStreamEventBase({
+      ...input,
+      redactionStatus: input.response.redaction_status,
+    }),
+    type: "done",
+    finish_reason: input.response.finish_reason,
+    token_usage: input.response.token_usage,
+    latency_ms: input.latencyMs,
+    degraded: input.response.degraded || input.fallbackUsed,
+  });
+}
+
+function createRuntimeStreamErrorEvent(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+  readonly failureClass: ModelProviderFailureClass;
+  readonly message: string;
+}): ModelRuntimeStreamErrorEvent {
+  return clone({
+    ...createRuntimeStreamEventBase(input),
+    type: "error",
+    failure_class: input.failureClass,
+    message: input.message,
+    degraded: true,
+  });
+}
+
+function createRuntimeStreamCancelledEvent(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+  readonly failureClass: Extract<
+    ModelProviderFailureClass,
+    "cancelled" | "timeout"
+  >;
+  readonly reason: "abort_signal" | "timeout" | "provider_cancelled";
+}): ModelRuntimeStreamCancelledEvent {
+  return clone({
+    ...createRuntimeStreamEventBase(input),
+    type: "cancelled",
+    failure_class: input.failureClass,
+    reason: input.reason,
+    degraded: true,
+  });
+}
+
+function createRuntimeStreamEventBase(input: {
+  readonly requestId: string;
+  readonly selectedModelId: string | null;
+  readonly providerId: string | null;
+  readonly attemptedModels: readonly string[];
+  readonly fallbackUsed: boolean;
+  readonly governanceFlags: readonly ModelFallbackGovernanceFlag[];
+  readonly redactionStatus?: ModelProviderRedactionStatus;
+}): ModelRuntimeStreamEventBase {
+  return {
+    request_id: input.requestId,
+    selected_model_id: input.selectedModelId,
+    provider_id: input.providerId,
+    attempted_models: clone(input.attemptedModels),
+    fallback_used: input.fallbackUsed,
+    redaction_status: input.redactionStatus ?? "metadata_only",
+    governance_flags: clone(input.governanceFlags),
   };
 }
 
@@ -547,6 +1079,86 @@ function isModelProviderError(error: unknown): error is ModelProviderError {
     error !== null &&
     "failure_class" in error &&
     "redaction_status" in error
+  );
+}
+
+function isModelProviderStreamEvent(
+  event: unknown,
+): event is ModelProviderStreamEvent {
+  if (!event || typeof event !== "object" || !("type" in event)) return false;
+  const candidate = event as Record<string, unknown>;
+  if (
+    typeof candidate.request_id !== "string" ||
+    typeof candidate.model_id !== "string" ||
+    typeof candidate.provider_id !== "string" ||
+    typeof candidate.created_at_ms !== "number"
+  ) {
+    return false;
+  }
+
+  if (candidate.type === "token") {
+    return (
+      typeof candidate.delta === "string" &&
+      Number.isInteger(candidate.index) &&
+      isRedactionStatus(candidate.redaction_status)
+    );
+  }
+
+  if (candidate.type === "done") {
+    return isModelProviderResponse(candidate.response);
+  }
+
+  if (candidate.type === "error") {
+    return isModelProviderError(candidate.error);
+  }
+
+  if (candidate.type === "cancelled") {
+    return (
+      (candidate.reason === "abort_signal" ||
+        candidate.reason === "timeout" ||
+        candidate.reason === "provider_cancelled") &&
+      (candidate.error_class === "cancelled" ||
+        candidate.error_class === "timeout")
+    );
+  }
+
+  return false;
+}
+
+function isModelProviderResponse(
+  response: unknown,
+): response is ModelProviderResponse {
+  if (!response || typeof response !== "object") return false;
+  const candidate = response as Record<string, unknown>;
+  return (
+    typeof candidate.request_id === "string" &&
+    typeof candidate.model_id === "string" &&
+    typeof candidate.provider_id === "string" &&
+    typeof candidate.latency_ms === "number" &&
+    isTokenUsage(candidate.token_usage) &&
+    typeof candidate.degraded === "boolean" &&
+    typeof candidate.finish_reason === "string" &&
+    isRedactionStatus(candidate.redaction_status)
+  );
+}
+
+function isTokenUsage(value: unknown): value is ModelProviderTokenUsage {
+  if (!value || typeof value !== "object") return false;
+  const usage = value as Record<string, unknown>;
+  return (
+    typeof usage.input_tokens === "number" &&
+    typeof usage.output_tokens === "number" &&
+    typeof usage.total_tokens === "number"
+  );
+}
+
+function isRedactionStatus(
+  value: unknown,
+): value is ModelProviderRedactionStatus {
+  return (
+    value === "not_applicable" ||
+    value === "redacted" ||
+    value === "metadata_only"
   );
 }
 

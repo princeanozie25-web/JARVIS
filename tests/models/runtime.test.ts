@@ -11,6 +11,8 @@ import {
   type ModelProviderFailureClass,
   type ModelProviderRequest,
   type ModelProviderResponse,
+  type ModelProviderStreamEvent,
+  type ModelRuntimeStreamEvent,
 } from "../../src/models";
 
 function localRegistry() {
@@ -25,7 +27,7 @@ models:
     context_window: 4096
     visibility: enabled
     priority: 10
-    supports_streaming: false
+    supports_streaming: true
     supports_tools: false
     supports_vision: false
     metadata:
@@ -42,7 +44,7 @@ models:
     context_window: 4096
     visibility: enabled
     priority: 20
-    supports_streaming: false
+    supports_streaming: true
     supports_tools: false
     supports_vision: false
     metadata:
@@ -76,7 +78,7 @@ models:
     context_window: 200000
     visibility: disabled
     priority: 40
-    supports_streaming: false
+    supports_streaming: true
     supports_tools: false
     supports_vision: false
     metadata:
@@ -115,10 +117,18 @@ interface RecordingProviderOptions {
   readonly providerId?: string;
   readonly failureClass?: ModelProviderFailureClass | null;
   readonly responseLatencyMs?: number;
+  readonly streamFailureClass?: ModelProviderFailureClass | null;
+  readonly streamFailureAfterToken?: boolean;
+  readonly streamMalformedEvent?: boolean;
+  readonly streamCancelReason?:
+    | "abort_signal"
+    | "timeout"
+    | "provider_cancelled";
 }
 
 function createRecordingProvider(options: RecordingProviderOptions = {}) {
   const calls: ModelProviderRequest[] = [];
+  const streamCalls: ModelProviderRequest[] = [];
   const providerId = options.providerId ?? "ollama-test-provider";
   const provider: ModelProvider = {
     id: providerId,
@@ -149,15 +159,59 @@ function createRecordingProvider(options: RecordingProviderOptions = {}) {
         options.responseLatencyMs ?? 0,
       );
     },
-    stream: async function* () {
-      throw new Error("stream must not be invoked by the runtime.");
+    stream: async function* (request) {
+      streamCalls.push(
+        structuredClone({ ...request, abort_signal: undefined }),
+      );
+      if (request.abort_signal?.aborted) {
+        yield createProviderCancelledEvent(providerId, request, "abort_signal");
+        return;
+      }
+      if (options.streamMalformedEvent) {
+        yield { type: "bogus" } as unknown as ModelProviderStreamEvent;
+        return;
+      }
+      if (options.streamCancelReason) {
+        yield createProviderCancelledEvent(
+          providerId,
+          request,
+          options.streamCancelReason,
+        );
+        return;
+      }
+      if (options.streamFailureClass && !options.streamFailureAfterToken) {
+        yield createProviderStreamError(
+          providerId,
+          request,
+          options.streamFailureClass,
+        );
+        return;
+      }
+
+      yield createProviderToken(providerId, request, "runtime", 0);
+
+      if (options.streamFailureClass && options.streamFailureAfterToken) {
+        yield createProviderStreamError(
+          providerId,
+          request,
+          options.streamFailureClass,
+        );
+        return;
+      }
+
+      yield createProviderToken(providerId, request, request.model_id, 1);
+      yield createProviderDone(
+        providerId,
+        request,
+        options.responseLatencyMs ?? 0,
+      );
     },
     health: async () => {
       throw new Error("health must not be invoked by the runtime.");
     },
   };
 
-  return { provider, calls };
+  return { provider, calls, streamCalls };
 }
 
 function createProviderResponse(
@@ -185,6 +239,70 @@ function createProviderResponse(
   };
 }
 
+function createProviderToken(
+  providerId: string,
+  request: ModelProviderRequest,
+  delta: string,
+  index: number,
+): ModelProviderStreamEvent {
+  return {
+    type: "token",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: providerId,
+    created_at_ms: index,
+    delta,
+    index,
+    redaction_status: "metadata_only",
+  };
+}
+
+function createProviderDone(
+  providerId: string,
+  request: ModelProviderRequest,
+  latencyMs: number,
+): ModelProviderStreamEvent {
+  return {
+    type: "done",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: providerId,
+    created_at_ms: 2,
+    response: createProviderResponse(providerId, request, latencyMs),
+  };
+}
+
+function createProviderStreamError(
+  providerId: string,
+  request: ModelProviderRequest,
+  failureClass: ModelProviderFailureClass,
+): ModelProviderStreamEvent {
+  return {
+    type: "error",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: providerId,
+    created_at_ms: 0,
+    error: createProviderError(providerId, request, failureClass),
+  };
+}
+
+function createProviderCancelledEvent(
+  providerId: string,
+  request: ModelProviderRequest,
+  reason: "abort_signal" | "timeout" | "provider_cancelled",
+): ModelProviderStreamEvent {
+  return {
+    type: "cancelled",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: providerId,
+    created_at_ms: 0,
+    reason,
+    error_class: reason === "timeout" ? "timeout" : "cancelled",
+  };
+}
+
 function createProviderError(
   providerId: string,
   request: ModelProviderRequest,
@@ -200,6 +318,16 @@ function createProviderError(
     degraded: true,
     redaction_status: "metadata_only",
   };
+}
+
+async function collectStream(
+  events: AsyncIterable<ModelRuntimeStreamEvent>,
+): Promise<ModelRuntimeStreamEvent[]> {
+  const collected: ModelRuntimeStreamEvent[] = [];
+  for await (const event of events) {
+    collected.push(event);
+  }
+  return collected;
 }
 
 describe("Phase 13C.3 local model runtime", () => {
@@ -683,6 +811,353 @@ describe("Phase 13C.3 local model runtime", () => {
     ]);
   });
 
+  it("streams a selected local provider explicitly", async () => {
+    const primary = createRecordingProvider({ responseLatencyMs: 11 });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+      now: createClock(100, 125),
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(events.map((event) => event.type)).toEqual([
+      "start",
+      "token",
+      "token",
+      "done",
+    ]);
+    expect(events[0]).toMatchObject({
+      type: "start",
+      request_id: "runtime-request-1",
+      selected_model_id: "local-primary",
+      provider_id: "ollama-test-provider",
+      attempted_models: ["local-primary"],
+      fallback_used: false,
+      redaction_status: "metadata_only",
+    });
+    expect(events[1]).toMatchObject({
+      type: "token",
+      delta: "runtime",
+      token_index: 0,
+      redaction_status: "metadata_only",
+    });
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      selected_model_id: "local-primary",
+      provider_id: "ollama-test-provider",
+      attempted_models: ["local-primary"],
+      fallback_used: false,
+      finish_reason: "stop",
+      token_usage: {
+        input_tokens: expect.any(Number),
+        output_tokens: expect.any(Number),
+        total_tokens: expect.any(Number),
+      },
+      latency_ms: 25,
+      degraded: false,
+      redaction_status: "metadata_only",
+    });
+    expect(primary.streamCalls).toHaveLength(1);
+    expect(primary.calls).toEqual([]);
+    expect(JSON.stringify(events)).not.toContain("Runtime check");
+    expect(JSON.stringify(events)).not.toContain("runtime:local-primary");
+  });
+
+  it("emits a terminal runtime stream event exactly once", async () => {
+    const primary = createRecordingProvider();
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+      },
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+    const terminalEvents = events.filter(
+      (event) =>
+        event.type === "done" ||
+        event.type === "error" ||
+        event.type === "cancelled",
+    );
+
+    expect(terminalEvents).toHaveLength(1);
+    expect(terminalEvents[0]?.type).toBe("done");
+  });
+
+  it("fails closed when the selected streaming provider is missing", async () => {
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {},
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        selected_model_id: "local-primary",
+        provider_id: null,
+        attempted_models: ["local-primary", "local-fallback"],
+        fallback_used: false,
+        failure_class: "unavailable",
+        redaction_status: "metadata_only",
+      }),
+    ]);
+  });
+
+  it("fails closed when no streaming model is eligible", async () => {
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {},
+    });
+
+    const events = await collectStream(
+      runtime.stream(runtimeRequest({ capability: "embed" })),
+    );
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        selected_model_id: null,
+        attempted_models: [],
+        failure_class: "model_missing",
+        governance_flags: expect.arrayContaining(["no_eligible_models"]),
+        redaction_status: "metadata_only",
+      }),
+    ]);
+  });
+
+  it("falls back for provider stream errors before any token", async () => {
+    const primary = createRecordingProvider({
+      streamFailureClass: "provider_error",
+    });
+    const fallback = createRecordingProvider({
+      providerId: "fallback-provider",
+    });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+        [key("local-fallback")]: fallback.provider,
+      },
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(events.map((event) => event.type)).toEqual([
+      "start",
+      "token",
+      "token",
+      "done",
+    ]);
+    expect(events[0]).toMatchObject({
+      type: "start",
+      selected_model_id: "local-fallback",
+      provider_id: "fallback-provider",
+      attempted_models: ["local-primary", "local-fallback"],
+      fallback_used: true,
+    });
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      selected_model_id: "local-fallback",
+      provider_id: "fallback-provider",
+      attempted_models: ["local-primary", "local-fallback"],
+      fallback_used: true,
+      degraded: true,
+    });
+    expect(primary.streamCalls).toHaveLength(1);
+    expect(fallback.streamCalls).toHaveLength(1);
+  });
+
+  it("does not fallback silently after provider stream tokens have emitted", async () => {
+    const primary = createRecordingProvider({
+      streamFailureClass: "provider_error",
+      streamFailureAfterToken: true,
+    });
+    const fallback = createRecordingProvider({
+      providerId: "fallback-provider",
+    });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: primary.provider,
+        [key("local-fallback")]: fallback.provider,
+      },
+    });
+
+    const events = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(events.map((event) => event.type)).toEqual([
+      "start",
+      "token",
+      "error",
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      type: "error",
+      selected_model_id: "local-primary",
+      provider_id: "ollama-test-provider",
+      attempted_models: ["local-primary"],
+      fallback_used: false,
+      failure_class: "provider_error",
+    });
+    expect(fallback.streamCalls).toEqual([]);
+  });
+
+  it("propagates streaming cancellation and timeout as terminal cancelled events", async () => {
+    const abortController = new AbortController();
+    abortController.abort();
+    const cancelProvider = createRecordingProvider();
+    const timeoutProvider = createRecordingProvider({
+      streamCancelReason: "timeout",
+    });
+    const cancelRuntime = createModelRuntime({
+      registry: localRegistry(),
+      providers: { [key("local-primary")]: cancelProvider.provider },
+    });
+    const timeoutRuntime = createModelRuntime({
+      registry: localRegistry(),
+      providers: { [key("local-primary")]: timeoutProvider.provider },
+    });
+
+    await expect(
+      collectStream(
+        cancelRuntime.stream(
+          runtimeRequest({
+            abort_signal: abortController.signal,
+            resolver_options: { max_priority: 15 },
+          }),
+        ),
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        type: "cancelled",
+        failure_class: "cancelled",
+        reason: "abort_signal",
+        attempted_models: ["local-primary"],
+      }),
+    ]);
+    await expect(
+      collectStream(
+        timeoutRuntime.stream(
+          runtimeRequest({
+            timeout_ms: 17,
+            resolver_options: { max_priority: 15 },
+          }),
+        ),
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        type: "cancelled",
+        failure_class: "timeout",
+        reason: "timeout",
+        attempted_models: ["local-primary"],
+      }),
+    ]);
+    expect(cancelProvider.streamCalls[0]?.request_id).toBe("runtime-request-1");
+    expect(timeoutProvider.streamCalls[0]?.timeout_ms).toBe(17);
+  });
+
+  it("fails closed on malformed provider stream events", async () => {
+    const provider = createRecordingProvider({ streamMalformedEvent: true });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: provider.provider,
+      },
+    });
+
+    const events = await collectStream(
+      runtime.stream(
+        runtimeRequest({ resolver_options: { max_priority: 15 } }),
+      ),
+    );
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        selected_model_id: "local-primary",
+        provider_id: "ollama-test-provider",
+        attempted_models: ["local-primary"],
+        failure_class: "provider_error",
+        redaction_status: "metadata_only",
+      }),
+    ]);
+  });
+
+  it("keeps runtime stream attempted model ordering deterministic", async () => {
+    const first = createRecordingProvider({
+      streamFailureClass: "unavailable",
+    });
+    const second = createRecordingProvider({ providerId: "fallback-provider" });
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        [key("local-primary")]: first.provider,
+        [key("local-fallback")]: second.provider,
+      },
+    });
+
+    const firstRun = await collectStream(runtime.stream(runtimeRequest()));
+    const secondRun = await collectStream(runtime.stream(runtimeRequest()));
+
+    expect(firstRun[0]).toMatchObject({
+      attempted_models: ["local-primary", "local-fallback"],
+      fallback_used: true,
+    });
+    expect(secondRun.map((event) => event.attempted_models)).toEqual(
+      firstRun.map((event) => event.attempted_models),
+    );
+  });
+
+  it("does not execute cloud providers through runtime streaming", async () => {
+    const cloudCalls: ModelProviderRequest[] = [];
+    const cloudProvider: ModelProvider = {
+      ...createRecordingProvider({ providerId: "cloud-provider" }).provider,
+      id: "cloud-provider",
+      kind: "anthropic",
+      runtime_class: "cloud",
+      stream: async function* (request) {
+        cloudCalls.push(request);
+        yield createProviderToken("cloud-provider", request, "cloud", 0);
+      },
+    };
+    const runtime = createModelRuntime({
+      registry: localRegistry(),
+      providers: {
+        "anthropic:cloud-fallback": cloudProvider,
+      },
+    });
+
+    const events = await collectStream(
+      runtime.stream(
+        runtimeRequest({
+          resolver_options: {
+            allow_cloud: true,
+            allow_disabled: true,
+            excluded_model_ids: [
+              "local-primary",
+              "local-fallback",
+              "disabled-local",
+            ],
+          },
+        }),
+      ),
+    );
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        selected_model_id: "cloud-fallback",
+        attempted_models: ["cloud-fallback"],
+        failure_class: "policy_blocked",
+      }),
+    ]);
+    expect(cloudCalls).toEqual([]);
+  });
+
   it("does not call provider.complete during runtime construction", () => {
     const provider = createRecordingProvider();
 
@@ -694,9 +1169,10 @@ describe("Phase 13C.3 local model runtime", () => {
     });
 
     expect(provider.calls).toEqual([]);
+    expect(provider.streamCalls).toEqual([]);
   });
 
-  it("keeps runtime source free of provider construction, streaming orchestration, health polling, network, SDK, router, telemetry, event-store, UI, and Tauri wiring", () => {
+  it("keeps runtime source free of provider construction, health polling, network, SDK, router, telemetry, event-store, UI, and Tauri wiring", () => {
     const source = readFileSync(
       join(process.cwd(), "src/models/runtime.ts"),
       "utf8",
@@ -716,7 +1192,8 @@ describe("Phase 13C.3 local model runtime", () => {
       .join("\n");
 
     expect(source).not.toMatch(/createOllama|createMock|new\s+Provider/i);
-    expect(source).not.toMatch(/\.stream\(|\.health\(|pollHealth|setInterval/i);
+    expect(source).not.toMatch(/\.health\(|pollHealth|setInterval/i);
+    expect(source).toContain("provider.stream");
     expect(modelSourceOutsideAdapter).not.toMatch(
       /\bfetch\s*\(|globalThis\.fetch|WebSocket|EventSource|XMLHttpRequest|from\s+["'](?:node:http|node:https|openai|@anthropic-ai\/sdk|ollama)["']/,
     );
