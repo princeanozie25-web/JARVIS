@@ -29,3 +29,23 @@ export type {
   PiperConfigValidationResult,
   PiperProviderConfig,
 } from "./piper-contract";
+
+export {
+  FAKE_TTS_PROVIDER_MODES,
+  FakeTtsProviderError,
+  createFakeTtsProvider,
+} from "./fake-provider";
+export type {
+  FakeTtsProviderMode,
+  FakeTtsProviderOptions,
+} from "./fake-provider";
+
+export {
+  FAKE_TTS_ASSISTANT_PROSE_REQUEST,
+  FAKE_TTS_DEGRADED_PROVIDER_HEALTH,
+  FAKE_TTS_HEALTHY_PROVIDER_HEALTH,
+  FAKE_TTS_PROVIDER_CONFIG,
+  FAKE_TTS_TIMEOUT_CANCELLATION_REASON,
+  FAKE_TTS_UNAVAILABLE_PROVIDER_HEALTH,
+  FAKE_TTS_UNSAFE_CONTENT_REQUEST,
+} from "./fixtures";

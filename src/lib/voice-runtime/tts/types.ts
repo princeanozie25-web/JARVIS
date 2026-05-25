@@ -74,6 +74,7 @@ export interface TtsProviderHealth {
   readonly checked_at_ms: number;
   readonly degraded: boolean;
   readonly error_class?: TtsCancellationReason | "provider_error";
+  readonly last_error_class?: TtsCancellationReason | "provider_error";
   readonly metadata_only: true;
 }
 

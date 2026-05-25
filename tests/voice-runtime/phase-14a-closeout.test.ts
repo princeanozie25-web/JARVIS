@@ -33,7 +33,6 @@ const VOICE_RUNTIME_SOURCE_FILES = [
   "src/lib/voice-runtime/policy.ts",
   "src/lib/voice-runtime/telemetry.ts",
   "src/lib/voice-runtime/privacy.ts",
-  "src/lib/voice-runtime/index.ts",
 ] as const;
 
 function voiceRuntimeSource(): string {
