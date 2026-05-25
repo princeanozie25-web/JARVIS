@@ -62,3 +62,17 @@ export type {
   PiperSpawnedProcess,
   PiperTtsProviderOptions,
 } from "./piper-provider";
+
+export {
+  DEFAULT_PIPER_TTS_MAX_INPUT_CHARS,
+  DEFAULT_PIPER_TTS_TIMEOUT_MS,
+  PIPER_TTS_ENV_KEYS,
+  PIPER_TTS_LOCAL_CONFIG_REASONS,
+  loadPiperTtsLocalConfig,
+} from "./local-config";
+export type {
+  PiperTtsEnvKey,
+  PiperTtsLocalConfigReason,
+  PiperTtsLocalConfigResult,
+  PiperTtsLocalEnv,
+} from "./local-config";

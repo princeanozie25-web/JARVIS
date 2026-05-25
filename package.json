@@ -15,6 +15,7 @@
     "doctor": "tsx scripts/doctor.ts",
     "smoke:model-runtime": "tsx scripts/model-runtime-smoke.ts",
     "smoke:model-runtime:stream": "tsx scripts/model-runtime-smoke.ts --stream",
+    "voice:tts:smoke": "tsx scripts/voice/tts-smoke.ts",
     "eval": "node --env-file=.env.local --import tsx scripts/run-eval.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
