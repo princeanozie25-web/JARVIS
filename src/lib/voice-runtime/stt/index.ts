@@ -63,3 +63,19 @@ export type {
   FasterWhisperSpawnedProcess,
   FasterWhisperSttProviderOptions,
 } from "./faster-whisper-provider";
+
+export {
+  DEFAULT_FASTER_WHISPER_STT_BEAM_SIZE,
+  DEFAULT_FASTER_WHISPER_STT_MAX_AUDIO_BYTES,
+  DEFAULT_FASTER_WHISPER_STT_TIMEOUT_MS,
+  DEFAULT_FASTER_WHISPER_STT_VAD_ENABLED,
+  FASTER_WHISPER_STT_ENV_KEYS,
+  FASTER_WHISPER_STT_LOCAL_CONFIG_REASONS,
+  loadFasterWhisperSttLocalConfig,
+} from "./local-config";
+export type {
+  FasterWhisperSttEnvKey,
+  FasterWhisperSttLocalConfigReason,
+  FasterWhisperSttLocalConfigResult,
+  FasterWhisperSttLocalEnv,
+} from "./local-config";
