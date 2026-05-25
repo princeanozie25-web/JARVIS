@@ -63,6 +63,7 @@ export interface SttTranscriptionResult {
 }
 
 export interface SttExecutionDiagnostics {
+  readonly error_class?: SttCancellationReason | "provider_error";
   readonly stdout_preview?: string;
   readonly stderr_preview?: string;
   readonly exit_code?: number | null;

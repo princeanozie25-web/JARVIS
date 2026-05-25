@@ -18,6 +18,7 @@ import type {
 
 const DIAGNOSTIC_LIMIT = 512;
 const TRANSCRIPT_LIMIT = 4_000;
+const TRACEBACK_WITHHELD = "[python traceback withheld]";
 
 export interface FasterWhisperSpawnOptions {
   readonly shell: false;
@@ -154,7 +155,7 @@ export function createFasterWhisperSttProvider(
         lastErrorClass = "provider_error";
         throw new FasterWhisperSttProviderError(
           "provider_error",
-          execution.diagnostics,
+          withErrorClass(execution.diagnostics, "provider_error"),
         );
       }
 
@@ -288,7 +289,7 @@ function runFasterWhisperProcess(
         ok: false,
         reason: "timeout",
         stdout: stdout.preview(),
-        diagnostics: diagnostics(stdout, stderr, null, "SIGTERM"),
+        diagnostics: diagnostics("timeout", stdout, stderr, null, "SIGTERM"),
       });
     }, input.timeoutMs);
     const abort = () => {
@@ -297,7 +298,13 @@ function runFasterWhisperProcess(
         ok: false,
         reason: "abort_signal",
         stdout: stdout.preview(),
-        diagnostics: diagnostics(stdout, stderr, null, "SIGTERM"),
+        diagnostics: diagnostics(
+          "abort_signal",
+          stdout,
+          stderr,
+          null,
+          "SIGTERM",
+        ),
       });
     };
 
@@ -308,11 +315,18 @@ function runFasterWhisperProcess(
         ok: false,
         reason: "provider_error",
         stdout: stdout.preview(),
-        diagnostics: diagnostics(stdout, stderr, null, null),
+        diagnostics: diagnostics("provider_error", stdout, stderr, null, null),
       });
     });
     process.on("close", (code, signal) => {
-      const processDiagnostics = diagnostics(stdout, stderr, code, signal);
+      const errorClass = code === 0 ? undefined : "provider_error";
+      const processDiagnostics = diagnostics(
+        errorClass,
+        stdout,
+        stderr,
+        code,
+        signal,
+      );
       settle(
         code === 0
           ? {
@@ -413,23 +427,61 @@ function createBoundedCollector(limit: number) {
 }
 
 function diagnostics(
+  errorClass: SttCancellationReason | "provider_error" | undefined,
   stdout: ReturnType<typeof createBoundedCollector>,
   stderr: ReturnType<typeof createBoundedCollector>,
   exitCode: number | null,
   signal: string | null,
 ): SttExecutionDiagnostics {
+  const sanitizedStderr = sanitizeDiagnosticPreview(stderr.preview());
   return {
-    ...(stdout.preview().length === 0
+    ...(errorClass === undefined ? {} : { error_class: errorClass }),
+    ...(sanitizedStderr.length === 0
       ? {}
-      : { stdout_preview: stdout.preview().slice(0, DIAGNOSTIC_LIMIT) }),
-    ...(stderr.preview().length === 0
-      ? {}
-      : { stderr_preview: stderr.preview().slice(0, DIAGNOSTIC_LIMIT) }),
+      : { stderr_preview: sanitizedStderr }),
     exit_code: exitCode,
     signal,
     truncated: stdout.truncated() || stderr.truncated(),
     metadata_only: true,
   };
+}
+
+function withErrorClass(
+  diagnostics: SttExecutionDiagnostics,
+  errorClass: SttCancellationReason | "provider_error",
+): SttExecutionDiagnostics {
+  return {
+    ...diagnostics,
+    error_class: errorClass,
+    metadata_only: true,
+  };
+}
+
+function sanitizeDiagnosticPreview(value: string): string {
+  if (value.length === 0) return "";
+  const lines = value.split(/\r?\n/);
+  const sanitized: string[] = [];
+  let withheldTraceback = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (isTracebackFrame(trimmed)) {
+      if (!withheldTraceback) {
+        sanitized.push(TRACEBACK_WITHHELD);
+        withheldTraceback = true;
+      }
+      continue;
+    }
+    sanitized.push(line);
+  }
+  return sanitized.join("\n").slice(0, DIAGNOSTIC_LIMIT);
+}
+
+function isTracebackFrame(line: string): boolean {
+  return (
+    line === "Traceback (most recent call last):" ||
+    /^File\s+["'][^"']+["'],\s+line\s+\d+/i.test(line) ||
+    /^~+\^*$/.test(line)
+  );
 }
 
 function isNonemptyString(value: unknown): value is string {

@@ -282,6 +282,7 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
       await expect(promise).resolves.toMatchObject({
         reason: "timeout",
         diagnostics: {
+          error_class: "timeout",
           stderr_preview: "x".repeat(512),
           signal: "SIGTERM",
           truncated: true,
@@ -344,6 +345,9 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     invalid.processes[0].close(0);
     await expect(invalidPromise).resolves.toMatchObject({
       reason: "provider_error",
+      diagnostics: {
+        error_class: "provider_error",
+      },
     });
 
     const missing = createHarness({ autoClose: false });
@@ -361,7 +365,54 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     missing.processes[0].close(0);
     await expect(missingPromise).resolves.toMatchObject({
       reason: "provider_error",
+      diagnostics: {
+        error_class: "provider_error",
+      },
     });
+  });
+
+  it("includes bounded provider_error diagnostics without raw traceback frames", async () => {
+    const harness = createHarness({ autoClose: false });
+    const promise = harness.provider
+      .transcribe(FAKE_STT_VALID_AUDIO_REQUEST, { metadata_only: true })
+      .catch((error: unknown) => error);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    harness.processes[0].emitStderr(
+      [
+        "Traceback (most recent call last):",
+        '  File "C:/secret/project/transcribe.py", line 10, in <module>',
+        "ModuleNotFoundError: No module named 'faster_whisper'",
+        "x".repeat(900),
+      ].join("\n"),
+    );
+    harness.processes[0].close(1);
+
+    await expect(promise).resolves.toMatchObject({
+      reason: "provider_error",
+      diagnostics: {
+        error_class: "provider_error",
+        stderr_preview: expect.stringContaining(
+          "ModuleNotFoundError: No module named 'faster_whisper'",
+        ),
+        exit_code: 1,
+        truncated: true,
+        metadata_only: true,
+      },
+    });
+    const error = (await promise) as FasterWhisperSttProviderError;
+    const diagnostics = error.diagnostics;
+    expect(diagnostics).toBeDefined();
+    if (!diagnostics?.stderr_preview) {
+      throw new Error("expected bounded stderr diagnostics");
+    }
+    expect(diagnostics.stderr_preview.length).toBeLessThanOrEqual(512);
+    expect(diagnostics.stderr_preview).not.toContain(
+      "Traceback (most recent call last):",
+    );
+    expect(diagnostics.stderr_preview).not.toContain(
+      "C:/secret/project/transcribe.py",
+    );
+    expect(diagnostics).not.toHaveProperty("stdout_preview");
   });
 
   it("bounds transcript length in the result", async () => {

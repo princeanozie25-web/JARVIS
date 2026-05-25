@@ -8,6 +8,8 @@ import {
   createFasterWhisperSttProvider,
   loadFasterWhisperSttLocalConfig,
   type FasterWhisperProviderConfig,
+  type SttCancellationReason,
+  type SttExecutionDiagnostics,
   type SttProvider,
   type SttTranscriptionResult,
 } from "../../src/lib/voice-runtime";
@@ -18,9 +20,17 @@ export const STT_SMOKE_TRANSCRIPT_PREVIEW_LIMIT = 80;
 const STT_SMOKE_TIMEOUT_MS = 30_000;
 
 export class SttSmokeError extends Error {
-  constructor(message: string) {
+  readonly error_class?: SttCancellationReason | "provider_error";
+  readonly stderr_preview?: string;
+  readonly exit_code?: number | null;
+  readonly metadata_only = true;
+
+  constructor(message: string, diagnostics?: SttSmokeFailureDiagnostics) {
     super(message);
     this.name = "SttSmokeError";
+    this.error_class = diagnostics?.error_class;
+    this.stderr_preview = diagnostics?.stderr_preview;
+    this.exit_code = diagnostics?.exit_code;
   }
 }
 
@@ -44,6 +54,12 @@ export interface SttSmokeReport {
   readonly degraded: boolean;
   readonly transcript_preview: string;
   readonly result: SttTranscriptionResult;
+}
+
+export interface SttSmokeFailureDiagnostics {
+  readonly error_class: SttCancellationReason | "provider_error";
+  readonly stderr_preview?: string;
+  readonly exit_code?: number | null;
 }
 
 export async function runSttSmoke(
@@ -88,25 +104,43 @@ export async function runSttSmoke(
   }
 
   const provider = createProvider(configResult.config);
-  const result = await provider.transcribe(
-    {
-      request_id: "voice-stt-smoke",
-      session_id: "stt-smoke-session",
-      turn_id: "stt-smoke-turn",
-      audio: {
-        audio_ref: audioRef,
-        mime_type: mimeTypeForAudioRef(audioRef),
-        duration_ms: durationMs,
-        size_bytes: audioStats.size,
-        metadata_only: true,
-      },
+  const request = {
+    request_id: "voice-stt-smoke",
+    session_id: "stt-smoke-session",
+    turn_id: "stt-smoke-turn",
+    audio: {
+      audio_ref: audioRef,
+      mime_type: mimeTypeForAudioRef(audioRef),
+      duration_ms: durationMs,
+      size_bytes: audioStats.size,
       metadata_only: true,
     },
-    {
-      timeout_ms: configResult.config.timeoutMs || STT_SMOKE_TIMEOUT_MS,
-      metadata_only: true,
-    },
-  );
+    metadata_only: true,
+  } as const;
+  const options = {
+    timeout_ms: configResult.config.timeoutMs || STT_SMOKE_TIMEOUT_MS,
+    metadata_only: true,
+  } as const;
+  let result: SttTranscriptionResult;
+  try {
+    result = await provider.transcribe(request, options);
+  } catch (error) {
+    const diagnostics = extractSmokeFailureDiagnostics(error);
+    writeLine("JARVIS faster-whisper STT smoke");
+    writeLine("status: failed");
+    writeLine(`provider_id: ${configResult.config.providerId}`);
+    writeLine(`error_class: ${diagnostics.error_class}`);
+    if (diagnostics.exit_code !== undefined) {
+      writeLine(`exit_code: ${String(diagnostics.exit_code)}`);
+    }
+    if (diagnostics.stderr_preview) {
+      writeLine(`stderr_preview: ${diagnostics.stderr_preview}`);
+    }
+    throw new SttSmokeError(
+      `faster-whisper STT smoke failed closed: ${diagnostics.error_class}.`,
+      diagnostics,
+    );
+  }
 
   const report = {
     provider_id: result.provider_id,
@@ -169,6 +203,68 @@ function mimeTypeForAudioRef(audioRef: string): string {
   if (extension === ".flac") return "audio/flac";
   if (extension === ".ogg") return "audio/ogg";
   return "application/octet-stream";
+}
+
+function extractSmokeFailureDiagnostics(
+  error: unknown,
+): SttSmokeFailureDiagnostics {
+  const record =
+    error && typeof error === "object"
+      ? (error as Record<string, unknown>)
+      : {};
+  const diagnostics = isDiagnostics(record.diagnostics)
+    ? record.diagnostics
+    : undefined;
+  const errorClass =
+    readErrorClass(record.reason) ??
+    readErrorClass(diagnostics?.error_class) ??
+    "provider_error";
+  return {
+    error_class: errorClass,
+    ...(diagnostics?.stderr_preview === undefined
+      ? {}
+      : { stderr_preview: safeDiagnosticPreview(diagnostics.stderr_preview) }),
+    ...(diagnostics?.exit_code === undefined
+      ? {}
+      : { exit_code: diagnostics.exit_code }),
+  };
+}
+
+function isDiagnostics(value: unknown): value is SttExecutionDiagnostics {
+  return Boolean(value && typeof value === "object");
+}
+
+function readErrorClass(
+  value: unknown,
+): SttCancellationReason | "provider_error" | null {
+  if (
+    value === "provider_error" ||
+    value === "user_cancelled" ||
+    value === "abort_signal" ||
+    value === "timeout" ||
+    value === "policy_blocked" ||
+    value === "provider_unavailable" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function safeDiagnosticPreview(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !isTracebackFrame(line.trim()))
+    .join("\n")
+    .slice(0, 512);
+}
+
+function isTracebackFrame(line: string): boolean {
+  return (
+    line === "Traceback (most recent call last):" ||
+    /^File\s+["'][^"']+["'],\s+line\s+\d+/i.test(line) ||
+    /^~+\^*$/.test(line)
+  );
 }
 
 function isDirectCliInvocation(): boolean {

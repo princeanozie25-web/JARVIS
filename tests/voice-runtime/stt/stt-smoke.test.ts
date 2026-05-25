@@ -156,6 +156,66 @@ describe("Phase 14C.4 manual faster-whisper STT smoke harness", () => {
     });
   });
 
+  it("prints bounded provider diagnostics on fail-closed provider errors", async () => {
+    const lines: string[] = [];
+    const provider = providerWithResult(transcriptionResult());
+    vi.mocked(provider.transcribe).mockRejectedValueOnce({
+      reason: "provider_error",
+      diagnostics: {
+        error_class: "provider_error",
+        stderr_preview: [
+          "Traceback (most recent call last):",
+          '  File "C:/secret/transcribe.py", line 1, in <module>',
+          "ModuleNotFoundError: No module named 'faster_whisper'",
+          "x".repeat(900),
+        ].join("\n"),
+        exit_code: 1,
+        signal: null,
+        truncated: true,
+        metadata_only: true,
+      },
+      metadata_only: true,
+    });
+
+    await expect(
+      runSttSmoke({
+        env: {
+          [STT_SMOKE_AUDIO_REF_ENV]: "C:/audio/jarvis-smoke.wav",
+          [STT_SMOKE_DURATION_MS_ENV]: "2100",
+        },
+        loadConfig: () => ({
+          ok: true,
+          config: fasterWhisperConfig(),
+          reasons: [],
+        }),
+        createProvider: () => provider,
+        statAudio: vi.fn(async () => ({ size: 32000 })),
+        writeLine: (line) => lines.push(line),
+      }),
+    ).rejects.toMatchObject({
+      name: "SttSmokeError",
+      error_class: "provider_error",
+      exit_code: 1,
+      stderr_preview: expect.stringContaining(
+        "ModuleNotFoundError: No module named 'faster_whisper'",
+      ),
+    });
+
+    const output = lines.join("\n");
+    expect(output).toContain("status: failed");
+    expect(output).toContain("provider_id: local-faster-whisper");
+    expect(output).toContain("error_class: provider_error");
+    expect(output).toContain("exit_code: 1");
+    expect(output).toContain("stderr_preview: ModuleNotFoundError");
+    expect(output).not.toContain("Traceback (most recent call last):");
+    expect(output).not.toContain("C:/secret/transcribe.py");
+    expect(output).not.toMatch(/audio_bytes|raw_audio|pcm|waveform/i);
+    const stderrLine = lines.find((line) => line.startsWith("stderr_preview:"));
+    expect(stderrLine?.length ?? 0).toBeLessThanOrEqual(
+      "stderr_preview: ".length + 512,
+    );
+  });
+
   it("requires explicit audio_ref and duration metadata before execution", async () => {
     const createProvider = vi.fn();
     await expect(
