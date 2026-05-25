@@ -113,6 +113,7 @@ describe("Phase 11A.6 event store closeout guards", () => {
     expect(Object.keys(store)).toEqual([
       "appendEvent",
       "appendRoomEvent",
+      "appendModelCall",
       "inspectMigrations",
       "inspectSchema",
       "close",

@@ -282,6 +282,7 @@ describe("Phase 11A.2 append-only invariant", () => {
     expect(keys).toEqual([
       "appendEvent",
       "appendRoomEvent",
+      "appendModelCall",
       "inspectMigrations",
       "inspectSchema",
       "close",

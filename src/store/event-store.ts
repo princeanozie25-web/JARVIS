@@ -49,9 +49,16 @@ export interface AppendRoomEventInput extends AppendScaffoldEventInput {
   readonly failureClass: string | null;
 }
 
+export interface AppendModelCallEventInput extends AppendScaffoldEventInput {
+  readonly modelCallId: string;
+  readonly providerId: string;
+  readonly modelId: string;
+}
+
 export interface EventStore {
   appendEvent(input: AppendScaffoldEventInput): void;
   appendRoomEvent(input: AppendRoomEventInput): void;
+  appendModelCall(input: AppendModelCallEventInput): void;
   inspectMigrations(): AppliedMigration[];
   inspectSchema(): EventStoreSchemaSummary;
   close(): void;
@@ -100,6 +107,7 @@ export function initializeEventStore(options: EventStoreOptions): EventStore {
   return {
     appendEvent: (input) => appendEvent(db, input),
     appendRoomEvent: (input) => appendRoomEvent(db, input),
+    appendModelCall: (input) => appendModelCall(db, input),
     inspectMigrations: () => inspectMigrations(db),
     inspectSchema: () => inspectSchema(db),
     close: () => db.close(),
@@ -228,6 +236,29 @@ function appendRoomEvent(
       input.capability,
       input.failureClass,
     );
+  });
+
+  transaction();
+}
+
+function appendModelCall(
+  db: Database.Database,
+  input: AppendModelCallEventInput,
+): void {
+  const transaction = db.transaction(() => {
+    appendEvent(db, input);
+    db.prepare(
+      `
+        INSERT INTO model_calls (
+          model_call_id,
+          event_id,
+          provider_id,
+          model_id,
+          cloud_call,
+          prompt_payload_retained
+        ) VALUES (?, ?, ?, ?, 0, 0)
+      `,
+    ).run(input.modelCallId, input.eventId, input.providerId, input.modelId);
   });
 
   transaction();

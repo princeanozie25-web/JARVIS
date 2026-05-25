@@ -324,6 +324,7 @@ describe("Phase 11A.5 fake room event store bridge", () => {
     expect(Object.keys(store)).toEqual([
       "appendEvent",
       "appendRoomEvent",
+      "appendModelCall",
       "inspectMigrations",
       "inspectSchema",
       "close",

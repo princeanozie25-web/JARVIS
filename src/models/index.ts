@@ -93,6 +93,12 @@ export type {
 } from "./model-call-event";
 
 export {
+  ModelCallStoreBridgeError,
+  appendModelCallEvent,
+} from "./model-call-store";
+export type { ModelCallEventPersistenceResult } from "./model-call-store";
+
+export {
   MODEL_PROVIDER_FAILURE_CLASSES,
   MODEL_PROVIDER_FINISH_REASONS,
   MODEL_PROVIDER_REDACTION_STATUSES,
