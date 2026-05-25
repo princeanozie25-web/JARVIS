@@ -218,11 +218,10 @@ describe("Phase 13B Ollama provider closeout", () => {
     expect(streamCalls).toBe(0);
   });
 
-  it("keeps Ollama stream execution fail-closed and client stream uninvolved", async () => {
+  it("keeps Ollama provider streaming explicit, injected, and router-free", async () => {
     let streamCalls = 0;
-    const backingClient = createFakeOllamaClient();
+    const backingClient = createFakeOllamaClient({ now: () => 777 });
     const provider = createOllamaModelProvider({
-      now: () => 777,
       client: {
         listModels: backingClient.listModels,
         complete: backingClient.complete,
@@ -233,18 +232,27 @@ describe("Phase 13B Ollama provider closeout", () => {
       },
     });
 
-    await expect(collect(provider.stream(request()))).resolves.toEqual([
-      expect.objectContaining({
-        type: "error",
-        provider_id: "ollama",
-        created_at_ms: 777,
-        error: expect.objectContaining({
-          failure_class: "provider_error",
-          redaction_status: "metadata_only",
-        }),
-      }),
-    ]);
     expect(streamCalls).toBe(0);
+    const events = await collect(provider.stream(request()));
+
+    expect(streamCalls).toBe(1);
+    expect(events.map((event) => event.type)).toEqual([
+      "token",
+      "token",
+      "token",
+      "token",
+      "done",
+    ]);
+    expect(events.filter((event) => event.type !== "token")).toHaveLength(1);
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      provider_id: "ollama",
+      created_at_ms: 777,
+      response: {
+        redaction_status: "metadata_only",
+      },
+    });
+    expect(modelSource()).not.toMatch(/router\.|selectProvider|routeModel/i);
   });
 
   it("keeps the router uninvolved while local complete requires explicit provider invocation", async () => {

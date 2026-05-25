@@ -13,6 +13,7 @@ import type {
   OllamaClientError,
   OllamaCompleteInput,
   OllamaCompleteResult,
+  OllamaStreamEvent,
 } from "./ollama-client";
 
 export const OLLAMA_MODEL_PROVIDER_DEFAULT_CAPABILITIES = [
@@ -79,11 +80,11 @@ export function createOllamaModelProvider(
       display_name: "Ollama Model Provider",
       runtime_class: "local",
       supported_capabilities: clone(config.capabilities),
-      supports_streaming: false,
+      supports_streaming: true,
       supports_abort: true,
       supports_timeout: true,
       governance_notes:
-        "Ollama local complete calls require an injected client; health metadata may come from an injected probe, while streaming fails closed.",
+        "Ollama local complete and stream calls require an injected client; health metadata may come from an injected probe.",
       implementation_enabled: false,
       network_access_enabled: false,
       telemetry_persistence_enabled: false,
@@ -91,7 +92,7 @@ export function createOllamaModelProvider(
     complete: async (request) => {
       return clone(await completeWithClient(config, request));
     },
-    stream: (request) => streamFailure(config, request),
+    stream: (request) => streamWithClient(config, request),
     health: async () => clone(await createHealth(config)),
   };
 }
@@ -133,23 +134,93 @@ async function completeWithClient(
   }
 }
 
-async function* streamFailure(
+async function* streamWithClient(
   config: NormalizedOllamaProviderOptions,
   request: ModelProviderRequest,
 ): AsyncIterable<ModelProviderStreamEvent> {
-  yield clone({
-    type: "error",
-    request_id: request.request_id,
-    model_id: request.model_id,
-    provider_id: config.id,
-    created_at_ms: config.now(),
-    error: createProviderError(
-      config,
-      request,
-      "provider_error",
-      "Ollama streaming is not implemented in Phase 13B.1.",
-    ),
-  });
+  let terminalEmitted = false;
+  const emitTerminal = (event: ModelProviderStreamEvent) => {
+    terminalEmitted = true;
+    return clone(event);
+  };
+
+  try {
+    validateCompleteRequest(config, request);
+
+    if (!config.client) {
+      yield emitTerminal(
+        createStreamErrorEvent(
+          config,
+          request,
+          createProviderError(
+            config,
+            request,
+            "unavailable",
+            "Ollama stream requires an injected client.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    const stream = config.client.stream({
+      request_id: request.request_id,
+      model: request.model_id,
+      input: toOllamaInput(config, request),
+      options: {
+        temperature: request.options.temperature,
+        top_p: request.options.top_p,
+        max_output_tokens: request.options.max_output_tokens,
+        stop_sequences: request.options.stop_sequences,
+      },
+      timeout_ms: request.timeout_ms,
+      abort_signal: request.abort_signal,
+      metadata_only: true,
+    });
+
+    for await (const event of stream) {
+      const mapped = mapClientStreamEvent(config, request, event);
+      if (mapped.type === "token") {
+        yield clone(mapped);
+        continue;
+      }
+
+      yield emitTerminal(mapped);
+      return;
+    }
+
+    if (!terminalEmitted) {
+      yield emitTerminal(
+        createStreamErrorEvent(
+          config,
+          request,
+          createProviderError(
+            config,
+            request,
+            "provider_error",
+            "Ollama client stream ended without a terminal event.",
+          ),
+        ),
+      );
+    }
+  } catch (error) {
+    if (!terminalEmitted) {
+      const providerError = normalizeProviderError(config, request, error);
+      if (
+        providerError.failure_class === "cancelled" ||
+        providerError.failure_class === "timeout"
+      ) {
+        yield emitTerminal(
+          createStreamCancelledEvent(config, request, providerError),
+        );
+        return;
+      }
+
+      yield emitTerminal(
+        createStreamErrorEvent(config, request, providerError),
+      );
+    }
+  }
 }
 
 async function createHealth(
@@ -310,6 +381,158 @@ function createResponse(
     finish_reason: "stop",
     degraded: false,
     redaction_status: result.redaction_status,
+  };
+}
+
+function mapClientStreamEvent(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+  event: unknown,
+): ModelProviderStreamEvent {
+  if (!isOllamaStreamEvent(event)) {
+    return createStreamErrorEvent(
+      config,
+      request,
+      createProviderError(
+        config,
+        request,
+        "provider_error",
+        "Ollama client emitted a malformed stream event.",
+      ),
+    );
+  }
+
+  if (event.type === "token") {
+    return {
+      type: "token",
+      request_id: request.request_id,
+      model_id: request.model_id,
+      provider_id: config.id,
+      created_at_ms: event.created_at_ms,
+      delta: event.delta,
+      index: event.index,
+      redaction_status: event.redaction_status,
+    };
+  }
+
+  if (event.type === "done") {
+    return {
+      type: "done",
+      request_id: request.request_id,
+      model_id: request.model_id,
+      provider_id: config.id,
+      created_at_ms: event.created_at_ms,
+      response: createResponse(config, request, event.result),
+    };
+  }
+
+  if (event.type === "cancelled") {
+    return {
+      type: "cancelled",
+      request_id: request.request_id,
+      model_id: request.model_id,
+      provider_id: config.id,
+      created_at_ms: event.created_at_ms,
+      reason: event.reason,
+      error_class: event.error_class,
+    };
+  }
+
+  return createStreamErrorEvent(
+    config,
+    request,
+    normalizeProviderError(config, request, event.error),
+    event.created_at_ms,
+  );
+}
+
+function isOllamaStreamEvent(event: unknown): event is OllamaStreamEvent {
+  if (!event || typeof event !== "object" || !("type" in event)) return false;
+  const candidate = event as Record<string, unknown>;
+
+  if (
+    typeof candidate.request_id !== "string" ||
+    typeof candidate.model !== "string" ||
+    typeof candidate.created_at_ms !== "number"
+  ) {
+    return false;
+  }
+
+  if (candidate.type === "token") {
+    return (
+      typeof candidate.delta === "string" &&
+      Number.isInteger(candidate.index) &&
+      candidate.redaction_status === "metadata_only"
+    );
+  }
+
+  if (candidate.type === "done") {
+    return isOllamaCompleteResult(candidate.result);
+  }
+
+  if (candidate.type === "cancelled") {
+    return (
+      (candidate.reason === "abort_signal" || candidate.reason === "timeout") &&
+      (candidate.error_class === "cancelled" ||
+        candidate.error_class === "timeout")
+    );
+  }
+
+  if (candidate.type === "error") {
+    return isOllamaClientError(candidate.error);
+  }
+
+  return false;
+}
+
+function isOllamaCompleteResult(value: unknown): value is OllamaCompleteResult {
+  if (!value || typeof value !== "object") return false;
+  const result = value as Record<string, unknown>;
+  const tokenUsage = result.token_usage as Record<string, unknown> | undefined;
+
+  return (
+    typeof result.request_id === "string" &&
+    typeof result.model === "string" &&
+    typeof result.output === "string" &&
+    typeof result.latency_ms === "number" &&
+    result.done === true &&
+    result.redaction_status === "metadata_only" &&
+    !!tokenUsage &&
+    typeof tokenUsage.input_tokens === "number" &&
+    typeof tokenUsage.output_tokens === "number" &&
+    typeof tokenUsage.total_tokens === "number"
+  );
+}
+
+function createStreamErrorEvent(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+  error: ModelProviderError,
+  createdAtMs = config.now(),
+): ModelProviderStreamEvent {
+  return {
+    type: "error",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: config.id,
+    created_at_ms: createdAtMs,
+    error,
+  };
+}
+
+function createStreamCancelledEvent(
+  config: NormalizedOllamaProviderOptions,
+  request: ModelProviderRequest,
+  error: ModelProviderError,
+): ModelProviderStreamEvent {
+  return {
+    type: "cancelled",
+    request_id: request.request_id,
+    model_id: request.model_id,
+    provider_id: config.id,
+    created_at_ms: config.now(),
+    reason: error.failure_class === "timeout" ? "timeout" : "abort_signal",
+    error_class: error.failure_class === "timeout" ? "timeout" : "cancelled",
   };
 }
 

@@ -10,6 +10,7 @@ import {
   type OllamaClient,
   type OllamaClientCallOptions,
   type OllamaCompleteRequest,
+  type OllamaStreamEvent,
 } from "../../../src/models";
 import type {
   ModelProviderRequest,
@@ -49,6 +50,19 @@ async function collect(
     collected.push(event);
   }
   return collected;
+}
+
+function streamOnlyClient(events: readonly OllamaStreamEvent[]): OllamaClient {
+  const backingClient = createFakeOllamaClient();
+  return {
+    listModels: backingClient.listModels,
+    complete: backingClient.complete,
+    stream: async function* () {
+      for (const event of events) {
+        yield event;
+      }
+    },
+  };
 }
 
 describe("Phase 13B.1 Ollama provider health scaffold", () => {
@@ -94,9 +108,10 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
     });
   });
 
-  it("construction does not call injected client.listModels", () => {
+  it("construction does not call injected client methods", () => {
     let listCalls = 0;
     let completeCalls = 0;
+    let streamCalls = 0;
     const backingClient = createFakeOllamaClient();
     const client: OllamaClient = {
       listModels: async (options) => {
@@ -107,13 +122,17 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
         completeCalls += 1;
         return backingClient.complete(completeRequest);
       },
-      stream: backingClient.stream,
+      stream: (streamRequest) => {
+        streamCalls += 1;
+        return backingClient.stream(streamRequest);
+      },
     };
 
     createOllamaModelProvider({ client });
 
     expect(listCalls).toBe(0);
     expect(completeCalls).toBe(0);
+    expect(streamCalls).toBe(0);
   });
 
   it("health calls injected client.listModels exactly when invoked", async () => {
@@ -545,7 +564,7 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
     });
   });
 
-  it("stream fails closed because streaming is not implemented", async () => {
+  it("stream emits fail-closed error when no injected client exists", async () => {
     const provider = createOllamaModelProvider({ now: () => 555 });
     const events = await collect(provider.stream(request()));
 
@@ -556,11 +575,288 @@ describe("Phase 13B.1 Ollama provider health scaffold", () => {
         provider_id: "ollama",
         created_at_ms: 555,
         error: expect.objectContaining({
+          failure_class: "unavailable",
+          redaction_status: "metadata_only",
+        }),
+      }),
+    ]);
+  });
+
+  it("stream calls injected client.stream only when invoked", async () => {
+    const calls: OllamaCompleteRequest[] = [];
+    const backingClient = createFakeOllamaClient({ now: () => 123 });
+    const client: OllamaClient = {
+      listModels: backingClient.listModels,
+      complete: backingClient.complete,
+      stream: (streamRequest) => {
+        calls.push(streamRequest);
+        return backingClient.stream(streamRequest);
+      },
+    };
+    const provider = createOllamaModelProvider({ client });
+
+    expect(calls).toEqual([]);
+    await collect(
+      provider.stream(
+        request({
+          request_id: "ollama-stream-1",
+          options: {
+            temperature: 0,
+            top_p: 1,
+            max_output_tokens: 64,
+            stop_sequences: ["done"],
+          },
+        }),
+      ),
+    );
+
+    expect(calls).toEqual([
+      expect.objectContaining({
+        request_id: "ollama-stream-1",
+        model: "llama3.2:3b",
+        input: {
+          kind: "messages",
+          messages: [{ role: "user", content: "Health scaffold only" }],
+        },
+        options: {
+          temperature: 0,
+          top_p: 1,
+          max_output_tokens: 64,
+          stop_sequences: ["done"],
+        },
+        timeout_ms: 5_000,
+        metadata_only: true,
+      }),
+    ]);
+  });
+
+  it("stream maps fake client token events and final done event", async () => {
+    const provider = createOllamaModelProvider({
+      client: createFakeOllamaClient({ now: () => 321, latencyMs: 9 }),
+    });
+    const events = await collect(provider.stream(request()));
+
+    expect(events.map((event) => event.type)).toEqual([
+      "token",
+      "token",
+      "token",
+      "token",
+      "done",
+    ]);
+    expect(events.filter((event) => event.type === "token")).toEqual([
+      expect.objectContaining({
+        type: "token",
+        request_id: "ollama-request-1",
+        model_id: "llama3.2:3b",
+        provider_id: "ollama",
+        created_at_ms: 321,
+        delta: "ollama",
+        index: 0,
+        redaction_status: "metadata_only",
+      }),
+      expect.objectContaining({
+        type: "token",
+        delta: "llama3.2",
+        index: 1,
+      }),
+      expect.objectContaining({
+        type: "token",
+        delta: "3b",
+        index: 2,
+      }),
+      expect.objectContaining({
+        type: "token",
+        delta: expect.stringMatching(/^\d+$/),
+        index: 3,
+      }),
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      request_id: "ollama-request-1",
+      model_id: "llama3.2:3b",
+      provider_id: "ollama",
+      response: {
+        request_id: "ollama-request-1",
+        model_id: "llama3.2:3b",
+        provider_id: "ollama",
+        output: {
+          kind: "text",
+          content: expect.stringMatching(/^ollama:llama3\.2:3b:\d+$/),
+        },
+        latency_ms: 9,
+        finish_reason: "stop",
+        redaction_status: "metadata_only",
+      },
+    });
+  });
+
+  it("stream maps client error events into provider error events", async () => {
+    const provider = createOllamaModelProvider({
+      client: streamOnlyClient([
+        {
+          type: "error",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 777,
+          error: createOllamaClientError({
+            request_id: "ollama-request-1",
+            model: "llama3.2:3b",
+            failure_class: "model_missing",
+            message: "missing model",
+            retryable: false,
+          }),
+        },
+      ]),
+    });
+
+    await expect(collect(provider.stream(request()))).resolves.toEqual([
+      expect.objectContaining({
+        type: "error",
+        created_at_ms: 777,
+        error: expect.objectContaining({
+          provider_id: "ollama",
+          failure_class: "model_missing",
+          message: "missing model",
+          retryable: false,
+          redaction_status: "metadata_only",
+        }),
+      }),
+    ]);
+  });
+
+  it("stream maps cancellation terminal events", async () => {
+    const provider = createOllamaModelProvider({
+      client: streamOnlyClient([
+        {
+          type: "cancelled",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 888,
+          reason: "timeout",
+          error_class: "timeout",
+        },
+      ]),
+    });
+
+    await expect(collect(provider.stream(request()))).resolves.toEqual([
+      expect.objectContaining({
+        type: "cancelled",
+        created_at_ms: 888,
+        reason: "timeout",
+        error_class: "timeout",
+      }),
+    ]);
+  });
+
+  it("stream honors abort_signal cancellation before calling the client", async () => {
+    let calls = 0;
+    const backingClient = createFakeOllamaClient();
+    const abortController = new AbortController();
+    abortController.abort();
+    const provider = createOllamaModelProvider({
+      client: {
+        listModels: backingClient.listModels,
+        complete: backingClient.complete,
+        stream: (streamRequest) => {
+          calls += 1;
+          return backingClient.stream(streamRequest);
+        },
+      },
+      now: () => 999,
+    });
+
+    await expect(
+      collect(
+        provider.stream(request({ abort_signal: abortController.signal })),
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        type: "cancelled",
+        created_at_ms: 999,
+        reason: "abort_signal",
+        error_class: "cancelled",
+      }),
+    ]);
+    expect(calls).toBe(0);
+  });
+
+  it("stream fails closed on malformed client events", async () => {
+    const provider = createOllamaModelProvider({
+      client: streamOnlyClient([
+        {
+          type: "token",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 111,
+          delta: 123,
+          index: 0,
+          redaction_status: "metadata_only",
+        } as unknown as OllamaStreamEvent,
+      ]),
+      now: () => 222,
+    });
+
+    await expect(collect(provider.stream(request()))).resolves.toEqual([
+      expect.objectContaining({
+        type: "error",
+        created_at_ms: 222,
+        error: expect.objectContaining({
           failure_class: "provider_error",
           redaction_status: "metadata_only",
         }),
       }),
     ]);
+  });
+
+  it("stream emits a terminal event exactly once", async () => {
+    const provider = createOllamaModelProvider({
+      client: streamOnlyClient([
+        {
+          type: "token",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 1,
+          delta: "hello",
+          index: 0,
+          redaction_status: "metadata_only",
+        },
+        {
+          type: "done",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 2,
+          result: {
+            request_id: "ollama-request-1",
+            model: "llama3.2:3b",
+            output: "hello",
+            latency_ms: 1,
+            token_usage: {
+              input_tokens: 1,
+              output_tokens: 1,
+              total_tokens: 2,
+            },
+            done: true,
+            redaction_status: "metadata_only",
+          },
+        },
+        {
+          type: "error",
+          request_id: "ollama-request-1",
+          model: "llama3.2:3b",
+          created_at_ms: 3,
+          error: createOllamaClientError({
+            failure_class: "provider_error",
+            message: "late terminal",
+          }),
+        },
+      ]),
+    });
+
+    const events = await collect(provider.stream(request()));
+    const terminalEvents = events.filter((event) => event.type !== "token");
+
+    expect(events.map((event) => event.type)).toEqual(["token", "done"]);
+    expect(terminalEvents).toHaveLength(1);
   });
 
   it("does not introduce direct SDK, network, filesystem, router, event-store, telemetry, UI, Tauri, install, download, cloud, or fallback wiring", () => {

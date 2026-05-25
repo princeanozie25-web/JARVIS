@@ -98,6 +98,15 @@ describe("Phase 13A.3 mock model provider", () => {
     });
   });
 
+  it("stream emits a terminal event exactly once", async () => {
+    const provider = createMockModelProvider();
+    const events = await collect(provider.stream(request()));
+    const terminalEvents = events.filter((event) => event.type !== "token");
+
+    expect(events.at(-1)?.type).toBe("done");
+    expect(terminalEvents).toHaveLength(1);
+  });
+
   it("health returns metadata-only healthy status", async () => {
     const provider = createMockModelProvider({ now: () => 456 });
     const health = await provider.health();
