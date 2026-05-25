@@ -166,16 +166,17 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     expect(buildFasterWhisperArgs(fasterWhisperConfig(), "audio.wav")).toEqual([
       "-c",
       expect.stringContaining("WhisperModel(args.model_path)"),
+      "--audio-ref",
       "audio.wav",
-      "--model_path",
+      "--model-path",
       "C:/models/faster-whisper/base.en",
-      "--model_name",
+      "--model-name",
       "base.en",
-      "--beam_size",
+      "--beam-size",
       "5",
       "--language",
       "en",
-      "--vad_filter",
+      "--vad-enabled",
       "true",
     ]);
     expect(harness.spawnCalls).toEqual([
@@ -184,16 +185,17 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
         args: [
           "-c",
           expect.stringContaining("WhisperModel(args.model_path)"),
+          "--audio-ref",
           FAKE_STT_VALID_AUDIO_REQUEST.audio.audio_ref,
-          "--model_path",
+          "--model-path",
           "C:/models/faster-whisper/base.en",
-          "--model_name",
+          "--model-name",
           "base.en",
-          "--beam_size",
+          "--beam-size",
           "5",
           "--language",
           "en",
-          "--vad_filter",
+          "--vad-enabled",
           "true",
         ],
         options: {
@@ -227,8 +229,9 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     expect(args).toEqual(
       expect.arrayContaining([
         "-c",
+        "--audio-ref",
         "C:/audio/smoke.wav",
-        "--model_path",
+        "--model-path",
         "C:/models/faster-whisper/base.en",
       ]),
     );
@@ -238,6 +241,35 @@ describe("Phase 14C.3 faster-whisper STT provider wrapper", () => {
     expect(args[1]).not.toContain("C:/audio/smoke.wav");
     expect(args[1]).not.toContain("C:/models/faster-whisper/base.en");
     expect(args).not.toContain("python -m faster_whisper");
+  });
+
+  it("passes model_path as its own argv value and keeps audio_ref separate", () => {
+    const args = buildFasterWhisperArgs(
+      fasterWhisperConfig({
+        modelName: "base",
+        modelPath: "C:/actual/faster-whisper/base-model-dir",
+      }),
+      "C:/audio/generated-by-piper.wav",
+    );
+
+    const modelPathIndex = args.indexOf("--model-path");
+    const modelNameIndex = args.indexOf("--model-name");
+    const audioRefIndex = args.indexOf("--audio-ref");
+    const beamSizeIndex = args.indexOf("--beam-size");
+    const vadEnabledIndex = args.indexOf("--vad-enabled");
+
+    expect(modelPathIndex).toBeGreaterThan(0);
+    expect(args[modelPathIndex + 1]).toBe(
+      "C:/actual/faster-whisper/base-model-dir",
+    );
+    expect(args[modelPathIndex + 1]).not.toBe("model");
+    expect(args[modelNameIndex + 1]).toBe("base");
+    expect(args[audioRefIndex + 1]).toBe("C:/audio/generated-by-piper.wav");
+    expect(args[audioRefIndex + 1]).not.toBe(args[modelPathIndex + 1]);
+    expect(args[beamSizeIndex + 1]).toBe("5");
+    expect(args[vadEnabledIndex + 1]).toBe("true");
+    expect(args[1]).toEqual(expect.stringContaining("--model-path"));
+    expect(args[1]).toEqual(expect.stringContaining("args.model_path"));
   });
 
   it("does not spawn for missing, oversized, or malformed request metadata", async () => {
