@@ -13,6 +13,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "doctor": "tsx scripts/doctor.ts",
+    "smoke:model-runtime": "tsx scripts/model-runtime-smoke.ts",
     "eval": "node --env-file=.env.local --import tsx scripts/run-eval.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
