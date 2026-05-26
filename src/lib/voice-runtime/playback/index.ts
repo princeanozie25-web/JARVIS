@@ -43,3 +43,13 @@ export type {
   PlaybackDriver,
   PlaybackDriverHealth,
 } from "./adapter";
+
+export { createPlaybackSupervisor } from "./supervisor";
+export type {
+  PlaybackSupervisor,
+  PlaybackSupervisorFailureReason,
+  PlaybackSupervisorOperation,
+  PlaybackSupervisorOptions,
+  PlaybackSupervisorResult,
+  PlaybackSupervisorSnapshot,
+} from "./supervisor";
