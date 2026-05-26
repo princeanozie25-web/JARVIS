@@ -18,3 +18,36 @@ export {
   isCaptureStateEvent,
   transitionCaptureState,
 } from "./state-machine";
+
+export {
+  CAPTURE_DEVICE_KINDS,
+  CAPTURE_PERMISSION_STATES,
+  isCaptureDevice,
+  isCapturePermissionState,
+  validateCaptureDeviceSelection,
+} from "./device";
+export type {
+  CaptureDevice,
+  CaptureDeviceHealth,
+  CaptureDeviceId,
+  CaptureDeviceKind,
+  CaptureDeviceSelection,
+  CaptureDeviceSelectionDenialReason,
+  CaptureDeviceSelectionValidationResult,
+  CapturePermissionState,
+} from "./device";
+
+export {
+  CAPTURE_CONFIG_LIMITS,
+  DEFAULT_CAPTURE_RUNTIME_CONFIG,
+  canArmCapture,
+  createDefaultCaptureRuntimeConfig,
+  validateCaptureConfig,
+} from "./config";
+export type {
+  CaptureArmDecision,
+  CaptureArmDenialReason,
+  CaptureConfigDenialReason,
+  CaptureConfigValidationResult,
+  CaptureRuntimeConfig,
+} from "./config";
