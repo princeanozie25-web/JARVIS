@@ -65,3 +65,19 @@ export type {
   CaptureSupervisorSnapshot,
   CaptureSupervisorTimeoutKind,
 } from "./supervisor";
+
+export { createLocalMicCaptureAdapter } from "./mic-adapter";
+export type {
+  LocalMicCaptureAdapterOptions,
+  MicCaptureAdapter,
+  MicCaptureAdapterConfig,
+  MicCaptureAdapterFailureReason,
+  MicCaptureAdapterResult,
+  MicCaptureAdapterSnapshot,
+  MicCaptureAdapterStartResult,
+  MicCaptureDriver,
+  MicCaptureDriverHealth,
+  MicCaptureDriverStartInput,
+  MicCaptureDriverStopResult,
+  MicCaptureResultMetadata,
+} from "./mic-adapter";

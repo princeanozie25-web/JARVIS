@@ -17,7 +17,6 @@ function captureSource(): string {
   return [
     "src/lib/voice-runtime/capture/types.ts",
     "src/lib/voice-runtime/capture/state-machine.ts",
-    "src/lib/voice-runtime/capture/index.ts",
   ]
     .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
     .join("\n");
