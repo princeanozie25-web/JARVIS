@@ -226,3 +226,21 @@ export type {
   SttValidationFailureReason,
   SttValidationResult,
 } from "./stt";
+
+export {
+  CAPTURE_LIFECYCLE_STATES,
+  CAPTURE_STATE_EVENTS,
+  CAPTURE_TERMINAL_STATES,
+  isCaptureLifecycleState,
+  isCaptureStateEvent,
+  transitionCaptureState,
+} from "./capture";
+export type {
+  CaptureErrorClass,
+  CaptureLifecycleState,
+  CaptureSessionMetadata,
+  CaptureStateEvent,
+  CaptureStateTransitionFailureReason,
+  CaptureStateTransitionResult,
+  CaptureTerminalState,
+} from "./capture";
