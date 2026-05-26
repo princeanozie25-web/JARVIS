@@ -51,3 +51,17 @@ export type {
   CaptureConfigValidationResult,
   CaptureRuntimeConfig,
 } from "./config";
+
+export {
+  CAPTURE_SUPERVISOR_TIMEOUT_KINDS,
+  createCaptureSupervisor,
+} from "./supervisor";
+export type {
+  CaptureSupervisor,
+  CaptureSupervisorFailureReason,
+  CaptureSupervisorOperation,
+  CaptureSupervisorOptions,
+  CaptureSupervisorResult,
+  CaptureSupervisorSnapshot,
+  CaptureSupervisorTimeoutKind,
+} from "./supervisor";
