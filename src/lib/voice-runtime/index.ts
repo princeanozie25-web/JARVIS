@@ -289,3 +289,31 @@ export type {
   MicCaptureDriverStopResult,
   MicCaptureResultMetadata,
 } from "./capture";
+
+export {
+  PLAYBACK_CONTENT_CLASSES,
+  PLAYBACK_LIFECYCLE_STATES,
+  PLAYBACK_STATE_EVENTS,
+  PLAYBACK_TERMINAL_STATES,
+  DEFAULT_PLAYBACK_QUEUE_CONFIG,
+  createPlaybackQueue,
+  isPlaybackContentClass,
+  isPlaybackLifecycleState,
+  isPlaybackQueueItem,
+  isPlaybackStateEvent,
+  transitionPlaybackState,
+} from "./playback";
+export type {
+  PlaybackContentClass,
+  PlaybackLifecycleState,
+  PlaybackQueue,
+  PlaybackQueueConfig,
+  PlaybackQueueFailureReason,
+  PlaybackQueueItem,
+  PlaybackQueueResult,
+  PlaybackQueueSnapshot,
+  PlaybackStateEvent,
+  PlaybackStateTransitionFailureReason,
+  PlaybackStateTransitionResult,
+  PlaybackTerminalState,
+} from "./playback";
