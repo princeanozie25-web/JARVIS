@@ -296,6 +296,7 @@ export {
   PLAYBACK_STATE_EVENTS,
   PLAYBACK_TERMINAL_STATES,
   DEFAULT_PLAYBACK_QUEUE_CONFIG,
+  createLocalPlaybackAdapter,
   createPlaybackQueue,
   isPlaybackContentClass,
   isPlaybackLifecycleState,
@@ -304,7 +305,15 @@ export {
   transitionPlaybackState,
 } from "./playback";
 export type {
+  LocalPlaybackAdapter,
+  LocalPlaybackAdapterConfig,
+  LocalPlaybackAdapterOptions,
   PlaybackContentClass,
+  PlaybackAdapterFailureReason,
+  PlaybackAdapterResult,
+  PlaybackAdapterSnapshot,
+  PlaybackDriver,
+  PlaybackDriverHealth,
   PlaybackLifecycleState,
   PlaybackQueue,
   PlaybackQueueConfig,

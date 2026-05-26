@@ -31,3 +31,15 @@ export {
   isPlaybackContentClass,
   isPlaybackQueueItem,
 } from "./queue";
+
+export { createLocalPlaybackAdapter } from "./adapter";
+export type {
+  LocalPlaybackAdapter,
+  LocalPlaybackAdapterConfig,
+  LocalPlaybackAdapterOptions,
+  PlaybackAdapterFailureReason,
+  PlaybackAdapterResult,
+  PlaybackAdapterSnapshot,
+  PlaybackDriver,
+  PlaybackDriverHealth,
+} from "./adapter";
