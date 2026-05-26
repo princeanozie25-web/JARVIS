@@ -91,8 +91,10 @@ describe("Phase 14E.4 local playback driver", () => {
       "Bypass",
       "-Command",
       expect.stringContaining("System.Media.SoundPlayer"),
-      "C:/tmp/jarvis-output.wav",
     ]);
+    expect(runner.calls.args[0]?.[5]).toContain("'C:/tmp/jarvis-output.wav'");
+    expect(runner.calls.args[0]?.length).toBe(6);
+    expect(runner.calls.args[0]).not.toContain("C:/tmp/jarvis-output.wav");
     expect(runner.run).toHaveBeenCalledWith(
       LOCAL_PLAYBACK_DEFAULT_COMMAND,
       buildWindowsPlaybackArgs("C:/tmp/jarvis-output.wav"),
@@ -102,6 +104,38 @@ describe("Phase 14E.4 local playback driver", () => {
         metadata_only: true,
       },
     );
+  });
+
+  it("embeds the WAV path inside the -Command script as a single-quoted literal and avoids $args concatenation", () => {
+    const args = buildWindowsPlaybackArgs("C:\\AI\\piper\\test.wav");
+
+    expect(args).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      expect.stringContaining("System.Media.SoundPlayer"),
+    ]);
+    expect(args.length).toBe(6);
+    const script = args[5] ?? "";
+    expect(script).toContain("'C:\\AI\\piper\\test.wav'");
+    expect(script).toContain("$player.Load()");
+    expect(script).toContain("$player.PlaySync()");
+    // The trailing-argv $args trap from `powershell.exe -Command` must be gone.
+    expect(script).not.toContain("$args");
+    expect(script).not.toContain("$args[0]");
+    // The WAV path must not appear as an additional argv element either.
+    expect(args.slice(0, 5)).not.toContain("C:\\AI\\piper\\test.wav");
+    expect(args.filter((a) => a === "C:\\AI\\piper\\test.wav")).toHaveLength(0);
+  });
+
+  it("escapes embedded single quotes so the path cannot break out of the PowerShell string literal", () => {
+    const args = buildWindowsPlaybackArgs("C:\\tmp\\o'malley.wav");
+    const script = args[5] ?? "";
+
+    expect(script).toContain("'C:\\tmp\\o''malley.wav'");
+    expect(script).not.toContain("'C:\\tmp\\o'malley.wav'");
   });
 
   it("accepts only explicit local WAV refs", async () => {
@@ -138,7 +172,7 @@ describe("Phase 14E.4 local playback driver", () => {
         stderr_preview: expect.stringContaining("bounded playback failure"),
         command_metadata: {
           command: "powershell.exe",
-          arg_count: 7,
+          arg_count: 6,
           shell: false,
           timeout_ms: 120000,
           metadata_only: true,

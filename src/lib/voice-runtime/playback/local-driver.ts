@@ -6,12 +6,20 @@ import type { PlaybackDriver, PlaybackDriverHealth } from "./adapter";
 export const LOCAL_PLAYBACK_DEFAULT_COMMAND = "powershell.exe";
 export const LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS = 120_000;
 
-const WINDOWS_WAV_PLAYBACK_SCRIPT = [
-  "$audioRef = $args[0]",
-  "$player = New-Object System.Media.SoundPlayer($audioRef)",
-  "$player.Load()",
-  "$player.PlaySync()",
-].join("; ");
+function buildWindowsPlaybackScript(audioRef: string): string {
+  // powershell.exe -Command does not populate $args from trailing argv;
+  // any trailing tokens get concatenated into the script text and cause a
+  // parser error. Embed the validated path inline as a single-quoted
+  // PowerShell string literal with single quotes doubled for escaping.
+  // isSafeLocalAudioRef already restricts audioRef to absolute local .wav
+  // paths, so the only injection vector is single quotes.
+  const escaped = audioRef.replace(/'/g, "''");
+  return [
+    `$player = New-Object System.Media.SoundPlayer('${escaped}')`,
+    "$player.Load()",
+    "$player.PlaySync()",
+  ].join("; ");
+}
 
 export type LocalPlaybackDriverFailureReason =
   | "invalid_audio_ref"
@@ -140,8 +148,7 @@ export function buildWindowsPlaybackArgs(audioRef: string): readonly string[] {
     "-ExecutionPolicy",
     "Bypass",
     "-Command",
-    WINDOWS_WAV_PLAYBACK_SCRIPT,
-    audioRef,
+    buildWindowsPlaybackScript(audioRef),
   ];
 }
 

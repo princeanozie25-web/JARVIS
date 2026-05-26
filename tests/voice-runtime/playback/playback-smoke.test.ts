@@ -161,7 +161,7 @@ describe("Phase 14E.4 manual playback smoke harness", () => {
       ].join("\n"),
       command_metadata: {
         command: "powershell.exe",
-        arg_count: 7,
+        arg_count: 6,
         shell: false,
         timeout_ms: 120000,
         metadata_only: true,
@@ -185,7 +185,7 @@ describe("Phase 14E.4 manual playback smoke harness", () => {
       stderr_preview: expect.stringContaining("The wave header is invalid."),
       command_metadata: {
         command: "powershell.exe",
-        arg_count: 7,
+        arg_count: 6,
         shell: false,
         timeout_ms: 120000,
         metadata_only: true,
@@ -200,7 +200,7 @@ describe("Phase 14E.4 manual playback smoke harness", () => {
     expect(output).toContain("exit_code: 1");
     expect(output).toContain("stderr_preview: The wave header is invalid.");
     expect(output).toContain("command: powershell.exe");
-    expect(output).toContain("arg_count: 7");
+    expect(output).toContain("arg_count: 6");
     expect(output).toContain("shell: false");
     expect(output).not.toContain("Traceback (most recent call last):");
     expect(output).not.toContain("C:/secret/playback.py");
