@@ -41,11 +41,26 @@ function fakeRunner(exitCode = 0): LocalPlaybackCommandRunner & {
       calls.args.push(args);
       calls.shell.push(options.shell);
       return {
+        ...(exitCode === 0 ? {} : { error_class: "driver_error" as const }),
         exit_code: exitCode,
         signal: null,
         ...(exitCode === 0
           ? {}
-          : { stderr_preview: "bounded playback failure" }),
+          : {
+              stderr_preview: [
+                "Traceback (most recent call last):",
+                '  File "C:/secret/playback.py", line 1, in <module>',
+                "bounded playback failure",
+                "x".repeat(900),
+              ].join("\n"),
+              command_metadata: {
+                command,
+                arg_count: args.length,
+                shell: options.shell,
+                timeout_ms: options.timeout_ms,
+                metadata_only: true as const,
+              },
+            }),
         metadata_only: true as const,
       };
     }),
@@ -118,8 +133,16 @@ describe("Phase 14E.4 local playback driver", () => {
     await expect(failing.playLoaded()).rejects.toMatchObject({
       reason: "playback_failed",
       diagnostics: {
+        error_class: "driver_error",
         exit_code: 1,
-        stderr_preview: "bounded playback failure",
+        stderr_preview: expect.stringContaining("bounded playback failure"),
+        command_metadata: {
+          command: "powershell.exe",
+          arg_count: 7,
+          shell: false,
+          timeout_ms: 120000,
+          metadata_only: true,
+        },
         metadata_only: true,
       },
     });
@@ -129,6 +152,32 @@ describe("Phase 14E.4 local playback driver", () => {
       error_class: "driver_error",
       metadata_only: true,
     });
+  });
+
+  it("bounds diagnostics and strips raw traceback frames", async () => {
+    const failing = createLocalPlaybackDriver({
+      runner: fakeRunner(1),
+    });
+    await failing.loadAudioRef("C:/tmp/jarvis-output.wav");
+
+    try {
+      await failing.playLoaded();
+      throw new Error("expected playback failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(LocalPlaybackDriverError);
+      const diagnostics = (error as LocalPlaybackDriverError).diagnostics;
+      expect(diagnostics?.stderr_preview).toContain("bounded playback failure");
+      expect(diagnostics?.stderr_preview).not.toContain(
+        "Traceback (most recent call last):",
+      );
+      expect(diagnostics?.stderr_preview).not.toContain(
+        "C:/secret/playback.py",
+      );
+      expect(diagnostics?.stderr_preview?.length ?? 0).toBeLessThanOrEqual(512);
+      expect(JSON.stringify(diagnostics)).not.toMatch(
+        /raw_audio|audio_bytes|waveform|pcm|RIFF|base64/i,
+      );
+    }
   });
 
   it("stops through the injected runner and returns no raw audio", async () => {

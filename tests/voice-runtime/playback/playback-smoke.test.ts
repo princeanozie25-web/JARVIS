@@ -10,6 +10,7 @@ import {
   type PlaybackSmokeReport,
 } from "../../../scripts/voice/playback-smoke";
 import type {
+  LocalPlaybackCommandResult,
   PlaybackDriver,
   PlaybackDriverHealth,
 } from "../../../src/lib/voice-runtime";
@@ -43,6 +44,31 @@ function fakeDriver(): PlaybackDriver & {
       calls.stopCount += 1;
     }),
     health: vi.fn(async () => health),
+  };
+}
+
+function failingDriver(
+  diagnostics: LocalPlaybackCommandResult,
+): PlaybackDriver {
+  return {
+    loadAudioRef: vi.fn(async () => undefined),
+    playLoaded: vi.fn(async () => {
+      throw {
+        reason: "playback_failed",
+        diagnostics,
+        metadata_only: true,
+      };
+    }),
+    stop: vi.fn(async () => undefined),
+    health: vi.fn(
+      async () =>
+        ({
+          ok: false,
+          degraded: true,
+          error_class: "driver_error",
+          metadata_only: true,
+        }) as const,
+    ),
   };
 }
 
@@ -119,6 +145,72 @@ describe("Phase 14E.4 manual playback smoke harness", () => {
       name: "PlaybackSmokeError",
       message: expect.stringContaining("metadata failed closed"),
     });
+  });
+
+  it("prints bounded driver diagnostics on playback failure", async () => {
+    const lines: string[] = [];
+    const diagnostics: LocalPlaybackCommandResult = {
+      error_class: "driver_error",
+      exit_code: 1,
+      signal: null,
+      stderr_preview: [
+        "Traceback (most recent call last):",
+        '  File "C:/secret/playback.py", line 1, in <module>',
+        "The wave header is invalid.",
+        "x".repeat(900),
+      ].join("\n"),
+      command_metadata: {
+        command: "powershell.exe",
+        arg_count: 7,
+        shell: false,
+        timeout_ms: 120000,
+        metadata_only: true,
+      },
+      metadata_only: true,
+    };
+
+    await expect(
+      runPlaybackSmoke({
+        env: {
+          [PLAYBACK_SMOKE_AUDIO_REF_ENV]: "C:/tmp/jarvis-output.wav",
+        },
+        statAudio: vi.fn(async () => ({ size: 32768 })),
+        createDriver: () => failingDriver(diagnostics),
+        writeLine: (line) => lines.push(line),
+      }),
+    ).rejects.toMatchObject({
+      name: "PlaybackSmokeError",
+      error_class: "driver_error",
+      exit_code: 1,
+      stderr_preview: expect.stringContaining("The wave header is invalid."),
+      command_metadata: {
+        command: "powershell.exe",
+        arg_count: 7,
+        shell: false,
+        timeout_ms: 120000,
+        metadata_only: true,
+      },
+    });
+
+    const output = lines.join("\n");
+    expect(output).toContain("status: failed");
+    expect(output).toContain("provider_id: manual-playback-smoke");
+    expect(output).toContain("playback_state: failed");
+    expect(output).toContain("error_class: driver_error");
+    expect(output).toContain("exit_code: 1");
+    expect(output).toContain("stderr_preview: The wave header is invalid.");
+    expect(output).toContain("command: powershell.exe");
+    expect(output).toContain("arg_count: 7");
+    expect(output).toContain("shell: false");
+    expect(output).not.toContain("Traceback (most recent call last):");
+    expect(output).not.toContain("C:/secret/playback.py");
+    expect(output).not.toMatch(
+      /raw_audio|audio_bytes|waveform|pcm|RIFF|base64|transcript|prompt|response/i,
+    );
+    const stderrLine = lines.find((line) => line.startsWith("stderr_preview:"));
+    expect(stderrLine?.length ?? 0).toBeLessThanOrEqual(
+      "stderr_preview: ".length + 512,
+    );
   });
 
   it("does not execute on import or wire lifecycle scripts", () => {

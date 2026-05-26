@@ -25,10 +25,20 @@ export interface LocalPlaybackCommandOptions {
   readonly metadata_only: true;
 }
 
+export interface LocalPlaybackCommandMetadata {
+  readonly command: string;
+  readonly arg_count: number;
+  readonly shell: false;
+  readonly timeout_ms: number;
+  readonly metadata_only: true;
+}
+
 export interface LocalPlaybackCommandResult {
+  readonly error_class?: PlaybackDriverHealth["error_class"];
   readonly exit_code: number | null;
   readonly signal: string | null;
   readonly stderr_preview?: string;
+  readonly command_metadata?: LocalPlaybackCommandMetadata;
   readonly metadata_only: true;
 }
 
@@ -99,7 +109,10 @@ export function createLocalPlaybackDriver(
       if (result.exit_code !== 0) {
         lastError = "driver_error";
         degraded = true;
-        throw new LocalPlaybackDriverError("playback_failed", result);
+        throw new LocalPlaybackDriverError(
+          "playback_failed",
+          withCommandDiagnostics(result, command, timeoutMs),
+        );
       }
     },
     stop: async () => {
@@ -168,9 +181,11 @@ export function createNodePlaybackCommandRunner(): LocalPlaybackCommandRunner {
           clearTimeout(timeout);
           active = null;
           resolve({
+            error_class: "unavailable",
             exit_code: null,
             signal: null,
             stderr_preview: "playback command unavailable",
+            command_metadata: commandMetadata(command, args.length, options),
             metadata_only: true,
           });
         });
@@ -178,11 +193,13 @@ export function createNodePlaybackCommandRunner(): LocalPlaybackCommandRunner {
           clearTimeout(timeout);
           active = null;
           resolve({
+            ...(exitCode === 0 ? {} : { error_class: "driver_error" }),
             exit_code: exitCode,
             signal,
             ...(stderr.length === 0
               ? {}
-              : { stderr_preview: stderr.slice(0, 512) }),
+              : { stderr_preview: safeDiagnosticPreview(stderr) }),
+            command_metadata: commandMetadata(command, args.length, options),
             metadata_only: true,
           });
         });
@@ -192,4 +209,58 @@ export function createNodePlaybackCommandRunner(): LocalPlaybackCommandRunner {
       active = null;
     },
   };
+}
+
+function withCommandDiagnostics(
+  result: LocalPlaybackCommandResult,
+  command: string,
+  timeoutMs: number,
+): LocalPlaybackCommandResult {
+  return {
+    error_class: result.error_class ?? "driver_error",
+    exit_code: result.exit_code,
+    signal: result.signal,
+    ...(result.stderr_preview === undefined
+      ? {}
+      : { stderr_preview: safeDiagnosticPreview(result.stderr_preview) }),
+    command_metadata:
+      result.command_metadata ??
+      commandMetadata(command, buildWindowsPlaybackArgs("").length, {
+        shell: false,
+        timeout_ms: timeoutMs,
+        metadata_only: true,
+      }),
+    metadata_only: true,
+  };
+}
+
+function commandMetadata(
+  command: string,
+  argCount: number,
+  options: LocalPlaybackCommandOptions,
+): LocalPlaybackCommandMetadata {
+  return {
+    command: command.slice(0, 80),
+    arg_count: argCount,
+    shell: options.shell,
+    timeout_ms: options.timeout_ms,
+    metadata_only: true,
+  };
+}
+
+function safeDiagnosticPreview(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !isTracebackFrame(line.trim()))
+    .join("\n")
+    .slice(0, 512);
+}
+
+function isTracebackFrame(line: string): boolean {
+  return (
+    line === "Traceback (most recent call last):" ||
+    /^File\s+["'][^"']+["'],\s+line\s+\d+/i.test(line) ||
+    /^at\s+.+\(.+:\d+:\d+\)$/i.test(line) ||
+    /^~+\^*$/.test(line)
+  );
 }

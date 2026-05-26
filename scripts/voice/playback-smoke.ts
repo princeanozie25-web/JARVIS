@@ -7,6 +7,7 @@ import {
   createLocalPlaybackAdapter,
   createLocalPlaybackDriver,
   createPlaybackSupervisor,
+  type LocalPlaybackCommandResult,
   type LocalPlaybackAdapter,
   type PlaybackDriver,
   type PlaybackQueueItem,
@@ -18,9 +19,21 @@ export const PLAYBACK_SMOKE_DURATION_MS_ENV =
   "JARVIS_PLAYBACK_SMOKE_DURATION_MS";
 
 export class PlaybackSmokeError extends Error {
-  constructor(message: string) {
+  readonly error_class?: string;
+  readonly exit_code?: number | null;
+  readonly stderr_preview?: string;
+  readonly command_metadata?: NonNullable<
+    LocalPlaybackCommandResult["command_metadata"]
+  >;
+  readonly metadata_only = true;
+
+  constructor(message: string, diagnostics?: PlaybackSmokeFailureDiagnostics) {
     super(message);
     this.name = "PlaybackSmokeError";
+    this.error_class = diagnostics?.error_class;
+    this.exit_code = diagnostics?.exit_code;
+    this.stderr_preview = diagnostics?.stderr_preview;
+    this.command_metadata = diagnostics?.command_metadata;
   }
 }
 
@@ -44,6 +57,15 @@ export interface PlaybackSmokeReport {
   readonly size_bytes: number;
   readonly playback_state: string;
   readonly metadata_only: true;
+}
+
+export interface PlaybackSmokeFailureDiagnostics {
+  readonly error_class: string;
+  readonly exit_code?: number | null;
+  readonly stderr_preview?: string;
+  readonly command_metadata?: NonNullable<
+    LocalPlaybackCommandResult["command_metadata"]
+  >;
 }
 
 export async function runPlaybackSmoke(
@@ -77,7 +99,8 @@ export async function runPlaybackSmoke(
     dependencies.createSupervisor ??
     ((adapter: LocalPlaybackAdapter) => createPlaybackSupervisor({ adapter }));
 
-  const driver = createDriver();
+  const diagnosticsRef: { current?: PlaybackSmokeFailureDiagnostics } = {};
+  const driver = capturePlaybackDiagnostics(createDriver(), diagnosticsRef);
   const adapter = createAdapter(driver);
   const supervisor = createSupervisor(adapter);
   const item = playbackSmokeItem({
@@ -100,8 +123,30 @@ export async function runPlaybackSmoke(
   }
   const playback = await supervisor.beginPlayback();
   if (!playback.ok) {
+    const diagnostics =
+      diagnosticsRef.current ??
+      ({
+        error_class: playback.reasons[0] ?? "driver_error",
+      } satisfies PlaybackSmokeFailureDiagnostics);
+    writeLine("JARVIS local playback smoke");
+    writeLine("status: failed");
+    writeLine(`provider_id: ${item.provider_id}`);
+    writeLine(`playback_state: ${playback.snapshot.playback_state}`);
+    writeLine(`error_class: ${diagnostics.error_class}`);
+    if (diagnostics.exit_code !== undefined) {
+      writeLine(`exit_code: ${String(diagnostics.exit_code)}`);
+    }
+    if (diagnostics.stderr_preview) {
+      writeLine(`stderr_preview: ${diagnostics.stderr_preview}`);
+    }
+    if (diagnostics.command_metadata) {
+      writeLine(`command: ${diagnostics.command_metadata.command}`);
+      writeLine(`arg_count: ${String(diagnostics.command_metadata.arg_count)}`);
+      writeLine(`shell: ${String(diagnostics.command_metadata.shell)}`);
+    }
     throw new PlaybackSmokeError(
       `Playback smoke play failed closed: ${playback.reasons.join(",")}.`,
+      diagnostics,
     );
   }
   const completed = await supervisor.complete();
@@ -176,6 +221,77 @@ function parseNonNegativeInteger(value: string | undefined): number | null {
   if (!/^\d+$/.test(value.trim())) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function capturePlaybackDiagnostics(
+  driver: PlaybackDriver,
+  diagnosticsRef: { current?: PlaybackSmokeFailureDiagnostics },
+): PlaybackDriver {
+  return {
+    loadAudioRef: async (audioRef) => driver.loadAudioRef(audioRef),
+    playLoaded: async () => {
+      try {
+        await driver.playLoaded();
+      } catch (error) {
+        diagnosticsRef.current = extractPlaybackFailureDiagnostics(error);
+        throw error;
+      }
+    },
+    stop: async () => driver.stop(),
+    health: async () => driver.health(),
+  };
+}
+
+function extractPlaybackFailureDiagnostics(
+  error: unknown,
+): PlaybackSmokeFailureDiagnostics {
+  const record =
+    error && typeof error === "object"
+      ? (error as Record<string, unknown>)
+      : {};
+  const diagnostics = isCommandResult(record.diagnostics)
+    ? record.diagnostics
+    : undefined;
+  return {
+    error_class:
+      readString(diagnostics?.error_class) ??
+      readString(record.reason) ??
+      "driver_error",
+    ...(diagnostics?.exit_code === undefined
+      ? {}
+      : { exit_code: diagnostics.exit_code }),
+    ...(diagnostics?.stderr_preview === undefined
+      ? {}
+      : { stderr_preview: safeDiagnosticPreview(diagnostics.stderr_preview) }),
+    ...(diagnostics?.command_metadata === undefined
+      ? {}
+      : { command_metadata: diagnostics.command_metadata }),
+  };
+}
+
+function isCommandResult(value: unknown): value is LocalPlaybackCommandResult {
+  return Boolean(value && typeof value === "object");
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function safeDiagnosticPreview(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !isTracebackFrame(line.trim()))
+    .join("\n")
+    .slice(0, 512);
+}
+
+function isTracebackFrame(line: string): boolean {
+  return (
+    line === "Traceback (most recent call last):" ||
+    /^File\s+["'][^"']+["'],\s+line\s+\d+/i.test(line) ||
+    /^at\s+.+\(.+:\d+:\d+\)$/i.test(line) ||
+    /^~+\^*$/.test(line)
+  );
 }
 
 function isDirectCliInvocation(): boolean {
