@@ -53,3 +53,20 @@ export type {
   PlaybackSupervisorResult,
   PlaybackSupervisorSnapshot,
 } from "./supervisor";
+
+export {
+  LOCAL_PLAYBACK_DEFAULT_COMMAND,
+  LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS,
+  LocalPlaybackDriverError,
+  buildWindowsPlaybackArgs,
+  createLocalPlaybackDriver,
+  createNodePlaybackCommandRunner,
+  isSafeLocalAudioRef,
+} from "./local-driver";
+export type {
+  LocalPlaybackCommandOptions,
+  LocalPlaybackCommandResult,
+  LocalPlaybackCommandRunner,
+  LocalPlaybackDriverFailureReason,
+  LocalPlaybackDriverOptions,
+} from "./local-driver";

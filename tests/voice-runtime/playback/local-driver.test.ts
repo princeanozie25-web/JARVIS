@@ -1,0 +1,179 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  LOCAL_PLAYBACK_DEFAULT_COMMAND,
+  LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS,
+  LocalPlaybackDriverError,
+  buildWindowsPlaybackArgs,
+  createLocalPlaybackDriver,
+  isSafeLocalAudioRef,
+  type LocalPlaybackCommandRunner,
+} from "../../../src/lib/voice-runtime";
+
+function localDriverSource(): string {
+  return readFileSync(
+    join(process.cwd(), "src/lib/voice-runtime/playback/local-driver.ts"),
+    "utf8",
+  );
+}
+
+function fakeRunner(exitCode = 0): LocalPlaybackCommandRunner & {
+  readonly calls: {
+    readonly commands: string[];
+    readonly args: string[][];
+    readonly shell: boolean[];
+    stopCount: number;
+  };
+} {
+  const calls = {
+    commands: [] as string[],
+    args: [] as string[][],
+    shell: [] as boolean[],
+    stopCount: 0,
+  };
+  return {
+    calls,
+    run: vi.fn(async (command, args, options) => {
+      calls.commands.push(command);
+      calls.args.push(args);
+      calls.shell.push(options.shell);
+      return {
+        exit_code: exitCode,
+        signal: null,
+        ...(exitCode === 0
+          ? {}
+          : { stderr_preview: "bounded playback failure" }),
+        metadata_only: true as const,
+      };
+    }),
+    stop: vi.fn(async () => {
+      calls.stopCount += 1;
+    }),
+  };
+}
+
+describe("Phase 14E.4 local playback driver", () => {
+  it("builds a bounded Windows playback command with args array and shell=false", async () => {
+    const runner = fakeRunner();
+    const driver = createLocalPlaybackDriver({
+      runner,
+      command: "powershell.exe",
+      timeout_ms: 5000,
+    });
+
+    await driver.loadAudioRef("C:/tmp/jarvis-output.wav");
+    await driver.playLoaded();
+
+    expect(runner.calls.commands).toEqual(["powershell.exe"]);
+    expect(runner.calls.shell).toEqual([false]);
+    expect(runner.calls.args[0]).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      expect.stringContaining("System.Media.SoundPlayer"),
+      "C:/tmp/jarvis-output.wav",
+    ]);
+    expect(runner.run).toHaveBeenCalledWith(
+      LOCAL_PLAYBACK_DEFAULT_COMMAND,
+      buildWindowsPlaybackArgs("C:/tmp/jarvis-output.wav"),
+      {
+        shell: false,
+        timeout_ms: 5000,
+        metadata_only: true,
+      },
+    );
+  });
+
+  it("accepts only explicit local WAV refs", async () => {
+    expect(isSafeLocalAudioRef("C:/tmp/jarvis-output.wav")).toBe(true);
+    expect(isSafeLocalAudioRef("https://example.com/audio.wav")).toBe(false);
+    expect(isSafeLocalAudioRef("C:/tmp/jarvis-output.mp3")).toBe(false);
+    expect(isSafeLocalAudioRef("relative-output.wav")).toBe(false);
+
+    const driver = createLocalPlaybackDriver({ runner: fakeRunner() });
+    await expect(
+      driver.loadAudioRef("https://example.com/audio.wav"),
+    ).rejects.toMatchObject({
+      name: "LocalPlaybackDriverError",
+      reason: "invalid_audio_ref",
+      metadata_only: true,
+    });
+  });
+
+  it("fails closed on unloaded playback and command failure", async () => {
+    const unloaded = createLocalPlaybackDriver({ runner: fakeRunner() });
+    await expect(unloaded.playLoaded()).rejects.toBeInstanceOf(
+      LocalPlaybackDriverError,
+    );
+
+    const failing = createLocalPlaybackDriver({
+      runner: fakeRunner(1),
+    });
+    await failing.loadAudioRef("C:/tmp/jarvis-output.wav");
+    await expect(failing.playLoaded()).rejects.toMatchObject({
+      reason: "playback_failed",
+      diagnostics: {
+        exit_code: 1,
+        stderr_preview: "bounded playback failure",
+        metadata_only: true,
+      },
+    });
+    await expect(failing.health()).resolves.toEqual({
+      ok: false,
+      degraded: true,
+      error_class: "driver_error",
+      metadata_only: true,
+    });
+  });
+
+  it("stops through the injected runner and returns no raw audio", async () => {
+    const runner = fakeRunner();
+    const driver = createLocalPlaybackDriver({ runner });
+
+    await driver.stop();
+    expect(runner.calls.stopCount).toBe(1);
+    expect(await driver.health()).toEqual({
+      ok: true,
+      degraded: false,
+      metadata_only: true,
+    });
+    expect(JSON.stringify(await driver.health())).not.toMatch(
+      /raw_audio|audio_bytes|waveform|pcm|RIFF|base64/i,
+    );
+  });
+
+  it("does not introduce TTS/STT execution, runtime, persistence, cloud, UI, or autoplay", () => {
+    const source = localDriverSource();
+
+    expect(source).not.toMatch(
+      /createPiperTtsProvider|synthesize\s*\(|createFasterWhisperSttProvider|transcribe\s*\(|faster_whisper|piper/i,
+    );
+    expect(source).not.toMatch(
+      /createModelRuntime|from\s+["'][^"']*\/models(?:\/index)?["']|router\.|from\s+["'][^"']*\/router/i,
+    );
+    expect(source).not.toMatch(
+      /appendEvent|event-store|sqlite|database|writeFile|appendFile|persistTelemetry\s*\(|telemetryStore/i,
+    );
+    expect(source).not.toMatch(
+      /fetch\s*\(|WebSocket|EventSource|XMLHttpRequest|from\s+["'](?:node:http|node:https|openai|@anthropic-ai\/sdk)["']/i,
+    );
+    expect(source).not.toMatch(
+      /tsx|jsx|React|useEffect|useState|tauri|invoke\s*\(|app\/api/i,
+    );
+    expect(source).not.toMatch(/autoplay|auto.?play/i);
+    expect(source).not.toMatch(
+      /from\s+["'](?:speaker|wav|node-wav|naudiodon)["']/i,
+    );
+    expect(source).toContain("shell: options.shell");
+  });
+
+  it("keeps default command metadata deterministic", () => {
+    expect(LOCAL_PLAYBACK_DEFAULT_COMMAND).toBe("powershell.exe");
+    expect(LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS).toBe(120000);
+  });
+});
