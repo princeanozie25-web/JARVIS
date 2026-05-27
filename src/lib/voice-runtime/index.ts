@@ -420,3 +420,21 @@ export type {
   VoiceInterruptionSnapshot,
   VoiceInterruptionTarget,
 } from "./interruption";
+
+export { createVoiceCancellationSupervisor } from "./cancellation-supervisor";
+export type {
+  VoiceCancellationCaptureTarget,
+  VoiceCancellationPlaybackTarget,
+  VoiceCancellationQueueTarget,
+  VoiceCancellationRuntimeTarget,
+  VoiceCancellationSttTarget,
+  VoiceCancellationSupervisor,
+  VoiceCancellationSupervisorApplyOptions,
+  VoiceCancellationSupervisorFailureReason,
+  VoiceCancellationSupervisorOptions,
+  VoiceCancellationSupervisorResult,
+  VoiceCancellationSupervisorSnapshot,
+  VoiceCancellationSupervisorTargets,
+  VoiceCancellationTargetResult,
+  VoiceCancellationTtsTarget,
+} from "./cancellation-supervisor";
