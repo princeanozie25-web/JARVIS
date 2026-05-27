@@ -76,6 +76,16 @@ export {
   createFakeVisionSessionRunner,
 } from "./session";
 
+export {
+  VISION_METADATA_ALLOWED_FIELDS,
+  VISION_TELEMETRY_FORBIDDEN_FIELD_PATTERNS,
+  sanitizeVisionMetadataPayload,
+  sanitizeVisionObservation,
+  sanitizeVisionProviderResult,
+  sanitizeVisionSessionLifecycleEvent,
+  sanitizeVisionTelemetryEventForEmission,
+} from "./redaction";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -124,3 +134,9 @@ export type {
   VisionSessionRunnerOptions,
   VisionSessionState,
 } from "./session";
+
+export type {
+  VisionMetadataAllowedField,
+  VisionRedactionReason,
+  VisionRedactionResult,
+} from "./redaction";

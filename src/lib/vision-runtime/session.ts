@@ -22,6 +22,11 @@ import {
   type VisionPolicyDenialReason,
 } from "./policy";
 import type { VisionProviderCancellationToken } from "./provider";
+import {
+  sanitizeVisionObservation,
+  sanitizeVisionProviderResult,
+  sanitizeVisionSessionLifecycleEvent,
+} from "./redaction";
 import { VisionProviderRegistry } from "./registry";
 
 export const VISION_SESSION_STATES = [
@@ -300,11 +305,17 @@ export class VisionSessionRunner {
       simulated_latency_ms: request.simulated_latency_ms,
       metadata_only: true,
     });
-    const providerResult = VisionProviderResultSchema.parse(
-      providerRun.provider_result,
+    const providerResult = sanitizeOrThrow(
+      sanitizeVisionProviderResult(
+        VisionProviderResultSchema.parse(providerRun.provider_result),
+      ),
+      "Unsafe vision provider result.",
     );
     const observations = providerRun.observations.map((observation) =>
-      VisionObservationSchema.parse(observation),
+      sanitizeOrThrow(
+        sanitizeVisionObservation(VisionObservationSchema.parse(observation)),
+        "Unsafe vision observation.",
+      ),
     );
 
     events.push(
@@ -455,7 +466,7 @@ function createVisionSessionLifecycleEvent(input: {
   readonly provider_executed?: boolean;
 }): VisionSessionLifecycleEvent {
   const eventSlug = input.event_type.replace(/_/g, "-");
-  return VisionSessionLifecycleEventSchema.parse({
+  const event = VisionSessionLifecycleEventSchema.parse({
     event_id: `${input.session_id}.${eventSlug}.${input.timestamp_ms}`,
     event_type: input.event_type,
     session_id: input.session_id,
@@ -482,6 +493,10 @@ function createVisionSessionLifecycleEvent(input: {
     memory_mutated: false,
     runtime_executed: false,
   });
+  return sanitizeOrThrow(
+    sanitizeVisionSessionLifecycleEvent(event),
+    "Unsafe vision lifecycle event.",
+  );
 }
 
 function sessionRunResult(input: {
@@ -526,9 +541,19 @@ function sessionRunResult(input: {
 
   return {
     session,
-    events: input.events,
+    events: input.events.map((event) =>
+      sanitizeOrThrow(
+        sanitizeVisionSessionLifecycleEvent(event),
+        "Unsafe vision lifecycle event.",
+      ),
+    ),
     provider_result: input.provider_result,
-    observations: input.observations,
+    observations: input.observations.map((observation) =>
+      sanitizeOrThrow(
+        sanitizeVisionObservation(observation),
+        "Unsafe vision observation.",
+      ),
+    ),
     metadata_only: true,
     advisory_only: true,
     derived: true,
@@ -542,4 +567,18 @@ function sessionRunResult(input: {
     memory_mutated: false,
     runtime_executed: false,
   };
+}
+
+function sanitizeOrThrow<T>(
+  result:
+    | { readonly ok: true; readonly value: T }
+    | {
+        readonly ok: false;
+        readonly reason: string;
+        readonly field_path: string | null;
+      },
+  message: string,
+): T {
+  if (result.ok) return result.value;
+  throw new TypeError(`${message} ${result.reason}:${result.field_path ?? ""}`);
 }
