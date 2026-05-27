@@ -86,6 +86,23 @@ export {
   sanitizeVisionTelemetryEventForEmission,
 } from "./redaction";
 
+export {
+  VISION_SCREENSHOT_DENIAL_REASONS,
+  VISION_SCREENSHOT_INPUT_KINDS,
+  VISION_SCREENSHOT_REQUEST_STATUSES,
+  VISION_SCREENSHOT_TRIGGER_SOURCES,
+  VisionScreenshotDenialReasonSchema,
+  VisionScreenshotGateDecisionSchema,
+  VisionScreenshotInputKindSchema,
+  VisionScreenshotRegionMetadataSchema,
+  VisionScreenshotRequestSchema,
+  VisionScreenshotRequestStatusSchema,
+  VisionScreenshotSourceMetadataSchema,
+  VisionScreenshotTriggerSourceSchema,
+  VisionScreenshotUserTriggerMetadataSchema,
+  validateVisionScreenshotRequest,
+} from "./screenshot";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -140,3 +157,15 @@ export type {
   VisionRedactionReason,
   VisionRedactionResult,
 } from "./redaction";
+
+export type {
+  VisionScreenshotDenialReason,
+  VisionScreenshotGateDecision,
+  VisionScreenshotInputKind,
+  VisionScreenshotRegionMetadata,
+  VisionScreenshotRequest,
+  VisionScreenshotRequestStatus,
+  VisionScreenshotSourceMetadata,
+  VisionScreenshotTriggerSource,
+  VisionScreenshotUserTriggerMetadata,
+} from "./screenshot";
