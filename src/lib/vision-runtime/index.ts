@@ -119,6 +119,17 @@ export {
   createFakeScreenshotCaptureAdapterFactory,
 } from "./screenshot-capture";
 
+export {
+  VISION_SCREENSHOT_SESSION_EVENT_TYPES,
+  VISION_SCREENSHOT_SESSION_STATUSES,
+  ScreenshotSessionRunner,
+  VisionScreenshotSessionEventTypeSchema,
+  VisionScreenshotSessionLifecycleEventSchema,
+  VisionScreenshotSessionResultSchema,
+  VisionScreenshotSessionStatusSchema,
+  runFakeScreenshotOcrSession,
+} from "./screenshot-session";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -196,3 +207,12 @@ export type {
   VisionScreenshotCaptureStatus,
   VisionScreenshotDimensionBand,
 } from "./screenshot-capture";
+
+export type {
+  FakeScreenshotOcrSessionInput,
+  ScreenshotSessionRunnerOptions,
+  VisionScreenshotSessionEventType,
+  VisionScreenshotSessionLifecycleEvent,
+  VisionScreenshotSessionResult,
+  VisionScreenshotSessionStatus,
+} from "./screenshot-session";
