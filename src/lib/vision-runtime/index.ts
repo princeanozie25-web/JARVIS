@@ -103,6 +103,22 @@ export {
   validateVisionScreenshotRequest,
 } from "./screenshot";
 
+export {
+  VISION_SCREENSHOT_CAPTURE_ADAPTER_KINDS,
+  VISION_SCREENSHOT_CAPTURE_FAILURE_REASONS,
+  VISION_SCREENSHOT_CAPTURE_STATUSES,
+  VISION_SCREENSHOT_DIMENSION_BANDS,
+  VisionScreenshotCaptureAdapterKindSchema,
+  VisionScreenshotCaptureCancellationSchema,
+  VisionScreenshotCaptureFailureReasonSchema,
+  VisionScreenshotCaptureOptionsSchema,
+  VisionScreenshotCaptureResultSchema,
+  VisionScreenshotCaptureStatusSchema,
+  VisionScreenshotDimensionBandSchema,
+  createFakeScreenshotCaptureAdapter,
+  createFakeScreenshotCaptureAdapterFactory,
+} from "./screenshot-capture";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -169,3 +185,14 @@ export type {
   VisionScreenshotTriggerSource,
   VisionScreenshotUserTriggerMetadata,
 } from "./screenshot";
+
+export type {
+  VisionScreenshotCaptureAdapter,
+  VisionScreenshotCaptureAdapterKind,
+  VisionScreenshotCaptureCancellation,
+  VisionScreenshotCaptureFailureReason,
+  VisionScreenshotCaptureOptions,
+  VisionScreenshotCaptureResult,
+  VisionScreenshotCaptureStatus,
+  VisionScreenshotDimensionBand,
+} from "./screenshot-capture";
