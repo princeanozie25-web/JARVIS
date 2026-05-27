@@ -21,12 +21,43 @@ import {
   type TtsSynthesisResult,
   type VoiceRuntimeAdapter,
   type VoiceRuntimeAdapterHealth,
+  type VoiceRuntimeAdapterResponse,
   type VoiceRuntimeBridgeCapturedAudioMetadata,
 } from "../../src/lib/voice-runtime";
 import type { ModelRuntime, ModelRuntimeExecuteResult } from "../../src/models";
 
 const SAFE_TRANSCRIPT = "Good evening. All systems are operational.";
 const SAFE_OUTPUT_REF = "C:/tmp/jarvis-fake-tts.wav";
+
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+  readonly reject: (error: unknown) => void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve;
+    reject = innerReject;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitUntil(assertion: () => void): Promise<void> {
+  let lastError: unknown;
+  for (let index = 0; index < 20; index += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await Promise.resolve();
+    }
+  }
+  throw lastError;
+}
 
 function orchestratorSource(): string {
   return [
@@ -104,6 +135,18 @@ function ttsResult(): TtsSynthesisResult {
     },
     latency_ms: 5,
     degraded: false,
+    metadata_only: true,
+  };
+}
+
+function runtimeResponse(): VoiceRuntimeAdapterResponse {
+  return {
+    response_id: "fake-runtime-response-race",
+    assistant_text: FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+    latency_ms: 17,
+    degraded: false,
+    provider_id: "fake-voice-runtime",
+    finish_reason: "stop",
     metadata_only: true,
   };
 }
@@ -356,6 +399,97 @@ function fakeCancellationSupervisor(
         reasons: [],
         metadata_only: true,
       } as VoiceCancellationSupervisorResult;
+    }),
+    snapshot: vi.fn(() => ({
+      interruption_id: null,
+      turn_id: null,
+      session_id: null,
+      applied: false,
+      degraded: false,
+      target_results: [],
+      metadata_only: true as const,
+    })),
+  };
+}
+
+function successfulCancellationResult(
+  turnId = "voice-turn-1",
+): VoiceCancellationSupervisorResult {
+  return {
+    ok: true,
+    plan: {
+      interruption_id: "voice-interruption-test",
+      session_id: "voice-session-1",
+      turn_id: turnId,
+      target: "playback",
+      scope: "full_turn_interrupt",
+      reason: "barge_in",
+      created_at: 2000,
+      targets: ["capture", "stt", "runtime", "tts", "playback", "queue"],
+      scopes: [
+        "cancel_capture",
+        "cancel_stt",
+        "cancel_runtime",
+        "cancel_tts",
+        "cancel_playback",
+        "clear_queue",
+      ],
+      metadata_only: true,
+    },
+    target_results: [
+      "capture",
+      "stt",
+      "runtime",
+      "tts",
+      "playback",
+      "queue",
+    ].map((target, index) => ({
+      target,
+      scope: [
+        "cancel_capture",
+        "cancel_stt",
+        "cancel_runtime",
+        "cancel_tts",
+        "cancel_playback",
+        "clear_queue",
+      ][index],
+      applied: true,
+      cancelled: true,
+      degraded: false,
+      completed_at: 2100 + index,
+      metadata_only: true,
+    })),
+    snapshot: {
+      interruption_id: "voice-interruption-test",
+      turn_id: turnId,
+      session_id: "voice-session-1",
+      applied: true,
+      degraded: false,
+      target_results: [],
+      metadata_only: true,
+    },
+    reasons: [],
+    metadata_only: true,
+  } as VoiceCancellationSupervisorResult;
+}
+
+function deferredCancellationSupervisor(
+  playbackQueue: PlaybackQueue,
+  gate: Deferred<VoiceCancellationSupervisorResult>,
+  order: string[],
+): VoiceCancellationSupervisor {
+  return {
+    applyInterruption: vi.fn(async (input) => {
+      const event = input as {
+        readonly turn_id: string;
+        readonly scope: "full_turn_interrupt";
+        readonly reason: "barge_in";
+      };
+      order.push(`${event.scope}:${event.turn_id}:${event.reason}:start`);
+      const result = await gate.promise;
+      order.push(`${event.scope}:${event.turn_id}:${event.reason}:finish`);
+      if (result.ok) playbackQueue.clear("full_turn_interrupt");
+      return result;
     }),
     snapshot: vi.fn(() => ({
       interruption_id: null,
@@ -940,6 +1074,326 @@ describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
     });
     expect(stt.transcribe).toHaveBeenCalledTimes(1);
     expect(playbackQueue.snapshot().items).toHaveLength(1);
+  });
+
+  it("blocks late STT completion from an interrupted turn before runtime execution", async () => {
+    const sttGate = deferred<SttTranscriptionResult>();
+    const stt = fakeSttProvider();
+    stt.transcribe = vi.fn(async () => sttGate.promise);
+    const runtime = spiedRuntimeAdapter();
+    const tts = fakeTtsProvider();
+    const { orchestrator, playbackQueue } = createHarness({
+      stt,
+      runtime,
+      tts,
+    });
+
+    const pendingTurn = orchestrator.runVoiceTurn(
+      capturedAudio({ turn_id: "voice-turn-old" }),
+      { metadata_only: true },
+    );
+    await waitUntil(() => expect(stt.transcribe).toHaveBeenCalledTimes(1));
+
+    await expect(
+      orchestrator.interruptActiveTurn("barge_in", { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: true,
+      snapshot: {
+        phase: "interrupted",
+        interrupted_turn_id: "voice-turn-old",
+      },
+    });
+
+    sttGate.resolve(sttResult());
+    await expect(pendingTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        interrupted_turn_id: "voice-turn-old",
+        stale_completion_count: 1,
+      },
+    });
+    expect(runtime.executeVoiceRequest).not.toHaveBeenCalled();
+    expect(tts.synthesize).not.toHaveBeenCalled();
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("blocks late runtime completion from an interrupted turn before TTS", async () => {
+    const runtimeGate = deferred<VoiceRuntimeAdapterResponse>();
+    const runtime = spiedRuntimeAdapter();
+    runtime.executeVoiceRequest = vi.fn(async () => runtimeGate.promise);
+    const tts = fakeTtsProvider();
+    const { orchestrator, playbackQueue } = createHarness({
+      runtime,
+      tts,
+    });
+
+    const pendingTurn = orchestrator.runVoiceTurn(
+      capturedAudio({ turn_id: "voice-turn-runtime-old" }),
+      { metadata_only: true },
+    );
+    await waitUntil(() =>
+      expect(runtime.executeVoiceRequest).toHaveBeenCalledTimes(1),
+    );
+
+    await orchestrator.interruptActiveTurn("barge_in", {
+      metadata_only: true,
+    });
+    runtimeGate.resolve(runtimeResponse());
+
+    await expect(pendingTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        interrupted_turn_id: "voice-turn-runtime-old",
+        stale_completion_count: 1,
+      },
+    });
+    expect(tts.synthesize).not.toHaveBeenCalled();
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("blocks late TTS completion from enqueueing old-turn playback", async () => {
+    const ttsGate = deferred<TtsSynthesisResult>();
+    const tts = fakeTtsProvider();
+    tts.synthesize = vi.fn(async () => ttsGate.promise);
+    const { orchestrator, playbackQueue } = createHarness({ tts });
+
+    const pendingTurn = orchestrator.runVoiceTurn(
+      capturedAudio({ turn_id: "voice-turn-tts-old" }),
+      { metadata_only: true },
+    );
+    await waitUntil(() => expect(tts.synthesize).toHaveBeenCalledTimes(1));
+
+    await orchestrator.interruptActiveTurn("barge_in", {
+      metadata_only: true,
+    });
+    ttsGate.resolve(ttsResult());
+
+    await expect(pendingTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        interrupted_turn_id: "voice-turn-tts-old",
+        stale_completion_count: 1,
+      },
+    });
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("keeps duplicate interruption calls idempotent for an already-interrupted turn", async () => {
+    const order: string[] = [];
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const cancellationSupervisor = fakeCancellationSupervisor(
+      playbackQueue,
+      order,
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      cancellationSupervisor,
+    });
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    const first = await orchestrator.interruptActiveTurn("barge_in", {
+      metadata_only: true,
+    });
+    const second = await orchestrator.interruptActiveTurn("barge_in", {
+      metadata_only: true,
+    });
+
+    expect(first).toMatchObject({
+      ok: true,
+      value: {
+        interrupted_turn_id: "voice-turn-1",
+        cancellation_result_count: 6,
+      },
+    });
+    expect(second).toMatchObject({
+      ok: true,
+      value: {
+        interrupted_turn_id: "voice-turn-1",
+        cancellation_result_count: 6,
+      },
+      snapshot: {
+        phase: "interrupted",
+        playback_queue_depth: 0,
+      },
+    });
+    expect(cancellationSupervisor.applyInterruption).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(["full_turn_interrupt:voice-turn-1:barge_in"]);
+  });
+
+  it("does not start a new turn until interruption fanout resolves", async () => {
+    const order: string[] = [];
+    const fanoutGate = deferred<VoiceCancellationSupervisorResult>();
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const stt = fakeSttProvider();
+    const cancellationSupervisor = deferredCancellationSupervisor(
+      playbackQueue,
+      fanoutGate,
+      order,
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      stt,
+      cancellationSupervisor,
+    });
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    expect(stt.transcribe).toHaveBeenCalledTimes(1);
+
+    const pendingNewTurn = orchestrator.beginNewTurnWithInterruption(
+      capturedAudio({ turn_id: "voice-turn-after-fanout" }),
+      { metadata_only: true },
+    );
+    await waitUntil(() =>
+      expect(cancellationSupervisor.applyInterruption).toHaveBeenCalledTimes(1),
+    );
+    expect(stt.transcribe).toHaveBeenCalledTimes(1);
+
+    fanoutGate.resolve(successfulCancellationResult("voice-turn-1"));
+    await expect(pendingNewTurn).resolves.toMatchObject({
+      ok: true,
+      value: {
+        turn_id: "voice-turn-after-fanout",
+      },
+      snapshot: {
+        active_turn_id: "voice-turn-after-fanout",
+        interrupted_turn_id: "voice-turn-1",
+      },
+    });
+    expect(stt.transcribe).toHaveBeenCalledTimes(2);
+    expect(order).toEqual([
+      "full_turn_interrupt:voice-turn-1:barge_in:start",
+      "full_turn_interrupt:voice-turn-1:barge_in:finish",
+    ]);
+  });
+
+  it("fails closed on abort during STT without continuing runtime", async () => {
+    const controller = new AbortController();
+    const sttGate = deferred<SttTranscriptionResult>();
+    const stt = fakeSttProvider();
+    stt.transcribe = vi.fn(async () => sttGate.promise);
+    const runtime = spiedRuntimeAdapter();
+    const { orchestrator, playbackQueue } = createHarness({ stt, runtime });
+
+    const pendingTurn = orchestrator.runVoiceTurn(capturedAudio(), {
+      abort_signal: controller.signal,
+      metadata_only: true,
+    });
+    await waitUntil(() => expect(stt.transcribe).toHaveBeenCalledTimes(1));
+    controller.abort();
+    sttGate.resolve(sttResult());
+
+    await expect(pendingTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        phase: "cancelled",
+        stt_status: "cancelled",
+        runtime_status: "cancelled",
+      },
+    });
+    expect(runtime.executeVoiceRequest).not.toHaveBeenCalled();
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("fails closed on abort during TTS before playback enqueue", async () => {
+    const controller = new AbortController();
+    const ttsGate = deferred<TtsSynthesisResult>();
+    const tts = fakeTtsProvider();
+    tts.synthesize = vi.fn(async () => ttsGate.promise);
+    const { orchestrator, playbackQueue } = createHarness({ tts });
+
+    const pendingTurn = orchestrator.runVoiceTurn(capturedAudio(), {
+      abort_signal: controller.signal,
+      metadata_only: true,
+    });
+    await waitUntil(() => expect(tts.synthesize).toHaveBeenCalledTimes(1));
+    controller.abort();
+    ttsGate.resolve(ttsResult());
+
+    await expect(pendingTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        phase: "cancelled",
+        tts_status: "cancelled",
+        playback_status: "cancelled",
+      },
+    });
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("keeps old-turn late enqueue attempts from affecting a future turn", async () => {
+    const order: string[] = [];
+    const ttsGate = deferred<TtsSynthesisResult>();
+    const tts = fakeTtsProvider();
+    let synthesizeCount = 0;
+    tts.synthesize = vi.fn(async () => {
+      synthesizeCount += 1;
+      return synthesizeCount === 1 ? ttsGate.promise : ttsResult();
+    });
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const cancellationSupervisor = fakeCancellationSupervisor(
+      playbackQueue,
+      order,
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      cancellationSupervisor,
+      tts,
+    });
+
+    const oldTurn = orchestrator.runVoiceTurn(
+      capturedAudio({ turn_id: "voice-turn-old-queued" }),
+      { metadata_only: true },
+    );
+    await waitUntil(() => expect(tts.synthesize).toHaveBeenCalledTimes(1));
+
+    await expect(
+      orchestrator.beginNewTurnWithInterruption(
+        capturedAudio({ turn_id: "voice-turn-future" }),
+        { metadata_only: true },
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        turn_id: "voice-turn-future",
+        playback_queue_depth: 1,
+      },
+    });
+    expect(playbackQueue.snapshot().items).toMatchObject([
+      {
+        turn_id: "voice-turn-future",
+      },
+    ]);
+
+    ttsGate.resolve(ttsResult());
+    await expect(oldTurn).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        stale_completion_count: 1,
+      },
+    });
+    expect(playbackQueue.snapshot().items).toMatchObject([
+      {
+        turn_id: "voice-turn-future",
+      },
+    ]);
   });
 
   it("does not interrupt when no prior turn is active", async () => {
