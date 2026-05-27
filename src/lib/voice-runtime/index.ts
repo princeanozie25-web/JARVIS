@@ -380,3 +380,16 @@ export type {
   VoiceRuntimeAdapterSafetyContext,
   VoiceRuntimeFinishReason,
 } from "./runtime-adapter";
+
+export { createVoiceTurnOrchestrator } from "./turn-orchestrator";
+export type {
+  VoiceTurnFailureReason,
+  VoiceTurnOrchestrator,
+  VoiceTurnOrchestratorOptions,
+  VoiceTurnPhase,
+  VoiceTurnResult,
+  VoiceTurnResultMetadata,
+  VoiceTurnRunOptions,
+  VoiceTurnSnapshot,
+  VoiceTurnStageStatus,
+} from "./turn-orchestrator";

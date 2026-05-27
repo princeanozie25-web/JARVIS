@@ -1,0 +1,620 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+  createFakeVoiceRuntimeAdapter,
+  createPlaybackQueue,
+  createVoiceTurnOrchestrator,
+  type PlaybackQueue,
+  type PlaybackQueueItem,
+  type SttProvider,
+  type SttProviderHealth,
+  type SttTranscriptionResult,
+  type TtsProvider,
+  type TtsProviderHealth,
+  type TtsSynthesisResult,
+  type VoiceRuntimeAdapter,
+  type VoiceRuntimeAdapterHealth,
+  type VoiceRuntimeBridgeCapturedAudioMetadata,
+} from "../../src/lib/voice-runtime";
+
+const SAFE_TRANSCRIPT = "Good evening. All systems are operational.";
+const SAFE_OUTPUT_REF = "C:/tmp/jarvis-fake-tts.wav";
+
+function orchestratorSource(): string {
+  return [
+    "src/lib/voice-runtime/turn-orchestrator.ts",
+    "src/lib/voice-runtime/index.ts",
+  ]
+    .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
+    .join("\n");
+}
+
+function capturedAudio(
+  overrides: Partial<VoiceRuntimeBridgeCapturedAudioMetadata> = {},
+): VoiceRuntimeBridgeCapturedAudioMetadata {
+  return {
+    session_id: "voice-session-1",
+    turn_id: "voice-turn-1",
+    audio_ref: "C:/tmp/jarvis-capture.wav",
+    duration_ms: 1200,
+    size_bytes: 32000,
+    sample_rate_hz: 16000,
+    channel_count: 1,
+    degraded: false,
+    started_at: "2026-05-27T07:00:00.000Z",
+    stopped_at: "2026-05-27T07:00:01.200Z",
+    metadata_only: true,
+    ...overrides,
+  };
+}
+
+function playbackItem(
+  overrides: Partial<PlaybackQueueItem> = {},
+): PlaybackQueueItem {
+  return {
+    item_id: "existing-playback-item",
+    session_id: "voice-session-existing",
+    turn_id: "voice-turn-existing",
+    chunk_id: "existing-chunk",
+    provider_id: "fake-local-tts",
+    voice_id: "fake-voice",
+    audio_ref: "C:/tmp/existing.wav",
+    duration_ms: 100,
+    size_bytes: 200,
+    content_class: "assistant_prose",
+    created_at: "2026-05-27T07:00:00.000Z",
+    metadata_only: true,
+    ...overrides,
+  };
+}
+
+function sttResult(transcript = SAFE_TRANSCRIPT): SttTranscriptionResult {
+  return {
+    request_id: "voice-runtime-voice-session-1-voice-turn-1",
+    provider_id: "fake-local-stt",
+    transcript,
+    language: "en",
+    latency_ms: 12,
+    degraded: false,
+    confidence_band: "high",
+    metadata_only: true,
+  };
+}
+
+function ttsResult(): TtsSynthesisResult {
+  return {
+    request_id: "fake-runtime-response-e1ffcce3",
+    chunk: {
+      chunk_id: "tts-chunk-1",
+      provider_id: "fake-local-tts",
+      voice_id: "fake-voice",
+      duration_ms: 1100,
+      size_bytes: 24000,
+      degraded: false,
+      output_ref: SAFE_OUTPUT_REF,
+      metadata_only: true,
+    },
+    latency_ms: 5,
+    degraded: false,
+    metadata_only: true,
+  };
+}
+
+function fakeSttProvider(
+  options: {
+    readonly ok?: boolean;
+    readonly transcribeFails?: boolean;
+    readonly order?: string[];
+  } = {},
+): SttProvider {
+  const health: SttProviderHealth = {
+    provider_id: "fake-local-stt",
+    ok: options.ok ?? true,
+    provider_kind: "local",
+    checked_at_ms: 0,
+    degraded: false,
+    metadata_only: true,
+  };
+  return {
+    id: "fake-local-stt",
+    kind: "local",
+    config: {
+      provider_id: "fake-local-stt",
+      provider_kind: "local",
+      model_id: "fake-stt",
+      max_audio_bytes: 1_000_000,
+      timeout_ms: 5000,
+      metadata_only: true,
+    },
+    metadata_only: true,
+    transcribe: vi.fn(async () => {
+      options.order?.push("stt.transcribe");
+      if (options.transcribeFails) throw new Error("stt failed");
+      return sttResult();
+    }),
+    cancel: vi.fn(async () => undefined),
+    health: vi.fn(async () => {
+      options.order?.push("stt.health");
+      return health;
+    }),
+  };
+}
+
+function fakeTtsProvider(
+  options: {
+    readonly ok?: boolean;
+    readonly synthesizeFails?: boolean;
+    readonly order?: string[];
+  } = {},
+): TtsProvider {
+  const health: TtsProviderHealth = {
+    provider_id: "fake-local-tts",
+    ok: options.ok ?? true,
+    provider_kind: "local",
+    checked_at_ms: 0,
+    degraded: false,
+    metadata_only: true,
+  };
+  return {
+    id: "fake-local-tts",
+    kind: "local",
+    config: {
+      provider_id: "fake-local-tts",
+      provider_kind: "local",
+      voice_id: "fake-voice",
+      max_input_chars: 1000,
+      timeout_ms: 5000,
+      metadata_only: true,
+    },
+    metadata_only: true,
+    synthesize: vi.fn(async () => {
+      options.order?.push("tts.synthesize");
+      if (options.synthesizeFails) throw new Error("tts failed");
+      return ttsResult();
+    }),
+    cancel: vi.fn(async () => undefined),
+    health: vi.fn(async () => {
+      options.order?.push("tts.health");
+      return health;
+    }),
+  };
+}
+
+function orderedRuntimeAdapter(order: string[]): VoiceRuntimeAdapter {
+  const runtime = createFakeVoiceRuntimeAdapter({ now_ms: () => 1000 });
+  return {
+    ...runtime,
+    health: vi.fn(async () => {
+      order.push("runtime.health");
+      return runtime.health();
+    }),
+    executeVoiceRequest: vi.fn(async (request, options) => {
+      order.push("runtime.execute");
+      return runtime.executeVoiceRequest(request, options);
+    }),
+  };
+}
+
+function spiedRuntimeAdapter(): VoiceRuntimeAdapter {
+  const runtime = createFakeVoiceRuntimeAdapter({ now_ms: () => 1000 });
+  return {
+    ...runtime,
+    health: vi.fn(runtime.health),
+    executeVoiceRequest: vi.fn(runtime.executeVoiceRequest),
+  };
+}
+
+function failingRuntimeAdapter(
+  mode: "unavailable" | "fail" | "cancelled",
+): VoiceRuntimeAdapter {
+  if (mode === "cancelled") {
+    return {
+      id: "fake-voice-runtime",
+      metadata_only: true,
+      health: vi.fn(
+        async (): Promise<VoiceRuntimeAdapterHealth> => ({
+          ok: true,
+          degraded: false,
+          provider_id: "fake-voice-runtime",
+          metadata_only: true,
+        }),
+      ),
+      executeVoiceRequest: vi.fn(async () => {
+        throw { reason: "cancelled", metadata_only: true };
+      }),
+      cancel: vi.fn(async () => undefined),
+    };
+  }
+  return createFakeVoiceRuntimeAdapter({ mode });
+}
+
+function createHarness(
+  options: {
+    readonly stt?: SttProvider;
+    readonly runtime?: VoiceRuntimeAdapter;
+    readonly tts?: TtsProvider;
+    readonly playbackQueue?: PlaybackQueue;
+    readonly queueDepth?: number;
+  } = {},
+) {
+  const playbackQueue =
+    options.playbackQueue ??
+    createPlaybackQueue({
+      max_queue_depth: options.queueDepth ?? 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+  const stt = options.stt ?? fakeSttProvider();
+  const runtime = options.runtime ?? spiedRuntimeAdapter();
+  const tts = options.tts ?? fakeTtsProvider();
+  const orchestrator = createVoiceTurnOrchestrator({
+    stt_provider: stt,
+    runtime_adapter: runtime,
+    tts_provider: tts,
+    playback_queue: playbackQueue,
+  });
+  return { orchestrator, playbackQueue, stt, runtime, tts };
+}
+
+describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
+  it("runs the fake-first voice turn and queues playback metadata without autoplay", async () => {
+    const { orchestrator, playbackQueue } = createHarness();
+
+    await expect(
+      orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        session_id: "voice-session-1",
+        turn_id: "voice-turn-1",
+        runtime_response_id: "fake-runtime-response-4899149a",
+        playback_item_id: "voice-playback-tts-chunk-1",
+        playback_queue_depth: 1,
+        degraded: false,
+        metadata_only: true,
+      },
+      snapshot: {
+        session_id: "voice-session-1",
+        turn_id: "voice-turn-1",
+        phase: "queued_for_playback",
+        stt_status: "complete",
+        runtime_status: "complete",
+        tts_status: "complete",
+        playback_status: "complete",
+        playback_queue_depth: 1,
+        degraded: false,
+        metadata_only: true,
+      },
+      reasons: [],
+      metadata_only: true,
+    });
+
+    expect(playbackQueue.snapshot()).toMatchObject({
+      depth: 1,
+      items: [
+        {
+          item_id: "voice-playback-tts-chunk-1",
+          content_class: "assistant_prose",
+          audio_ref: SAFE_OUTPUT_REF,
+        },
+      ],
+    });
+    expect(JSON.stringify(orchestrator.snapshot())).not.toContain(
+      SAFE_TRANSCRIPT,
+    );
+    expect(JSON.stringify(orchestrator.snapshot())).not.toContain(
+      FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+    );
+  });
+
+  it("calls STT, runtime adapter, and TTS in deterministic order", async () => {
+    const order: string[] = [];
+    const { orchestrator } = createHarness({
+      stt: fakeSttProvider({ order }),
+      runtime: orderedRuntimeAdapter(order),
+      tts: fakeTtsProvider({ order }),
+    });
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+
+    expect(order).toEqual([
+      "stt.health",
+      "stt.transcribe",
+      "runtime.health",
+      "runtime.execute",
+      "tts.health",
+      "tts.synthesize",
+    ]);
+  });
+
+  it("passes AbortSignal to STT, runtime, and TTS without exposing payloads", async () => {
+    const controller = new AbortController();
+    const { orchestrator, stt, runtime, tts } = createHarness();
+
+    const result = await orchestrator.runVoiceTurn(capturedAudio(), {
+      abort_signal: controller.signal,
+      timeout_ms: 1234,
+      metadata_only: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(stt.transcribe).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        abort_signal: controller.signal,
+        timeout_ms: 1234,
+        metadata_only: true,
+      }),
+    );
+    expect(runtime.executeVoiceRequest).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        abort_signal: controller.signal,
+        timeout_ms: 1234,
+        metadata_only: true,
+      }),
+    );
+    expect(tts.synthesize).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        abort_signal: controller.signal,
+        timeout_ms: 1234,
+        metadata_only: true,
+      }),
+    );
+  });
+
+  it("fails closed before any provider call when already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { orchestrator, stt, runtime, tts } = createHarness();
+
+    await expect(
+      orchestrator.runVoiceTurn(capturedAudio(), {
+        abort_signal: controller.signal,
+        metadata_only: true,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["cancelled"],
+      snapshot: {
+        phase: "cancelled",
+        stt_status: "cancelled",
+        runtime_status: "cancelled",
+        tts_status: "cancelled",
+        playback_status: "cancelled",
+      },
+    });
+
+    expect(stt.transcribe).not.toHaveBeenCalled();
+    expect(runtime.executeVoiceRequest).not.toHaveBeenCalled();
+    expect(tts.synthesize).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for missing capture metadata and STT failures", async () => {
+    await expect(
+      createHarness().orchestrator.runVoiceTurn(null, {
+        metadata_only: true,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["malformed_capture"],
+      snapshot: {
+        phase: "failed",
+        stt_status: "failed",
+      },
+    });
+
+    await expect(
+      createHarness({
+        stt: fakeSttProvider({ ok: false }),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["stt_unavailable"],
+      snapshot: {
+        phase: "failed",
+        stt_status: "failed",
+      },
+    });
+
+    await expect(
+      createHarness({
+        stt: fakeSttProvider({ transcribeFails: true }),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["stt_failed"],
+      snapshot: {
+        phase: "failed",
+        stt_status: "failed",
+      },
+    });
+  });
+
+  it("fails closed for runtime adapter unavailable, failed, or cancelled states", async () => {
+    await expect(
+      createHarness({
+        runtime: failingRuntimeAdapter("unavailable"),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_unavailable"],
+      snapshot: {
+        phase: "failed",
+        runtime_status: "failed",
+      },
+    });
+
+    await expect(
+      createHarness({
+        runtime: failingRuntimeAdapter("fail"),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_failed"],
+      snapshot: {
+        phase: "failed",
+        runtime_status: "failed",
+      },
+    });
+
+    await expect(
+      createHarness({
+        runtime: failingRuntimeAdapter("cancelled"),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_cancelled"],
+      snapshot: {
+        phase: "cancelled",
+        runtime_status: "cancelled",
+      },
+    });
+  });
+
+  it("fails closed for unsafe assistant content, TTS failures, and enqueue failures", async () => {
+    const unsafe = createHarness();
+    await expect(
+      unsafe.orchestrator.runVoiceTurn(capturedAudio(), {
+        assistant_content_class: "tool_output",
+        metadata_only: true,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["unsafe_content"],
+      snapshot: {
+        phase: "failed",
+        tts_status: "idle",
+      },
+    });
+    expect(unsafe.tts.synthesize).not.toHaveBeenCalled();
+
+    await expect(
+      createHarness({
+        tts: fakeTtsProvider({ ok: false }),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["tts_unavailable"],
+      snapshot: {
+        phase: "failed",
+        tts_status: "failed",
+      },
+    });
+
+    await expect(
+      createHarness({
+        tts: fakeTtsProvider({ synthesizeFails: true }),
+      }).orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["tts_failed"],
+      snapshot: {
+        phase: "failed",
+        tts_status: "failed",
+      },
+    });
+
+    const fullQueue = createPlaybackQueue({
+      max_queue_depth: 1,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    expect(fullQueue.enqueue(playbackItem()).ok).toBe(true);
+    await expect(
+      createHarness({ playbackQueue: fullQueue }).orchestrator.runVoiceTurn(
+        capturedAudio(),
+        { metadata_only: true },
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["enqueue_failed"],
+      snapshot: {
+        phase: "failed",
+        playback_status: "failed",
+        playback_queue_depth: 1,
+      },
+    });
+  });
+
+  it("reset clears metadata state and playback queue without exposing transcripts", async () => {
+    const { orchestrator, playbackQueue } = createHarness();
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    expect(playbackQueue.snapshot().depth).toBe(1);
+
+    expect(orchestrator.reset()).toEqual({
+      ok: true,
+      value: null,
+      snapshot: {
+        session_id: null,
+        turn_id: null,
+        phase: "idle",
+        stt_status: "idle",
+        runtime_status: "idle",
+        tts_status: "idle",
+        playback_status: "idle",
+        playback_queue_depth: 0,
+        degraded: false,
+        metadata_only: true,
+      },
+      reasons: [],
+      metadata_only: true,
+    });
+    expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("snapshots remain metadata-only and never expose transcript, assistant text, prompts, responses, tool output, or raw audio", async () => {
+    const { orchestrator } = createHarness();
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    const snapshot = orchestrator.snapshot();
+
+    expect(Object.keys(snapshot)).toEqual([
+      "turn_id",
+      "session_id",
+      "phase",
+      "stt_status",
+      "runtime_status",
+      "tts_status",
+      "playback_status",
+      "playback_queue_depth",
+      "degraded",
+      "metadata_only",
+    ]);
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /raw_audio|audio_bytes|waveform|pcm|transcript|assistant_text|prompt|response|model_output|tool_output|Good evening/i,
+    );
+  });
+
+  it("does not introduce real runtime/router/model execution, tools, persistence, cloud, UI, wake word, always-listening, streaming, or autoplay", () => {
+    const source = orchestratorSource();
+
+    expect(source).not.toMatch(
+      /createModelRuntime|from\s+["'][^"']*\/models(?:\/index)?["']|from\s+["'][^"']*\/router|router\.|modelProvider|providerMap/i,
+    );
+    expect(source).not.toMatch(
+      /tool_call|executeTool|approveAction|runAction|shell_command|child_process|spawn\s*\(|exec\s*\(/i,
+    );
+    expect(source).not.toMatch(
+      /appendEvent|event-store|sqlite|database|writeFile|appendFile|persistTelemetry\s*\(|telemetryStore|better-sqlite3/i,
+    );
+    expect(source).not.toMatch(
+      /fetch\s*\(|WebSocket|EventSource|XMLHttpRequest|from\s+["'](?:node:http|node:https|openai|@anthropic-ai\/sdk)["']/i,
+    );
+    expect(source).not.toMatch(
+      /tsx|jsx|React|useEffect|useState|tauri|invoke\s*\(|app\/api/i,
+    );
+    expect(source).not.toMatch(
+      /wake_word|wakeword|always_listening|always-listening|MediaStream|AsyncIterable|partial_transcript|partial_token|partial_result/i,
+    );
+    expect(source).not.toMatch(
+      /playback_autostart|beginPlayback\s*\(|playLoaded\s*\(|loadNext\s*\(|autoplay/i,
+    );
+  });
+});
