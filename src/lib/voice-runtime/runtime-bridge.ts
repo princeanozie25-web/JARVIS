@@ -1,6 +1,12 @@
 import type { MicCaptureResultMetadata } from "./capture";
 import type { PlaybackQueue, PlaybackQueueItem } from "./playback";
 import type {
+  VoiceRuntimeAdapter,
+  VoiceRuntimeAdapterOptions,
+  VoiceRuntimeAdapterRequest,
+  VoiceRuntimeAdapterResponse,
+} from "./runtime-adapter";
+import type {
   SttConfidenceBand,
   SttProvider,
   SttTranscriptionOptions,
@@ -11,6 +17,8 @@ export type VoiceRuntimeBridgeStatus =
   | "idle"
   | "transcribing"
   | "ready_for_runtime"
+  | "executing_runtime"
+  | "runtime_response_ready"
   | "synthesizing"
   | "queued_for_playback"
   | "failed";
@@ -26,7 +34,10 @@ export type VoiceRuntimeBridgeFailureReason =
   | "tts_failed"
   | "enqueue_failed"
   | "autoplay_blocked"
-  | "runtime_execution_blocked";
+  | "runtime_adapter_unavailable"
+  | "runtime_unavailable"
+  | "runtime_failed"
+  | "runtime_cancelled";
 
 export interface VoiceRuntimeBridgeSnapshot {
   readonly session_id: string | null;
@@ -106,6 +117,7 @@ export interface VoiceRuntimeBridgeOptions {
   readonly stt_provider: SttProvider;
   readonly tts_provider: TtsProvider;
   readonly playback_queue: PlaybackQueue;
+  readonly runtime_adapter?: VoiceRuntimeAdapter;
   readonly now_ms?: () => number;
 }
 
@@ -119,6 +131,9 @@ export interface VoiceRuntimeBridge {
     input: VoicePlaybackRequestInput,
     options?: TtsSynthesisOptions,
   ): Promise<VoiceRuntimeBridgeResult<VoicePlaybackRequestMetadata>>;
+  executeRuntimeRequest(
+    options?: VoiceRuntimeAdapterOptions,
+  ): Promise<VoiceRuntimeBridgeResult<VoiceRuntimeAdapterResponse>>;
   reset(): VoiceRuntimeBridgeResult<null>;
   snapshot(): VoiceRuntimeBridgeSnapshot;
 }
@@ -131,6 +146,7 @@ export function createVoiceRuntimeBridge(
     options.playback_queue,
   );
   let runtimeRequest: VoiceRuntimeRequestMetadata | null = null;
+  let runtimeAdapterRequest: VoiceRuntimeAdapterRequest | null = null;
   let sessionActive = false;
 
   const copySnapshot = (): VoiceRuntimeBridgeSnapshot => ({ ...snapshot });
@@ -196,6 +212,21 @@ export function createVoiceRuntimeBridge(
           degraded: result.degraded || health.degraded,
           metadata_only: true,
         };
+        runtimeAdapterRequest = {
+          request_id: result.request_id,
+          session_id: metadata.session_id,
+          turn_id: metadata.turn_id,
+          source: "voice",
+          transcript: result.transcript,
+          created_at: timestamp(nowMs()),
+          safety_context: {
+            approval_required: true,
+            tool_execution_allowed: false,
+            persistence_allowed: false,
+            metadata_only: true,
+          },
+          metadata_only: true,
+        };
         snapshot = {
           ...snapshot,
           stt_status: "ready_for_runtime",
@@ -205,6 +236,7 @@ export function createVoiceRuntimeBridge(
         return success(runtimeRequest);
       } catch {
         runtimeRequest = null;
+        runtimeAdapterRequest = null;
         snapshot = {
           ...snapshot,
           stt_status: "failed",
@@ -218,6 +250,54 @@ export function createVoiceRuntimeBridge(
     createVoiceRuntimeRequest: () => {
       if (!runtimeRequest) return failure(["no_transcription"]);
       return success(runtimeRequest);
+    },
+    executeRuntimeRequest: async (runtimeOptions) => {
+      if (!runtimeAdapterRequest) return failure(["no_transcription"]);
+      if (!options.runtime_adapter) {
+        return failure(["runtime_adapter_unavailable"]);
+      }
+
+      snapshot = {
+        ...snapshot,
+        stt_status: "executing_runtime",
+        updated_at: timestamp(nowMs()),
+      };
+
+      const health = await options.runtime_adapter.health();
+      if (!health.ok) {
+        snapshot = {
+          ...snapshot,
+          stt_status: "failed",
+          last_error_class: "runtime_unavailable",
+          degraded: true,
+          updated_at: timestamp(nowMs()),
+        };
+        return failure(["runtime_unavailable"]);
+      }
+
+      try {
+        const response = await options.runtime_adapter.executeVoiceRequest(
+          runtimeAdapterRequest,
+          runtimeOptions ?? { metadata_only: true },
+        );
+        snapshot = {
+          ...snapshot,
+          stt_status: "runtime_response_ready",
+          degraded: snapshot.degraded || response.degraded || health.degraded,
+          updated_at: timestamp(nowMs()),
+        };
+        return success(response);
+      } catch (error) {
+        const reason = readRuntimeFailure(error);
+        snapshot = {
+          ...snapshot,
+          stt_status: "failed",
+          last_error_class: reason,
+          degraded: true,
+          updated_at: timestamp(nowMs()),
+        };
+        return failure([reason]);
+      }
     },
     createVoicePlaybackRequest: async (input, ttsOptions) => {
       if (!isVoicePlaybackRequestInput(input)) {
@@ -324,6 +404,7 @@ export function createVoiceRuntimeBridge(
     reset: () => {
       options.playback_queue.clear("voice_runtime_bridge_reset");
       runtimeRequest = null;
+      runtimeAdapterRequest = null;
       sessionActive = false;
       snapshot = idleSnapshot(options.playback_queue);
       return success(null);
@@ -425,6 +506,16 @@ function hasForbiddenKeys(record: Record<string, unknown>): boolean {
     "model_output",
     "tool_output",
   ].some((key) => Object.prototype.hasOwnProperty.call(record, key));
+}
+
+function readRuntimeFailure(error: unknown): VoiceRuntimeBridgeFailureReason {
+  const reason =
+    error && typeof error === "object"
+      ? (error as { readonly reason?: unknown }).reason
+      : undefined;
+  if (reason === "cancelled") return "runtime_cancelled";
+  if (reason === "unavailable") return "runtime_unavailable";
+  return "runtime_failed";
 }
 
 function copyValue<T>(value: T): T {

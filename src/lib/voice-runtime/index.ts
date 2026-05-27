@@ -359,3 +359,24 @@ export type {
   VoiceRuntimeBridgeStatus,
   VoiceRuntimeRequestMetadata,
 } from "./runtime-bridge";
+
+export {
+  FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+  VOICE_RUNTIME_ADAPTER_FAILURE_CLASSES,
+  VOICE_RUNTIME_FINISH_REASONS,
+  FakeVoiceRuntimeAdapterError,
+  createFakeVoiceRuntimeAdapter,
+  isVoiceRuntimeAdapterRequest,
+} from "./runtime-adapter";
+export type {
+  FakeVoiceRuntimeAdapterMode,
+  FakeVoiceRuntimeAdapterOptions,
+  VoiceRuntimeAdapter,
+  VoiceRuntimeAdapterFailureClass,
+  VoiceRuntimeAdapterHealth,
+  VoiceRuntimeAdapterOptions,
+  VoiceRuntimeAdapterRequest,
+  VoiceRuntimeAdapterResponse,
+  VoiceRuntimeAdapterSafetyContext,
+  VoiceRuntimeFinishReason,
+} from "./runtime-adapter";

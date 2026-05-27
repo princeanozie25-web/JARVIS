@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+  createFakeVoiceRuntimeAdapter,
   createPlaybackQueue,
   createVoiceRuntimeBridge,
   type SttProvider,
@@ -12,6 +14,7 @@ import {
   type TtsProvider,
   type TtsProviderHealth,
   type TtsSynthesisResult,
+  type VoiceRuntimeAdapter,
   type VoicePlaybackRequestInput,
   type VoiceRuntimeBridgeCapturedAudioMetadata,
 } from "../../src/lib/voice-runtime";
@@ -168,6 +171,7 @@ function createHarness(
   options: {
     readonly stt?: SttProvider;
     readonly tts?: TtsProvider;
+    readonly runtime?: VoiceRuntimeAdapter;
     readonly queueDepth?: number;
   } = {},
 ) {
@@ -182,6 +186,7 @@ function createHarness(
     stt_provider: stt,
     tts_provider: tts,
     playback_queue: playbackQueue,
+    runtime_adapter: options.runtime,
     now_ms: () => 1000,
   });
   return { bridge, playbackQueue, stt, tts };
@@ -264,6 +269,103 @@ describe("Phase 14F.1 voice runtime bridge scaffold", () => {
     expect(JSON.stringify(bridge.snapshot())).not.toContain(
       SAFE_ASSISTANT_TEXT,
     );
+  });
+
+  it("does not auto-execute runtime after STT, but can explicitly execute through fake runtime", async () => {
+    const runtime = createFakeVoiceRuntimeAdapter({ now_ms: () => 1000 });
+    const { bridge } = createHarness({ runtime });
+
+    await bridge.ingestCapturedAudio(capturedAudio());
+    expect(bridge.snapshot()).toMatchObject({
+      stt_status: "ready_for_runtime",
+    });
+
+    await expect(bridge.executeRuntimeRequest()).resolves.toMatchObject({
+      ok: true,
+      value: {
+        assistant_text: FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+        provider_id: "fake-voice-runtime",
+        finish_reason: "stop",
+        metadata_only: true,
+      },
+      snapshot: {
+        stt_status: "runtime_response_ready",
+      },
+    });
+    expect(JSON.stringify(bridge.snapshot())).not.toContain(SAFE_TRANSCRIPT);
+    expect(JSON.stringify(bridge.snapshot())).not.toContain(
+      FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+    );
+  });
+
+  it("supports fake runtime response to TTS/playback request without autoplay", async () => {
+    const { bridge, playbackQueue } = createHarness({
+      runtime: createFakeVoiceRuntimeAdapter({ now_ms: () => 1000 }),
+    });
+
+    await bridge.ingestCapturedAudio(capturedAudio());
+    const runtimeResponse = await bridge.executeRuntimeRequest();
+    expect(runtimeResponse.ok).toBe(true);
+    if (!runtimeResponse.ok) throw new Error("expected runtime response");
+
+    await expect(
+      bridge.createVoicePlaybackRequest(
+        playbackInput({
+          request_id: runtimeResponse.value.response_id,
+          text: runtimeResponse.value.assistant_text,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      snapshot: {
+        tts_status: "queued_for_playback",
+        playback_queue_depth: 1,
+      },
+    });
+    expect(playbackQueue.snapshot().depth).toBe(1);
+  });
+
+  it("fails closed when runtime adapter is missing, unavailable, failed, or cancelled", async () => {
+    const noAdapter = createHarness();
+    await noAdapter.bridge.ingestCapturedAudio(capturedAudio());
+    await expect(
+      noAdapter.bridge.executeRuntimeRequest(),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_adapter_unavailable"],
+    });
+
+    const unavailable = createHarness({
+      runtime: createFakeVoiceRuntimeAdapter({ mode: "unavailable" }),
+    });
+    await unavailable.bridge.ingestCapturedAudio(capturedAudio());
+    await expect(
+      unavailable.bridge.executeRuntimeRequest(),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_unavailable"],
+      snapshot: { stt_status: "failed" },
+    });
+
+    const failed = createHarness({
+      runtime: createFakeVoiceRuntimeAdapter({ mode: "fail" }),
+    });
+    await failed.bridge.ingestCapturedAudio(capturedAudio());
+    await expect(failed.bridge.executeRuntimeRequest()).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_failed"],
+    });
+
+    const cancelledRuntime = createFakeVoiceRuntimeAdapter();
+    await cancelledRuntime.cancel("cancelled");
+    const cancelled = createHarness({ runtime: cancelledRuntime });
+    await cancelled.bridge.ingestCapturedAudio(capturedAudio());
+    await expect(
+      cancelled.bridge.executeRuntimeRequest(),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["runtime_cancelled"],
+    });
   });
 
   it("fails closed for autoplay requests and unsafe content", async () => {
