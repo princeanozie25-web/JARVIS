@@ -63,6 +63,19 @@ export {
   createVisionProviderRegistry,
 } from "./registry";
 
+export {
+  VISION_SESSION_EVENT_TYPES,
+  VISION_SESSION_RESULT_REASONS,
+  VISION_SESSION_STATES,
+  VisionRuntimeSessionRecordSchema,
+  VisionSessionEventTypeSchema,
+  VisionSessionLifecycleEventSchema,
+  VisionSessionResultReasonSchema,
+  VisionSessionRunner,
+  VisionSessionStateSchema,
+  createFakeVisionSessionRunner,
+} from "./session";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -100,3 +113,14 @@ export type {
 } from "./provider";
 
 export type { VisionProviderRegistryResult } from "./registry";
+
+export type {
+  VisionRuntimeSessionRecord,
+  VisionSessionEventType,
+  VisionSessionLifecycleEvent,
+  VisionSessionResultReason,
+  VisionSessionRunRequest,
+  VisionSessionRunResult,
+  VisionSessionRunnerOptions,
+  VisionSessionState,
+} from "./session";
