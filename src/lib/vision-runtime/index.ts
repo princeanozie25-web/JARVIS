@@ -209,6 +209,19 @@ export {
   validateVisionCameraRequest,
 } from "./mock-camera";
 
+export {
+  MOCK_CAMERA_FRAME_PROVIDER_KINDS,
+  MOCK_CAMERA_STREAM_STATUSES,
+  MockCameraFrameDescriptorSchema,
+  MockCameraFrameProviderKindSchema,
+  MockCameraStreamCancellationSchema,
+  MockCameraStreamOptionsSchema,
+  MockCameraStreamResultSchema,
+  MockCameraStreamStatusSchema,
+  createDeterministicMockCameraStream,
+  createMockCameraFrameProvider,
+} from "./mock-camera-provider";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -347,3 +360,13 @@ export type {
   VisionCameraTriggerSource,
   VisionMockCameraFrameMetadata,
 } from "./mock-camera";
+
+export type {
+  MockCameraFrameDescriptor,
+  MockCameraFrameProvider,
+  MockCameraFrameProviderKind,
+  MockCameraStreamCancellation,
+  MockCameraStreamOptions,
+  MockCameraStreamResult,
+  MockCameraStreamStatus,
+} from "./mock-camera-provider";
