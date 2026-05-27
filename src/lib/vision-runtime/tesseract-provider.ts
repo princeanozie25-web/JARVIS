@@ -6,12 +6,16 @@ import {
   type VisionCapability,
 } from "./contracts";
 import {
-  createVisionProviderPolicyDeniedResult,
+  createVisionProviderDisabledResult,
+  createVisionProviderExecutionDisabledResult,
+  createVisionProviderPreconditionFailedResult,
   type VisionProvider,
   type VisionProviderHealth,
   type VisionProviderRunRequest,
   type VisionProviderRunResult,
 } from "./provider";
+import { evaluateVisionOcrEnablement } from "./ocr-enablement";
+import type { VisionMutationAuthorityClass } from "./policy";
 
 export const TESSERACT_PROVIDER_HEALTH_STATUSES = [
   "disabled",
@@ -26,12 +30,14 @@ export const DisabledTesseractProviderConfigSchema = z.strictObject({
     .max(120)
     .regex(/^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/),
   provider_kind: VisionProviderKindSchema.extract(["tesseract_stub"]),
-  enabled: z.literal(false),
+  enabled: z.boolean(),
   binary_path_configured: z.literal(false),
   supported_capability: VisionCapabilitySchema.extract(["screenshot_ocr"]),
   timeout_ms: z.number().int().positive(),
   max_input_size_bytes: z.number().int().positive(),
   language: z.string().trim().min(1).max(24),
+  cloud_fallback_requested: z.boolean().default(false),
+  network_fallback_requested: z.boolean().default(false),
   metadata_only: z.literal(true),
   redaction_required: z.literal(true),
   raw_image_input_allowed: z.literal(false),
@@ -63,6 +69,8 @@ export const DEFAULT_DISABLED_TESSERACT_PROVIDER_CONFIG =
     timeout_ms: 5_000,
     max_input_size_bytes: 5_000_000,
     language: "eng",
+    cloud_fallback_requested: false,
+    network_fallback_requested: false,
     metadata_only: true,
     redaction_required: true,
     raw_image_input_allowed: false,
@@ -77,9 +85,10 @@ export function createDisabledTesseractProvider(
   const resolvedConfig = DisabledTesseractProviderConfigSchema.parse({
     ...DEFAULT_DISABLED_TESSERACT_PROVIDER_CONFIG,
     ...config,
-    enabled: false,
     provider_kind: "tesseract_stub",
     binary_path_configured: false,
+    cloud_fallback_requested: config.cloud_fallback_requested ?? false,
+    network_fallback_requested: config.network_fallback_requested ?? false,
     metadata_only: true,
     redaction_required: true,
     raw_image_input_allowed: false,
@@ -113,15 +122,40 @@ export function createDisabledTesseractProvider(
     async run(
       request: VisionProviderRunRequest,
     ): Promise<VisionProviderRunResult> {
+      const enablement = evaluateVisionOcrEnablement({
+        provider_config: resolvedConfig,
+        capability: safeCapability(request.capability),
+        artifact: ocrArtifactFromRequest(request),
+        user_triggered: request.user_triggered,
+        timeout_ms: request.timeout_ms,
+        mutation_authority_requested: mutationAuthorityFromRequest(request),
+        cloud_fallback_requested: fallbackFlagFromRequest(
+          request,
+          "cloud_fallback_requested",
+        ),
+        network_fallback_requested: fallbackFlagFromRequest(
+          request,
+          "network_fallback_requested",
+        ),
+        metadata_only: true,
+      });
+      const baseResult = {
+        result_id: `${request.request_id}-result`,
+        session_id: request.session_id,
+        provider_id: resolvedConfig.provider_id,
+        provider_kind: resolvedConfig.provider_kind,
+        capability: safeCapability(request.capability),
+        latency_ms: 0,
+      };
+      const providerResult =
+        enablement.reason === "provider_disabled"
+          ? createVisionProviderDisabledResult(baseResult)
+          : enablement.allowed
+            ? createVisionProviderExecutionDisabledResult(baseResult)
+            : createVisionProviderPreconditionFailedResult(baseResult);
+
       return {
-        provider_result: createVisionProviderPolicyDeniedResult({
-          result_id: `${request.request_id}-result`,
-          session_id: request.session_id,
-          provider_id: resolvedConfig.provider_id,
-          provider_kind: resolvedConfig.provider_kind,
-          capability: safeCapability(request.capability),
-          latency_ms: 0,
-        }),
+        provider_result: providerResult,
         observations: [],
         metadata_only: true,
         advisory_only: true,
@@ -140,4 +174,27 @@ export function createDisabledTesseractProviderFactory(
 
 function safeCapability(capability: VisionCapability): VisionCapability {
   return capability === "screenshot_ocr" ? capability : "screenshot_ocr";
+}
+
+function ocrArtifactFromRequest(request: VisionProviderRunRequest): unknown {
+  return (request as { readonly ocr_artifact?: unknown }).ocr_artifact ?? null;
+}
+
+function mutationAuthorityFromRequest(
+  request: VisionProviderRunRequest,
+): readonly VisionMutationAuthorityClass[] {
+  return (
+    (
+      request as {
+        readonly mutation_authority_requested?: readonly VisionMutationAuthorityClass[];
+      }
+    ).mutation_authority_requested ?? []
+  );
+}
+
+function fallbackFlagFromRequest(
+  request: VisionProviderRunRequest,
+  key: "cloud_fallback_requested" | "network_fallback_requested",
+): boolean {
+  return Boolean((request as unknown as Record<string, unknown>)[key]);
 }

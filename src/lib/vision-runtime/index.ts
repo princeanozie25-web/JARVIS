@@ -44,7 +44,10 @@ export {
 export {
   createVisionProviderCancelledResult,
   createVisionProviderDegradedResult,
+  createVisionProviderDisabledResult,
+  createVisionProviderExecutionDisabledResult,
   createVisionProviderPolicyDeniedResult,
+  createVisionProviderPreconditionFailedResult,
   createVisionProviderSuccessResult,
   createVisionProviderTimeoutResult,
   createVisionProviderUnsupportedCapabilityResult,
@@ -158,6 +161,30 @@ export {
   validateVisionOcrInputArtifact,
 } from "./ocr-artifact";
 
+export {
+  VISION_LOCAL_OCR_ALLOWED_LANGUAGES,
+  VISION_LOCAL_OCR_MAX_TIMEOUT_MS,
+  VISION_LOCAL_OCR_PROVIDER_KINDS,
+  VISION_OCR_ENABLEMENT_REASONS,
+  VisionLocalOcrLanguageSchema,
+  VisionLocalOcrProviderEnablementConfigSchema,
+  VisionLocalOcrProviderKindSchema,
+  VisionOcrEnablementReasonSchema,
+  VisionOcrEnablementResultSchema,
+  evaluateVisionOcrEnablement,
+} from "./ocr-enablement";
+
+export {
+  TESSERACT_INVOCATION_EXECUTION_MODES,
+  TESSERACT_INVOCATION_RESULT_STATES,
+  TesseractInvocationExecutionModeSchema,
+  TesseractInvocationPlanSchema,
+  TesseractInvocationResultSchema,
+  TesseractInvocationResultStateSchema,
+  createTesseractInvocationPlan,
+  runDisabledTesseractInvocation,
+} from "./tesseract-invocation";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -263,3 +290,21 @@ export type {
   VisionOcrSizeBand,
   VisionOcrSourceRefKind,
 } from "./ocr-artifact";
+
+export type {
+  VisionLocalOcrAllowedLanguage,
+  VisionLocalOcrProviderEnablementConfig,
+  VisionLocalOcrProviderKind,
+  VisionOcrEnablementInput,
+  VisionOcrEnablementReason,
+  VisionOcrEnablementResult,
+} from "./ocr-enablement";
+
+export type {
+  CreateTesseractInvocationPlanInput,
+  TesseractInvocationExecutionMode,
+  TesseractInvocationPlan,
+  TesseractInvocationPlanResult,
+  TesseractInvocationResult,
+  TesseractInvocationResultState,
+} from "./tesseract-invocation";

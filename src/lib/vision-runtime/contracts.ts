@@ -64,6 +64,9 @@ export const VISION_PROVIDER_RESULT_STATUSES = [
   "cancelled",
   "unsupported_capability",
   "policy_denied",
+  "provider_disabled",
+  "precondition_failed",
+  "execution_disabled",
 ] as const;
 
 export const VISION_PROVIDER_RESULT_REASONS = [
@@ -73,6 +76,9 @@ export const VISION_PROVIDER_RESULT_REASONS = [
   "cancelled",
   "unsupported_capability",
   "policy_denied",
+  "provider_disabled",
+  "precondition_failed",
+  "not_implemented",
 ] as const;
 
 export const VISION_TELEMETRY_EVENT_TYPES = [

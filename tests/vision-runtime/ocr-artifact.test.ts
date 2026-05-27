@@ -247,8 +247,8 @@ describe("Phase 15C.2 OCR input artifact contract", () => {
     });
     expect(result.provider_result).toMatchObject({
       provider_kind: "tesseract_stub",
-      status: "policy_denied",
-      policy_denied: true,
+      status: "provider_disabled",
+      policy_denied: false,
       raw_payload_included: false,
       raw_frame_persisted: false,
       raw_ocr_text_included: false,

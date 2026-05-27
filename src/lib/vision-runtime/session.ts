@@ -448,6 +448,10 @@ function resultReasonForProviderStatus(
       return "unsupported_capability";
     case "policy_denied":
       return "policy_denied";
+    case "provider_disabled":
+    case "precondition_failed":
+    case "execution_disabled":
+      return "provider_failed";
   }
 }
 

@@ -150,6 +150,42 @@ export function createVisionProviderPolicyDeniedResult(
   });
 }
 
+export function createVisionProviderDisabledResult(
+  input: Omit<CreateVisionProviderResultInput, "status" | "reason">,
+): VisionProviderResult {
+  return createVisionProviderResult({
+    ...input,
+    status: "provider_disabled",
+    reason: "provider_disabled",
+    result_kind: "no_result",
+    observation_count: 0,
+  });
+}
+
+export function createVisionProviderPreconditionFailedResult(
+  input: Omit<CreateVisionProviderResultInput, "status" | "reason">,
+): VisionProviderResult {
+  return createVisionProviderResult({
+    ...input,
+    status: "precondition_failed",
+    reason: "precondition_failed",
+    result_kind: "no_result",
+    observation_count: 0,
+  });
+}
+
+export function createVisionProviderExecutionDisabledResult(
+  input: Omit<CreateVisionProviderResultInput, "status" | "reason">,
+): VisionProviderResult {
+  return createVisionProviderResult({
+    ...input,
+    status: "execution_disabled",
+    reason: "not_implemented",
+    result_kind: "no_result",
+    observation_count: 0,
+  });
+}
+
 export function isVisionProviderCapabilityAllowed(
   provider: Pick<VisionProvider, "kind" | "supported_capability">,
 ): boolean {
