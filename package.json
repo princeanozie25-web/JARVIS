@@ -18,6 +18,7 @@
     "voice:tts:smoke": "tsx scripts/voice/tts-smoke.ts",
     "voice:stt:smoke": "tsx scripts/voice/stt-smoke.ts",
     "voice:playback:smoke": "tsx scripts/voice/playback-smoke.ts",
+    "voice:full-loop:smoke": "tsx scripts/voice/full-voice-loop-smoke.ts",
     "eval": "node --env-file=.env.local --import tsx scripts/run-eval.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
