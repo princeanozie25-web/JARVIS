@@ -399,3 +399,24 @@ export type {
   VoiceTurnSnapshot,
   VoiceTurnStageStatus,
 } from "./turn-orchestrator";
+
+export {
+  VOICE_CANCELLATION_SCOPES,
+  VOICE_INTERRUPTION_ERROR_CLASSES,
+  VOICE_INTERRUPTION_TARGETS,
+  applyVoiceInterruption,
+  createVoiceCancellationPlan,
+  createVoiceInterruption,
+  isVoiceCancellationScope,
+  isVoiceInterruptionTarget,
+  snapshotVoiceInterruption,
+} from "./interruption";
+export type {
+  VoiceCancellationPlan,
+  VoiceCancellationScope,
+  VoiceInterruptionErrorClass,
+  VoiceInterruptionEvent,
+  VoiceInterruptionResult,
+  VoiceInterruptionSnapshot,
+  VoiceInterruptionTarget,
+} from "./interruption";
