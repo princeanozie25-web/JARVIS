@@ -138,6 +138,26 @@ export {
   createDisabledTesseractProviderFactory,
 } from "./tesseract-provider";
 
+export {
+  VISION_OCR_ARTIFACT_KINDS,
+  VISION_OCR_ARTIFACT_REJECTION_REASONS,
+  VISION_OCR_MIME_TYPE_HINTS,
+  VISION_OCR_RETENTION_POLICIES,
+  VISION_OCR_SENSITIVITY_CLASSES,
+  VISION_OCR_SIZE_BANDS,
+  VISION_OCR_SOURCE_REF_KINDS,
+  VisionOcrArtifactKindSchema,
+  VisionOcrArtifactRejectionReasonSchema,
+  VisionOcrInputArtifactSchema,
+  VisionOcrMimeTypeHintSchema,
+  VisionOcrRetentionPolicySchema,
+  VisionOcrSensitivityClassSchema,
+  VisionOcrSizeBandSchema,
+  VisionOcrSourceRefKindSchema,
+  createVisionOcrArtifactFromScreenshotCapture,
+  validateVisionOcrInputArtifact,
+} from "./ocr-artifact";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -229,3 +249,17 @@ export type {
   DisabledTesseractProviderConfig,
   DisabledTesseractProviderHealth,
 } from "./tesseract-provider";
+
+export type {
+  CreateVisionOcrArtifactFromCaptureInput,
+  VisionOcrArtifactKind,
+  VisionOcrArtifactProviderRunRequest,
+  VisionOcrArtifactRejectionReason,
+  VisionOcrArtifactValidationResult,
+  VisionOcrInputArtifact,
+  VisionOcrMimeTypeHint,
+  VisionOcrRetentionPolicy,
+  VisionOcrSensitivityClass,
+  VisionOcrSizeBand,
+  VisionOcrSourceRefKind,
+} from "./ocr-artifact";
