@@ -345,3 +345,17 @@ export type {
   PlaybackStateTransitionResult,
   PlaybackTerminalState,
 } from "./playback";
+
+export { createVoiceRuntimeBridge } from "./runtime-bridge";
+export type {
+  VoicePlaybackRequestInput,
+  VoicePlaybackRequestMetadata,
+  VoiceRuntimeBridge,
+  VoiceRuntimeBridgeCapturedAudioMetadata,
+  VoiceRuntimeBridgeFailureReason,
+  VoiceRuntimeBridgeOptions,
+  VoiceRuntimeBridgeResult,
+  VoiceRuntimeBridgeSnapshot,
+  VoiceRuntimeBridgeStatus,
+  VoiceRuntimeRequestMetadata,
+} from "./runtime-bridge";
