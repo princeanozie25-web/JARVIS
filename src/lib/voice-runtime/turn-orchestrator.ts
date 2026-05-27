@@ -507,7 +507,9 @@ export function createVoiceTurnOrchestrator(
         return interruptionFailure(["interruption_failed"]);
       }
 
-      bridge.reset();
+      if (options.playback_queue.snapshot().depth > 0) {
+        options.playback_queue.clear("voice_turn_interruption_cleanup");
+      }
       bridge = createBridge();
       snapshot = {
         ...snapshot,
