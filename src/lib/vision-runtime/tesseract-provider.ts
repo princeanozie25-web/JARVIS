@@ -16,6 +16,12 @@ import {
 } from "./provider";
 import { evaluateVisionOcrEnablement } from "./ocr-enablement";
 import type { VisionMutationAuthorityClass } from "./policy";
+import { sanitizeVisionProviderResult } from "./redaction";
+import {
+  createTesseractInvocationPlan,
+  runDisabledTesseractInvocation,
+  type TesseractInvocationResult,
+} from "./tesseract-invocation";
 
 export const TESSERACT_PROVIDER_HEALTH_STATUSES = [
   "disabled",
@@ -57,6 +63,17 @@ export interface DisabledTesseractProviderHealth extends VisionProviderHealth {
   readonly configured: false;
   readonly binary_path_configured: false;
   readonly process_spawned: false;
+}
+
+export interface TesseractDryRunProviderPathResult extends VisionProviderRunResult {
+  readonly enablement_allowed: boolean;
+  readonly enablement_reason: string;
+  readonly invocation_plan_created: boolean;
+  readonly invocation_result: TesseractInvocationResult | null;
+  readonly metadata_only: true;
+  readonly advisory_only: true;
+  readonly derived: true;
+  readonly raw_payload_included: false;
 }
 
 export const DEFAULT_DISABLED_TESSERACT_PROVIDER_CONFIG =
@@ -122,54 +139,99 @@ export function createDisabledTesseractProvider(
     async run(
       request: VisionProviderRunRequest,
     ): Promise<VisionProviderRunResult> {
-      const enablement = evaluateVisionOcrEnablement({
-        provider_config: resolvedConfig,
-        capability: safeCapability(request.capability),
-        artifact: ocrArtifactFromRequest(request),
-        user_triggered: request.user_triggered,
-        timeout_ms: request.timeout_ms,
-        mutation_authority_requested: mutationAuthorityFromRequest(request),
-        cloud_fallback_requested: fallbackFlagFromRequest(
-          request,
-          "cloud_fallback_requested",
-        ),
-        network_fallback_requested: fallbackFlagFromRequest(
-          request,
-          "network_fallback_requested",
-        ),
+      return runTesseractDryRunProviderPath({
+        config: resolvedConfig,
+        request,
         metadata_only: true,
       });
-      const baseResult = {
-        result_id: `${request.request_id}-result`,
-        session_id: request.session_id,
-        provider_id: resolvedConfig.provider_id,
-        provider_kind: resolvedConfig.provider_kind,
-        capability: safeCapability(request.capability),
-        latency_ms: 0,
-      };
-      const providerResult =
-        enablement.reason === "provider_disabled"
-          ? createVisionProviderDisabledResult(baseResult)
-          : enablement.allowed
-            ? createVisionProviderExecutionDisabledResult(baseResult)
-            : createVisionProviderPreconditionFailedResult(baseResult);
-
-      return {
-        provider_result: providerResult,
-        observations: [],
-        metadata_only: true,
-        advisory_only: true,
-        derived: true,
-        raw_payload_included: false,
-      };
     },
   };
+}
+
+export function createDisabledTesseractDryRunProvider(
+  config: Partial<DisabledTesseractProviderConfig> = {},
+): VisionProvider {
+  return createDisabledTesseractProvider(config);
 }
 
 export function createDisabledTesseractProviderFactory(
   config: Partial<DisabledTesseractProviderConfig> = {},
 ): () => VisionProvider {
   return () => createDisabledTesseractProvider(config);
+}
+
+export function runTesseractDryRunProviderPath(input: {
+  readonly config: DisabledTesseractProviderConfig;
+  readonly request: VisionProviderRunRequest;
+  readonly metadata_only: true;
+}): TesseractDryRunProviderPathResult {
+  const config = DisabledTesseractProviderConfigSchema.parse(input.config);
+  const request = input.request;
+  const enablement = evaluateVisionOcrEnablement({
+    provider_config: config,
+    capability: safeCapability(request.capability),
+    artifact: ocrArtifactFromRequest(request),
+    user_triggered: request.user_triggered,
+    timeout_ms: request.timeout_ms,
+    mutation_authority_requested: mutationAuthorityFromRequest(request),
+    cloud_fallback_requested: fallbackFlagFromRequest(
+      request,
+      "cloud_fallback_requested",
+    ),
+    network_fallback_requested: fallbackFlagFromRequest(
+      request,
+      "network_fallback_requested",
+    ),
+    metadata_only: true,
+  });
+  const baseResult = {
+    result_id: `${request.request_id}-result`,
+    session_id: request.session_id,
+    provider_id: config.provider_id,
+    provider_kind: config.provider_kind,
+    capability: safeCapability(request.capability),
+    latency_ms: 0,
+  };
+
+  if (enablement.reason === "provider_disabled") {
+    return dryRunResult({
+      provider_result: createVisionProviderDisabledResult(baseResult),
+      enablement_allowed: false,
+      enablement_reason: enablement.reason,
+      invocation_plan_created: false,
+      invocation_result: null,
+    });
+  }
+
+  if (!enablement.allowed) {
+    return dryRunResult({
+      provider_result: createVisionProviderPreconditionFailedResult(baseResult),
+      enablement_allowed: false,
+      enablement_reason: enablement.reason,
+      invocation_plan_created: false,
+      invocation_result: null,
+    });
+  }
+
+  const invocationPlan = createTesseractInvocationPlan({
+    provider_id: config.provider_id,
+    artifact: ocrArtifactFromRequest(request),
+    enablement,
+    metadata_only: true,
+  });
+  const invocationResult = invocationPlan.ok
+    ? runDisabledTesseractInvocation(invocationPlan.plan)
+    : invocationPlan.result;
+
+  return dryRunResult({
+    provider_result: invocationPlan.ok
+      ? createVisionProviderExecutionDisabledResult(baseResult)
+      : createVisionProviderPreconditionFailedResult(baseResult),
+    enablement_allowed: true,
+    enablement_reason: enablement.reason,
+    invocation_plan_created: invocationPlan.ok,
+    invocation_result: invocationResult,
+  });
 }
 
 function safeCapability(capability: VisionCapability): VisionCapability {
@@ -197,4 +259,30 @@ function fallbackFlagFromRequest(
   key: "cloud_fallback_requested" | "network_fallback_requested",
 ): boolean {
   return Boolean((request as unknown as Record<string, unknown>)[key]);
+}
+
+function dryRunResult(input: {
+  readonly provider_result: VisionProviderRunResult["provider_result"];
+  readonly enablement_allowed: boolean;
+  readonly enablement_reason: string;
+  readonly invocation_plan_created: boolean;
+  readonly invocation_result: TesseractInvocationResult | null;
+}): TesseractDryRunProviderPathResult {
+  const sanitized = sanitizeVisionProviderResult(input.provider_result);
+  if (!sanitized.ok) {
+    throw new Error("Unsafe Tesseract dry-run provider result.");
+  }
+
+  return {
+    provider_result: sanitized.value,
+    observations: [],
+    enablement_allowed: input.enablement_allowed,
+    enablement_reason: input.enablement_reason,
+    invocation_plan_created: input.invocation_plan_created,
+    invocation_result: input.invocation_result,
+    metadata_only: true,
+    advisory_only: true,
+    derived: true,
+    raw_payload_included: false,
+  };
 }

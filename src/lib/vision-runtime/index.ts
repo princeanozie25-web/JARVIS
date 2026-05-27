@@ -137,8 +137,10 @@ export {
   DEFAULT_DISABLED_TESSERACT_PROVIDER_CONFIG,
   DisabledTesseractProviderConfigSchema,
   TESSERACT_PROVIDER_HEALTH_STATUSES,
+  createDisabledTesseractDryRunProvider,
   createDisabledTesseractProvider,
   createDisabledTesseractProviderFactory,
+  runTesseractDryRunProviderPath,
 } from "./tesseract-provider";
 
 export {
@@ -275,6 +277,7 @@ export type {
 export type {
   DisabledTesseractProviderConfig,
   DisabledTesseractProviderHealth,
+  TesseractDryRunProviderPathResult,
 } from "./tesseract-provider";
 
 export type {
