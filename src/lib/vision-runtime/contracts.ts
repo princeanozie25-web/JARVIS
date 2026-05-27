@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const VISION_CAPABILITIES = [
   "screenshot_ocr",
+  "object_detection",
   "mock_camera",
   "real_camera",
   "cloud_vision",
@@ -15,6 +16,9 @@ export const VISION_INPUT_KINDS = [
 
 export const VISION_PROVIDER_KINDS = [
   "screenshot_ocr_placeholder",
+  "fake_ocr",
+  "fake_object_detector",
+  "fake_mock_camera",
   "mock_camera",
   "real_camera",
   "cloud_vision",
@@ -51,6 +55,24 @@ export const VISION_PROVIDER_RESULT_KINDS = [
   "mock_observation",
 ] as const;
 
+export const VISION_PROVIDER_RESULT_STATUSES = [
+  "success",
+  "degraded",
+  "timeout",
+  "cancelled",
+  "unsupported_capability",
+  "policy_denied",
+] as const;
+
+export const VISION_PROVIDER_RESULT_REASONS = [
+  "completed",
+  "degraded_fixture",
+  "timeout",
+  "cancelled",
+  "unsupported_capability",
+  "policy_denied",
+] as const;
+
 export const VISION_TELEMETRY_EVENT_TYPES = [
   "vision_policy_evaluated",
   "vision_session_created",
@@ -79,6 +101,12 @@ export const VisionObservationKindSchema = z.enum(VISION_OBSERVATION_KINDS);
 export const VisionProviderResultKindSchema = z.enum(
   VISION_PROVIDER_RESULT_KINDS,
 );
+export const VisionProviderResultStatusSchema = z.enum(
+  VISION_PROVIDER_RESULT_STATUSES,
+);
+export const VisionProviderResultReasonSchema = z.enum(
+  VISION_PROVIDER_RESULT_REASONS,
+);
 export const VisionTelemetryEventTypeSchema = z.enum(
   VISION_TELEMETRY_EVENT_TYPES,
 );
@@ -93,6 +121,10 @@ export type VisionRedactionStatus = (typeof VISION_REDACTION_STATUSES)[number];
 export type VisionObservationKind = (typeof VISION_OBSERVATION_KINDS)[number];
 export type VisionProviderResultKind =
   (typeof VISION_PROVIDER_RESULT_KINDS)[number];
+export type VisionProviderResultStatus =
+  (typeof VISION_PROVIDER_RESULT_STATUSES)[number];
+export type VisionProviderResultReason =
+  (typeof VISION_PROVIDER_RESULT_REASONS)[number];
 export type VisionTelemetryEventType =
   (typeof VISION_TELEMETRY_EVENT_TYPES)[number];
 
@@ -184,11 +216,19 @@ export const VisionProviderResultSchema = z.strictObject({
   provider_kind: VisionProviderKindSchema,
   capability: VisionCapabilitySchema,
   result_kind: VisionProviderResultKindSchema,
+  status: VisionProviderResultStatusSchema,
+  reason: VisionProviderResultReasonSchema,
   redaction_status: VisionRedactionStatusSchema,
   observation_count: z.number().int().nonnegative(),
   latency_ms: z.number().int().nonnegative().nullable(),
   metadata_only: z.literal(true),
   advisory_only: z.literal(true),
+  derived: z.literal(true),
+  degraded: z.boolean(),
+  timed_out: z.boolean(),
+  cancelled: z.boolean(),
+  policy_denied: z.boolean(),
+  unsupported_capability: z.boolean(),
   raw_payload_included: z.literal(false),
   raw_frame_persisted: z.literal(false),
   raw_ocr_text_included: z.literal(false),

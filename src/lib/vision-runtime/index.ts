@@ -5,6 +5,8 @@ export {
   VISION_OBSERVATION_KINDS,
   VISION_PROVIDER_KINDS,
   VISION_PROVIDER_RESULT_KINDS,
+  VISION_PROVIDER_RESULT_REASONS,
+  VISION_PROVIDER_RESULT_STATUSES,
   VISION_REDACTION_STATUSES,
   VISION_RUNTIME_ENVIRONMENTS,
   VISION_TELEMETRY_EVENT_TYPES,
@@ -15,7 +17,9 @@ export {
   VisionObservationSchema,
   VisionProviderKindSchema,
   VisionProviderResultKindSchema,
+  VisionProviderResultReasonSchema,
   VisionProviderResultSchema,
+  VisionProviderResultStatusSchema,
   VisionRedactionStatusSchema,
   VisionRuntimeEnvironmentSchema,
   VisionRuntimePolicySchema,
@@ -37,6 +41,28 @@ export {
   sanitizeVisionTelemetryEvent,
 } from "./policy";
 
+export {
+  createVisionProviderCancelledResult,
+  createVisionProviderDegradedResult,
+  createVisionProviderPolicyDeniedResult,
+  createVisionProviderSuccessResult,
+  createVisionProviderTimeoutResult,
+  createVisionProviderUnsupportedCapabilityResult,
+  evaluateVisionProviderRequest,
+  isVisionProviderCapabilityAllowed,
+} from "./provider";
+
+export {
+  createFakeMockCameraProvider,
+  createFakeObjectDetectionProvider,
+  createFakeOcrProvider,
+} from "./fake-providers";
+
+export {
+  VisionProviderRegistry,
+  createVisionProviderRegistry,
+} from "./registry";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -46,6 +72,8 @@ export type {
   VisionProviderKind,
   VisionProviderResult,
   VisionProviderResultKind,
+  VisionProviderResultReason,
+  VisionProviderResultStatus,
   VisionRedactionStatus,
   VisionRuntimeEnvironment,
   VisionRuntimePolicy,
@@ -62,3 +90,13 @@ export type {
   VisionPolicyEvaluationInput,
   VisionTelemetryValidationResult,
 } from "./policy";
+
+export type {
+  VisionProvider,
+  VisionProviderCancellationToken,
+  VisionProviderHealth,
+  VisionProviderRunRequest,
+  VisionProviderRunResult,
+} from "./provider";
+
+export type { VisionProviderRegistryResult } from "./registry";
