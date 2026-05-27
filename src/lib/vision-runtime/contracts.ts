@@ -19,6 +19,8 @@ export const VISION_PROVIDER_KINDS = [
   "fake_ocr",
   "fake_object_detector",
   "fake_mock_camera",
+  "local_ocr",
+  "tesseract_stub",
   "mock_camera",
   "real_camera",
   "cloud_vision",

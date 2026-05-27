@@ -91,7 +91,7 @@ describe("Phase 15A closeout audit guards", () => {
       /tesseract|paddleocr|paddle|yolo|ultralytics|opencv|onnxruntime/i,
     );
     expect(combinedVisionRuntimeSource()).not.toMatch(
-      /from\s+["'][^"']*(?:tesseract|paddleocr|paddle|yolo|ultralytics|opencv|onnxruntime)[^"']*["']|require\s*\(\s*["'][^"']*(?:tesseract|paddleocr|paddle|yolo|ultralytics|opencv|onnxruntime)[^"']*["']\s*\)/i,
+      /from\s+["'](?!\.)[^"']*(?:tesseract|paddleocr|paddle|yolo|ultralytics|opencv|onnxruntime)[^"']*["']|require\s*\(\s*["'](?!\.)[^"']*(?:tesseract|paddleocr|paddle|yolo|ultralytics|opencv|onnxruntime)[^"']*["']\s*\)/i,
     );
   });
 

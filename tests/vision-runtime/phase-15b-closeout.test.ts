@@ -360,11 +360,11 @@ describe("Phase 15B screenshot OCR closeout guards", () => {
     );
   });
 
-  it("keeps real OCR, camera, cloud, network, UI, persistence, and mutation markers absent from source", () => {
+  it("keeps real OCR imports, camera, cloud, network, UI, persistence, and mutation markers absent from source", () => {
     const sourceText = combinedVisionRuntimeSource();
 
     expect(sourceText).not.toMatch(
-      /tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime|easyocr|ocrad/i,
+      /from\s+["'](?!\.)[^"']*(?:tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime|easyocr|ocrad)[^"']*["']|require\s*\(\s*["'](?!\.)[^"']*(?:tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime|easyocr|ocrad)[^"']*["']\s*\)/i,
     );
     expect(sourceText).not.toMatch(
       /getUserMedia|MediaRecorder|MediaStream|cameraDevice|startCamera|openCamera/i,

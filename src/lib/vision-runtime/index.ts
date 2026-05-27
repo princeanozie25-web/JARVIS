@@ -130,6 +130,14 @@ export {
   runFakeScreenshotOcrSession,
 } from "./screenshot-session";
 
+export {
+  DEFAULT_DISABLED_TESSERACT_PROVIDER_CONFIG,
+  DisabledTesseractProviderConfigSchema,
+  TESSERACT_PROVIDER_HEALTH_STATUSES,
+  createDisabledTesseractProvider,
+  createDisabledTesseractProviderFactory,
+} from "./tesseract-provider";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -216,3 +224,8 @@ export type {
   VisionScreenshotSessionResult,
   VisionScreenshotSessionStatus,
 } from "./screenshot-session";
+
+export type {
+  DisabledTesseractProviderConfig,
+  DisabledTesseractProviderHealth,
+} from "./tesseract-provider";

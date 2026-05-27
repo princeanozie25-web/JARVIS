@@ -343,14 +343,17 @@ describe("Phase 15B.3 fake screenshot OCR orchestration", () => {
     });
   });
 
-  it("keeps real screenshot, OCR, UI, native, network, and persistence markers absent from runtime source", () => {
+  it("keeps real screenshot, OCR imports, UI, native, network, and persistence markers absent from runtime source", () => {
     const source = readVisionRuntimeSource();
 
     expect(source).not.toMatch(
       /getDisplayMedia|desktopCapturer|screenshot-desktop|captureScreen|screenCapture|takeScreenshot|captureScreenshot|ImageCapture|navigator\.mediaDevices|canvas\.toDataURL|toBlob/i,
     );
     expect(source).not.toMatch(
-      /tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime|powershell|screencapture|gnome-screenshot|@tauri-apps\/api|invoke\s*\(|Command\.new|std::process|windows\.graphics\.capture|fetch\s*\(|WebSocket|EventSource|XMLHttpRequest|writeFile|appendFile|better-sqlite3|sqlite|database|React|useEffect|useState/i,
+      /from\s+["'](?!\.)[^"']*(?:tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime)[^"']*["']|require\s*\(\s*["'](?!\.)[^"']*(?:tesseract|paddleocr|yolo|ultralytics|opencv|onnxruntime)[^"']*["']\s*\)/i,
+    );
+    expect(source).not.toMatch(
+      /powershell|screencapture|gnome-screenshot|@tauri-apps\/api|invoke\s*\(|Command\.new|std::process|windows\.graphics\.capture|fetch\s*\(|WebSocket|EventSource|XMLHttpRequest|writeFile|appendFile|better-sqlite3|sqlite|database|React|useEffect|useState/i,
     );
   });
 });
