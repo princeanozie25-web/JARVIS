@@ -381,6 +381,12 @@ export type {
   VoiceRuntimeFinishReason,
 } from "./runtime-adapter";
 
+export {
+  RealVoiceRuntimeAdapterError,
+  createRealVoiceRuntimeAdapter,
+} from "./runtime-adapter-real";
+export type { RealVoiceRuntimeAdapterOptions } from "./runtime-adapter-real";
+
 export { createVoiceTurnOrchestrator } from "./turn-orchestrator";
 export type {
   VoiceTurnFailureReason,

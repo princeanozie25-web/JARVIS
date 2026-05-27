@@ -12,8 +12,11 @@ export const VOICE_RUNTIME_ADAPTER_FAILURE_CLASSES = [
 
 export const VOICE_RUNTIME_FINISH_REASONS = [
   "stop",
+  "length",
   "cancelled",
+  "timeout",
   "error",
+  "budget_blocked",
   "policy_blocked",
 ] as const;
 

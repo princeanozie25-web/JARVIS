@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   FAKE_VOICE_RUNTIME_RESPONSE_TEXT,
+  createRealVoiceRuntimeAdapter,
   createFakeVoiceRuntimeAdapter,
   createPlaybackQueue,
   createVoiceTurnOrchestrator,
@@ -20,6 +21,7 @@ import {
   type VoiceRuntimeAdapterHealth,
   type VoiceRuntimeBridgeCapturedAudioMetadata,
 } from "../../src/lib/voice-runtime";
+import type { ModelRuntime, ModelRuntimeExecuteResult } from "../../src/models";
 
 const SAFE_TRANSCRIPT = "Good evening. All systems are operational.";
 const SAFE_OUTPUT_REF = "C:/tmp/jarvis-fake-tts.wav";
@@ -260,6 +262,65 @@ function createHarness(
   return { orchestrator, playbackQueue, stt, runtime, tts };
 }
 
+function governedRuntimeResult(content: string): ModelRuntimeExecuteResult {
+  return {
+    request_id: "voice-runtime-voice-session-1-voice-turn-1",
+    ok: true,
+    response: {
+      request_id: "voice-runtime-voice-session-1-voice-turn-1",
+      model_id: "local-primary",
+      provider_id: "governed-provider",
+      output: {
+        kind: "text",
+        content,
+      },
+      latency_ms: 15,
+      token_usage: {
+        input_tokens: 4,
+        output_tokens: 3,
+        total_tokens: 7,
+      },
+      finish_reason: "stop",
+      degraded: false,
+      redaction_status: "metadata_only",
+    },
+    metadata: {
+      selected_model_id: "local-primary",
+      attempted_models: ["local-primary"],
+      successful_model: "local-primary",
+      failed_models: [],
+      fallback_used: false,
+      governance_flags: [],
+      latency_ms: 17,
+      degraded: false,
+      execution_summary: {
+        execution_id: "voice-runtime-voice-session-1-voice-turn-1",
+        request_id: "voice-runtime-voice-session-1-voice-turn-1",
+        capability: "chat",
+        selected_model_id: "local-primary",
+        selected_provider: "governed-provider",
+        attempted_models: ["local-primary"],
+        successful_model: "local-primary",
+        failed_models: [],
+        fallback_used: false,
+        fallback_chain: [],
+        latency_ms: 17,
+        token_usage: {
+          input_tokens: 4,
+          output_tokens: 3,
+          total_tokens: 7,
+        },
+        degraded: false,
+        finish_reason: "stop",
+        governance_flags: [],
+        redaction_status: "metadata_only",
+        runtime_class: "local",
+        provider_kind: "ollama",
+      },
+    },
+  };
+}
+
 describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
   it("runs the fake-first voice turn and queues playback metadata without autoplay", async () => {
     const { orchestrator, playbackQueue } = createHarness();
@@ -272,6 +333,9 @@ describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
         session_id: "voice-session-1",
         turn_id: "voice-turn-1",
         runtime_response_id: "fake-runtime-response-4899149a",
+        runtime_latency_ms: 48,
+        runtime_provider_id: "fake-voice-runtime",
+        runtime_finish_reason: "stop",
         playback_item_id: "voice-playback-tts-chunk-1",
         playback_queue_depth: 1,
         degraded: false,
@@ -329,6 +393,56 @@ describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
       "tts.health",
       "tts.synthesize",
     ]);
+  });
+
+  it("can explicitly run through the real governed runtime adapter without autoplay", async () => {
+    const execute = vi.fn(
+      async (): Promise<ModelRuntimeExecuteResult> =>
+        governedRuntimeResult("real-runtime-answer"),
+    );
+    const runtime: ModelRuntime = {
+      execute,
+      stream: async function* () {
+        return;
+      },
+    };
+    const { orchestrator, playbackQueue } = createHarness({
+      runtime: createRealVoiceRuntimeAdapter({ runtime }),
+    });
+
+    const result = await orchestrator.runVoiceTurn(capturedAudio(), {
+      metadata_only: true,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        runtime_response_id: "voice-runtime-voice-session-1-voice-turn-1",
+        runtime_provider_id: "governed-provider",
+        runtime_latency_ms: 17,
+        runtime_finish_reason: "stop",
+        playback_queue_depth: 1,
+      },
+      snapshot: {
+        phase: "queued_for_playback",
+        playback_status: "complete",
+      },
+    });
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capability: "chat",
+        resolver_options: expect.objectContaining({
+          runtime_class: "local",
+          allow_cloud: false,
+          allow_disabled: false,
+          required_tools: false,
+        }),
+        options: {
+          tool_choice: "none",
+        },
+      }),
+    );
+    expect(playbackQueue.snapshot().depth).toBe(1);
   });
 
   it("passes AbortSignal to STT, runtime, and TTS without exposing payloads", async () => {

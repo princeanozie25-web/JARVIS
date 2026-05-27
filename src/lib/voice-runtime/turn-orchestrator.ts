@@ -54,6 +54,9 @@ export interface VoiceTurnResultMetadata {
   readonly session_id: string;
   readonly turn_id: string;
   readonly runtime_response_id: string;
+  readonly runtime_latency_ms: number;
+  readonly runtime_provider_id: string | null;
+  readonly runtime_finish_reason: string;
   readonly playback_item_id: string;
   readonly playback_queue_depth: number;
   readonly degraded: boolean;
@@ -225,6 +228,9 @@ export function createVoiceTurnOrchestrator(
         session_id: playbackResult.value.session_id,
         turn_id: playbackResult.value.turn_id,
         runtime_response_id: runtimeResult.value.response_id,
+        runtime_latency_ms: runtimeResult.value.latency_ms,
+        runtime_provider_id: runtimeResult.value.provider_id ?? null,
+        runtime_finish_reason: runtimeResult.value.finish_reason,
         playback_item_id: playbackResult.value.item_id,
         playback_queue_depth: playbackResult.value.playback_queue_depth,
         degraded: snapshot.degraded,
