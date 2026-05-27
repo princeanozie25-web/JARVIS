@@ -9,6 +9,8 @@ import {
   createFakeVoiceRuntimeAdapter,
   createPlaybackQueue,
   createVoiceTurnOrchestrator,
+  type VoiceCancellationSupervisor,
+  type VoiceCancellationSupervisorResult,
   type PlaybackQueue,
   type PlaybackQueueItem,
   type SttProvider,
@@ -207,6 +209,7 @@ function spiedRuntimeAdapter(): VoiceRuntimeAdapter {
     ...runtime,
     health: vi.fn(runtime.health),
     executeVoiceRequest: vi.fn(runtime.executeVoiceRequest),
+    cancel: vi.fn(runtime.cancel),
   };
 }
 
@@ -241,6 +244,7 @@ function createHarness(
     readonly tts?: TtsProvider;
     readonly playbackQueue?: PlaybackQueue;
     readonly queueDepth?: number;
+    readonly cancellationSupervisor?: VoiceCancellationSupervisor;
   } = {},
 ) {
   const playbackQueue =
@@ -258,8 +262,111 @@ function createHarness(
     runtime_adapter: runtime,
     tts_provider: tts,
     playback_queue: playbackQueue,
+    cancellation_supervisor: options.cancellationSupervisor,
+    now_ms: () => 2000,
+    interruption_id_factory: () => "voice-interruption-test",
   });
   return { orchestrator, playbackQueue, stt, runtime, tts };
+}
+
+function fakeCancellationSupervisor(
+  playbackQueue: PlaybackQueue,
+  order: string[],
+  options: { readonly fail?: boolean } = {},
+): VoiceCancellationSupervisor {
+  return {
+    applyInterruption: vi.fn(async (input) => {
+      const event = input as {
+        readonly interruption_id: string;
+        readonly session_id: string;
+        readonly turn_id: string;
+        readonly target: "playback";
+        readonly scope: "full_turn_interrupt";
+        readonly reason: "barge_in";
+        readonly created_at: number;
+        readonly metadata_only: true;
+      };
+      order.push(`${event.scope}:${event.turn_id}:${event.reason}`);
+      if (options.fail) {
+        return {
+          ok: false,
+          plan: null,
+          target_results: [],
+          snapshot: {
+            interruption_id: event.interruption_id,
+            turn_id: event.turn_id,
+            session_id: event.session_id,
+            applied: false,
+            degraded: true,
+            target_results: [],
+            last_error_class: "target_failed",
+            metadata_only: true,
+          },
+          reasons: ["target_failed"],
+          metadata_only: true,
+        } satisfies VoiceCancellationSupervisorResult;
+      }
+      playbackQueue.clear("full_turn_interrupt");
+      return {
+        ok: true,
+        plan: {
+          ...event,
+          targets: ["capture", "stt", "runtime", "tts", "playback", "queue"],
+          scopes: [
+            "cancel_capture",
+            "cancel_stt",
+            "cancel_runtime",
+            "cancel_tts",
+            "cancel_playback",
+            "clear_queue",
+          ],
+        },
+        target_results: [
+          "capture",
+          "stt",
+          "runtime",
+          "tts",
+          "playback",
+          "queue",
+        ].map((target, index) => ({
+          target,
+          scope: [
+            "cancel_capture",
+            "cancel_stt",
+            "cancel_runtime",
+            "cancel_tts",
+            "cancel_playback",
+            "clear_queue",
+          ][index],
+          applied: true,
+          cancelled: true,
+          degraded: false,
+          completed_at: 2100 + index,
+          metadata_only: true,
+        })),
+        snapshot: {
+          interruption_id: event.interruption_id,
+          turn_id: event.turn_id,
+          session_id: event.session_id,
+          applied: true,
+          degraded: false,
+          target_results: [],
+          metadata_only: true,
+        },
+        reasons: [],
+        metadata_only: true,
+      } as VoiceCancellationSupervisorResult;
+    }),
+    snapshot: vi.fn(() => ({
+      interruption_id: null,
+      turn_id: null,
+      session_id: null,
+      applied: false,
+      degraded: false,
+      target_results: [],
+      metadata_only: true as const,
+    })),
+  };
 }
 
 function governedRuntimeResult(content: string): ModelRuntimeExecuteResult {
@@ -681,6 +788,190 @@ describe("Phase 14F.3 voice turn orchestrator with fake runtime", () => {
       metadata_only: true,
     });
     expect(playbackQueue.snapshot().depth).toBe(0);
+  });
+
+  it("interrupts an active turn through the default cancellation supervisor and clears queued playback", async () => {
+    const { orchestrator, playbackQueue, stt, runtime, tts } = createHarness();
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    expect(playbackQueue.snapshot().depth).toBe(1);
+
+    const interruption = await orchestrator.interruptActiveTurn("barge_in", {
+      interruption_id: "interrupt-active-turn",
+      metadata_only: true,
+    });
+
+    expect(interruption).toMatchObject({
+      ok: true,
+      value: {
+        active_turn_id: null,
+        interrupted_turn_id: "voice-turn-1",
+        interruption_status: "interrupted",
+        cancellation_result_count: 6,
+        metadata_only: true,
+      },
+      snapshot: {
+        phase: "interrupted",
+        stt_status: "cancelled",
+        runtime_status: "cancelled",
+        tts_status: "cancelled",
+        playback_status: "cancelled",
+        playback_queue_depth: 0,
+        active_turn_id: null,
+        interrupted_turn_id: "voice-turn-1",
+        interruption_status: "interrupted",
+        cancellation_result_count: 6,
+      },
+    });
+    expect(playbackQueue.snapshot().depth).toBe(0);
+    expect(stt.cancel).toHaveBeenCalledWith(
+      "user_cancelled",
+      expect.objectContaining({ metadata_only: true }),
+    );
+    expect(runtime.cancel).toHaveBeenCalledWith(
+      "cancelled",
+      expect.objectContaining({ metadata_only: true }),
+    );
+    expect(tts.cancel).toHaveBeenCalledWith(
+      "user_cancelled",
+      expect.objectContaining({ metadata_only: true }),
+    );
+  });
+
+  it("begins a new explicit PTT turn only after full-turn interruption fanout", async () => {
+    const order: string[] = [];
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const cancellationSupervisor = fakeCancellationSupervisor(
+      playbackQueue,
+      order,
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      cancellationSupervisor,
+    });
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    expect(playbackQueue.snapshot().items).toHaveLength(1);
+
+    const result = await orchestrator.beginNewTurnWithInterruption(
+      capturedAudio({ turn_id: "voice-turn-2" }),
+      { metadata_only: true },
+    );
+
+    expect(cancellationSupervisor.applyInterruption).toHaveBeenCalledWith(
+      {
+        interruption_id: "voice-interruption-test",
+        session_id: "voice-session-1",
+        turn_id: "voice-turn-1",
+        target: "playback",
+        scope: "full_turn_interrupt",
+        reason: "barge_in",
+        created_at: 2000,
+        metadata_only: true,
+      },
+      {
+        abort_signal: undefined,
+        metadata_only: true,
+      },
+    );
+    expect(order).toEqual(["full_turn_interrupt:voice-turn-1:barge_in"]);
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        turn_id: "voice-turn-2",
+        playback_queue_depth: 1,
+      },
+      snapshot: {
+        turn_id: "voice-turn-2",
+        active_turn_id: "voice-turn-2",
+        interrupted_turn_id: "voice-turn-1",
+        interruption_status: "interrupted",
+        cancellation_result_count: 6,
+        playback_queue_depth: 1,
+      },
+    });
+    expect(playbackQueue.snapshot().items).toMatchObject([
+      {
+        turn_id: "voice-turn-2",
+        content_class: "assistant_prose",
+      },
+    ]);
+  });
+
+  it("fails closed and does not start a new turn when interruption fanout fails", async () => {
+    const order: string[] = [];
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const stt = fakeSttProvider();
+    const cancellationSupervisor = fakeCancellationSupervisor(
+      playbackQueue,
+      order,
+      { fail: true },
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      stt,
+      cancellationSupervisor,
+    });
+
+    await orchestrator.runVoiceTurn(capturedAudio(), { metadata_only: true });
+    expect(stt.transcribe).toHaveBeenCalledTimes(1);
+
+    await expect(
+      orchestrator.beginNewTurnWithInterruption(
+        capturedAudio({ turn_id: "voice-turn-2" }),
+        { metadata_only: true },
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      reasons: ["interruption_failed"],
+      snapshot: {
+        phase: "failed",
+        error_class: "interruption_failed",
+        interruption_status: "failed",
+      },
+    });
+    expect(stt.transcribe).toHaveBeenCalledTimes(1);
+    expect(playbackQueue.snapshot().items).toHaveLength(1);
+  });
+
+  it("does not interrupt when no prior turn is active", async () => {
+    const order: string[] = [];
+    const playbackQueue = createPlaybackQueue({
+      max_queue_depth: 4,
+      allow_sensitive_content: false,
+      metadata_only: true,
+    });
+    const cancellationSupervisor = fakeCancellationSupervisor(
+      playbackQueue,
+      order,
+    );
+    const { orchestrator } = createHarness({
+      playbackQueue,
+      cancellationSupervisor,
+    });
+
+    const result = await orchestrator.beginNewTurnWithInterruption(
+      capturedAudio({ turn_id: "voice-turn-first" }),
+      { metadata_only: true },
+    );
+
+    expect(cancellationSupervisor.applyInterruption).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: true,
+      snapshot: {
+        active_turn_id: "voice-turn-first",
+        interruption_status: "not_required",
+        cancellation_result_count: 0,
+      },
+    });
   });
 
   it("snapshots remain metadata-only and never expose transcript, assistant text, prompts, responses, tool output, or raw audio", async () => {

@@ -1,3 +1,7 @@
+import {
+  createVoiceCancellationSupervisor,
+  type VoiceCancellationSupervisor,
+} from "./cancellation-supervisor";
 import type { PlaybackQueue } from "./playback";
 import { createVoiceRuntimeBridge } from "./runtime-bridge";
 import type {
@@ -6,6 +10,7 @@ import type {
 } from "./runtime-adapter";
 import type { SttProvider } from "./stt";
 import type { TtsContentClass, TtsProvider } from "./tts";
+import type { VoiceCancellationReason } from "./types";
 
 export type VoiceTurnPhase =
   | "idle"
@@ -14,7 +19,8 @@ export type VoiceTurnPhase =
   | "synthesizing"
   | "queued_for_playback"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "interrupted";
 
 export type VoiceTurnStageStatus =
   | "idle"
@@ -34,7 +40,15 @@ export type VoiceTurnFailureReason =
   | "tts_failed"
   | "unsafe_content"
   | "enqueue_failed"
-  | "cancelled";
+  | "cancelled"
+  | "interruption_failed";
+
+export type VoiceTurnInterruptionStatus =
+  | "idle"
+  | "not_required"
+  | "interrupting"
+  | "interrupted"
+  | "failed";
 
 export interface VoiceTurnSnapshot {
   readonly turn_id: string | null;
@@ -45,6 +59,10 @@ export interface VoiceTurnSnapshot {
   readonly tts_status: VoiceTurnStageStatus;
   readonly playback_status: VoiceTurnStageStatus;
   readonly playback_queue_depth: number;
+  readonly active_turn_id?: string | null;
+  readonly interrupted_turn_id?: string | null;
+  readonly interruption_status?: VoiceTurnInterruptionStatus;
+  readonly cancellation_result_count?: number;
   readonly degraded: boolean;
   readonly error_class?: VoiceTurnFailureReason;
   readonly metadata_only: true;
@@ -87,17 +105,61 @@ export interface VoiceTurnRunOptions {
   readonly metadata_only: true;
 }
 
+export interface VoiceTurnInterruptionOptions {
+  readonly interruption_id?: string;
+  readonly abort_signal?: AbortSignal;
+  readonly metadata_only: true;
+}
+
+export interface VoiceTurnInterruptionMetadata {
+  readonly active_turn_id: string | null;
+  readonly interrupted_turn_id: string | null;
+  readonly interruption_status: VoiceTurnInterruptionStatus;
+  readonly cancellation_result_count: number;
+  readonly degraded: boolean;
+  readonly metadata_only: true;
+}
+
+export type VoiceTurnInterruptionResult =
+  | {
+      readonly ok: true;
+      readonly value: VoiceTurnInterruptionMetadata;
+      readonly snapshot: VoiceTurnSnapshot;
+      readonly reasons: readonly [];
+      readonly metadata_only: true;
+    }
+  | {
+      readonly ok: false;
+      readonly value: null;
+      readonly snapshot: VoiceTurnSnapshot;
+      readonly reasons: readonly VoiceTurnFailureReason[];
+      readonly metadata_only: true;
+    };
+
 export interface VoiceTurnOrchestratorOptions {
   readonly stt_provider: SttProvider;
   readonly runtime_adapter: VoiceRuntimeAdapter;
   readonly tts_provider: TtsProvider;
   readonly playback_queue: PlaybackQueue;
+  readonly cancellation_supervisor?: VoiceCancellationSupervisor;
+  readonly now_ms?: () => number;
+  readonly interruption_id_factory?: () => string;
 }
 
 export interface VoiceTurnOrchestrator {
   runVoiceTurn(
     captureMetadata: unknown,
     options?: VoiceTurnRunOptions,
+  ): Promise<VoiceTurnResult>;
+  interruptActiveTurn(
+    reason: VoiceCancellationReason,
+    options?: VoiceTurnInterruptionOptions,
+  ): Promise<VoiceTurnInterruptionResult>;
+  beginNewTurnWithInterruption(
+    captureMetadata: unknown,
+    options?: VoiceTurnRunOptions & {
+      readonly interruption_reason?: VoiceCancellationReason;
+    },
   ): Promise<VoiceTurnResult>;
   reset(): VoiceTurnResult;
   snapshot(): VoiceTurnSnapshot;
@@ -112,138 +174,272 @@ export function createVoiceTurnOrchestrator(
     tts_provider: options.tts_provider,
     playback_queue: options.playback_queue,
   });
+  const nowMs = options.now_ms ?? (() => Date.now());
+  const interruptionIdFactory =
+    options.interruption_id_factory ?? (() => `voice-interruption-${nowMs()}`);
+  const cancellationSupervisor =
+    options.cancellation_supervisor ??
+    createVoiceCancellationSupervisor({
+      targets: {
+        stt: options.stt_provider,
+        runtime: options.runtime_adapter,
+        tts: options.tts_provider,
+        queue: options.playback_queue,
+      },
+      now_ms: nowMs,
+    });
   let snapshot: VoiceTurnSnapshot = idleSnapshot(options.playback_queue);
 
   const copySnapshot = (): VoiceTurnSnapshot => ({ ...snapshot });
 
-  return {
-    runVoiceTurn: async (captureMetadata, runOptions) => {
-      if (runOptions?.abort_signal?.aborted) {
-        return fail(["cancelled"], {
-          phase: "cancelled",
-          stt_status: "cancelled",
-          runtime_status: "cancelled",
-          tts_status: "cancelled",
-          playback_status: "cancelled",
-          error_class: "cancelled",
-        });
-      }
-
-      const ids = readCaptureIds(captureMetadata);
-      snapshot = {
-        ...snapshot,
-        session_id: ids.session_id,
-        turn_id: ids.turn_id,
-        phase: "transcribing",
-        stt_status: "running",
-      };
-      const sttResult = await bridge.ingestCapturedAudio(captureMetadata, {
-        timeout_ms: runOptions?.timeout_ms,
-        abort_signal: runOptions?.abort_signal,
-        metadata_only: true,
+  const runVoiceTurn: VoiceTurnOrchestrator["runVoiceTurn"] = async (
+    captureMetadata,
+    runOptions,
+  ) => {
+    if (runOptions?.abort_signal?.aborted) {
+      return fail(["cancelled"], {
+        phase: "cancelled",
+        stt_status: "cancelled",
+        runtime_status: "cancelled",
+        tts_status: "cancelled",
+        playback_status: "cancelled",
+        error_class: "cancelled",
       });
-      if (!sttResult.ok) {
-        return fail(mapFailure(sttResult.reasons[0]), {
-          phase: "failed",
-          stt_status: "failed",
-          error_class: mapFailure(sttResult.reasons[0])[0],
-        });
-      }
+    }
 
-      snapshot = {
-        ...snapshot,
-        session_id: sttResult.value.session_id,
-        turn_id: sttResult.value.turn_id,
-        stt_status: "complete",
-        runtime_status: "running",
-        phase: "executing_runtime",
-        degraded: sttResult.value.degraded,
-      };
-      const runtimeResult = await bridge.executeRuntimeRequest({
-        timeout_ms: runOptions?.timeout_ms,
-        abort_signal: runOptions?.abort_signal,
-        metadata_only: true,
+    const ids = readCaptureIds(captureMetadata);
+    snapshot = {
+      ...snapshot,
+      session_id: ids.session_id,
+      turn_id: ids.turn_id,
+      phase: "transcribing",
+      stt_status: "running",
+    };
+    const sttResult = await bridge.ingestCapturedAudio(captureMetadata, {
+      timeout_ms: runOptions?.timeout_ms,
+      abort_signal: runOptions?.abort_signal,
+      metadata_only: true,
+    });
+    if (!sttResult.ok) {
+      return fail(mapFailure(sttResult.reasons[0]), {
+        phase: "failed",
+        stt_status: "failed",
+        error_class: mapFailure(sttResult.reasons[0])[0],
       });
-      if (!runtimeResult.ok) {
-        return fail(mapFailure(runtimeResult.reasons[0]), {
-          phase:
-            runtimeResult.reasons[0] === "runtime_cancelled"
-              ? "cancelled"
-              : "failed",
-          runtime_status:
-            runtimeResult.reasons[0] === "runtime_cancelled"
-              ? "cancelled"
-              : "failed",
-          error_class: mapFailure(runtimeResult.reasons[0])[0],
-        });
-      }
+    }
 
-      if (
-        runOptions?.assistant_content_class !== undefined &&
-        runOptions.assistant_content_class !== "assistant_prose"
-      ) {
-        return fail(["unsafe_content"], {
-          phase: "failed",
-          runtime_status: "complete",
-          error_class: "unsafe_content",
-        });
-      }
+    snapshot = {
+      ...snapshot,
+      session_id: sttResult.value.session_id,
+      turn_id: sttResult.value.turn_id,
+      stt_status: "complete",
+      runtime_status: "running",
+      phase: "executing_runtime",
+      degraded: sttResult.value.degraded,
+    };
+    const runtimeResult = await bridge.executeRuntimeRequest({
+      timeout_ms: runOptions?.timeout_ms,
+      abort_signal: runOptions?.abort_signal,
+      metadata_only: true,
+    });
+    if (!runtimeResult.ok) {
+      return fail(mapFailure(runtimeResult.reasons[0]), {
+        phase:
+          runtimeResult.reasons[0] === "runtime_cancelled"
+            ? "cancelled"
+            : "failed",
+        runtime_status:
+          runtimeResult.reasons[0] === "runtime_cancelled"
+            ? "cancelled"
+            : "failed",
+        error_class: mapFailure(runtimeResult.reasons[0])[0],
+      });
+    }
 
-      snapshot = {
-        ...snapshot,
+    if (
+      runOptions?.assistant_content_class !== undefined &&
+      runOptions.assistant_content_class !== "assistant_prose"
+    ) {
+      return fail(["unsafe_content"], {
+        phase: "failed",
         runtime_status: "complete",
-        tts_status: "running",
-        phase: "synthesizing",
-        degraded: snapshot.degraded || runtimeResult.value.degraded,
-      };
-      const playbackResult = await createPlaybackRequest(
-        runtimeResult.value,
-        runOptions,
-      );
-      if (!playbackResult.ok) {
-        return fail(mapFailure(playbackResult.reasons[0]), {
-          phase: "failed",
-          tts_status:
-            playbackResult.reasons[0] === "tts_failed" ||
-            playbackResult.reasons[0] === "tts_unavailable"
-              ? "failed"
-              : snapshot.tts_status,
-          playback_status:
-            playbackResult.reasons[0] === "enqueue_failed"
-              ? "failed"
-              : snapshot.playback_status,
-          error_class: mapFailure(playbackResult.reasons[0])[0],
-        });
-      }
-
-      snapshot = {
-        ...snapshot,
-        tts_status: "complete",
-        playback_status: "complete",
-        phase: "queued_for_playback",
-        playback_queue_depth: playbackResult.value.playback_queue_depth,
-        degraded: snapshot.degraded || playbackResult.value.degraded,
-      };
-      return success({
-        session_id: playbackResult.value.session_id,
-        turn_id: playbackResult.value.turn_id,
-        runtime_response_id: runtimeResult.value.response_id,
-        runtime_latency_ms: runtimeResult.value.latency_ms,
-        runtime_provider_id: runtimeResult.value.provider_id ?? null,
-        runtime_finish_reason: runtimeResult.value.finish_reason,
-        playback_item_id: playbackResult.value.item_id,
-        playback_queue_depth: playbackResult.value.playback_queue_depth,
-        degraded: snapshot.degraded,
-        metadata_only: true,
+        error_class: "unsafe_content",
       });
-    },
+    }
+
+    snapshot = {
+      ...snapshot,
+      runtime_status: "complete",
+      tts_status: "running",
+      phase: "synthesizing",
+      degraded: snapshot.degraded || runtimeResult.value.degraded,
+    };
+    const playbackResult = await createPlaybackRequest(
+      runtimeResult.value,
+      runOptions,
+    );
+    if (!playbackResult.ok) {
+      return fail(mapFailure(playbackResult.reasons[0]), {
+        phase: "failed",
+        tts_status:
+          playbackResult.reasons[0] === "tts_failed" ||
+          playbackResult.reasons[0] === "tts_unavailable"
+            ? "failed"
+            : snapshot.tts_status,
+        playback_status:
+          playbackResult.reasons[0] === "enqueue_failed"
+            ? "failed"
+            : snapshot.playback_status,
+        error_class: mapFailure(playbackResult.reasons[0])[0],
+      });
+    }
+
+    snapshot = {
+      ...snapshot,
+      tts_status: "complete",
+      playback_status: "complete",
+      phase: "queued_for_playback",
+      playback_queue_depth: playbackResult.value.playback_queue_depth,
+      degraded: snapshot.degraded || playbackResult.value.degraded,
+    };
+    return success({
+      session_id: playbackResult.value.session_id,
+      turn_id: playbackResult.value.turn_id,
+      runtime_response_id: runtimeResult.value.response_id,
+      runtime_latency_ms: runtimeResult.value.latency_ms,
+      runtime_provider_id: runtimeResult.value.provider_id ?? null,
+      runtime_finish_reason: runtimeResult.value.finish_reason,
+      playback_item_id: playbackResult.value.item_id,
+      playback_queue_depth: playbackResult.value.playback_queue_depth,
+      degraded: snapshot.degraded,
+      metadata_only: true,
+    });
+  };
+
+  return {
+    runVoiceTurn,
     reset: () => {
       bridge.reset();
       snapshot = idleSnapshot(options.playback_queue);
       return success(null);
     },
+    interruptActiveTurn: async (reason, interruptionOptions) =>
+      interruptActiveTurn(reason, interruptionOptions),
+    beginNewTurnWithInterruption: async (captureMetadata, runOptions) => {
+      if (isTurnActive(snapshot)) {
+        const interruption = await interruptActiveTurn(
+          runOptions?.interruption_reason ?? "barge_in",
+          {
+            abort_signal: runOptions?.abort_signal,
+            metadata_only: true,
+          },
+        );
+        if (!interruption.ok) {
+          return fail(["interruption_failed"], {
+            phase: "failed",
+            error_class: "interruption_failed",
+            interruption_status: "failed",
+          });
+        }
+      } else {
+        snapshot = {
+          ...snapshot,
+          interruption_status: "not_required",
+          cancellation_result_count: 0,
+        };
+      }
+
+      const ids = readCaptureIds(captureMetadata);
+      snapshot = {
+        ...snapshot,
+        active_turn_id: ids.turn_id,
+      };
+      return runVoiceTurn(captureMetadata, runOptions);
+    },
     snapshot: copySnapshot,
   };
+
+  async function interruptActiveTurn(
+    reason: VoiceCancellationReason,
+    interruptionOptions: VoiceTurnInterruptionOptions | undefined,
+  ): Promise<VoiceTurnInterruptionResult> {
+    const activeTurnId = snapshot.active_turn_id ?? snapshot.turn_id;
+    if (!isTurnActive(snapshot) || !activeTurnId) {
+      snapshot = {
+        ...snapshot,
+        interruption_status: "not_required",
+        cancellation_result_count: 0,
+      };
+      return interruptionSuccess({
+        active_turn_id: null,
+        interrupted_turn_id: null,
+        interruption_status: "not_required",
+        cancellation_result_count: 0,
+        degraded: false,
+        metadata_only: true,
+      });
+    }
+
+    snapshot = {
+      ...snapshot,
+      active_turn_id: activeTurnId,
+      interruption_status: "interrupting",
+    };
+
+    const result = await cancellationSupervisor.applyInterruption(
+      {
+        interruption_id:
+          interruptionOptions?.interruption_id ?? interruptionIdFactory(),
+        session_id: snapshot.session_id ?? "voice-session",
+        turn_id: activeTurnId,
+        target: "playback",
+        scope: "full_turn_interrupt",
+        reason,
+        created_at: nowMs(),
+        metadata_only: true,
+      },
+      {
+        abort_signal: interruptionOptions?.abort_signal,
+        metadata_only: true,
+      },
+    );
+
+    if (!result.ok) {
+      snapshot = {
+        ...snapshot,
+        interruption_status: "failed",
+        cancellation_result_count: 0,
+        degraded: true,
+        error_class: "interruption_failed",
+      };
+      return interruptionFailure(["interruption_failed"]);
+    }
+
+    bridge.reset();
+    snapshot = {
+      ...snapshot,
+      active_turn_id: null,
+      interrupted_turn_id: activeTurnId,
+      phase: "interrupted",
+      stt_status: "cancelled",
+      runtime_status: "cancelled",
+      tts_status: "cancelled",
+      playback_status: "cancelled",
+      playback_queue_depth: options.playback_queue.snapshot().depth,
+      interruption_status: "interrupted",
+      cancellation_result_count: result.target_results.length,
+      degraded: snapshot.degraded || result.snapshot.degraded,
+    };
+
+    return interruptionSuccess({
+      active_turn_id: null,
+      interrupted_turn_id: activeTurnId,
+      interruption_status: "interrupted",
+      cancellation_result_count: result.target_results.length,
+      degraded: result.snapshot.degraded,
+      metadata_only: true,
+    });
+  }
 
   async function createPlaybackRequest(
     runtimeResponse: VoiceRuntimeAdapterResponse,
@@ -303,6 +499,30 @@ export function createVoiceTurnOrchestrator(
       metadata_only: true,
     };
   }
+
+  function interruptionSuccess(
+    value: VoiceTurnInterruptionMetadata,
+  ): VoiceTurnInterruptionResult {
+    return {
+      ok: true,
+      value: { ...value },
+      snapshot: copySnapshot(),
+      reasons: [],
+      metadata_only: true,
+    };
+  }
+
+  function interruptionFailure(
+    reasons: readonly VoiceTurnFailureReason[],
+  ): VoiceTurnInterruptionResult {
+    return {
+      ok: false,
+      value: null,
+      snapshot: copySnapshot(),
+      reasons,
+      metadata_only: true,
+    };
+  }
 }
 
 function idleSnapshot(playbackQueue: PlaybackQueue): VoiceTurnSnapshot {
@@ -346,9 +566,20 @@ function mapFailure(reason: unknown): readonly VoiceTurnFailureReason[] {
     reason === "tts_unavailable" ||
     reason === "tts_failed" ||
     reason === "unsafe_content" ||
-    reason === "enqueue_failed"
+    reason === "enqueue_failed" ||
+    reason === "interruption_failed"
   ) {
     return [reason];
   }
   return ["runtime_failed"];
+}
+
+function isTurnActive(snapshot: VoiceTurnSnapshot): boolean {
+  return (
+    snapshot.phase === "transcribing" ||
+    snapshot.phase === "executing_runtime" ||
+    snapshot.phase === "synthesizing" ||
+    snapshot.phase === "queued_for_playback" ||
+    snapshot.playback_queue_depth > 0
+  );
 }

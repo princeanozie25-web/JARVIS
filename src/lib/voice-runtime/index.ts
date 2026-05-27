@@ -390,6 +390,10 @@ export type { RealVoiceRuntimeAdapterOptions } from "./runtime-adapter-real";
 export { createVoiceTurnOrchestrator } from "./turn-orchestrator";
 export type {
   VoiceTurnFailureReason,
+  VoiceTurnInterruptionMetadata,
+  VoiceTurnInterruptionOptions,
+  VoiceTurnInterruptionResult,
+  VoiceTurnInterruptionStatus,
   VoiceTurnOrchestrator,
   VoiceTurnOrchestratorOptions,
   VoiceTurnPhase,
