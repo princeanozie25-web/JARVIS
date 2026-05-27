@@ -187,6 +187,28 @@ export {
   runDisabledTesseractInvocation,
 } from "./tesseract-invocation";
 
+export {
+  VISION_CAMERA_DENIAL_REASONS,
+  VISION_CAMERA_INPUT_KINDS,
+  VISION_CAMERA_MAX_FRAMES_PER_REQUEST,
+  VISION_CAMERA_REQUEST_STATUSES,
+  VISION_CAMERA_RETENTION_POLICIES,
+  VISION_CAMERA_SAMPLING_MODES,
+  VISION_CAMERA_TRIGGER_SOURCES,
+  VisionCameraActiveIndicatorRequirementSchema,
+  VisionCameraDenialReasonSchema,
+  VisionCameraGateDecisionSchema,
+  VisionCameraInputKindSchema,
+  VisionCameraRequestSchema,
+  VisionCameraRequestStatusSchema,
+  VisionCameraRetentionPolicySchema,
+  VisionCameraSamplingModeSchema,
+  VisionCameraTriggerMetadataSchema,
+  VisionCameraTriggerSourceSchema,
+  VisionMockCameraFrameMetadataSchema,
+  validateVisionCameraRequest,
+} from "./mock-camera";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -311,3 +333,17 @@ export type {
   TesseractInvocationResult,
   TesseractInvocationResultState,
 } from "./tesseract-invocation";
+
+export type {
+  VisionCameraActiveIndicatorRequirement,
+  VisionCameraDenialReason,
+  VisionCameraGateDecision,
+  VisionCameraInputKind,
+  VisionCameraRequest,
+  VisionCameraRequestStatus,
+  VisionCameraRetentionPolicy,
+  VisionCameraSamplingMode,
+  VisionCameraTriggerMetadata,
+  VisionCameraTriggerSource,
+  VisionMockCameraFrameMetadata,
+} from "./mock-camera";
