@@ -18,10 +18,16 @@ import {
   type HueReadOnlyAdapterConfigValidation,
 } from "./hue-config";
 import {
+  createHueDryRunPlan,
+  type HueDryRunIntendedState,
+  type HueDryRunPlan,
+} from "./hue-dry-run";
+import {
   mapHueReadPayloadsToBridgeSnapshot,
   type HueBridgeV2BridgePayloadFixture,
   type HueBridgeV2LightPayloadFixture,
   type HueReadBridgeSnapshot,
+  type HueReadLightSnapshot,
   type HueReadMapperOptions,
 } from "./hue-read-mapper";
 import {
@@ -156,6 +162,40 @@ export interface HueLiveReadPreflightDecision {
   readonly raw_api_key_exposed: false;
   readonly metadata_only: true;
   readonly live_read_implemented: false;
+}
+
+export interface DisabledHueAdapterDryRunPlanInput {
+  readonly plan_id?: string;
+  readonly target_light_id: string;
+  readonly intended_state: HueDryRunIntendedState;
+  readonly current_state_snapshot?: HueReadLightSnapshot | null;
+}
+
+export interface DisabledHueAdapterDryRunPlanResult {
+  readonly status: "dry_run_planned";
+  readonly adapter_id: string;
+  readonly adapter_kind: "hue";
+  readonly mode: "dry_run";
+  readonly source: "local_hue_bridge";
+  readonly dry_run_source: "fixture_current_state";
+  readonly fixture_only: true;
+  readonly enabled: false;
+  readonly read_only: true;
+  readonly config_status: HueReadHealthMetadata["status"];
+  readonly approval_required: true;
+  readonly executable: false;
+  readonly execution_supported: false;
+  readonly network_called: false;
+  readonly discovery_attempted: false;
+  readonly cloud_attempted: false;
+  readonly writes_attempted: false;
+  readonly hardware_io_performed: false;
+  readonly persisted: false;
+  readonly ui_rendered: false;
+  readonly raw_config_ref_exposed: false;
+  readonly raw_api_key_exposed: false;
+  readonly metadata_only: true;
+  readonly plan: HueDryRunPlan;
 }
 
 export function evaluateHueLiveReadPreflight(
@@ -298,6 +338,45 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
       this.validation,
       options.disabledGuards ?? DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS,
     );
+  }
+
+  createDryRunPlan(
+    input: DisabledHueAdapterDryRunPlanInput,
+  ): DisabledHueAdapterDryRunPlanResult {
+    const health = this.getReadHealth();
+    const plan = createHueDryRunPlan({
+      plan_id: input.plan_id,
+      target_light_id: input.target_light_id,
+      intended_state: input.intended_state,
+      current_state_snapshot: input.current_state_snapshot ?? null,
+    });
+
+    return {
+      status: "dry_run_planned",
+      adapter_id: this.adapterId,
+      adapter_kind: "hue",
+      mode: "dry_run",
+      source: "local_hue_bridge",
+      dry_run_source: "fixture_current_state",
+      fixture_only: true,
+      enabled: false,
+      read_only: true,
+      config_status: health.status,
+      approval_required: true,
+      executable: false,
+      execution_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      writes_attempted: false,
+      hardware_io_performed: false,
+      persisted: false,
+      ui_rendered: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+      plan,
+    };
   }
 
   async readState(input: {

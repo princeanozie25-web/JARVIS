@@ -18,6 +18,7 @@ import {
   parseHueReadOnlyAdapterConfig,
   validateHueReadOnlyAdapterConfig,
 } from "../../../src/room/adapters/hue-config";
+import { mapHueLightPayloadToReadSnapshot } from "../../../src/room/adapters/hue-read-mapper";
 import { approvedContext, roomCommand } from "../conformance/harness";
 
 describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
@@ -404,6 +405,107 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
     expect(json).not.toContain("secret-api-key");
     expect(json).not.toContain("secret-token");
     expect(json).not.toContain("config_ref:hue");
+  });
+
+  it("creates non-executable dry-run plans from fixture current state", () => {
+    const adapter = DisabledHueReadOnlyAdapter.withExampleConfig();
+    const current = mapHueLightPayloadToReadSnapshot({
+      id: "desk-lamp",
+      metadata: { name: "Desk Lamp" },
+      on: { on: false },
+      dimming: { brightness: 20 },
+      status: { reachable: true },
+      capabilities: ["on", "dimming"],
+    });
+
+    const result = adapter.createDryRunPlan({
+      plan_id: "hue-adapter-dry-run-desk-lamp",
+      target_light_id: "desk-lamp",
+      current_state_snapshot: current,
+      intended_state: {
+        on: true,
+        brightness_percent: 45,
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: "dry_run_planned",
+      adapter_id: "hue-read-only-disabled",
+      adapter_kind: "hue",
+      mode: "dry_run",
+      source: "local_hue_bridge",
+      dry_run_source: "fixture_current_state",
+      fixture_only: true,
+      enabled: false,
+      read_only: true,
+      config_status: "ready_for_future_read_only",
+      approval_required: true,
+      executable: false,
+      execution_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      writes_attempted: false,
+      hardware_io_performed: false,
+      persisted: false,
+      ui_rendered: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+      plan: {
+        plan_id: "hue-adapter-dry-run-desk-lamp",
+        adapter_kind: "hue",
+        mode: "dry_run",
+        source: "local_hue_bridge",
+        target_light_id: "desk-lamp",
+        current_state_status: "available",
+        approval_required: true,
+        executable: false,
+        execution_supported: false,
+        network_called: false,
+        discovery_attempted: false,
+        cloud_attempted: false,
+        writes_attempted: false,
+        hardware_io_performed: false,
+        persisted: false,
+        ui_rendered: false,
+        raw_config_exposed: false,
+        raw_api_key_exposed: false,
+        diff_summary: {
+          status: "diff_available",
+          changed_fields: ["on", "brightness_percent"],
+          metadata_only: true,
+        },
+      },
+    });
+  });
+
+  it("keeps adapter dry-run current state unknown when no fixture snapshot exists", () => {
+    const result = new DisabledHueReadOnlyAdapter().createDryRunPlan({
+      target_light_id: "missing-light",
+      intended_state: { on: false },
+    });
+
+    expect(result).toMatchObject({
+      status: "dry_run_planned",
+      config_status: "config_missing",
+      approval_required: true,
+      executable: false,
+      execution_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      writes_attempted: false,
+      plan: {
+        current_state_status: "unknown",
+        current_state_snapshot: null,
+        current_state_unknown_reason: "snapshot_missing",
+        diff_summary: {
+          status: "current_state_unknown",
+          unknown_fields: ["on"],
+        },
+      },
+    });
   });
 
   it("keeps Phase 16A disabled guards pinned", () => {
