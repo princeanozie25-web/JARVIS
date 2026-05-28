@@ -37,6 +37,11 @@ export const ROOM_ADAPTER_FAILURE_CLASSES = [
   "network_disabled",
 ] as const;
 
+export const ROOM_ADAPTER_PARTIAL_SUCCESS_SUB_OPERATION_STATUSES = [
+  "success",
+  "failed",
+] as const;
+
 export const ROOM_MUTATING_CAPABILITIES = [
   "power.switch",
   "light.dimmer",
@@ -50,6 +55,9 @@ export const RoomAdapterOperationNameSchema = z.enum(
 export const RoomAdapterCommandModeSchema = z.enum(ROOM_ADAPTER_COMMAND_MODES);
 export const RoomAdapterFailureClassSchema = z.enum(
   ROOM_ADAPTER_FAILURE_CLASSES,
+);
+export const RoomAdapterPartialSuccessSubOperationStatusSchema = z.enum(
+  ROOM_ADAPTER_PARTIAL_SUCCESS_SUB_OPERATION_STATUSES,
 );
 
 const RoomAdapterIdSchema = z
@@ -185,20 +193,75 @@ export const RoomAdapterDryRunPlanSchema = z.strictObject({
   persisted: z.literal(false),
 });
 
-export const RoomAdapterOperationResultSchema = z.strictObject({
-  operation: RoomAdapterOperationNameSchema,
-  mode: RoomAdapterCommandModeSchema,
-  ok: z.boolean(),
-  provenance: RoomAdapterProvenanceSchema,
-  state: z.union([DeviceStateSchema, SensorStateSchema]).nullable(),
+export const RoomAdapterPartialSuccessSubOperationSchema = z.strictObject({
+  operation_id: RoomAdapterIdSchema,
+  operation_type: z.enum(["adapter_write", "verification_read"]),
+  device_id: RoomAdapterIdSchema,
+  capability: CapabilitySchema,
+  status: RoomAdapterPartialSuccessSubOperationStatusSchema,
   failure_class: RoomAdapterFailureClassSchema.nullable(),
-  approval: RoomAdapterApprovalRequirementSchema,
-  adapter_called: z.literal(false),
-  hardware_io_performed: z.literal(false),
-  network_called: z.literal(false),
-  persisted: z.literal(false),
-  ui_rendered: z.literal(false),
+  reason: z.string().trim().min(1).max(500).nullable(),
+  metadata_only: z.literal(true),
 });
+
+export const RoomAdapterPartialSuccessMetadataSchema = z.strictObject({
+  result_status: z.literal("partial_success"),
+  successful_operations: z
+    .array(RoomAdapterPartialSuccessSubOperationSchema)
+    .min(1),
+  failed_operations: z
+    .array(RoomAdapterPartialSuccessSubOperationSchema)
+    .min(1),
+  automatic_retry: z.literal(false),
+  fallback_adapter_used: z.literal(false),
+  audit_event_required: z.literal(true),
+  future_real_hue_parity: z.literal(true),
+  metadata_only: z.literal(true),
+});
+
+export const RoomAdapterOperationResultSchema = z
+  .strictObject({
+    operation: RoomAdapterOperationNameSchema,
+    mode: RoomAdapterCommandModeSchema,
+    ok: z.boolean(),
+    provenance: RoomAdapterProvenanceSchema,
+    state: z.union([DeviceStateSchema, SensorStateSchema]).nullable(),
+    failure_class: RoomAdapterFailureClassSchema.nullable(),
+    partial_success:
+      RoomAdapterPartialSuccessMetadataSchema.nullable().optional(),
+    approval: RoomAdapterApprovalRequirementSchema,
+    adapter_called: z.literal(false),
+    hardware_io_performed: z.literal(false),
+    network_called: z.literal(false),
+    persisted: z.literal(false),
+    ui_rendered: z.literal(false),
+  })
+  .superRefine((result, ctx) => {
+    if (result.failure_class === "partial_success") {
+      if (!result.partial_success) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["partial_success"],
+          message: "Partial success results require sub-operation metadata.",
+        });
+      }
+      if (result.ok) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ok"],
+          message: "Partial success cannot be reported as silent success.",
+        });
+      }
+    }
+    if (result.partial_success && result.failure_class !== "partial_success") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["failure_class"],
+        message:
+          "Partial success metadata requires partial_success failure class.",
+      });
+    }
+  });
 
 export const RoomAdapterHealthStatusSchema = z.strictObject({
   adapter_id: RoomAdapterIdSchema,
@@ -237,6 +300,12 @@ export type RoomAdapterCommandMode = z.infer<
 >;
 export type RoomAdapterFailureClass = z.infer<
   typeof RoomAdapterFailureClassSchema
+>;
+export type RoomAdapterPartialSuccessSubOperation = z.infer<
+  typeof RoomAdapterPartialSuccessSubOperationSchema
+>;
+export type RoomAdapterPartialSuccessMetadata = z.infer<
+  typeof RoomAdapterPartialSuccessMetadataSchema
 >;
 export type RoomAdapterIdentity = z.infer<typeof RoomAdapterIdentitySchema>;
 export type RoomAdapterProvenance = z.infer<typeof RoomAdapterProvenanceSchema>;

@@ -13,6 +13,7 @@ import {
   type RoomAdapterFailureClass,
   type RoomAdapterHealthStatus,
   type RoomAdapterOperationResult,
+  type RoomAdapterPartialSuccessMetadata,
   type RoomAdapterProvenance,
 } from "./contract";
 import {
@@ -269,6 +270,34 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       return result;
     }
 
+    if (this.failures.allowsPartialSuccess(command.device_id)) {
+      entity.state = applyCommandToState(entity.state, command);
+      const result = this.result({
+        operation: "execute_command",
+        mode: "approved_execution",
+        deviceId: command.device_id,
+        capability: command.capability,
+        state: clone(entity.state),
+        ok: false,
+        failureClass: "partial_success",
+        partialSuccess: this.partialSuccessMetadata(command),
+        approvalRequired: true,
+        approvalId: input.context.approvalId,
+      });
+      this.emitCommandResultEvent(command, entity, result);
+      this.emitOperationEvent({
+        eventType: "failure_simulated",
+        deviceId: entity.kind === "device" ? command.device_id : null,
+        sensorId: entity.kind === "sensor" ? command.device_id : null,
+        capability: command.capability,
+        commandId: command.command_id,
+        status: "partial_success",
+        failureClass: result.failure_class,
+        provenance: result.provenance,
+      });
+      return result;
+    }
+
     entity.state = applyCommandToState(entity.state, command);
     const result = this.result({
       operation: "execute_command",
@@ -413,13 +442,14 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     entity: KnownEntity,
     result: RoomAdapterOperationResult,
   ): void {
+    const partial = result.failure_class === "partial_success";
     this.emitOperationEvent({
       eventType: result.ok ? "command_executed" : "command_rejected",
       deviceId: entity.kind === "device" ? command.device_id : null,
       sensorId: entity.kind === "sensor" ? command.device_id : null,
       capability: command.capability,
       commandId: command.command_id,
-      status: result.ok ? "ok" : "rejected",
+      status: partial ? "partial_success" : result.ok ? "ok" : "rejected",
       failureClass: result.failure_class,
       provenance: result.provenance,
     });
@@ -478,6 +508,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     state: DeviceState | SensorState | null;
     ok: boolean;
     failureClass: RoomAdapterFailureClass | null;
+    partialSuccess?: RoomAdapterPartialSuccessMetadata | null;
     approvalRequired: boolean;
     approvalId: string | null;
   }): RoomAdapterOperationResult {
@@ -500,6 +531,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       },
       state: input.state,
       failure_class: input.failureClass,
+      partial_success: input.partialSuccess ?? null,
       approval: {
         required: input.approvalRequired,
         policy_id: input.approvalRequired ? "fake-room-approval-policy" : null,
@@ -516,6 +548,46 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       persisted: false,
       ui_rendered: false,
     });
+  }
+
+  private partialSuccessMetadata(
+    command: RoomAdapterCommand,
+  ): RoomAdapterPartialSuccessMetadata {
+    const operationId = `${command.command_id}-${command.capability.replace(".", "-")}`;
+
+    return {
+      result_status: "partial_success",
+      successful_operations: [
+        {
+          operation_id: `${operationId}-adapter-write`,
+          operation_type: "adapter_write",
+          device_id: command.device_id,
+          capability: command.capability,
+          status: "success",
+          failure_class: null,
+          reason: null,
+          metadata_only: true,
+        },
+      ],
+      failed_operations: [
+        {
+          operation_id: `${operationId}-verification-read`,
+          operation_type: "verification_read",
+          device_id: command.device_id,
+          capability: command.capability,
+          status: "failed",
+          failure_class: "verification_failed",
+          reason:
+            "Fake partial success simulates a write that applied before verification failed.",
+          metadata_only: true,
+        },
+      ],
+      automatic_retry: false,
+      fallback_adapter_used: false,
+      audit_event_required: true,
+      future_real_hue_parity: true,
+      metadata_only: true,
+    };
   }
 
   private provenance(

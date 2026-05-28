@@ -18,6 +18,7 @@ export const FAKE_DEVICE_EVENT_STATUSES = [
   "ok",
   "planned",
   "rejected",
+  "partial_success",
   "failed",
   "checked",
 ] as const;

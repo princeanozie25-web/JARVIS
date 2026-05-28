@@ -16,6 +16,14 @@ export interface AdapterConformanceSubject {
   readonly create: () => RoomAdapterContract & {
     enableFailure?: (mode: FakeDeviceFailureMode, targetId?: string) => void;
     clearAllFailures?: () => void;
+    getEvents?: () => readonly {
+      readonly result_status: string;
+      readonly failure_class: string | null;
+      readonly network_called: false;
+      readonly hardware_io_performed: false;
+      readonly persisted: false;
+      readonly metadata_only: true;
+    }[];
   };
   readonly devices: {
     readonly power: string;
@@ -139,7 +147,7 @@ export function expectNoSideEffects(result: {
 
 export function enableFailure(
   subject: ReturnType<AdapterConformanceSubject["create"]>,
-  mode: "offline" | "stale" | "timeout" | "auth_error",
+  mode: "offline" | "stale" | "timeout" | "auth_error" | "partial_success",
   targetId: string,
 ) {
   if (!subject.enableFailure) {
