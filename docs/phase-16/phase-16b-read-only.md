@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -10,8 +10,10 @@ Real Hue reads are still not implemented. Real Hue writes are still not implemen
 
 - `src/room/adapters/hue-adapter.ts`
 - `src/room/adapters/hue-config.ts`
+- `src/room/adapters/hue-read-mapper.ts`
 - `config/room/hue.example.yaml`
 - `tests/room/adapters/hue-adapter.test.ts`
+- `tests/room/adapters/hue-read-mapper.test.ts`
 
 ## Read-Only Metadata
 
@@ -52,6 +54,22 @@ The disabled adapter reports health without connecting:
 - `raw_config_ref_exposed`: `false`
 - `raw_api_key_exposed`: `false`
 
+## Hue Read Mapping Scaffold
+
+The mapper is fixture-only and pure:
+
+- bridge fixture metadata maps to adapter bridge snapshot metadata.
+- light fixture payloads map to adapter-compatible light snapshots.
+- reachable and unreachable states map to explicit availability metadata.
+- on/off, brightness, XY color metadata, and color temperature are mapped when present and valid.
+- missing Hue fields are reported as `missing_fields`.
+- unsupported fields, such as XY-to-hex conversion, are reported as `unsupported_fields` instead of guessed.
+- invalid fields are reported as `invalid_fields`.
+- mapped results always carry `source: local_hue_bridge`, `adapter_kind: hue`, `mode: read_only`, and disabled authority flags.
+- raw Hue payloads, raw config refs, and raw API keys are not surfaced.
+
+The mapper does not connect to Hue, read live Hue state, discover bridges, call a Hue SDK, call HTTP APIs, or enable writes.
+
 ## Still Forbidden
 
 - `node-hue-api` or any Hue SDK dependency.
@@ -65,4 +83,4 @@ The disabled adapter reports health without connecting:
 
 ## Next Recommended Slice
 
-Phase 16B.3 - Hue Read-Only Request/Result Mapping Scaffold.
+Phase 16B.4 - Disabled Hue Read Adapter Dry-Run Mapping Integration.
