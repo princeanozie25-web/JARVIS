@@ -222,6 +222,17 @@ export {
   createMockCameraFrameProvider,
 } from "./mock-camera-provider";
 
+export {
+  MOCK_CAMERA_SESSION_EVENT_TYPES,
+  MOCK_CAMERA_SESSION_STATUSES,
+  MockCameraSessionEventTypeSchema,
+  MockCameraSessionLifecycleEventSchema,
+  MockCameraSessionResultSchema,
+  MockCameraSessionRunner,
+  MockCameraSessionStatusSchema,
+  runMockCameraObjectSession,
+} from "./mock-camera-session";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -370,3 +381,12 @@ export type {
   MockCameraStreamResult,
   MockCameraStreamStatus,
 } from "./mock-camera-provider";
+
+export type {
+  MockCameraObjectSessionInput,
+  MockCameraSessionEventType,
+  MockCameraSessionLifecycleEvent,
+  MockCameraSessionResult,
+  MockCameraSessionRunnerOptions,
+  MockCameraSessionStatus,
+} from "./mock-camera-session";
