@@ -71,6 +71,7 @@ export const VISION_METADATA_ALLOWED_FIELDS = [
   "memory_mutated",
   "metadata_only",
   "mime_type_hint",
+  "mode",
   "mock_fixture_id",
   "mock_frame_stream_executed",
   "mutation_authority_granted",

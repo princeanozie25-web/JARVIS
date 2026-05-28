@@ -289,6 +289,22 @@ export {
   runMockCameraObjectSession,
 } from "./mock-camera-session";
 
+export {
+  VISION_ROUTER_MODES,
+  VISION_ROUTER_REASONS,
+  VISION_ROUTER_STATUSES,
+  VisionDetectionArtifactRouterRequestSchema,
+  VisionMockCameraObjectRouterRequestSchema,
+  VisionOcrArtifactRouterRequestSchema,
+  VisionRouterModeSchema,
+  VisionRouterReasonSchema,
+  VisionRouterRequestSchema,
+  VisionRouterResultSchema,
+  VisionRouterStatusSchema,
+  VisionScreenshotOcrRouterRequestSchema,
+  runVisionCapabilityRouter,
+} from "./router";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -484,3 +500,15 @@ export type {
   MockCameraSessionRunnerOptions,
   MockCameraSessionStatus,
 } from "./mock-camera-session";
+
+export type {
+  VisionDetectionArtifactRouterRequest,
+  VisionMockCameraObjectRouterRequest,
+  VisionOcrArtifactRouterRequest,
+  VisionRouterMode,
+  VisionRouterReason,
+  VisionRouterRequest,
+  VisionRouterResult,
+  VisionRouterStatus,
+  VisionScreenshotOcrRouterRequest,
+} from "./router";
