@@ -172,6 +172,21 @@ export {
 } from "./detection-artifact";
 
 export {
+  VISION_DETECTION_ENABLEMENT_REASONS,
+  VISION_LOCAL_DETECTION_ALLOWED_MODELS,
+  VISION_LOCAL_DETECTION_MAX_CONFIDENCE_THRESHOLD,
+  VISION_LOCAL_DETECTION_MAX_TIMEOUT_MS,
+  VISION_LOCAL_DETECTION_MIN_CONFIDENCE_THRESHOLD,
+  VISION_LOCAL_DETECTION_PROVIDER_KINDS,
+  VisionDetectionEnablementReasonSchema,
+  VisionDetectionEnablementResultSchema,
+  VisionLocalDetectionModelSchema,
+  VisionLocalDetectionProviderEnablementConfigSchema,
+  VisionLocalDetectionProviderKindSchema,
+  evaluateVisionDetectionEnablement,
+} from "./detection-enablement";
+
+export {
   VISION_OCR_ARTIFACT_KINDS,
   VISION_OCR_ARTIFACT_REJECTION_REASONS,
   VISION_OCR_MIME_TYPE_HINTS,
@@ -372,6 +387,15 @@ export type {
   VisionDetectionSizeBand,
   VisionDetectionSourceRefKind,
 } from "./detection-artifact";
+
+export type {
+  VisionDetectionEnablementInput,
+  VisionDetectionEnablementReason,
+  VisionDetectionEnablementResult,
+  VisionLocalDetectionAllowedModel,
+  VisionLocalDetectionProviderEnablementConfig,
+  VisionLocalDetectionProviderKind,
+} from "./detection-enablement";
 
 export type {
   CreateVisionOcrArtifactFromCaptureInput,

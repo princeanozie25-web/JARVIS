@@ -3,12 +3,16 @@ import { z } from "zod";
 import { VisionCapabilitySchema, VisionProviderKindSchema } from "./contracts";
 import {
   createVisionProviderDisabledResult,
+  createVisionProviderExecutionDisabledResult,
   createVisionProviderPolicyDeniedResult,
+  createVisionProviderPreconditionFailedResult,
   type VisionProvider,
   type VisionProviderHealth,
   type VisionProviderRunRequest,
   type VisionProviderRunResult,
 } from "./provider";
+import { evaluateVisionDetectionEnablement } from "./detection-enablement";
+import type { VisionMutationAuthorityClass } from "./policy";
 import { sanitizeVisionProviderResult } from "./redaction";
 
 export const YOLO_PROVIDER_HEALTH_STATUSES = [
@@ -134,24 +138,86 @@ export function createDisabledYoloProvider(
         capability: "object_detection" as const,
         latency_ms: 0,
       };
-      const providerResult =
-        request.capability === resolvedConfig.supported_capability
-          ? createVisionProviderDisabledResult(baseResult)
-          : createVisionProviderPolicyDeniedResult(baseResult);
-      const sanitized = sanitizeVisionProviderResult(providerResult);
-      if (!sanitized.ok) {
-        throw new Error("Unsafe YOLO disabled provider result.");
+
+      if (request.capability !== resolvedConfig.supported_capability) {
+        return providerRunResult(
+          createVisionProviderPolicyDeniedResult(baseResult),
+        );
+      }
+      if (!resolvedConfig.enabled) {
+        return providerRunResult(
+          createVisionProviderDisabledResult(baseResult),
+        );
       }
 
-      return {
-        provider_result: sanitized.value,
-        observations: [],
+      const enablement = evaluateVisionDetectionEnablement({
+        provider_config: resolvedConfig,
+        capability: request.capability,
+        artifact: detectionArtifactFromRequest(request),
+        timeout_ms: request.timeout_ms,
+        mutation_authority_requested: mutationAuthorityFromRequest(request),
+        cloud_fallback_requested: fallbackFlagFromRequest(
+          request,
+          "cloud_fallback_requested",
+        ),
+        network_fallback_requested: fallbackFlagFromRequest(
+          request,
+          "network_fallback_requested",
+        ),
         metadata_only: true,
-        advisory_only: true,
-        derived: true,
-        raw_payload_included: false,
-      };
+      });
+      const providerResult = enablement.allowed
+        ? createVisionProviderExecutionDisabledResult(baseResult)
+        : createVisionProviderPreconditionFailedResult(baseResult);
+
+      return providerRunResult(providerResult);
     },
+  };
+}
+
+function detectionArtifactFromRequest(
+  request: VisionProviderRunRequest,
+): unknown {
+  return (
+    (request as { readonly detection_artifact?: unknown }).detection_artifact ??
+    null
+  );
+}
+
+function mutationAuthorityFromRequest(
+  request: VisionProviderRunRequest,
+): readonly VisionMutationAuthorityClass[] {
+  return (
+    (
+      request as {
+        readonly mutation_authority_requested?: readonly VisionMutationAuthorityClass[];
+      }
+    ).mutation_authority_requested ?? []
+  );
+}
+
+function fallbackFlagFromRequest(
+  request: VisionProviderRunRequest,
+  key: "cloud_fallback_requested" | "network_fallback_requested",
+): boolean {
+  return Boolean((request as unknown as Record<string, unknown>)[key]);
+}
+
+function providerRunResult(
+  providerResult: VisionProviderRunResult["provider_result"],
+): VisionProviderRunResult {
+  const sanitized = sanitizeVisionProviderResult(providerResult);
+  if (!sanitized.ok) {
+    throw new Error("Unsafe YOLO disabled provider result.");
+  }
+
+  return {
+    provider_result: sanitized.value,
+    observations: [],
+    metadata_only: true,
+    advisory_only: true,
+    derived: true,
+    raw_payload_included: false,
   };
 }
 
