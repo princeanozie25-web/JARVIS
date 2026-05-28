@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path. Phase 16B.5 closes the fixture conformance layer.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path. Phase 16B.5 closes the fixture conformance layer. Phase 16B.6 adds a deny-by-default live read boundary preflight.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -102,6 +102,23 @@ Phase 16B live Hue reads are still not implemented. The fixture conformance only
 - raw config refs and API keys are not surfaced.
 - no write, persistence, or UI path is introduced.
 
+## Live Read Boundary Preflight
+
+This fulfills Phase 16B.6 - Live Read Boundary Preflight.
+
+`evaluateHueLiveReadPreflight()` and `DisabledHueReadOnlyAdapter.getLiveReadPreflight()` return metadata-only decisions before any future live read implementation can be considered:
+
+- `allowed: false`
+- missing config returns `manual_config_missing`
+- invalid config returns `manual_config_invalid`
+- unsafe Phase 16 disabled guard state returns `disabled_guard_unsafe`
+- valid-looking manual config may return `ready_for_manual_live_read_implementation`
+- network, discovery, cloud, and writes all remain disallowed
+- raw config refs and API keys are not surfaced
+- live Hue reads are still not implemented
+
+The preflight does not call Hue, discover bridges, use a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or touch hardware.
+
 ## Still Forbidden
 
 - `node-hue-api` or any Hue SDK dependency.
@@ -115,4 +132,4 @@ Phase 16B live Hue reads are still not implemented. The fixture conformance only
 
 ## Next Recommended Slice
 
-Phase 16B.6 - Live Read Boundary Preflight.
+Phase 16C.1 - Real Hue Read-Only Client Boundary Stub.

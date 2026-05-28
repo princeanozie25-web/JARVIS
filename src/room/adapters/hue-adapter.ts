@@ -24,6 +24,10 @@ import {
   type HueReadBridgeSnapshot,
   type HueReadMapperOptions,
 } from "./hue-read-mapper";
+import {
+  DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS,
+  type Phase16RoomAdapterDisabledGuardMatrix,
+} from "./phase-16-disabled-guards";
 import type { Capability } from "../types";
 
 export const HUE_READ_ONLY_ADAPTER_MODE = {
@@ -111,6 +115,57 @@ export interface DisabledHueFixtureDryRunReadResult {
   readonly raw_api_key_exposed: false;
   readonly metadata_only: true;
   readonly snapshot: HueReadBridgeSnapshot;
+}
+
+export interface HueLiveReadPreflightOptions {
+  readonly disabledGuards?: Partial<Phase16RoomAdapterDisabledGuardMatrix>;
+}
+
+export interface HueLiveReadPreflightDecision {
+  readonly allowed: false;
+  readonly status: "denied" | "ready_for_manual_live_read_implementation";
+  readonly reason:
+    | "manual_config_missing"
+    | "manual_config_invalid"
+    | "disabled_guard_unsafe"
+    | "ready_but_live_read_not_implemented";
+  readonly error_class:
+    | "config_missing"
+    | "config_invalid"
+    | "disabled_guard_unsafe"
+    | "live_read_not_implemented";
+  readonly adapter_kind: "hue";
+  readonly mode: "read_only";
+  readonly source: "local_hue_bridge";
+  readonly config_status: HueReadOnlyAdapterConfigValidation["status"];
+  readonly fake_conformance_status: "required_and_pinned";
+  readonly disabled_guard_status: "pinned_off" | "unsafe";
+  readonly enabled: false;
+  readonly read_only: true;
+  readonly network_allowed: false;
+  readonly discovery_allowed: false;
+  readonly cloud_allowed: false;
+  readonly writes_allowed: false;
+  readonly network_called: false;
+  readonly discovery_attempted: false;
+  readonly cloud_attempted: false;
+  readonly hardware_io_performed: false;
+  readonly persisted: false;
+  readonly ui_rendered: false;
+  readonly raw_config_ref_exposed: false;
+  readonly raw_api_key_exposed: false;
+  readonly metadata_only: true;
+  readonly live_read_implemented: false;
+}
+
+export function evaluateHueLiveReadPreflight(
+  config?: unknown,
+  options: HueLiveReadPreflightOptions = {},
+): HueLiveReadPreflightDecision {
+  return hueLiveReadPreflightFromValidation(
+    validateHueReadOnlyAdapterConfig(config),
+    options.disabledGuards ?? DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS,
+  );
 }
 
 export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
@@ -236,6 +291,15 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
     };
   }
 
+  getLiveReadPreflight(
+    options: HueLiveReadPreflightOptions = {},
+  ): HueLiveReadPreflightDecision {
+    return hueLiveReadPreflightFromValidation(
+      this.validation,
+      options.disabledGuards ?? DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS,
+    );
+  }
+
   async readState(input: {
     deviceId: string;
     capability: Capability;
@@ -355,4 +419,110 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
       ui_rendered: false,
     });
   }
+}
+
+function hueLiveReadPreflightFromValidation(
+  validation: Omit<HueReadOnlyAdapterConfigValidation, "config">,
+  disabledGuards: Partial<Phase16RoomAdapterDisabledGuardMatrix>,
+): HueLiveReadPreflightDecision {
+  const disabledGuardStatus = guardsPinnedOff(disabledGuards)
+    ? "pinned_off"
+    : "unsafe";
+
+  if (disabledGuardStatus === "unsafe") {
+    return preflightDecision(validation, {
+      status: "denied",
+      reason: "disabled_guard_unsafe",
+      error_class: "disabled_guard_unsafe",
+      disabledGuardStatus,
+    });
+  }
+
+  if (validation.status === "config_missing") {
+    return preflightDecision(validation, {
+      status: "denied",
+      reason: "manual_config_missing",
+      error_class: "config_missing",
+      disabledGuardStatus,
+    });
+  }
+
+  if (validation.status === "config_invalid") {
+    return preflightDecision(validation, {
+      status: "denied",
+      reason: "manual_config_invalid",
+      error_class: "config_invalid",
+      disabledGuardStatus,
+    });
+  }
+
+  return preflightDecision(validation, {
+    status: "ready_for_manual_live_read_implementation",
+    reason: "ready_but_live_read_not_implemented",
+    error_class: "live_read_not_implemented",
+    disabledGuardStatus,
+  });
+}
+
+function preflightDecision(
+  validation: Omit<HueReadOnlyAdapterConfigValidation, "config">,
+  input: {
+    readonly status: HueLiveReadPreflightDecision["status"];
+    readonly reason: HueLiveReadPreflightDecision["reason"];
+    readonly error_class: HueLiveReadPreflightDecision["error_class"];
+    readonly disabledGuardStatus: HueLiveReadPreflightDecision["disabled_guard_status"];
+  },
+): HueLiveReadPreflightDecision {
+  return {
+    allowed: false,
+    status: input.status,
+    reason: input.reason,
+    error_class: input.error_class,
+    adapter_kind: "hue",
+    mode: "read_only",
+    source: "local_hue_bridge",
+    config_status: validation.status,
+    fake_conformance_status: "required_and_pinned",
+    disabled_guard_status: input.disabledGuardStatus,
+    enabled: false,
+    read_only: true,
+    network_allowed: false,
+    discovery_allowed: false,
+    cloud_allowed: false,
+    writes_allowed: false,
+    network_called: false,
+    discovery_attempted: false,
+    cloud_attempted: false,
+    hardware_io_performed: false,
+    persisted: false,
+    ui_rendered: false,
+    raw_config_ref_exposed: false,
+    raw_api_key_exposed: false,
+    metadata_only: true,
+    live_read_implemented: false,
+  };
+}
+
+function guardsPinnedOff(
+  guards: Partial<Phase16RoomAdapterDisabledGuardMatrix>,
+): boolean {
+  return (
+    guards.real_hue_writes_enabled === false &&
+    guards.hue_auto_discovery_enabled === false &&
+    guards.hue_cloud_remote_api_enabled === false &&
+    guards.scenes_macros_enabled === false &&
+    guards.scheduled_device_actions_enabled === false &&
+    guards.voice_trust_class_elevation_enabled === false &&
+    guards.runtime_trust_class_elevation_enabled === false &&
+    guards.jarvis_policy_edits_enabled === false &&
+    guards.multi_device_routines_enabled === false &&
+    guards.real_hue_adapter_enabled === false &&
+    guards.fake_conformance_required_before_real_hue === true &&
+    guards.real_hue_adapter_requires_fake_conformance === true &&
+    guards.network_called === false &&
+    guards.hardware_io_performed === false &&
+    guards.cloud_called === false &&
+    guards.persisted === false &&
+    guards.ui_rendered === false
+  );
 }
