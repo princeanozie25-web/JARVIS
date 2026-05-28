@@ -6,7 +6,7 @@
 
 The room runtime already has a meaningful fake-first substrate: a typed adapter contract, a deterministic `FakeRoomAdapter`, a `FakeHueBridge`, in-memory fake failure simulation, fake event provenance, verification reads, and a conformance suite for the current fake room adapter.
 
-It is not ready to unlock real Hue work yet. Phase 16A still needs a final closeout freeze before Phase 16B can introduce real Hue read-only support.
+Phase 16A is closed as **PASS WITH NOTES**. The fake adapter hardening layer is complete enough to block real Hue until Phase 16B introduces read-only real Hue boundaries behind the fake conformance contract.
 
 ## Files Inspected
 
@@ -110,8 +110,8 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs a final close
 
 ## Recommended Next Slices
 
-1. **16A.6 - Phase 16A Closeout Guard**
-   Freeze fake adapter conformance before Phase 16B real Hue read-only support.
+1. **16B.1 - Real Hue Read-Only Contract Scaffold**
+   Define the disabled, read-only real Hue contract boundary without adding network calls or real device access.
 
 ## Do Not Implement Yet
 
