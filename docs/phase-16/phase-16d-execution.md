@@ -12,6 +12,7 @@ Scaffold only. No real Hue command execution exists.
 - A hard denial for approved metadata because execution is not implemented in Phase 16D.1.
 - Verification and compensation requirements for future execution, while keeping both non-executing.
 - Verification-facing metadata for the future read-after-write check, while keeping verification unsupported.
+- Audit/provenance metadata and a metadata-only audit preview helper, while keeping event-store writes unsupported.
 
 ## Boundary Guarantees
 
@@ -24,6 +25,11 @@ Scaffold only. No real Hue command execution exists.
 - `expected_post_state` is derived from the dry-run intended state and is metadata-only.
 - `actual_post_state` is unavailable because execution and verification are not performed.
 - Verification network and persistence support are pinned off.
+- `audit_required` is always `true`.
+- `audit_supported` is always `false`.
+- `audit_payload_kind` is `metadata_only`.
+- Boundary provenance is recorded as metadata: boundary id, source plan id, adapter kind, mode, target id, approval status, and verification requirement.
+- Event-store write support and attempts are pinned off.
 - Dry-run plans remain non-executable.
 - Compensation remains descriptive-only.
 - Raw payload, raw config, and raw API key exposure remain pinned off.
@@ -37,6 +43,10 @@ Approval metadata is review context only in this scaffold. Missing, pending, den
 
 Future Hue execution will require a verification read after an approved write. Phase 16D.2 only records that requirement. It does not perform reads, persist verification events, compare live state, or touch hardware. Expected state is derived solely from the dry-run plan intent; actual state remains unavailable.
 
+## Audit Semantics
+
+Future Hue execution will require audit/event recording before any real write path can be trusted. Phase 16D.3 only builds replay-safe audit preview metadata. It does not write to an event store, persist records, render UI, submit approvals, or execute commands.
+
 ## Explicitly Not Implemented
 
 - Real Hue writes.
@@ -45,6 +55,7 @@ Future Hue execution will require a verification read after an approved write. P
 - Verification reads.
 - Compensation or rollback execution.
 - Event-store writes.
+- Audit persistence.
 - Hue bridge discovery.
 - Hue Cloud Remote API.
 - `node-hue-api` or any Hue SDK.
@@ -54,4 +65,4 @@ Future Hue execution will require a verification read after an approved write. P
 
 ## Next Recommended Slice
 
-Phase 16D.2 - Hue Execution Boundary Conformance and Verification Metadata.
+Phase 16D.4 - Hue Execution Boundary Compensation Preconditions.
