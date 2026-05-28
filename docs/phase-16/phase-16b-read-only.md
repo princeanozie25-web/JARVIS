@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -33,6 +33,24 @@ The example config is manual-only and disabled:
 - `api_key_config_ref` is a reference placeholder, not a secret.
 - `enabled` is pinned `false`.
 - `read_only` is pinned `true`.
+- missing config reports `config_missing` metadata only.
+- invalid config reports `config_invalid` metadata only.
+- valid-looking config reports `ready_for_future_read_only`, but execution remains disabled.
+- `api_key_config_ref` is surfaced only as `configured` or `not_configured` in health metadata.
+
+## Read Health Metadata
+
+The disabled adapter reports health without connecting:
+
+- `status`: `config_missing`, `config_invalid`, or `ready_for_future_read_only`
+- `enabled`: `false`
+- `read_only`: `true`
+- `network_called`: `false`
+- `discovery_attempted`: `false`
+- `cloud_attempted`: `false`
+- `writes_supported`: `false`
+- `raw_config_ref_exposed`: `false`
+- `raw_api_key_exposed`: `false`
 
 ## Still Forbidden
 
@@ -47,4 +65,4 @@ The example config is manual-only and disabled:
 
 ## Next Recommended Slice
 
-Phase 16B.2 - Disabled Hue Read Health And Manual Config Validation.
+Phase 16B.3 - Hue Read-Only Request/Result Mapping Scaffold.

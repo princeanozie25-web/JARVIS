@@ -16,6 +16,7 @@ import {
   EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
   HueReadOnlyAdapterConfigSchema,
   parseHueReadOnlyAdapterConfig,
+  validateHueReadOnlyAdapterConfig,
 } from "../../../src/room/adapters/hue-config";
 import { approvedContext, roomCommand } from "../conformance/harness";
 
@@ -49,10 +50,26 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
       supported_capabilities: ["power.observe", "light.observe"],
       implementation_side_effects_enabled: false,
     });
+    expect(adapter.getReadHealth()).toMatchObject({
+      status: "config_missing",
+      reason: "manual_config_missing",
+      error_class: "config_missing",
+      enabled: false,
+      read_only: true,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      writes_supported: false,
+      discovery_supported: false,
+      cloud_supported: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+    });
   });
 
   it("does not perform real Hue reads while disabled", async () => {
-    const adapter = new DisabledHueReadOnlyAdapter();
+    const adapter = DisabledHueReadOnlyAdapter.withExampleConfig();
 
     await expect(
       adapter.readState({
@@ -77,7 +94,7 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
   });
 
   it("has no write authority and returns disabled metadata for execution paths", async () => {
-    const adapter = new DisabledHueReadOnlyAdapter();
+    const adapter = DisabledHueReadOnlyAdapter.withExampleConfig();
     const command = {
       ...roomCommand({
         commandId: "hue-write-disabled",
@@ -163,6 +180,85 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
       bridge_ip: "192.0.2.10",
       api_key_config_ref: "config_ref:hue.local.placeholder",
     });
+  });
+
+  it("returns metadata-only config health without surfacing raw config refs", () => {
+    const missing = validateHueReadOnlyAdapterConfig(undefined);
+    expect(missing).toMatchObject({
+      ok: false,
+      status: "config_missing",
+      enabled: false,
+      read_only: true,
+      bridge_ip_configured: false,
+      bridge_ip_source: "not_configured",
+      api_key_config_ref_status: "not_configured",
+      metadata_only: true,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+    });
+
+    const invalid = validateHueReadOnlyAdapterConfig({
+      ...EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
+      bridge_ip: "https://not-manual.example",
+      api_key_config_ref: "api_key=not-allowed",
+    });
+    expect(invalid).toMatchObject({
+      ok: false,
+      status: "config_invalid",
+      config: null,
+      bridge_ip_configured: true,
+      bridge_ip_source: "manual",
+      api_key_config_ref_status: "configured",
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+    });
+    expect(JSON.stringify(invalid)).not.toContain("api_key=not-allowed");
+
+    const ready = validateHueReadOnlyAdapterConfig(
+      EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
+    );
+    expect(ready).toMatchObject({
+      ok: true,
+      status: "ready_for_future_read_only",
+      config: null,
+      enabled: false,
+      read_only: true,
+      bridge_ip_configured: true,
+      bridge_ip_source: "manual",
+      api_key_config_ref_status: "configured",
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+    });
+    expect(JSON.stringify(ready)).not.toContain("config_ref:hue");
+
+    const health =
+      DisabledHueReadOnlyAdapter.withExampleConfig().getReadHealth();
+    expect(health).toMatchObject({
+      status: "ready_for_future_read_only",
+      reason: "ready_but_execution_disabled",
+      error_class: null,
+      enabled: false,
+      read_only: true,
+      bridge_ip_configured: true,
+      bridge_ip_source: "manual",
+      api_key_config_ref_status: "configured",
+      validation_errors: [],
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+    });
+    expect(JSON.stringify(health)).not.toContain("config_ref:hue");
   });
 
   it("keeps Phase 16A disabled guards pinned", () => {

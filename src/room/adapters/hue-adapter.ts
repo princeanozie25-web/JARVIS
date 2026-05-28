@@ -14,8 +14,8 @@ import {
 } from "./contract";
 import {
   EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
-  parseHueReadOnlyAdapterConfig,
-  type HueReadOnlyAdapterConfig,
+  validateHueReadOnlyAdapterConfig,
+  type HueReadOnlyAdapterConfigValidation,
 } from "./hue-config";
 import type { Capability } from "../types";
 
@@ -32,17 +32,66 @@ export const HUE_READ_ONLY_ADAPTER_MODE = {
   real_writes_implemented: false,
 } as const;
 
+export interface HueReadHealthMetadata {
+  readonly status:
+    | "disabled"
+    | "config_missing"
+    | "config_invalid"
+    | "ready_for_future_read_only";
+  readonly reason:
+    | "adapter_disabled"
+    | "manual_config_missing"
+    | "manual_config_invalid"
+    | "ready_but_execution_disabled";
+  readonly error_class:
+    | "adapter_disabled"
+    | "config_missing"
+    | "config_invalid"
+    | null;
+  readonly adapter_id: string;
+  readonly adapter_kind: "hue";
+  readonly source: "local_hue_bridge";
+  readonly enabled: false;
+  readonly read_only: true;
+  readonly bridge_ip_configured: boolean;
+  readonly bridge_ip_source: "manual" | "not_configured";
+  readonly api_key_config_ref_status: "configured" | "not_configured";
+  readonly validation_errors: readonly {
+    readonly path: string;
+    readonly code: string;
+    readonly message: string;
+  }[];
+  readonly writes_supported: false;
+  readonly discovery_supported: false;
+  readonly cloud_supported: false;
+  readonly network_called: false;
+  readonly discovery_attempted: false;
+  readonly cloud_attempted: false;
+  readonly raw_config_ref_exposed: false;
+  readonly raw_api_key_exposed: false;
+  readonly metadata_only: true;
+}
+
 export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
   readonly descriptor: RoomAdapterContractDescriptor;
-  readonly config: HueReadOnlyAdapterConfig;
+  private readonly adapterId: string;
+  private readonly validation: Omit<
+    HueReadOnlyAdapterConfigValidation,
+    "config"
+  >;
 
-  constructor(
-    config: HueReadOnlyAdapterConfig = EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
-  ) {
-    this.config = parseHueReadOnlyAdapterConfig(config);
+  constructor(config?: unknown) {
+    const validation = validateHueReadOnlyAdapterConfig(config);
+    const safeValidation = { ...validation } as Omit<
+      HueReadOnlyAdapterConfigValidation,
+      "config"
+    > & { config?: unknown };
+    delete safeValidation.config;
+    this.adapterId = "hue-read-only-disabled";
+    this.validation = safeValidation;
     this.descriptor = createRoomAdapterContractDescriptor({
       identity: {
-        adapter_id: this.config.adapter_id,
+        adapter_id: this.adapterId,
         adapter_kind: "hue",
         display_name: "Disabled Hue Read-Only Adapter",
         fake_first: true,
@@ -57,8 +106,59 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
     });
   }
 
+  static withExampleConfig(): DisabledHueReadOnlyAdapter {
+    return new DisabledHueReadOnlyAdapter(
+      EXAMPLE_DISABLED_HUE_READ_ONLY_CONFIG,
+    );
+  }
+
   getModeMetadata(): typeof HUE_READ_ONLY_ADAPTER_MODE {
     return HUE_READ_ONLY_ADAPTER_MODE;
+  }
+
+  getReadHealth(): HueReadHealthMetadata {
+    const configured = this.validation.status === "ready_for_future_read_only";
+    const status = configured
+      ? "ready_for_future_read_only"
+      : this.validation.status;
+
+    return {
+      status,
+      reason:
+        status === "ready_for_future_read_only"
+          ? "ready_but_execution_disabled"
+          : status === "config_missing"
+            ? "manual_config_missing"
+            : status === "config_invalid"
+              ? "manual_config_invalid"
+              : "adapter_disabled",
+      error_class:
+        status === "ready_for_future_read_only"
+          ? null
+          : status === "config_missing"
+            ? "config_missing"
+            : status === "config_invalid"
+              ? "config_invalid"
+              : "adapter_disabled",
+      adapter_id: this.adapterId,
+      adapter_kind: "hue",
+      source: "local_hue_bridge",
+      enabled: false,
+      read_only: true,
+      bridge_ip_configured: this.validation.bridge_ip_configured,
+      bridge_ip_source: this.validation.bridge_ip_source,
+      api_key_config_ref_status: this.validation.api_key_config_ref_status,
+      validation_errors: this.validation.issues,
+      writes_supported: false,
+      discovery_supported: false,
+      cloud_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+    };
   }
 
   async readState(input: {
@@ -81,7 +181,7 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
     context: RoomAdapterExecutionContext;
   }): Promise<RoomAdapterDryRunPlan> {
     void input;
-    throw new Error("Hue adapter write planning disabled in Phase 16B.1.");
+    throw new Error("Hue adapter write planning disabled in Phase 16B.2.");
   }
 
   async executeCommand(input: {
@@ -122,7 +222,7 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
     void input;
 
     return RoomAdapterHealthStatusSchema.parse({
-      adapter_id: this.config.adapter_id,
+      adapter_id: this.adapterId,
       status: "unavailable",
       checked_at_ms: 0,
       failure_class: "adapter_unavailable",
@@ -148,7 +248,7 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
         requested_at_ms: 0,
         requested_by: "jarvis_room_os",
         source_phase: "10B.3",
-        adapter_id: this.config.adapter_id,
+        adapter_id: this.adapterId,
         device_id: input.deviceId,
         capability: input.capability,
         mode: input.mode,
@@ -167,7 +267,7 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
         required: input.approvalRequired,
         policy_id: input.approvalRequired ? "fake-room-approval-policy" : null,
         reason: input.approvalRequired
-          ? "Hue adapter writes are disabled in Phase 16B.1."
+          ? "Hue adapter writes are disabled in Phase 16B.2."
           : null,
         dry_run_required: true,
         auto_approval_allowed: false,
