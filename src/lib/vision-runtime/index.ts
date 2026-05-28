@@ -305,6 +305,21 @@ export {
   runVisionCapabilityRouter,
 } from "./router";
 
+export {
+  VISION_REPLAY_CONFIDENCE_BANDS,
+  VISION_REPLAY_NORMALIZATION_REASONS,
+  VISION_REPLAY_SOURCE_REF_KINDS,
+  VisionReplayConfidenceBandSchema,
+  VisionReplayMetadataSchema,
+  VisionReplayNormalizationReasonSchema,
+  VisionReplaySourceRefKindSchema,
+  normalizeFakeScreenshotSessionResult,
+  normalizeMockCameraSessionResult,
+  normalizeTesseractDryRunResult,
+  normalizeVisionRouterResult,
+  normalizeYoloDryRunResult,
+} from "./observation-normalizer";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -512,3 +527,11 @@ export type {
   VisionRouterStatus,
   VisionScreenshotOcrRouterRequest,
 } from "./router";
+
+export type {
+  VisionReplayConfidenceBand,
+  VisionReplayMetadata,
+  VisionReplayNormalizationReason,
+  VisionReplayNormalizationResult,
+  VisionReplaySourceRefKind,
+} from "./observation-normalizer";

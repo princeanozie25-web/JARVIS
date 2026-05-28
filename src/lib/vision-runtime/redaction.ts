@@ -111,6 +111,8 @@ export const VISION_METADATA_ALLOWED_FIELDS = [
   "request_id",
   "requested_input_kind",
   "requested_frame_count",
+  "replay_id",
+  "replay_safe",
   "result_id",
   "result_kind",
   "result_status",
