@@ -232,7 +232,7 @@ describe("Phase 10B.3 room adapter contract", () => {
     );
   });
 
-  it("does not make real adapter kinds executable from this slice", async () => {
+  it("allows Hue as a non-executable adapter kind only", async () => {
     const contractModule = await import("../../../src/room/adapters/contract");
     const exportedNames = Object.keys(contractModule);
 
@@ -257,7 +257,7 @@ describe("Phase 10B.3 room adapter contract", () => {
         real_adapter_executable_in_phase_10b3: false,
         implementation_side_effects_enabled: false,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       exportedNames.some((name) => /connect|dispatch|persist|wire/i.test(name)),
     ).toBe(false);

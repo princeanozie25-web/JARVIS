@@ -1,0 +1,13 @@
+adapter_id: hue-read-only-disabled
+adapter_kind: hue
+enabled: false
+read_only: true
+source: local_hue_bridge
+bridge_ip: 192.0.2.10
+api_key_config_ref: config_ref:hue.local.placeholder
+writes_supported: false
+discovery_supported: false
+cloud_supported: false
+network_calls_enabled: false
+real_reads_implemented: false
+real_writes_implemented: false

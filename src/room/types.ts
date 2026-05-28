@@ -38,6 +38,7 @@ export const ROOM_CAPABILITIES = [
 
 export const ROOM_ADAPTER_KINDS = [
   "fake",
+  "hue",
   "mock_camera",
   "mock_screen",
   "manual",

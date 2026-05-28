@@ -67,3 +67,4 @@ Phase 16A fake adapter hardening is complete enough to keep real Hue blocked whi
 - `node-hue-api` is still not present.
 - No network calls, bridge discovery, cloud API, scenes, macros, schedules, routines, or real device reads/writes were added.
 - Compensation remains descriptive only and is not executable.
+- Phase 16B.1 adds a disabled/read-only real Hue contract scaffold; real Hue reads remain unimplemented.
