@@ -261,6 +261,150 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
     expect(JSON.stringify(health)).not.toContain("config_ref:hue");
   });
 
+  it("maps fixture-only Hue read payloads through the disabled adapter dry-run path", () => {
+    const adapter = DisabledHueReadOnlyAdapter.withExampleConfig();
+
+    const result = adapter.dryRunReadFixtureSnapshot({
+      bridge: {
+        id: "bridge-001",
+        name: "Office Hue Bridge",
+        api_version: "1.58.0",
+      },
+      lights: [
+        {
+          id: "light-reachable",
+          metadata: { name: "Reachable Lamp" },
+          owner: { rid: "office", rtype: "room" },
+          on: { on: true },
+          dimming: { brightness: 70 },
+          color_temperature: { mirek: 400 },
+          status: { reachable: true },
+          capabilities: ["on", "dimming", "color_temperature"],
+          last_seen_at_ms: 5_000,
+          stale: true,
+        },
+        {
+          id: "light-unreachable",
+          metadata: { name: "Unreachable Lamp" },
+          status: { reachable: false },
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      status: "fixture_mapped",
+      adapter_id: "hue-read-only-disabled",
+      adapter_kind: "hue",
+      mode: "read_only",
+      source: "local_hue_bridge",
+      fixture_only: true,
+      dry_run_read: true,
+      enabled: false,
+      read_only: true,
+      config_status: "ready_for_future_read_only",
+      bridge_ip_configured: true,
+      api_key_config_ref_status: "configured",
+      writes_supported: false,
+      discovery_supported: false,
+      cloud_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      hardware_io_performed: false,
+      persisted: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+      snapshot: {
+        adapter_kind: "hue",
+        mode: "read_only",
+        source: "local_hue_bridge",
+        enabled: false,
+        network_called: false,
+        hardware_io_performed: false,
+        persisted: false,
+        raw_hue_payload_included: false,
+      },
+    });
+    expect(result.snapshot.lights).toHaveLength(2);
+    expect(result.snapshot.lights[0]).toMatchObject({
+      id: "light-reachable",
+      reachability: "reachable",
+      on: true,
+      brightness_percent: 70,
+      color_temperature_kelvin: 2500,
+      freshness: { observed_at_ms: 5_000, stale: true },
+      raw_hue_payload_included: false,
+      network_called: false,
+    });
+    expect(result.snapshot.lights[1]).toMatchObject({
+      id: "light-unreachable",
+      reachability: "unreachable",
+      unavailable_reason: "adapter_unavailable",
+      on: null,
+      brightness_percent: null,
+      color_temperature_kelvin: null,
+      freshness: { observed_at_ms: null },
+      degraded: true,
+    });
+  });
+
+  it("keeps fixture dry-run mapping metadata-only for missing, invalid, and unsafe fields", () => {
+    const adapter = new DisabledHueReadOnlyAdapter();
+
+    const result = adapter.dryRunReadFixtureSnapshot({
+      bridge: {
+        name: "Incomplete Bridge",
+        api_key_config_ref: "config_ref:hue.local.placeholder",
+      } as unknown as { name: string },
+      lights: [
+        {
+          id: "light-invalid",
+          metadata: { name: "Invalid Lamp" },
+          dimming: { brightness: 200 },
+          color_temperature: { mirek: -1 },
+          status: { reachable: true },
+          api_key: "secret-api-key",
+          token: "secret-token",
+        } as unknown as {
+          id: string;
+          metadata: { name: string };
+          dimming: { brightness: number };
+          color_temperature: { mirek: number };
+          status: { reachable: boolean };
+        },
+      ],
+    });
+    const json = JSON.stringify(result);
+
+    expect(result).toMatchObject({
+      config_status: "config_missing",
+      fixture_only: true,
+      dry_run_read: true,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+    });
+    expect(result.snapshot.bridge).toMatchObject({
+      bridge_id: null,
+      missing_fields: ["id", "api_version"],
+      degraded: true,
+    });
+    expect(result.snapshot.lights[0]).toMatchObject({
+      brightness_percent: null,
+      color_temperature_kelvin: null,
+      degraded: true,
+    });
+    expect(result.snapshot.lights[0]?.invalid_fields).toEqual(
+      expect.arrayContaining(["dimming.brightness", "color_temperature.mirek"]),
+    );
+    expect(json).not.toContain("secret-api-key");
+    expect(json).not.toContain("secret-token");
+    expect(json).not.toContain("config_ref:hue");
+  });
+
   it("keeps Phase 16A disabled guards pinned", () => {
     expect(DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS).toMatchObject({
       real_hue_writes_enabled: false,

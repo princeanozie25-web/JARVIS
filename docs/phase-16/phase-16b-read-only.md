@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -70,6 +70,23 @@ The mapper is fixture-only and pure:
 
 The mapper does not connect to Hue, read live Hue state, discover bridges, call a Hue SDK, call HTTP APIs, or enable writes.
 
+## Disabled Adapter Dry-Run Mapping
+
+`DisabledHueReadOnlyAdapter.dryRunReadFixtureSnapshot()` accepts only local in-memory Hue-like fixtures and returns mapped read snapshot metadata:
+
+- `fixture_only`: `true`
+- `dry_run_read`: `true`
+- `enabled`: `false`
+- `adapter_kind`: `hue`
+- `mode`: `read_only`
+- `source`: `local_hue_bridge`
+- `network_called`: `false`
+- `discovery_attempted`: `false`
+- `cloud_attempted`: `false`
+- `writes_supported`: `false`
+
+Manual config validation may be reflected as metadata, but config remains inert and raw config refs/API keys are not surfaced. Normal adapter `readState()` remains disabled and returns unavailable metadata; live Hue reads are still not implemented.
+
 ## Still Forbidden
 
 - `node-hue-api` or any Hue SDK dependency.
@@ -83,4 +100,4 @@ The mapper does not connect to Hue, read live Hue state, discover bridges, call 
 
 ## Next Recommended Slice
 
-Phase 16B.4 - Disabled Hue Read Adapter Dry-Run Mapping Integration.
+Phase 16B.5 - Hue Read-Only Fixture Conformance Closeout.

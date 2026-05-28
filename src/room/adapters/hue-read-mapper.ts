@@ -40,6 +40,7 @@ export interface HueBridgeV2LightPayloadFixture {
   };
   readonly capabilities?: readonly string[];
   readonly last_seen_at_ms?: number;
+  readonly stale?: boolean;
 }
 
 export interface HueReadMapperOptions {
@@ -233,7 +234,7 @@ export function mapHueLightPayloadToReadSnapshot(
       stale_after_ms: staleAfterMs,
       expires_at_ms: observedAtMs === null ? null : observedAtMs + staleAfterMs,
       source: "local_hue_bridge",
-      stale: false,
+      stale: payload.stale === true,
     },
     missing_fields: missingFields,
     unsupported_fields: unsupportedFields,

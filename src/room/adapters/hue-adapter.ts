@@ -17,6 +17,13 @@ import {
   validateHueReadOnlyAdapterConfig,
   type HueReadOnlyAdapterConfigValidation,
 } from "./hue-config";
+import {
+  mapHueReadPayloadsToBridgeSnapshot,
+  type HueBridgeV2BridgePayloadFixture,
+  type HueBridgeV2LightPayloadFixture,
+  type HueReadBridgeSnapshot,
+  type HueReadMapperOptions,
+} from "./hue-read-mapper";
 import type { Capability } from "../types";
 
 export const HUE_READ_ONLY_ADAPTER_MODE = {
@@ -70,6 +77,39 @@ export interface HueReadHealthMetadata {
   readonly raw_config_ref_exposed: false;
   readonly raw_api_key_exposed: false;
   readonly metadata_only: true;
+}
+
+export interface DisabledHueFixtureDryRunReadInput {
+  readonly bridge: HueBridgeV2BridgePayloadFixture;
+  readonly lights: readonly HueBridgeV2LightPayloadFixture[];
+  readonly options?: HueReadMapperOptions;
+}
+
+export interface DisabledHueFixtureDryRunReadResult {
+  readonly status: "fixture_mapped";
+  readonly adapter_id: string;
+  readonly adapter_kind: "hue";
+  readonly mode: "read_only";
+  readonly source: "local_hue_bridge";
+  readonly fixture_only: true;
+  readonly dry_run_read: true;
+  readonly enabled: false;
+  readonly read_only: true;
+  readonly config_status: HueReadHealthMetadata["status"];
+  readonly bridge_ip_configured: boolean;
+  readonly api_key_config_ref_status: HueReadHealthMetadata["api_key_config_ref_status"];
+  readonly writes_supported: false;
+  readonly discovery_supported: false;
+  readonly cloud_supported: false;
+  readonly network_called: false;
+  readonly discovery_attempted: false;
+  readonly cloud_attempted: false;
+  readonly hardware_io_performed: false;
+  readonly persisted: false;
+  readonly raw_config_ref_exposed: false;
+  readonly raw_api_key_exposed: false;
+  readonly metadata_only: true;
+  readonly snapshot: HueReadBridgeSnapshot;
 }
 
 export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
@@ -158,6 +198,39 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
       raw_config_ref_exposed: false,
       raw_api_key_exposed: false,
       metadata_only: true,
+    };
+  }
+
+  dryRunReadFixtureSnapshot(
+    input: DisabledHueFixtureDryRunReadInput,
+  ): DisabledHueFixtureDryRunReadResult {
+    const health = this.getReadHealth();
+
+    return {
+      status: "fixture_mapped",
+      adapter_id: this.adapterId,
+      adapter_kind: "hue",
+      mode: "read_only",
+      source: "local_hue_bridge",
+      fixture_only: true,
+      dry_run_read: true,
+      enabled: false,
+      read_only: true,
+      config_status: health.status,
+      bridge_ip_configured: health.bridge_ip_configured,
+      api_key_config_ref_status: health.api_key_config_ref_status,
+      writes_supported: false,
+      discovery_supported: false,
+      cloud_supported: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      hardware_io_performed: false,
+      persisted: false,
+      raw_config_ref_exposed: false,
+      raw_api_key_exposed: false,
+      metadata_only: true,
+      snapshot: mapHueReadPayloadsToBridgeSnapshot(input),
     };
   }
 
