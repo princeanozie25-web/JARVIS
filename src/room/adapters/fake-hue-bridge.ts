@@ -18,12 +18,76 @@ export interface FakeHueBridgeMetadata {
   readonly real_hue_sdk_loaded: false;
 }
 
+export interface FakeHueBridgeReadIdentity {
+  readonly bridge_id: "fake-hue-bridge";
+  readonly name: "JARVIS Fake Hue Bridge";
+  readonly api_version: "v2";
+  readonly read_contract_version: "phase_16a_read_snapshot_v1";
+  readonly source_adapter: "fake_hue_bridge";
+  readonly adapter_kind: "fake";
+  readonly fake_only: true;
+  readonly local_only: true;
+  readonly read_only: true;
+  readonly discovery_enabled: false;
+  readonly network_called: false;
+  readonly real_hue_sdk_loaded: false;
+}
+
 export interface FakeHueLightState {
   readonly on: boolean;
   readonly brightness_percent: number | null;
   readonly color_hex: string | null;
   readonly color_temperature_kelvin: number | null;
   readonly stale: boolean;
+}
+
+export interface FakeHueFreshnessSnapshot {
+  readonly observed_at_ms: number | null;
+  readonly stale_after_ms: number;
+  readonly expires_at_ms: number | null;
+  readonly source: "mock";
+  readonly stale: boolean;
+}
+
+export interface FakeHueLightReadSnapshot {
+  readonly id: string;
+  readonly name: string;
+  readonly zone_id: string;
+  readonly source_adapter: "fake_hue_bridge";
+  readonly adapter_kind: "fake";
+  readonly fake_only: true;
+  readonly local_only: true;
+  readonly read_only: true;
+  readonly reachable: boolean;
+  readonly reachability: "reachable" | "unreachable";
+  readonly unavailable_reason:
+    | "adapter_unavailable"
+    | "timeout"
+    | "auth_error"
+    | null;
+  readonly capabilities: readonly Capability[];
+  readonly on: boolean | null;
+  readonly brightness_percent: number | null;
+  readonly color_hex: string | null;
+  readonly color_temperature_kelvin: number | null;
+  readonly freshness: FakeHueFreshnessSnapshot;
+  readonly raw_hue_payload_included: false;
+  readonly network_called: false;
+  readonly hardware_io_performed: false;
+  readonly persisted: false;
+}
+
+export interface FakeHueBridgeReadSnapshot {
+  readonly bridge: FakeHueBridgeReadIdentity;
+  readonly lights: readonly FakeHueLightReadSnapshot[];
+  readonly read_only: true;
+  readonly deterministic: true;
+  readonly fake_only: true;
+  readonly local_only: true;
+  readonly network_called: false;
+  readonly hardware_io_performed: false;
+  readonly persisted: false;
+  readonly raw_hue_payload_included: false;
 }
 
 export interface FakeHueLight {
@@ -128,7 +192,7 @@ export class FakeHueBridge {
           on: device.state.power === "on",
           brightness_percent: device.state.brightness_percent,
           color_hex: device.state.color_hex,
-          color_temperature_kelvin: null,
+          color_temperature_kelvin: device.state.color_temperature_kelvin,
           stale: false,
         },
         fake: true,
@@ -153,6 +217,36 @@ export class FakeHueBridge {
       discovery_enabled: false,
       network_called: false,
       real_hue_sdk_loaded: false,
+    };
+  }
+
+  readSnapshot(): FakeHueBridgeReadSnapshot {
+    return {
+      bridge: {
+        bridge_id: "fake-hue-bridge",
+        name: "JARVIS Fake Hue Bridge",
+        api_version: "v2",
+        read_contract_version: "phase_16a_read_snapshot_v1",
+        source_adapter: "fake_hue_bridge",
+        adapter_kind: "fake",
+        fake_only: true,
+        local_only: true,
+        read_only: true,
+        discovery_enabled: false,
+        network_called: false,
+        real_hue_sdk_loaded: false,
+      },
+      lights: [...this.lights.values()]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((light) => this.lightReadSnapshot(light)),
+      read_only: true,
+      deterministic: true,
+      fake_only: true,
+      local_only: true,
+      network_called: false,
+      hardware_io_performed: false,
+      persisted: false,
+      raw_hue_payload_included: false,
     };
   }
 
@@ -339,6 +433,46 @@ export class FakeHueBridge {
         ...light.state,
         stale: this.failures.isStale(light.id),
       },
+    };
+  }
+
+  private lightReadSnapshot(light: FakeHueLight): FakeHueLightReadSnapshot {
+    const blockingFailure = this.failures.firstBlockingFailure(light.id);
+    const stale = this.failures.isStale(light.id);
+    const reachable = blockingFailure === null;
+
+    return {
+      id: light.id,
+      name: light.name,
+      zone_id: light.zone_id,
+      source_adapter: "fake_hue_bridge",
+      adapter_kind: "fake",
+      fake_only: true,
+      local_only: true,
+      read_only: true,
+      reachable,
+      reachability: reachable ? "reachable" : "unreachable",
+      unavailable_reason: blockingFailure
+        ? fakeBlockingFailureClassFor(blockingFailure)
+        : null,
+      capabilities: [...light.capabilities],
+      on: reachable ? light.state.on : null,
+      brightness_percent: reachable ? light.state.brightness_percent : null,
+      color_hex: reachable ? light.state.color_hex : null,
+      color_temperature_kelvin: reachable
+        ? light.state.color_temperature_kelvin
+        : null,
+      freshness: {
+        observed_at_ms: reachable ? 0 : null,
+        stale_after_ms: 30_000,
+        expires_at_ms: reachable ? 30_000 : null,
+        source: "mock",
+        stale,
+      },
+      raw_hue_payload_included: false,
+      network_called: false,
+      hardware_io_performed: false,
+      persisted: false,
     };
   }
 }

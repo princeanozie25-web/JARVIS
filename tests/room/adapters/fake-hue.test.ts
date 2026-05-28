@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS } from "../../../src/room/adapters/phase-16-disabled-guards";
 import { FakeHueBridge } from "../../../src/room/adapters/fake-hue-bridge";
 import { loadDefaultRoomRegistry } from "../../../src/room/registry";
 import { parseRoomProfile } from "../../../src/room/schema";
@@ -64,6 +65,83 @@ describe("Phase 10B.5 fake Hue bridge simulator", () => {
         .map((light) => light.id),
     ).toEqual(["bed_lamp", "desk_lamp", "led_strip"]);
     expect(bridge().getLight("smart_plug")).toBeNull();
+  });
+
+  it("exposes deterministic read-only snapshots for future Hue v2 read parity", () => {
+    const first = bridge().readSnapshot();
+    const second = bridge().readSnapshot();
+
+    expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      bridge: {
+        bridge_id: "fake-hue-bridge",
+        api_version: "v2",
+        read_contract_version: "phase_16a_read_snapshot_v1",
+        source_adapter: "fake_hue_bridge",
+        adapter_kind: "fake",
+        fake_only: true,
+        local_only: true,
+        read_only: true,
+        discovery_enabled: false,
+        network_called: false,
+        real_hue_sdk_loaded: false,
+      },
+      read_only: true,
+      deterministic: true,
+      fake_only: true,
+      local_only: true,
+      network_called: false,
+      hardware_io_performed: false,
+      persisted: false,
+      raw_hue_payload_included: false,
+    });
+    expect(first.lights.map((light) => light.id)).toEqual([
+      "bed_lamp",
+      "desk_lamp",
+      "led_strip",
+    ]);
+  });
+
+  it("aligns fake Hue light snapshots with room adapter read metadata", () => {
+    const desk = bridge()
+      .readSnapshot()
+      .lights.find((light) => light.id === "desk_lamp");
+
+    expect(desk).toMatchObject({
+      id: "desk_lamp",
+      name: "Desk Lamp",
+      zone_id: "desk",
+      source_adapter: "fake_hue_bridge",
+      adapter_kind: "fake",
+      fake_only: true,
+      local_only: true,
+      read_only: true,
+      reachable: true,
+      reachability: "reachable",
+      unavailable_reason: null,
+      capabilities: expect.arrayContaining([
+        "power.observe",
+        "power.switch",
+        "light.observe",
+        "light.dimmer",
+        "light.temperature",
+      ]),
+      on: false,
+      brightness_percent: 0,
+      color_hex: null,
+      color_temperature_kelvin: null,
+      freshness: {
+        observed_at_ms: 0,
+        stale_after_ms: 30_000,
+        expires_at_ms: 30_000,
+        source: "mock",
+        stale: false,
+      },
+      raw_hue_payload_included: false,
+      network_called: false,
+      hardware_io_performed: false,
+      persisted: false,
+    });
   });
 
   it("light state reads return defensive copies", () => {
@@ -137,6 +215,41 @@ describe("Phase 10B.5 fake Hue bridge simulator", () => {
     });
   });
 
+  it("represents stale and unreachable fake Hue read states without guessing", () => {
+    const fake = bridge();
+    fake.enableFailure("stale", "desk_lamp");
+
+    expect(
+      fake.readSnapshot().lights.find((light) => light.id === "desk_lamp"),
+    ).toMatchObject({
+      reachable: true,
+      reachability: "reachable",
+      unavailable_reason: null,
+      on: false,
+      freshness: { stale: true, observed_at_ms: 0 },
+    });
+
+    fake.clearFailure("stale", "desk_lamp");
+    fake.enableFailure("offline", "desk_lamp");
+
+    expect(
+      fake.readSnapshot().lights.find((light) => light.id === "desk_lamp"),
+    ).toMatchObject({
+      reachable: false,
+      reachability: "unreachable",
+      unavailable_reason: "adapter_unavailable",
+      on: null,
+      brightness_percent: null,
+      color_hex: null,
+      color_temperature_kelvin: null,
+      freshness: {
+        observed_at_ms: null,
+        expires_at_ms: null,
+        source: "mock",
+      },
+    });
+  });
+
   it("unsupported capability writes are rejected", () => {
     expect(bridge().setColor("bed_lamp", "#ff0000")).toMatchObject({
       ok: false,
@@ -170,5 +283,18 @@ describe("Phase 10B.5 fake Hue bridge simulator", () => {
     expect(
       moduleExports.some((name) => /discover|network|sdk|connect/i.test(name)),
     ).toBe(false);
+  });
+
+  it("keeps Phase 16 disabled guards pinned while aligning fake Hue reads", () => {
+    expect(DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS).toMatchObject({
+      real_hue_writes_enabled: false,
+      hue_auto_discovery_enabled: false,
+      hue_cloud_remote_api_enabled: false,
+      real_hue_adapter_enabled: false,
+      fake_conformance_required_before_real_hue: true,
+      network_called: false,
+      hardware_io_performed: false,
+      cloud_called: false,
+    });
   });
 });

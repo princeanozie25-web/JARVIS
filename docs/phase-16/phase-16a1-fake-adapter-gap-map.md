@@ -6,7 +6,7 @@
 
 The room runtime already has a meaningful fake-first substrate: a typed adapter contract, a deterministic `FakeRoomAdapter`, a `FakeHueBridge`, in-memory fake failure simulation, fake event provenance, verification reads, and a conformance suite for the current fake room adapter.
 
-It is not ready to unlock real Hue work yet. Phase 16A still needs hardening before Phase 16B can introduce real Hue read-only support. The largest remaining gap is tighter fake-to-real Hue boundary coverage.
+It is not ready to unlock real Hue work yet. Phase 16A still needs a final closeout freeze before Phase 16B can introduce real Hue read-only support.
 
 ## Files Inspected
 
@@ -66,6 +66,7 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
 | ------------------------------------------------ | -------------- | ----------------------------------------------------------------------------------------- |
 | Fake room adapter coverage                       | **PASS**       | `tests/room/adapters/fake-room-adapter.test.ts`                                           |
 | Fake Hue bridge / fake light support             | **PASS**       | `src/room/adapters/fake-hue-bridge.ts`, `tests/room/adapters/fake-hue.test.ts`            |
+| Fake Hue read contract alignment                 | **PASS**       | `FakeHueBridge.readSnapshot()` exposes Phase 16A read-only parity metadata                |
 | Adapter conformance harness                      | **PASS**       | `tests/room/conformance/harness.ts`                                                       |
 | Read-state conformance                           | **PASS**       | `tests/room/conformance/read-state.test.ts`                                               |
 | On/off command conformance                       | **PASS**       | `tests/room/conformance/command-on-off.test.ts`                                           |
@@ -101,21 +102,15 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
    - voice/JARVIS trust-class elevation disabled
    - JARVIS policy edits disabled
 
-2. **Fake Hue is not yet the real Hue adapter contract.**
-   `FakeHueBridge` is useful, but the conformance subject is `FakeRoomAdapter`. Phase 16A should explicitly define whether real Hue must conform to the room adapter contract, the fake Hue bridge API shape, or both.
-
-3. **Fake-to-real mismatch risk remains.**
+2. **Fake-to-real mismatch risk remains.**
    The fake adapter is synchronous/in-memory and never exercises real transport edge cases such as bridge rate limiting, Hue v2 error envelopes, auth refresh/rejection shape, per-light response arrays, or verification lag.
 
-4. **No read-only real-Hue boundary contract exists yet.**
+3. **No real-Hue implementation boundary exists yet.**
    This is fine for 16A.1, but Phase 16B should not begin until the fake conformance suite is the single shared contract for real read-only behavior.
 
 ## Recommended Next Slices
 
-1. **16A.5 - Fake Hue Contract Alignment**
-   Decide and test the exact boundary between `FakeRoomAdapter`, `FakeHueBridge`, and future `HueAdapter`.
-
-2. **16A.6 - Phase 16A Closeout Guard**
+1. **16A.6 - Phase 16A Closeout Guard**
    Freeze fake adapter conformance before Phase 16B real Hue read-only support.
 
 ## Do Not Implement Yet
@@ -133,7 +128,7 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
 
 ## Risk Notes
 
-- **Fake-to-real mismatch risk:** The fake bridge currently models enough behavior for deterministic tests, but not enough Hue v2 transport nuance to guarantee real bridge behavior.
+- **Fake-to-real mismatch risk:** The fake bridge now exposes a read-only parity snapshot, but it still does not model every Hue v2 transport nuance.
 - **Partial-success mismatch risk:** Phase 16A.3 now covers adapter-contract partial success, but future Hue parity still needs real Hue v2 response-shape mapping before execution is enabled.
 - **Verification-read optimism:** Verification reads currently reflect immediate fake in-memory state. Real Hue may lag, timeout, or return stale bridge state.
 - **Rollback ambiguity:** Phase 16A.4 adds descriptive compensation metadata, but execution remains disabled and future rollback approval semantics still need a real-provider-era design.
