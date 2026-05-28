@@ -147,8 +147,10 @@ export {
   DEFAULT_DISABLED_YOLO_PROVIDER_CONFIG,
   DisabledYoloProviderConfigSchema,
   YOLO_PROVIDER_HEALTH_STATUSES,
+  createDisabledYoloDryRunProvider,
   createDisabledYoloProvider,
   createDisabledYoloProviderFactory,
+  runYoloDryRunProviderPath,
 } from "./yolo-provider";
 
 export {
@@ -383,6 +385,7 @@ export type {
 export type {
   DisabledYoloProviderConfig,
   DisabledYoloProviderHealth,
+  YoloDryRunProviderPathResult,
 } from "./yolo-provider";
 
 export type {

@@ -14,6 +14,11 @@ import {
 import { evaluateVisionDetectionEnablement } from "./detection-enablement";
 import type { VisionMutationAuthorityClass } from "./policy";
 import { sanitizeVisionProviderResult } from "./redaction";
+import {
+  createYoloInvocationPlan,
+  runDisabledYoloInvocation,
+  type YoloInvocationResult,
+} from "./yolo-invocation";
 
 export const YOLO_PROVIDER_HEALTH_STATUSES = [
   "disabled",
@@ -59,6 +64,17 @@ export interface DisabledYoloProviderHealth extends VisionProviderHealth {
   readonly weights_configured: false;
   readonly python_execution_allowed: false;
   readonly process_spawned: false;
+}
+
+export interface YoloDryRunProviderPathResult extends VisionProviderRunResult {
+  readonly enablement_allowed: boolean;
+  readonly enablement_reason: string;
+  readonly invocation_plan_created: boolean;
+  readonly invocation_result: YoloInvocationResult | null;
+  readonly metadata_only: true;
+  readonly advisory_only: true;
+  readonly derived: true;
+  readonly raw_payload_included: false;
 }
 
 export const DEFAULT_DISABLED_YOLO_PROVIDER_CONFIG =
@@ -130,49 +146,113 @@ export function createDisabledYoloProvider(
     async run(
       request: VisionProviderRunRequest,
     ): Promise<VisionProviderRunResult> {
-      const baseResult = {
-        result_id: `${request.request_id}-result`,
-        session_id: request.session_id,
-        provider_id: resolvedConfig.provider_id,
-        provider_kind: resolvedConfig.provider_kind,
-        capability: "object_detection" as const,
-        latency_ms: 0,
-      };
-
-      if (request.capability !== resolvedConfig.supported_capability) {
-        return providerRunResult(
-          createVisionProviderPolicyDeniedResult(baseResult),
-        );
-      }
-      if (!resolvedConfig.enabled) {
-        return providerRunResult(
-          createVisionProviderDisabledResult(baseResult),
-        );
-      }
-
-      const enablement = evaluateVisionDetectionEnablement({
-        provider_config: resolvedConfig,
-        capability: request.capability,
-        artifact: detectionArtifactFromRequest(request),
-        timeout_ms: request.timeout_ms,
-        mutation_authority_requested: mutationAuthorityFromRequest(request),
-        cloud_fallback_requested: fallbackFlagFromRequest(
-          request,
-          "cloud_fallback_requested",
-        ),
-        network_fallback_requested: fallbackFlagFromRequest(
-          request,
-          "network_fallback_requested",
-        ),
+      return runYoloDryRunProviderPath({
+        config: resolvedConfig,
+        request,
         metadata_only: true,
       });
-      const providerResult = enablement.allowed
-        ? createVisionProviderExecutionDisabledResult(baseResult)
-        : createVisionProviderPreconditionFailedResult(baseResult);
-
-      return providerRunResult(providerResult);
     },
   };
+}
+
+export function createDisabledYoloDryRunProvider(
+  config: Partial<DisabledYoloProviderConfig> = {},
+): VisionProvider {
+  return createDisabledYoloProvider(config);
+}
+
+export function createDisabledYoloProviderFactory(
+  config: Partial<DisabledYoloProviderConfig> = {},
+): () => VisionProvider {
+  return () => createDisabledYoloProvider(config);
+}
+
+export function runYoloDryRunProviderPath(input: {
+  readonly config: DisabledYoloProviderConfig;
+  readonly request: VisionProviderRunRequest;
+  readonly metadata_only: true;
+}): YoloDryRunProviderPathResult {
+  const config = DisabledYoloProviderConfigSchema.parse(input.config);
+  const request = input.request;
+  const baseResult = {
+    result_id: `${request.request_id}-result`,
+    session_id: request.session_id,
+    provider_id: config.provider_id,
+    provider_kind: config.provider_kind,
+    capability: safeCapability(request.capability),
+    latency_ms: 0,
+  };
+
+  if (request.capability !== config.supported_capability) {
+    return dryRunResult({
+      provider_result: createVisionProviderPolicyDeniedResult(baseResult),
+      enablement_allowed: false,
+      enablement_reason: "policy_denied",
+      invocation_plan_created: false,
+      invocation_result: null,
+    });
+  }
+
+  const enablement = evaluateVisionDetectionEnablement({
+    provider_config: config,
+    capability: safeCapability(request.capability),
+    artifact: detectionArtifactFromRequest(request),
+    timeout_ms: request.timeout_ms,
+    mutation_authority_requested: mutationAuthorityFromRequest(request),
+    cloud_fallback_requested: fallbackFlagFromRequest(
+      request,
+      "cloud_fallback_requested",
+    ),
+    network_fallback_requested: fallbackFlagFromRequest(
+      request,
+      "network_fallback_requested",
+    ),
+    metadata_only: true,
+  });
+
+  if (enablement.reason === "provider_disabled") {
+    return dryRunResult({
+      provider_result: createVisionProviderDisabledResult(baseResult),
+      enablement_allowed: false,
+      enablement_reason: enablement.reason,
+      invocation_plan_created: false,
+      invocation_result: null,
+    });
+  }
+
+  if (!enablement.allowed) {
+    return dryRunResult({
+      provider_result: createVisionProviderPreconditionFailedResult(baseResult),
+      enablement_allowed: false,
+      enablement_reason: enablement.reason,
+      invocation_plan_created: false,
+      invocation_result: null,
+    });
+  }
+
+  const invocationPlan = createYoloInvocationPlan({
+    provider_id: config.provider_id,
+    artifact: detectionArtifactFromRequest(request),
+    enablement,
+    metadata_only: true,
+  });
+  const invocationResult = invocationPlan.ok
+    ? runDisabledYoloInvocation(invocationPlan.plan)
+    : invocationPlan.result;
+
+  return dryRunResult({
+    provider_result: invocationPlan.ok
+      ? createVisionProviderExecutionDisabledResult(baseResult)
+      : createVisionProviderPreconditionFailedResult(baseResult),
+    enablement_allowed: true,
+    enablement_reason: enablement.reason,
+    invocation_plan_created: invocationPlan.ok,
+    invocation_result: invocationResult,
+  });
+}
+
+function safeCapability(capability: VisionProviderRunRequest["capability"]) {
+  return capability === "object_detection" ? capability : "object_detection";
 }
 
 function detectionArtifactFromRequest(
@@ -203,9 +283,14 @@ function fallbackFlagFromRequest(
   return Boolean((request as unknown as Record<string, unknown>)[key]);
 }
 
-function providerRunResult(
-  providerResult: VisionProviderRunResult["provider_result"],
-): VisionProviderRunResult {
+function dryRunResult(input: {
+  readonly provider_result: VisionProviderRunResult["provider_result"];
+  readonly enablement_allowed: boolean;
+  readonly enablement_reason: string;
+  readonly invocation_plan_created: boolean;
+  readonly invocation_result: YoloInvocationResult | null;
+}): YoloDryRunProviderPathResult {
+  const providerResult = input.provider_result;
   const sanitized = sanitizeVisionProviderResult(providerResult);
   if (!sanitized.ok) {
     throw new Error("Unsafe YOLO disabled provider result.");
@@ -214,15 +299,13 @@ function providerRunResult(
   return {
     provider_result: sanitized.value,
     observations: [],
+    enablement_allowed: input.enablement_allowed,
+    enablement_reason: input.enablement_reason,
+    invocation_plan_created: input.invocation_plan_created,
+    invocation_result: input.invocation_result,
     metadata_only: true,
     advisory_only: true,
     derived: true,
     raw_payload_included: false,
   };
-}
-
-export function createDisabledYoloProviderFactory(
-  config: Partial<DisabledYoloProviderConfig> = {},
-): () => VisionProvider {
-  return () => createDisabledYoloProvider(config);
 }
