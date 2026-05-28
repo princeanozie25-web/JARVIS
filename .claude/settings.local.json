@@ -1,37 +1,40 @@
-﻿{
+{
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\"",
-            "type": "command"
+            "type": "command",
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\""
           }
-        ],
-        "matcher": ""
+        ]
       }
     ],
     "Stop": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/stop_hook.ps1\"",
-            "type": "command"
+            "type": "command",
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/stop_hook.ps1\""
           }
-        ],
-        "matcher": ""
+        ]
       }
     ],
     "PreCompact": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\"",
-            "type": "command"
+            "type": "command",
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\""
           }
-        ],
-        "matcher": ""
+        ]
       }
     ]
+  },
+  "permissions": {
+    "allow": ["mcp__dual-graph__graph_retrieve"]
   }
 }

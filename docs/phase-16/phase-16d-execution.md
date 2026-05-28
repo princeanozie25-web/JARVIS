@@ -13,6 +13,7 @@ Scaffold only. No real Hue command execution exists.
 - Verification and compensation requirements for future execution, while keeping both non-executing.
 - Verification-facing metadata for the future read-after-write check, while keeping verification unsupported.
 - Audit/provenance metadata and a metadata-only audit preview helper, while keeping event-store writes unsupported.
+- Compensation precondition metadata derived from the dry-run compensation plan, while keeping rollback execution unsupported.
 
 ## Boundary Guarantees
 
@@ -30,6 +31,9 @@ Scaffold only. No real Hue command execution exists.
 - `audit_payload_kind` is `metadata_only`.
 - Boundary provenance is recorded as metadata: boundary id, source plan id, adapter kind, mode, target id, approval status, and verification requirement.
 - Event-store write support and attempts are pinned off.
+- `compensation_required_if_executed` is always `true`.
+- `compensation_available_from_plan` reflects whether the dry-run plan has descriptive compensation metadata.
+- Compensation preconditions can be `satisfied` or `unavailable`, but compensation execution is always unsupported and not attempted.
 - Dry-run plans remain non-executable.
 - Compensation remains descriptive-only.
 - Raw payload, raw config, and raw API key exposure remain pinned off.
@@ -46,6 +50,10 @@ Future Hue execution will require a verification read after an approved write. P
 ## Audit Semantics
 
 Future Hue execution will require audit/event recording before any real write path can be trusted. Phase 16D.3 only builds replay-safe audit preview metadata. It does not write to an event store, persist records, render UI, submit approvals, or execute commands.
+
+## Compensation Semantics
+
+Future Hue execution must understand rollback/compensation before any write can be considered. Phase 16D.4 only evaluates whether the dry-run plan contains descriptive compensation metadata. Known current state can satisfy the compensation precondition; unknown or unavailable current state leaves compensation unavailable. Rollback execution remains deferred and unsupported.
 
 ## Explicitly Not Implemented
 
@@ -65,4 +73,4 @@ Future Hue execution will require audit/event recording before any real write pa
 
 ## Next Recommended Slice
 
-Phase 16D.4 - Hue Execution Boundary Compensation Preconditions.
+Phase 16D.5 - Hue Execution Boundary Failure and Timeout Metadata.

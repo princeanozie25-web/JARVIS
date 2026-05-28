@@ -16,6 +16,16 @@ export type HueExecutionBoundaryDenialReason =
   | "approval_unsupported"
   | "execution_not_implemented";
 
+export type HueExecutionCompensationPreconditionStatus =
+  | "satisfied"
+  | "unavailable"
+  | "unsupported";
+
+export type HueExecutionCompensationPreconditionReason =
+  | "dry_run_compensation_available"
+  | "dry_run_compensation_unavailable"
+  | "compensation_execution_unsupported";
+
 export interface HueExecutionApprovalMetadata {
   readonly approval_id?: string | null;
   readonly approval_status?: HueExecutionApprovalStatus;
@@ -83,6 +93,16 @@ export interface HueExecutionBoundaryDecision {
   readonly event_store_write_supported: false;
   readonly event_store_write_attempted: false;
   readonly compensation_required_if_executed: true;
+  readonly compensation_available_from_plan: boolean;
+  readonly compensation_source: "dry_run_plan" | "unavailable";
+  readonly compensation_execution_supported: false;
+  readonly compensation_execution_attempted: false;
+  readonly compensation_requires_approval: boolean;
+  readonly compensation_precondition_status: HueExecutionCompensationPreconditionStatus;
+  readonly compensation_precondition_reason: HueExecutionCompensationPreconditionReason;
+  readonly compensation_precondition_error_class:
+    | "compensation_unavailable"
+    | null;
   readonly network_allowed: false;
   readonly writes_allowed: false;
   readonly discovery_allowed: false;
@@ -92,7 +112,6 @@ export interface HueExecutionBoundaryDecision {
   readonly raw_api_key_exposed: false;
   readonly dry_run_plan_executable: false;
   readonly dry_run_execution_supported: false;
-  readonly compensation_execution_supported: false;
   readonly metadata_only: true;
   readonly network_called: false;
   readonly writes_attempted: false;
@@ -117,6 +136,9 @@ export interface HueExecutionAuditPreview {
   readonly verification_required: true;
   readonly verification_supported: false;
   readonly compensation_execution_supported: false;
+  readonly compensation_execution_attempted: false;
+  readonly compensation_available_from_plan: boolean;
+  readonly compensation_precondition_status: HueExecutionCompensationPreconditionStatus;
   readonly raw_payload_exposed: false;
   readonly raw_config_exposed: false;
   readonly raw_api_key_exposed: false;
@@ -138,6 +160,7 @@ export function evaluateHueExecutionBoundary(
 ): HueExecutionBoundaryDecision {
   const approvalStatus = approvalMetadata?.approval_status ?? "missing";
   const executionBoundaryId = `hue-execution-boundary-${sanitizeId(dryRunPlan.plan_id)}`;
+  const compensationAvailable = dryRunPlan.compensation.compensation_available;
   const provenance: HueExecutionBoundaryProvenance = {
     execution_boundary_id: executionBoundaryId,
     source_plan_id: dryRunPlan.plan_id,
@@ -194,6 +217,21 @@ export function evaluateHueExecutionBoundary(
     event_store_write_supported: false,
     event_store_write_attempted: false,
     compensation_required_if_executed: true,
+    compensation_available_from_plan: compensationAvailable,
+    compensation_source: compensationAvailable ? "dry_run_plan" : "unavailable",
+    compensation_execution_supported: false,
+    compensation_execution_attempted: false,
+    compensation_requires_approval:
+      dryRunPlan.compensation.compensation_requires_approval,
+    compensation_precondition_status: compensationAvailable
+      ? "satisfied"
+      : "unavailable",
+    compensation_precondition_reason: compensationAvailable
+      ? "dry_run_compensation_available"
+      : "dry_run_compensation_unavailable",
+    compensation_precondition_error_class: compensationAvailable
+      ? null
+      : "compensation_unavailable",
     network_allowed: false,
     writes_allowed: false,
     discovery_allowed: false,
@@ -203,8 +241,6 @@ export function evaluateHueExecutionBoundary(
     raw_api_key_exposed: false,
     dry_run_plan_executable: false,
     dry_run_execution_supported: false,
-    compensation_execution_supported:
-      dryRunPlan.compensation.compensation_execution_supported,
     metadata_only: true,
     network_called: false,
     writes_attempted: false,
@@ -232,7 +268,10 @@ export function buildHueExecutionAuditPreview(
     execution_supported: false,
     verification_required: true,
     verification_supported: false,
-    compensation_execution_supported: decision.compensation_execution_supported,
+    compensation_execution_supported: false,
+    compensation_execution_attempted: false,
+    compensation_available_from_plan: decision.compensation_available_from_plan,
+    compensation_precondition_status: decision.compensation_precondition_status,
     raw_payload_exposed: false,
     raw_config_exposed: false,
     raw_api_key_exposed: false,

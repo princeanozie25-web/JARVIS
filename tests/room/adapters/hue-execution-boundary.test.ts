@@ -63,6 +63,14 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
         event_store_write_supported: false,
         event_store_write_attempted: false,
         compensation_required_if_executed: true,
+        compensation_available_from_plan: true,
+        compensation_source: "dry_run_plan",
+        compensation_execution_supported: false,
+        compensation_execution_attempted: false,
+        compensation_requires_approval: true,
+        compensation_precondition_status: "satisfied",
+        compensation_precondition_reason: "dry_run_compensation_available",
+        compensation_precondition_error_class: null,
         network_allowed: false,
         writes_allowed: false,
         discovery_allowed: false,
@@ -114,6 +122,9 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
       persistence_attempted: false,
       event_store_write_supported: false,
       event_store_write_attempted: false,
+      compensation_available_from_plan: true,
+      compensation_precondition_status: "satisfied",
+      compensation_execution_attempted: false,
       persisted: false,
       ui_rendered: false,
     });
@@ -208,7 +219,10 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
       execution_supported: false,
       verification_required: true,
       verification_supported: false,
+      compensation_available_from_plan: true,
+      compensation_precondition_status: "satisfied",
       compensation_execution_supported: false,
+      compensation_execution_attempted: false,
       raw_payload_exposed: false,
       raw_config_exposed: false,
       raw_api_key_exposed: false,
@@ -222,6 +236,48 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
       hardware_io_performed: false,
       ui_rendered: false,
       metadata_only: true,
+    });
+  });
+
+  it("marks compensation preconditions satisfied when dry-run compensation is available", () => {
+    const decision = evaluateHueExecutionBoundary(createPlan(), {
+      approval_status: "approved",
+    });
+
+    expect(decision).toMatchObject({
+      execution_allowed: false,
+      denial_reason: "execution_not_implemented",
+      compensation_required_if_executed: true,
+      compensation_available_from_plan: true,
+      compensation_source: "dry_run_plan",
+      compensation_execution_supported: false,
+      compensation_execution_attempted: false,
+      compensation_requires_approval: true,
+      compensation_precondition_status: "satisfied",
+      compensation_precondition_reason: "dry_run_compensation_available",
+      compensation_precondition_error_class: null,
+    });
+  });
+
+  it("marks compensation preconditions unavailable when current state is unknown", () => {
+    const decision = evaluateHueExecutionBoundary(createUnknownPlan(), {
+      approval_status: "approved",
+    });
+
+    expect(decision).toMatchObject({
+      execution_allowed: false,
+      denial_reason: "execution_not_implemented",
+      compensation_required_if_executed: true,
+      compensation_available_from_plan: false,
+      compensation_source: "unavailable",
+      compensation_execution_supported: false,
+      compensation_execution_attempted: false,
+      compensation_requires_approval: false,
+      compensation_precondition_status: "unavailable",
+      compensation_precondition_reason: "dry_run_compensation_unavailable",
+      compensation_precondition_error_class: "compensation_unavailable",
+      verification_supported: false,
+      audit_supported: false,
     });
   });
 
@@ -254,6 +310,11 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
       dry_run_plan_executable: false,
       dry_run_execution_supported: false,
       compensation_execution_supported: false,
+      compensation_execution_attempted: false,
+      compensation_available_from_plan: true,
+      compensation_source: "dry_run_plan",
+      compensation_requires_approval: true,
+      compensation_precondition_status: "satisfied",
       compensation_required_if_executed: true,
       execution_allowed: false,
       execution_supported: false,
@@ -292,6 +353,7 @@ describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
       verification_persistence_supported: false,
       audit_supported: false,
       event_store_write_attempted: false,
+      compensation_execution_attempted: false,
       persisted: false,
     });
   });
@@ -369,6 +431,17 @@ function createPlan() {
     intended_state: {
       on: true,
       brightness_percent: 60,
+    },
+  });
+}
+
+function createUnknownPlan() {
+  return createHueDryRunPlan({
+    plan_id: "hue-dry-run-unknown-current",
+    target_light_id: "unknown-current-light",
+    intended_state: {
+      on: true,
+      brightness_percent: 30,
     },
   });
 }
