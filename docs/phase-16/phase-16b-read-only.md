@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path. Phase 16B.5 closes the fixture conformance layer. Phase 16B.6 adds a deny-by-default live read boundary preflight.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path. Phase 16B.5 closes the fixture conformance layer. Phase 16B.6 adds a deny-by-default live read boundary preflight. Phase 16B.7 closes the real Hue read-only boundary with PASS WITH NOTES.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -15,7 +15,10 @@ Real Hue reads are still not implemented. Real Hue writes are still not implemen
 - `tests/room/adapters/hue-adapter.test.ts`
 - `tests/room/adapters/hue-read-mapper.test.ts`
 - `tests/room/phase-16b-fixture-conformance.test.ts`
+- `tests/room/phase-16b-live-read-preflight.test.ts`
+- `tests/room/phase-16b-closeout.test.ts`
 - `docs/phase-16/phase-16b5-fixture-conformance.md`
+- `docs/phase-16/phase-16b-closeout.md`
 
 ## Read-Only Metadata
 
@@ -132,4 +135,4 @@ The preflight does not call Hue, discover bridges, use a Hue SDK, call HTTP APIs
 
 ## Next Recommended Slice
 
-Phase 16C.1 - Real Hue Read-Only Client Boundary Stub.
+Phase 16C.1 - Hue Dry-Run Plan Contract Scaffold.
