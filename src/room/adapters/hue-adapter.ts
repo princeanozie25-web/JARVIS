@@ -106,6 +106,7 @@ export interface DisabledHueFixtureDryRunReadResult {
   readonly cloud_attempted: false;
   readonly hardware_io_performed: false;
   readonly persisted: false;
+  readonly ui_rendered: false;
   readonly raw_config_ref_exposed: false;
   readonly raw_api_key_exposed: false;
   readonly metadata_only: true;
@@ -227,6 +228,7 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
       cloud_attempted: false,
       hardware_io_performed: false,
       persisted: false,
+      ui_rendered: false,
       raw_config_ref_exposed: false,
       raw_api_key_exposed: false,
       metadata_only: true,

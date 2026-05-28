@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path.
+Phase 16B.1 adds a disabled real Hue read-only contract scaffold only. Phase 16B.2 adds disabled read-health metadata and stricter manual config validation. Phase 16B.3 adds pure offline Hue Bridge v2 request/result mapping fixtures. Phase 16B.4 wires that mapper into the disabled adapter through a fixture-only dry-run read path. Phase 16B.5 closes the fixture conformance layer.
 
 Real Hue reads are still not implemented. Real Hue writes are still not implemented. The scaffold does not discover bridges, call a Hue SDK, call HTTP APIs, use Hue Cloud Remote API, or make network calls.
 
@@ -14,6 +14,8 @@ Real Hue reads are still not implemented. Real Hue writes are still not implemen
 - `config/room/hue.example.yaml`
 - `tests/room/adapters/hue-adapter.test.ts`
 - `tests/room/adapters/hue-read-mapper.test.ts`
+- `tests/room/phase-16b-fixture-conformance.test.ts`
+- `docs/phase-16/phase-16b5-fixture-conformance.md`
 
 ## Read-Only Metadata
 
@@ -87,6 +89,19 @@ The mapper does not connect to Hue, read live Hue state, discover bridges, call 
 
 Manual config validation may be reflected as metadata, but config remains inert and raw config refs/API keys are not surfaced. Normal adapter `readState()` remains disabled and returns unavailable metadata; live Hue reads are still not implemented.
 
+## Fixture Conformance Closeout
+
+Phase 16B live Hue reads are still not implemented. The fixture conformance only proves mapper/adapter shape:
+
+- reachable, unreachable, stale, missing, invalid, and unsupported fixture states remain metadata-only.
+- fixture reads are explicitly marked `fixture_only` and `dry_run_read`.
+- `enabled` stays `false`.
+- `read_only` stays `true`.
+- `network_called`, `discovery_attempted`, and `cloud_attempted` stay `false`.
+- `writes_supported` stays `false`.
+- raw config refs and API keys are not surfaced.
+- no write, persistence, or UI path is introduced.
+
 ## Still Forbidden
 
 - `node-hue-api` or any Hue SDK dependency.
@@ -100,4 +115,4 @@ Manual config validation may be reflected as metadata, but config remains inert 
 
 ## Next Recommended Slice
 
-Phase 16B.5 - Hue Read-Only Fixture Conformance Closeout.
+Phase 16B.6 - Live Read Boundary Preflight.

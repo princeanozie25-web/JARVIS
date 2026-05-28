@@ -312,6 +312,7 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
       cloud_attempted: false,
       hardware_io_performed: false,
       persisted: false,
+      ui_rendered: false,
       raw_config_ref_exposed: false,
       raw_api_key_exposed: false,
       metadata_only: true,
