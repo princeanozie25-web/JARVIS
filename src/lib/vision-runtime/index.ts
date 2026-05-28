@@ -144,6 +144,14 @@ export {
 } from "./tesseract-provider";
 
 export {
+  DEFAULT_DISABLED_YOLO_PROVIDER_CONFIG,
+  DisabledYoloProviderConfigSchema,
+  YOLO_PROVIDER_HEALTH_STATUSES,
+  createDisabledYoloProvider,
+  createDisabledYoloProviderFactory,
+} from "./yolo-provider";
+
+export {
   VISION_OCR_ARTIFACT_KINDS,
   VISION_OCR_ARTIFACT_REJECTION_REASONS,
   VISION_OCR_MIME_TYPE_HINTS,
@@ -325,6 +333,11 @@ export type {
   DisabledTesseractProviderHealth,
   TesseractDryRunProviderPathResult,
 } from "./tesseract-provider";
+
+export type {
+  DisabledYoloProviderConfig,
+  DisabledYoloProviderHealth,
+} from "./yolo-provider";
 
 export type {
   CreateVisionOcrArtifactFromCaptureInput,
