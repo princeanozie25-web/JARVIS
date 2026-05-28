@@ -23,6 +23,21 @@ export interface HueExecutionApprovalMetadata {
   readonly metadata_only?: true;
 }
 
+export interface HueExecutionExpectedPostState {
+  readonly target_light_id: string;
+  readonly derived_from: "intended_dry_run_state";
+  readonly intended_state: HueDryRunPlan["intended_state"];
+  readonly metadata_only: true;
+  readonly raw_payload_exposed: false;
+}
+
+export interface HueExecutionActualPostState {
+  readonly status: "unavailable";
+  readonly reason: "execution_not_performed";
+  readonly metadata_only: true;
+  readonly raw_payload_exposed: false;
+}
+
 export interface HueExecutionBoundaryDecision {
   readonly execution_boundary_id: string;
   readonly source_plan_id: string;
@@ -35,6 +50,18 @@ export interface HueExecutionBoundaryDecision {
   readonly execution_supported: false;
   readonly denial_reason: HueExecutionBoundaryDenialReason;
   readonly verification_required: true;
+  readonly verification_supported: false;
+  readonly verification_read_required_after_execution: true;
+  readonly verification_source: "future_hue_read_only";
+  readonly verification_status: "unsupported";
+  readonly verification_reason: "execution_not_implemented";
+  readonly verification_error_class: "verification_not_implemented";
+  readonly expected_post_state: HueExecutionExpectedPostState;
+  readonly actual_post_state: HueExecutionActualPostState;
+  readonly verification_network_allowed: false;
+  readonly verification_persistence_supported: false;
+  readonly verification_read_performed: false;
+  readonly verification_persisted: false;
   readonly compensation_required_if_executed: true;
   readonly network_allowed: false;
   readonly writes_allowed: false;
@@ -74,6 +101,29 @@ export function evaluateHueExecutionBoundary(
     execution_supported: false,
     denial_reason: denialReasonFor(approvalStatus),
     verification_required: true,
+    verification_supported: false,
+    verification_read_required_after_execution: true,
+    verification_source: "future_hue_read_only",
+    verification_status: "unsupported",
+    verification_reason: "execution_not_implemented",
+    verification_error_class: "verification_not_implemented",
+    expected_post_state: {
+      target_light_id: dryRunPlan.target_light_id,
+      derived_from: "intended_dry_run_state",
+      intended_state: dryRunPlan.intended_state,
+      metadata_only: true,
+      raw_payload_exposed: false,
+    },
+    actual_post_state: {
+      status: "unavailable",
+      reason: "execution_not_performed",
+      metadata_only: true,
+      raw_payload_exposed: false,
+    },
+    verification_network_allowed: false,
+    verification_persistence_supported: false,
+    verification_read_performed: false,
+    verification_persisted: false,
     compensation_required_if_executed: true,
     network_allowed: false,
     writes_allowed: false,

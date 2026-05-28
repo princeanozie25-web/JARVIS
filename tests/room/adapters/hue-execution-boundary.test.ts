@@ -8,16 +8,20 @@ import {
   type HueExecutionApprovalMetadata,
   type HueExecutionApprovalStatus,
 } from "../../../src/room/adapters/hue-execution-boundary";
-import { createHueDryRunPlan } from "../../../src/room/adapters/hue-dry-run";
+import {
+  buildHueDryRunAuditPreview,
+  createHueDryRunPlan,
+} from "../../../src/room/adapters/hue-dry-run";
 import { mapHueLightPayloadToReadSnapshot } from "../../../src/room/adapters/hue-read-mapper";
 import { DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS } from "../../../src/room/adapters/phase-16-disabled-guards";
 
 const repoRoot = process.cwd();
 
-describe("Phase 16D.1 Hue approval-gated execution boundary scaffold", () => {
+describe("Phase 16D Hue approval-gated execution boundary scaffold", () => {
   it.each([
     ["missing", undefined, "approval_missing"],
     ["pending", { approval_status: "pending" }, "approval_pending"],
+    ["approved", { approval_status: "approved" }, "execution_not_implemented"],
     ["denied", { approval_status: "denied" }, "approval_denied"],
     ["expired", { approval_status: "expired" }, "approval_expired"],
     ["unsupported", { approval_status: "unsupported" }, "approval_unsupported"],
@@ -39,6 +43,16 @@ describe("Phase 16D.1 Hue approval-gated execution boundary scaffold", () => {
         execution_supported: false,
         denial_reason: reason,
         verification_required: true,
+        verification_supported: false,
+        verification_read_required_after_execution: true,
+        verification_source: "future_hue_read_only",
+        verification_status: "unsupported",
+        verification_reason: "execution_not_implemented",
+        verification_error_class: "verification_not_implemented",
+        verification_network_allowed: false,
+        verification_persistence_supported: false,
+        verification_read_performed: false,
+        verification_persisted: false,
         compensation_required_if_executed: true,
         network_allowed: false,
         writes_allowed: false,
@@ -68,6 +82,17 @@ describe("Phase 16D.1 Hue approval-gated execution boundary scaffold", () => {
       execution_allowed: false,
       execution_supported: false,
       denial_reason: "execution_not_implemented",
+      verification_required: true,
+      verification_supported: false,
+      verification_read_required_after_execution: true,
+      verification_source: "future_hue_read_only",
+      verification_status: "unsupported",
+      actual_post_state: {
+        status: "unavailable",
+        reason: "execution_not_performed",
+        metadata_only: true,
+        raw_payload_exposed: false,
+      },
       network_allowed: false,
       writes_allowed: false,
       discovery_allowed: false,
@@ -79,6 +104,37 @@ describe("Phase 16D.1 Hue approval-gated execution boundary scaffold", () => {
       hardware_io_performed: false,
       persisted: false,
       ui_rendered: false,
+    });
+  });
+
+  it("derives expected post-state from intended dry-run state without reading actual state", () => {
+    const decision = evaluateHueExecutionBoundary(createPlan(), {
+      approval_status: "approved",
+    });
+
+    expect(decision.expected_post_state).toEqual({
+      target_light_id: "execution-boundary-light",
+      derived_from: "intended_dry_run_state",
+      intended_state: {
+        on: true,
+        brightness_percent: 60,
+      },
+      metadata_only: true,
+      raw_payload_exposed: false,
+    });
+    expect(decision.actual_post_state).toEqual({
+      status: "unavailable",
+      reason: "execution_not_performed",
+      metadata_only: true,
+      raw_payload_exposed: false,
+    });
+    expect(decision).toMatchObject({
+      verification_network_allowed: false,
+      verification_persistence_supported: false,
+      verification_read_performed: false,
+      verification_persisted: false,
+      hardware_io_performed: false,
+      persisted: false,
     });
   });
 
@@ -114,6 +170,40 @@ describe("Phase 16D.1 Hue approval-gated execution boundary scaffold", () => {
       compensation_required_if_executed: true,
       execution_allowed: false,
       execution_supported: false,
+    });
+  });
+
+  it("keeps dry-run approval, compensation, and audit-preview metadata non-executing", () => {
+    const plan = createPlan();
+    const auditPreview = buildHueDryRunAuditPreview(plan);
+    const decision = evaluateHueExecutionBoundary(plan, {
+      approval_status: "approved",
+    });
+
+    expect(plan).toMatchObject({
+      approval_flow_available: false,
+      approval_execution_supported: false,
+      executable: false,
+      execution_supported: false,
+      audit_event_supported: false,
+      event_recording_supported: false,
+      persistence_attempted: false,
+    });
+    expect(plan.compensation).toMatchObject({
+      compensation_execution_supported: false,
+      compensation_requires_approval: true,
+    });
+    expect(auditPreview).toMatchObject({
+      audit_payload_kind: "metadata_only",
+      event_recording_supported: false,
+      persistence_attempted: false,
+      ui_rendered: false,
+    });
+    expect(decision).toMatchObject({
+      execution_allowed: false,
+      verification_supported: false,
+      verification_persistence_supported: false,
+      persisted: false,
     });
   });
 
