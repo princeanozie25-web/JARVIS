@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable. Phase 16C.4 adds descriptive-only compensation metadata. Phase 16C.5 adds audit/event preview metadata guards.
+Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable. Phase 16C.4 adds descriptive-only compensation metadata. Phase 16C.5 adds audit/event preview metadata guards. Phase 16C.6 closes the dry-run boundary with PASS WITH NOTES.
 
 No real Hue reads are implemented. No real Hue writes are implemented. No network calls, SDK usage, discovery, cloud path, approval execution, or hardware access is added.
 
@@ -12,6 +12,8 @@ No real Hue reads are implemented. No real Hue writes are implemented. No networ
 - `src/room/adapters/hue-adapter.ts`
 - `tests/room/adapters/hue-dry-run.test.ts`
 - `tests/room/adapters/hue-adapter.test.ts`
+- `tests/room/phase-16c-closeout.test.ts`
+- `docs/phase-16/phase-16c-closeout.md`
 
 ## Dry-Run Plan Metadata
 
@@ -136,4 +138,4 @@ Persistence/event-store wiring is deferred to a later boundary.
 
 ## Next Recommended Slice
 
-Phase 16C.6 - Hue Dry-Run Closeout Guard.
+Phase 16D.1 - Hue Approval-Gated Execution Boundary Scaffold.
