@@ -320,6 +320,8 @@ export {
   normalizeYoloDryRunResult,
 } from "./observation-normalizer";
 
+export { PHASE_15_VISION_RUNTIME_STATUS } from "./phase-status";
+
 export type {
   VisionCapability,
   VisionCaptureMode,
@@ -535,3 +537,5 @@ export type {
   VisionReplayNormalizationResult,
   VisionReplaySourceRefKind,
 } from "./observation-normalizer";
+
+export type { Phase15VisionRuntimeStatus } from "./phase-status";
