@@ -78,7 +78,29 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
         unknown_fields: [],
         metadata_only: true,
       },
+      compensation: {
+        compensation_available: true,
+        compensation_execution_supported: false,
+        compensation_requires_approval: true,
+        compensation_source: "current_state_snapshot",
+        compensation_reason: null,
+        compensation_plan: {
+          target_light_id: "desk-lamp",
+          descriptive_only: true,
+          executable: false,
+          execution_supported: false,
+          rollback_execution_supported: false,
+          raw_payload_exposed: false,
+          raw_config_exposed: false,
+          metadata_only: true,
+        },
+        metadata_only: true,
+      },
     });
+    expect(plan.compensation.compensation_plan?.restore_hints).toEqual([
+      { field: "on", restore_value: false, metadata_only: true },
+      { field: "brightness_percent", restore_value: 25, metadata_only: true },
+    ]);
     expect(plan.diff_summary.entries).toEqual([
       {
         field: "on",
@@ -160,6 +182,15 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       current_state_status: "unknown",
       current_state_snapshot: null,
       current_state_unknown_reason: "snapshot_missing",
+      compensation: {
+        compensation_available: false,
+        compensation_execution_supported: false,
+        compensation_requires_approval: false,
+        compensation_source: "unavailable",
+        compensation_reason: "current_state_unknown",
+        compensation_plan: null,
+        metadata_only: true,
+      },
       executable: false,
       execution_supported: false,
       approval_flow_available: false,
@@ -211,6 +242,15 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       current_state_status: "unavailable",
       current_state_snapshot: null,
       current_state_unknown_reason: "snapshot_unreachable",
+      compensation: {
+        compensation_available: false,
+        compensation_execution_supported: false,
+        compensation_requires_approval: false,
+        compensation_source: "unavailable",
+        compensation_reason: "current_state_unavailable",
+        compensation_plan: null,
+        metadata_only: true,
+      },
       diff_summary: {
         status: "current_state_unknown",
         unknown_fields: ["on"],
@@ -252,6 +292,40 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
     expect(json).not.toContain("secret-api-key");
     expect(json).not.toContain("secret-token");
     expect(json).not.toContain("config_ref:hue");
+  });
+
+  it("does not create compensation when no changed fields exist", () => {
+    const current = mapHueLightPayloadToReadSnapshot({
+      id: "unchanged-light",
+      metadata: { name: "Unchanged Light" },
+      on: { on: true },
+      status: { reachable: true },
+      capabilities: ["on"],
+    });
+
+    const plan = createHueDryRunPlan({
+      target_light_id: "unchanged-light",
+      current_state_snapshot: current,
+      intended_state: { on: true },
+    });
+
+    expect(plan).toMatchObject({
+      diff_summary: {
+        changed_fields: [],
+        unchanged_fields: ["on"],
+      },
+      compensation: {
+        compensation_available: false,
+        compensation_execution_supported: false,
+        compensation_requires_approval: false,
+        compensation_source: "unavailable",
+        compensation_reason: "no_changed_fields",
+        compensation_plan: null,
+        metadata_only: true,
+      },
+      writes_attempted: false,
+      hardware_io_performed: false,
+    });
   });
 
   it("keeps Phase 16A/16B disabled guards pinned", () => {

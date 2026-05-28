@@ -482,6 +482,17 @@ describe("Phase 16B.1 disabled Hue read-only adapter scaffold", () => {
           changed_fields: ["on", "brightness_percent"],
           metadata_only: true,
         },
+        compensation: {
+          compensation_available: true,
+          compensation_execution_supported: false,
+          compensation_requires_approval: true,
+          compensation_source: "current_state_snapshot",
+          compensation_plan: {
+            descriptive_only: true,
+            executable: false,
+            rollback_execution_supported: false,
+          },
+        },
       },
     });
   });

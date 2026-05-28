@@ -35,6 +35,45 @@ export interface HueDryRunDiffSummary {
   readonly metadata_only: true;
 }
 
+export interface HueDryRunCompensationHint {
+  readonly field: HueDryRunDiffField;
+  readonly restore_value: boolean | number | string | null;
+  readonly metadata_only: true;
+}
+
+export type HueDryRunCompensationMetadata =
+  | {
+      readonly compensation_available: true;
+      readonly compensation_execution_supported: false;
+      readonly compensation_requires_approval: true;
+      readonly compensation_source: "current_state_snapshot";
+      readonly compensation_reason: null;
+      readonly compensation_plan: {
+        readonly target_light_id: string;
+        readonly restore_hints: readonly HueDryRunCompensationHint[];
+        readonly descriptive_only: true;
+        readonly executable: false;
+        readonly execution_supported: false;
+        readonly rollback_execution_supported: false;
+        readonly raw_payload_exposed: false;
+        readonly raw_config_exposed: false;
+        readonly metadata_only: true;
+      };
+      readonly metadata_only: true;
+    }
+  | {
+      readonly compensation_available: false;
+      readonly compensation_execution_supported: false;
+      readonly compensation_requires_approval: false;
+      readonly compensation_source: "unavailable";
+      readonly compensation_reason:
+        | "current_state_unknown"
+        | "current_state_unavailable"
+        | "no_changed_fields";
+      readonly compensation_plan: null;
+      readonly metadata_only: true;
+    };
+
 export interface HueDryRunPlan {
   readonly plan_id: string;
   readonly adapter_kind: "hue";
@@ -50,6 +89,7 @@ export interface HueDryRunPlan {
     | "snapshot_unknown"
     | null;
   readonly diff_summary: HueDryRunDiffSummary;
+  readonly compensation: HueDryRunCompensationMetadata;
   readonly approval_required: true;
   readonly approval_flow_available: false;
   readonly approval_execution_supported: false;
@@ -127,6 +167,12 @@ export function createHueDryRunPlan(
       currentStatus,
     ),
     diff_summary: diff,
+    compensation: createCompensationMetadata(
+      input.target_light_id,
+      input.current_state_snapshot,
+      currentStatus,
+      diff,
+    ),
     approval_required: true,
     approval_flow_available: false,
     approval_execution_supported: false,
@@ -197,6 +243,64 @@ function createDiffSummary(
     unchanged_fields: unchangedFields,
     unknown_fields: unknownFields,
     entries,
+    metadata_only: true,
+  };
+}
+
+function createCompensationMetadata(
+  targetLightId: string,
+  currentSnapshot: HueReadLightSnapshot | null | undefined,
+  currentStatus: HueDryRunCurrentStateStatus,
+  diff: HueDryRunDiffSummary,
+): HueDryRunCompensationMetadata {
+  if (currentStatus !== "available" || !currentSnapshot) {
+    return {
+      compensation_available: false,
+      compensation_execution_supported: false,
+      compensation_requires_approval: false,
+      compensation_source: "unavailable",
+      compensation_reason:
+        currentStatus === "unavailable"
+          ? "current_state_unavailable"
+          : "current_state_unknown",
+      compensation_plan: null,
+      metadata_only: true,
+    };
+  }
+
+  if (diff.changed_fields.length === 0) {
+    return {
+      compensation_available: false,
+      compensation_execution_supported: false,
+      compensation_requires_approval: false,
+      compensation_source: "unavailable",
+      compensation_reason: "no_changed_fields",
+      compensation_plan: null,
+      metadata_only: true,
+    };
+  }
+
+  return {
+    compensation_available: true,
+    compensation_execution_supported: false,
+    compensation_requires_approval: true,
+    compensation_source: "current_state_snapshot",
+    compensation_reason: null,
+    compensation_plan: {
+      target_light_id: targetLightId,
+      restore_hints: diff.changed_fields.map((field) => ({
+        field,
+        restore_value: currentValueFor(field, currentSnapshot),
+        metadata_only: true,
+      })),
+      descriptive_only: true,
+      executable: false,
+      execution_supported: false,
+      rollback_execution_supported: false,
+      raw_payload_exposed: false,
+      raw_config_exposed: false,
+      metadata_only: true,
+    },
     metadata_only: true,
   };
 }

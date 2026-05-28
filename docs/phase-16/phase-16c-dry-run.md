@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable.
+Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable. Phase 16C.4 adds descriptive-only compensation metadata.
 
 No real Hue reads are implemented. No real Hue writes are implemented. No network calls, SDK usage, discovery, cloud path, approval execution, or hardware access is added.
 
@@ -26,6 +26,7 @@ Plans include:
 - current state snapshot when available
 - unknown/unavailable current state metadata when no usable snapshot exists
 - diff summary
+- compensation metadata
 - `approval_required: true`
 - `approval_flow_available: false`
 - `approval_execution_supported: false`
@@ -81,6 +82,21 @@ Dry-run plans are reviewable but not executable:
 
 Approval execution is deferred to a later Phase 16D/18 boundary.
 
+## Compensation Metadata
+
+Dry-run plans can describe compensation but never execute rollback:
+
+- compensation is available only when current state is known and changed fields exist.
+- compensation source is `current_state_snapshot` when available.
+- unknown or unavailable current state produces compensation unavailable with an explicit reason.
+- no changed fields produces compensation unavailable with `no_changed_fields`.
+- `compensation_execution_supported` is always `false`.
+- `compensation_requires_approval` is `true` only when a compensation hint exists.
+- compensation plans are `descriptive_only`.
+- compensation plans are not executable and rollback execution is unsupported.
+
+Compensation execution is deferred to a later approval/rollback boundary.
+
 ## Still Forbidden
 
 - `node-hue-api` or any Hue SDK dependency.
@@ -89,6 +105,7 @@ Approval execution is deferred to a later Phase 16D/18 boundary.
 - Real Hue writes.
 - Dry-run execution.
 - Approval execution.
+- Compensation/rollback execution.
 - Bridge discovery.
 - Hue Cloud Remote API.
 - Raw API key/config-ref exposure.
@@ -97,4 +114,4 @@ Approval execution is deferred to a later Phase 16D/18 boundary.
 
 ## Next Recommended Slice
 
-Phase 16C.3 - Hue Dry-Run Approval Metadata Guard.
+Phase 16C.5 - Hue Dry-Run Event/Audit Metadata Guard.
