@@ -187,6 +187,17 @@ export {
 } from "./detection-enablement";
 
 export {
+  YOLO_INVOCATION_EXECUTION_MODES,
+  YOLO_INVOCATION_RESULT_STATES,
+  YoloInvocationExecutionModeSchema,
+  YoloInvocationPlanSchema,
+  YoloInvocationResultSchema,
+  YoloInvocationResultStateSchema,
+  createYoloInvocationPlan,
+  runDisabledYoloInvocation,
+} from "./yolo-invocation";
+
+export {
   VISION_OCR_ARTIFACT_KINDS,
   VISION_OCR_ARTIFACT_REJECTION_REASONS,
   VISION_OCR_MIME_TYPE_HINTS,
@@ -396,6 +407,15 @@ export type {
   VisionLocalDetectionProviderEnablementConfig,
   VisionLocalDetectionProviderKind,
 } from "./detection-enablement";
+
+export type {
+  CreateYoloInvocationPlanInput,
+  YoloInvocationExecutionMode,
+  YoloInvocationPlan,
+  YoloInvocationPlanResult,
+  YoloInvocationResult,
+  YoloInvocationResultState,
+} from "./yolo-invocation";
 
 export type {
   CreateVisionOcrArtifactFromCaptureInput,
