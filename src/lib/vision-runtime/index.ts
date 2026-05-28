@@ -152,6 +152,26 @@ export {
 } from "./yolo-provider";
 
 export {
+  VISION_DETECTION_ARTIFACT_KINDS,
+  VISION_DETECTION_ARTIFACT_REJECTION_REASONS,
+  VISION_DETECTION_MIME_TYPE_HINTS,
+  VISION_DETECTION_RETENTION_POLICIES,
+  VISION_DETECTION_SENSITIVITY_CLASSES,
+  VISION_DETECTION_SIZE_BANDS,
+  VISION_DETECTION_SOURCE_REF_KINDS,
+  VisionDetectionArtifactKindSchema,
+  VisionDetectionArtifactRejectionReasonSchema,
+  VisionDetectionInputArtifactSchema,
+  VisionDetectionMimeTypeHintSchema,
+  VisionDetectionRetentionPolicySchema,
+  VisionDetectionSensitivityClassSchema,
+  VisionDetectionSizeBandSchema,
+  VisionDetectionSourceRefKindSchema,
+  createVisionDetectionArtifactFromMockCameraFrame,
+  validateVisionDetectionInputArtifact,
+} from "./detection-artifact";
+
+export {
   VISION_OCR_ARTIFACT_KINDS,
   VISION_OCR_ARTIFACT_REJECTION_REASONS,
   VISION_OCR_MIME_TYPE_HINTS,
@@ -338,6 +358,20 @@ export type {
   DisabledYoloProviderConfig,
   DisabledYoloProviderHealth,
 } from "./yolo-provider";
+
+export type {
+  CreateVisionDetectionArtifactFromMockFrameInput,
+  VisionDetectionArtifactKind,
+  VisionDetectionArtifactProviderRunRequest,
+  VisionDetectionArtifactRejectionReason,
+  VisionDetectionArtifactValidationResult,
+  VisionDetectionInputArtifact,
+  VisionDetectionMimeTypeHint,
+  VisionDetectionRetentionPolicy,
+  VisionDetectionSensitivityClass,
+  VisionDetectionSizeBand,
+  VisionDetectionSourceRefKind,
+} from "./detection-artifact";
 
 export type {
   CreateVisionOcrArtifactFromCaptureInput,
