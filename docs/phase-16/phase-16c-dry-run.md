@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper.
+Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable.
 
 No real Hue reads are implemented. No real Hue writes are implemented. No network calls, SDK usage, discovery, cloud path, approval execution, or hardware access is added.
 
@@ -27,12 +27,19 @@ Plans include:
 - unknown/unavailable current state metadata when no usable snapshot exists
 - diff summary
 - `approval_required: true`
+- `approval_flow_available: false`
+- `approval_execution_supported: false`
+- `user_review_required: true`
+- `expires_at_ms`
+- plan summary and redacted summary metadata
+- risk/action class metadata
 - `executable: false`
 - `execution_supported: false`
 - `network_called: false`
 - `discovery_attempted: false`
 - `cloud_attempted: false`
 - `writes_attempted: false`
+- `raw_payload_exposed: false`
 - `raw_config_exposed: false`
 
 ## Supported Intended State Metadata
@@ -59,6 +66,20 @@ The planner never guesses missing current state. Unknown and unreachable current
 - `writes_attempted: false`
 
 The regular adapter contract methods remain disabled. `readState()` still returns unavailable metadata, and write/mutate paths still return disabled or not implemented.
+
+## Approval Metadata Guard
+
+Dry-run plans are reviewable but not executable:
+
+- `approval_required` is always `true`.
+- `approval_flow_available` is always `false`.
+- `approval_execution_supported` is always `false`.
+- `user_review_required` is always `true`.
+- `canSubmitHueDryRunPlanForApproval(plan)` returns `allowed: false`.
+- direct approval submission is denied with `approval_execution_not_implemented`.
+- raw payloads, raw config refs, and raw API keys are not exposed.
+
+Approval execution is deferred to a later Phase 16D/18 boundary.
 
 ## Still Forbidden
 

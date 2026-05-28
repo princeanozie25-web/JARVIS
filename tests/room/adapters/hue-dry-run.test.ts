@@ -3,7 +3,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createHueDryRunPlan } from "../../../src/room/adapters/hue-dry-run";
+import {
+  canSubmitHueDryRunPlanForApproval,
+  createHueDryRunPlan,
+} from "../../../src/room/adapters/hue-dry-run";
 import { mapHueLightPayloadToReadSnapshot } from "../../../src/room/adapters/hue-read-mapper";
 import { DEFAULT_PHASE_16_ROOM_ADAPTER_DISABLED_GUARDS } from "../../../src/room/adapters/phase-16-disabled-guards";
 
@@ -46,6 +49,15 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       current_state_status: "available",
       current_state_unknown_reason: null,
       approval_required: true,
+      approval_flow_available: false,
+      approval_execution_supported: false,
+      user_review_required: true,
+      expires_at_ms: 300_000,
+      plan_summary: "Hue dry-run for desk-lamp: changed=on,brightness_percent",
+      redacted_summary:
+        "Hue dry-run for desk-lamp: changed=on,brightness_percent",
+      risk_class: "device_mutation_requires_future_approval",
+      action_class: "single_light_state_change",
       executable: false,
       execution_supported: false,
       network_called: false,
@@ -55,6 +67,7 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       hardware_io_performed: false,
       persisted: false,
       ui_rendered: false,
+      raw_payload_exposed: false,
       raw_config_exposed: false,
       raw_api_key_exposed: false,
       metadata_only: true,
@@ -115,6 +128,8 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       executable: false,
       execution_supported: false,
       writes_attempted: false,
+      approval_flow_available: false,
+      approval_execution_supported: false,
       diff_summary: {
         status: "diff_available",
         changed_fields: ["color_hex"],
@@ -147,6 +162,11 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       current_state_unknown_reason: "snapshot_missing",
       executable: false,
       execution_supported: false,
+      approval_flow_available: false,
+      approval_execution_supported: false,
+      user_review_required: true,
+      redacted_summary:
+        "Hue dry-run for unknown-light: changed=no_known_changes; unknown=on,brightness_percent",
       diff_summary: {
         status: "current_state_unknown",
         changed_fields: [],
@@ -226,6 +246,7 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
     expect(plan).toMatchObject({
       raw_config_exposed: false,
       raw_api_key_exposed: false,
+      raw_payload_exposed: false,
       metadata_only: true,
     });
     expect(json).not.toContain("secret-api-key");
@@ -248,6 +269,28 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       cloud_called: false,
       persisted: false,
       ui_rendered: false,
+    });
+  });
+
+  it("denies direct approval submission and execution for dry-run plans", () => {
+    const plan = createHueDryRunPlan({
+      plan_id: "hue-dry-run-approval-denied",
+      target_light_id: "approval-light",
+      intended_state: { on: true },
+    });
+
+    expect(canSubmitHueDryRunPlanForApproval(plan)).toEqual({
+      allowed: false,
+      reason: "approval_execution_not_implemented",
+      plan_id: "hue-dry-run-approval-denied",
+      approval_required: true,
+      approval_flow_available: false,
+      approval_execution_supported: false,
+      executable: false,
+      execution_supported: false,
+      metadata_only: true,
+      network_called: false,
+      writes_attempted: false,
     });
   });
 

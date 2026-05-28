@@ -51,6 +51,14 @@ export interface HueDryRunPlan {
     | null;
   readonly diff_summary: HueDryRunDiffSummary;
   readonly approval_required: true;
+  readonly approval_flow_available: false;
+  readonly approval_execution_supported: false;
+  readonly user_review_required: true;
+  readonly expires_at_ms: number;
+  readonly plan_summary: string;
+  readonly redacted_summary: string;
+  readonly risk_class: "device_mutation_requires_future_approval";
+  readonly action_class: "single_light_state_change";
   readonly executable: false;
   readonly execution_supported: false;
   readonly network_called: false;
@@ -60,6 +68,7 @@ export interface HueDryRunPlan {
   readonly hardware_io_performed: false;
   readonly persisted: false;
   readonly ui_rendered: false;
+  readonly raw_payload_exposed: false;
   readonly raw_config_exposed: false;
   readonly raw_api_key_exposed: false;
   readonly metadata_only: true;
@@ -70,6 +79,22 @@ export interface CreateHueDryRunPlanInput {
   readonly target_light_id: string;
   readonly intended_state: HueDryRunIntendedState;
   readonly current_state_snapshot?: HueReadLightSnapshot | null;
+  readonly created_at_ms?: number;
+  readonly ttl_ms?: number;
+}
+
+export interface HueDryRunApprovalSubmissionDecision {
+  readonly allowed: false;
+  readonly reason: "approval_execution_not_implemented";
+  readonly plan_id: string;
+  readonly approval_required: true;
+  readonly approval_flow_available: false;
+  readonly approval_execution_supported: false;
+  readonly executable: false;
+  readonly execution_supported: false;
+  readonly metadata_only: true;
+  readonly network_called: false;
+  readonly writes_attempted: false;
 }
 
 export function createHueDryRunPlan(
@@ -81,11 +106,12 @@ export function createHueDryRunPlan(
     input.current_state_snapshot,
     currentStatus,
   );
+  const planId =
+    input.plan_id ??
+    `hue-dry-run-${input.target_light_id.replace(/[^a-zA-Z0-9._:-]/g, "-")}`;
 
   return {
-    plan_id:
-      input.plan_id ??
-      `hue-dry-run-${input.target_light_id.replace(/[^a-zA-Z0-9._:-]/g, "-")}`,
+    plan_id: planId,
     adapter_kind: "hue",
     mode: "dry_run",
     source: "local_hue_bridge",
@@ -102,6 +128,14 @@ export function createHueDryRunPlan(
     ),
     diff_summary: diff,
     approval_required: true,
+    approval_flow_available: false,
+    approval_execution_supported: false,
+    user_review_required: true,
+    expires_at_ms: (input.created_at_ms ?? 0) + (input.ttl_ms ?? 300_000),
+    plan_summary: summarizePlan(input.target_light_id, diff),
+    redacted_summary: summarizePlan(input.target_light_id, diff),
+    risk_class: "device_mutation_requires_future_approval",
+    action_class: "single_light_state_change",
     executable: false,
     execution_supported: false,
     network_called: false,
@@ -111,9 +145,28 @@ export function createHueDryRunPlan(
     hardware_io_performed: false,
     persisted: false,
     ui_rendered: false,
+    raw_payload_exposed: false,
     raw_config_exposed: false,
     raw_api_key_exposed: false,
     metadata_only: true,
+  };
+}
+
+export function canSubmitHueDryRunPlanForApproval(
+  plan: HueDryRunPlan,
+): HueDryRunApprovalSubmissionDecision {
+  return {
+    allowed: false,
+    reason: "approval_execution_not_implemented",
+    plan_id: plan.plan_id,
+    approval_required: true,
+    approval_flow_available: false,
+    approval_execution_supported: false,
+    executable: false,
+    execution_supported: false,
+    metadata_only: true,
+    network_called: false,
+    writes_attempted: false,
   };
 }
 
@@ -246,4 +299,19 @@ function sanitizeIntendedState(
       ? { color_temperature_kelvin: intended.color_temperature_kelvin }
       : {}),
   };
+}
+
+function summarizePlan(
+  targetLightId: string,
+  diff: HueDryRunDiffSummary,
+): string {
+  const changed =
+    diff.changed_fields.length > 0
+      ? diff.changed_fields.join(",")
+      : "no_known_changes";
+  const unknown =
+    diff.unknown_fields.length > 0
+      ? `; unknown=${diff.unknown_fields.join(",")}`
+      : "";
+  return `Hue dry-run for ${targetLightId}: changed=${changed}${unknown}`;
 }

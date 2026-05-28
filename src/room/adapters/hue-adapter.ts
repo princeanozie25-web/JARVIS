@@ -183,6 +183,9 @@ export interface DisabledHueAdapterDryRunPlanResult {
   readonly read_only: true;
   readonly config_status: HueReadHealthMetadata["status"];
   readonly approval_required: true;
+  readonly approval_flow_available: false;
+  readonly approval_execution_supported: false;
+  readonly user_review_required: true;
   readonly executable: false;
   readonly execution_supported: false;
   readonly network_called: false;
@@ -363,6 +366,9 @@ export class DisabledHueReadOnlyAdapter implements RoomAdapterContract {
       read_only: true,
       config_status: health.status,
       approval_required: true,
+      approval_flow_available: false,
+      approval_execution_supported: false,
+      user_review_required: true,
       executable: false,
       execution_supported: false,
       network_called: false,
