@@ -1,13 +1,37 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir \"C:\\\\Users\\\\princ\\\\Documents\\\\jarvis\")",
-      "Skill(pdf-official)",
-      "Bash(python -c \"import reportlab; print\\(reportlab.__version__\\)\")",
-      "Bash(pip install *)",
-      "Bash(python \"C:/Users/princ/Documents/jarvis/scripts/generate_audit_pdf.py\")",
-      "Bash(python -c \"from pypdf import PdfReader; r=PdfReader\\(r'C:/Users/princ/Documents/jarvis/docs/JARVIS_Audit_2026-05-16.pdf'\\); print\\(f'Pages: {len\\(r.pages\\)}'\\)\")",
-      "Bash(python *)"
+﻿{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/stop_hook.ps1\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "powershell -NoProfile -File \"C:/Users/princ/Documents/jarvis/.dual-graph/prime.ps1\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
     ]
   }
 }

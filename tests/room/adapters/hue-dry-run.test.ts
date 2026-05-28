@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildHueDryRunAuditPreview,
   canSubmitHueDryRunPlanForApproval,
   createHueDryRunPlan,
 } from "../../../src/room/adapters/hue-dry-run";
@@ -58,6 +59,12 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
         "Hue dry-run for desk-lamp: changed=on,brightness_percent",
       risk_class: "device_mutation_requires_future_approval",
       action_class: "single_light_state_change",
+      audit_event_supported: false,
+      event_recording_supported: false,
+      audit_payload_kind: "metadata_only",
+      replay_safe: true,
+      redaction_status: "redacted_metadata_only",
+      persistence_attempted: false,
       executable: false,
       execution_supported: false,
       network_called: false,
@@ -366,6 +373,69 @@ describe("Phase 16C.1 Hue dry-run plan contract scaffold", () => {
       network_called: false,
       writes_attempted: false,
     });
+  });
+
+  it("builds replay-safe audit preview metadata without persisting events", () => {
+    const current = mapHueLightPayloadToReadSnapshot({
+      id: "audit-light",
+      metadata: { name: "Audit Light" },
+      on: { on: false },
+      status: { reachable: true },
+      capabilities: ["on"],
+      api_key: "secret-api-key",
+    } as unknown as {
+      id: string;
+      metadata: { name: string };
+      on: { on: boolean };
+      status: { reachable: boolean };
+      capabilities: string[];
+    });
+    const plan = createHueDryRunPlan({
+      plan_id: "hue-dry-run-audit-light",
+      target_light_id: "audit-light",
+      current_state_snapshot: current,
+      intended_state: { on: true },
+    });
+
+    const preview = buildHueDryRunAuditPreview(plan);
+    const json = JSON.stringify(preview);
+
+    expect(preview).toEqual({
+      preview_kind: "hue_dry_run_audit_preview",
+      audit_event_supported: false,
+      event_recording_supported: false,
+      audit_payload_kind: "metadata_only",
+      replay_safe: true,
+      redaction_status: "redacted_metadata_only",
+      provenance: {
+        adapter_kind: "hue",
+        mode: "dry_run",
+        source: "local_hue_bridge",
+        target_light_id: "audit-light",
+        plan_id: "hue-dry-run-audit-light",
+        metadata_only: true,
+      },
+      plan_summary: "Hue dry-run for audit-light: changed=on",
+      redacted_summary: "Hue dry-run for audit-light: changed=on",
+      approval_required: true,
+      approval_execution_supported: false,
+      compensation_execution_supported: false,
+      executable: false,
+      execution_supported: false,
+      raw_payload_exposed: false,
+      raw_config_exposed: false,
+      raw_api_key_exposed: false,
+      persistence_attempted: false,
+      ui_rendered: false,
+      network_called: false,
+      discovery_attempted: false,
+      cloud_attempted: false,
+      writes_attempted: false,
+      hardware_io_performed: false,
+      metadata_only: true,
+    });
+    expect(json).not.toContain("secret-api-key");
+    expect(json).not.toContain("config_ref:hue");
   });
 
   it("does not add SDK, network, discovery, cloud, or execution markers", () => {

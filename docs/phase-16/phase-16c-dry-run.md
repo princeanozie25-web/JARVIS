@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable. Phase 16C.4 adds descriptive-only compensation metadata.
+Phase 16C.1 adds the Hue dry-run plan contract scaffold only. It is pure local planning from fixture/current-state metadata to a non-executable diff plan. Phase 16C.2 integrates that planner with the disabled Hue adapter through an explicit non-executing dry-run helper. Phase 16C.3 adds approval-facing metadata guards while keeping approval execution unavailable. Phase 16C.4 adds descriptive-only compensation metadata. Phase 16C.5 adds audit/event preview metadata guards.
 
 No real Hue reads are implemented. No real Hue writes are implemented. No network calls, SDK usage, discovery, cloud path, approval execution, or hardware access is added.
 
@@ -34,6 +34,10 @@ Plans include:
 - `expires_at_ms`
 - plan summary and redacted summary metadata
 - risk/action class metadata
+- audit payload kind metadata
+- replay-safe metadata
+- redaction status metadata
+- `persistence_attempted: false`
 - `executable: false`
 - `execution_supported: false`
 - `network_called: false`
@@ -97,8 +101,26 @@ Dry-run plans can describe compensation but never execute rollback:
 
 Compensation execution is deferred to a later approval/rollback boundary.
 
+## Event/Audit Metadata Guard
+
+Dry-run plans are safe for future audit review but do not write events:
+
+- `audit_event_supported` is always `false`.
+- `event_recording_supported` is always `false`.
+- `audit_payload_kind` is `metadata_only`.
+- `replay_safe` is `true`.
+- `redaction_status` is `redacted_metadata_only`.
+- `buildHueDryRunAuditPreview(plan)` returns preview-only metadata.
+- audit previews include provenance only: adapter kind, mode, source, target id, and plan id.
+- `persistence_attempted` is always `false`.
+- `ui_rendered` is always `false`.
+- raw payloads, raw config refs, and raw API keys are not exposed.
+
+Persistence/event-store wiring is deferred to a later boundary.
+
 ## Still Forbidden
 
+- Persistence writes or event-store writes.
 - `node-hue-api` or any Hue SDK dependency.
 - HTTP, fetch, WebSocket, or network calls.
 - Real Hue live reads.
@@ -114,4 +136,4 @@ Compensation execution is deferred to a later approval/rollback boundary.
 
 ## Next Recommended Slice
 
-Phase 16C.5 - Hue Dry-Run Event/Audit Metadata Guard.
+Phase 16C.6 - Hue Dry-Run Closeout Guard.

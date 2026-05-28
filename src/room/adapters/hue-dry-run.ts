@@ -99,6 +99,12 @@ export interface HueDryRunPlan {
   readonly redacted_summary: string;
   readonly risk_class: "device_mutation_requires_future_approval";
   readonly action_class: "single_light_state_change";
+  readonly audit_event_supported: false;
+  readonly event_recording_supported: false;
+  readonly audit_payload_kind: "metadata_only";
+  readonly replay_safe: true;
+  readonly redaction_status: "redacted_metadata_only";
+  readonly persistence_attempted: false;
   readonly executable: false;
   readonly execution_supported: false;
   readonly network_called: false;
@@ -135,6 +141,41 @@ export interface HueDryRunApprovalSubmissionDecision {
   readonly metadata_only: true;
   readonly network_called: false;
   readonly writes_attempted: false;
+}
+
+export interface HueDryRunAuditPreview {
+  readonly preview_kind: "hue_dry_run_audit_preview";
+  readonly audit_event_supported: false;
+  readonly event_recording_supported: false;
+  readonly audit_payload_kind: "metadata_only";
+  readonly replay_safe: true;
+  readonly redaction_status: "redacted_metadata_only";
+  readonly provenance: {
+    readonly adapter_kind: "hue";
+    readonly mode: "dry_run";
+    readonly source: "local_hue_bridge";
+    readonly target_light_id: string;
+    readonly plan_id: string;
+    readonly metadata_only: true;
+  };
+  readonly plan_summary: string;
+  readonly redacted_summary: string;
+  readonly approval_required: true;
+  readonly approval_execution_supported: false;
+  readonly compensation_execution_supported: false;
+  readonly executable: false;
+  readonly execution_supported: false;
+  readonly raw_payload_exposed: false;
+  readonly raw_config_exposed: false;
+  readonly raw_api_key_exposed: false;
+  readonly persistence_attempted: false;
+  readonly ui_rendered: false;
+  readonly network_called: false;
+  readonly discovery_attempted: false;
+  readonly cloud_attempted: false;
+  readonly writes_attempted: false;
+  readonly hardware_io_performed: false;
+  readonly metadata_only: true;
 }
 
 export function createHueDryRunPlan(
@@ -182,6 +223,12 @@ export function createHueDryRunPlan(
     redacted_summary: summarizePlan(input.target_light_id, diff),
     risk_class: "device_mutation_requires_future_approval",
     action_class: "single_light_state_change",
+    audit_event_supported: false,
+    event_recording_supported: false,
+    audit_payload_kind: "metadata_only",
+    replay_safe: true,
+    redaction_status: "redacted_metadata_only",
+    persistence_attempted: false,
     executable: false,
     execution_supported: false,
     network_called: false,
@@ -194,6 +241,46 @@ export function createHueDryRunPlan(
     raw_payload_exposed: false,
     raw_config_exposed: false,
     raw_api_key_exposed: false,
+    metadata_only: true,
+  };
+}
+
+export function buildHueDryRunAuditPreview(
+  plan: HueDryRunPlan,
+): HueDryRunAuditPreview {
+  return {
+    preview_kind: "hue_dry_run_audit_preview",
+    audit_event_supported: false,
+    event_recording_supported: false,
+    audit_payload_kind: "metadata_only",
+    replay_safe: true,
+    redaction_status: "redacted_metadata_only",
+    provenance: {
+      adapter_kind: "hue",
+      mode: "dry_run",
+      source: "local_hue_bridge",
+      target_light_id: plan.target_light_id,
+      plan_id: plan.plan_id,
+      metadata_only: true,
+    },
+    plan_summary: plan.plan_summary,
+    redacted_summary: plan.redacted_summary,
+    approval_required: true,
+    approval_execution_supported: false,
+    compensation_execution_supported:
+      plan.compensation.compensation_execution_supported,
+    executable: false,
+    execution_supported: false,
+    raw_payload_exposed: false,
+    raw_config_exposed: false,
+    raw_api_key_exposed: false,
+    persistence_attempted: false,
+    ui_rendered: false,
+    network_called: false,
+    discovery_attempted: false,
+    cloud_attempted: false,
+    writes_attempted: false,
+    hardware_io_performed: false,
     metadata_only: true,
   };
 }
