@@ -23,6 +23,9 @@ export interface AdapterConformanceSubject {
       readonly hardware_io_performed: false;
       readonly persisted: false;
       readonly metadata_only: true;
+      readonly compensation_available: boolean;
+      readonly compensation_requires_future_approval: boolean;
+      readonly compensation_executed: false;
     }[];
   };
   readonly devices: {

@@ -6,7 +6,7 @@
 
 The room runtime already has a meaningful fake-first substrate: a typed adapter contract, a deterministic `FakeRoomAdapter`, a `FakeHueBridge`, in-memory fake failure simulation, fake event provenance, verification reads, and a conformance suite for the current fake room adapter.
 
-It is not ready to unlock real Hue work yet. Phase 16A still needs hardening before Phase 16B can introduce real Hue read-only support. The largest remaining gaps are rollback/compensation scaffolding and tighter fake-to-real Hue boundary coverage.
+It is not ready to unlock real Hue work yet. Phase 16A still needs hardening before Phase 16B can introduce real Hue read-only support. The largest remaining gap is tighter fake-to-real Hue boundary coverage.
 
 ## Files Inspected
 
@@ -80,7 +80,7 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
 | Command rejection                                | **PASS**       | Contract and fake adapter tests reject unsupported/malformed commands                     |
 | Audit/event provenance                           | **PASS**       | `fake-events.ts`, `audit-trail.test.ts`, `room-event-bridge.test.ts`                      |
 | Verification read behavior                       | **PASS**       | `verify_state`, `verification-read.test.ts`                                               |
-| Rollback/compensation scaffolding                | **FAIL**       | No room adapter rollback/compensation conformance file exists                             |
+| Rollback/compensation scaffolding                | **PASS**       | `tests/room/conformance/rollback-compensation.test.ts` covers descriptive plans           |
 | Real Hue write prevention                        | **PASS**       | Phase 16A.2 guard matrix pins `real_hue_writes_enabled: false`                            |
 | Auto-discovery prevention                        | **PASS**       | Phase 16A.2 guard matrix pins `hue_auto_discovery_enabled: false`                         |
 | Cloud Hue API prevention                         | **PASS**       | Phase 16A.2 guard matrix pins `hue_cloud_remote_api_enabled: false`                       |
@@ -91,10 +91,7 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
 
 ## Missing Requirements For Phase 16A
 
-1. **Rollback/compensation scaffolding is absent.**
-   The architecture calls for rollback or compensation visibility before real writes. The room adapter layer currently has verification reads but no compensation plan, rollback hint, or rollback audit metadata.
-
-2. **Phase 16 disabled guards are now centralized and must stay frozen.**
+1. **Phase 16 disabled guards are now centralized and must stay frozen.**
    Phase 16A.2 adds `src/room/adapters/phase-16-disabled-guards.ts` and `tests/room/phase-16-disabled-guards.test.ts`. The centralized matrix pins:
    - real Hue writes disabled
    - auto-discovery disabled
@@ -104,24 +101,21 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
    - voice/JARVIS trust-class elevation disabled
    - JARVIS policy edits disabled
 
-3. **Fake Hue is not yet the real Hue adapter contract.**
+2. **Fake Hue is not yet the real Hue adapter contract.**
    `FakeHueBridge` is useful, but the conformance subject is `FakeRoomAdapter`. Phase 16A should explicitly define whether real Hue must conform to the room adapter contract, the fake Hue bridge API shape, or both.
 
-4. **Fake-to-real mismatch risk remains.**
+3. **Fake-to-real mismatch risk remains.**
    The fake adapter is synchronous/in-memory and never exercises real transport edge cases such as bridge rate limiting, Hue v2 error envelopes, auth refresh/rejection shape, per-light response arrays, or verification lag.
 
-5. **No read-only real-Hue boundary contract exists yet.**
+4. **No read-only real-Hue boundary contract exists yet.**
    This is fine for 16A.1, but Phase 16B should not begin until the fake conformance suite is the single shared contract for real read-only behavior.
 
 ## Recommended Next Slices
 
-1. **16A.4 - Rollback/Compensation Contract Scaffold**
-   Add metadata-only compensation plan types and conformance tests. Do not execute rollback yet.
-
-2. **16A.5 - Fake Hue Contract Alignment**
+1. **16A.5 - Fake Hue Contract Alignment**
    Decide and test the exact boundary between `FakeRoomAdapter`, `FakeHueBridge`, and future `HueAdapter`.
 
-3. **16A.6 - Phase 16A Closeout Guard**
+2. **16A.6 - Phase 16A Closeout Guard**
    Freeze fake adapter conformance before Phase 16B real Hue read-only support.
 
 ## Do Not Implement Yet
@@ -142,5 +136,5 @@ It is not ready to unlock real Hue work yet. Phase 16A still needs hardening bef
 - **Fake-to-real mismatch risk:** The fake bridge currently models enough behavior for deterministic tests, but not enough Hue v2 transport nuance to guarantee real bridge behavior.
 - **Partial-success mismatch risk:** Phase 16A.3 now covers adapter-contract partial success, but future Hue parity still needs real Hue v2 response-shape mapping before execution is enabled.
 - **Verification-read optimism:** Verification reads currently reflect immediate fake in-memory state. Real Hue may lag, timeout, or return stale bridge state.
-- **Rollback ambiguity:** Without compensation metadata, a future real write failure may be auditable but not clearly recoverable.
+- **Rollback ambiguity:** Phase 16A.4 adds descriptive compensation metadata, but execution remains disabled and future rollback approval semantics still need a real-provider-era design.
 - **Guard drift risk:** Real-provider prevention now has a Phase 16A.2 guard matrix, but future real Hue slices must keep those guards pinned until fake conformance is complete.

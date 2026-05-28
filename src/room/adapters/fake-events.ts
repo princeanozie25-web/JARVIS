@@ -1,4 +1,5 @@
 import type {
+  RoomAdapterCompensationPlan,
   RoomAdapterFailureClass,
   RoomAdapterProvenance,
 } from "./contract";
@@ -53,6 +54,9 @@ export interface FakeDeviceEvent {
   readonly hardware_io_performed: false;
   readonly ui_rendered: false;
   readonly provider_called: false;
+  readonly compensation_available: boolean;
+  readonly compensation_requires_future_approval: boolean;
+  readonly compensation_executed: false;
 }
 
 export interface FakeDeviceEventInput {
@@ -69,6 +73,7 @@ export interface FakeDeviceEventInput {
   readonly result_status: FakeDeviceEventStatus;
   readonly failure_class?: RoomAdapterFailureClass | null;
   readonly provenance?: RoomAdapterProvenance | null;
+  readonly compensation?: RoomAdapterCompensationPlan | null;
 }
 
 export class FakeDeviceEventEmitter {
@@ -104,6 +109,10 @@ export class FakeDeviceEventEmitter {
       hardware_io_performed: false,
       ui_rendered: false,
       provider_called: false,
+      compensation_available: Boolean(input.compensation),
+      compensation_requires_future_approval:
+        input.compensation?.requires_future_approval ?? false,
+      compensation_executed: false,
     };
     this.events.push(event);
     return clone(event);

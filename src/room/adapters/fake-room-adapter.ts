@@ -1,11 +1,14 @@
 import {
   RoomAdapterCommandSchema,
+  RoomAdapterCompensationPlanSchema,
   RoomAdapterDryRunPlanSchema,
   RoomAdapterHealthStatusSchema,
   RoomAdapterOperationResultSchema,
   createRoomAdapterContractDescriptor,
   isMutatingCapability,
   type RoomAdapterCommand,
+  type RoomAdapterCommandAction,
+  type RoomAdapterCompensationPlan,
   type RoomAdapterContract,
   type RoomAdapterContractDescriptor,
   type RoomAdapterDryRunPlan,
@@ -172,14 +175,22 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       command.capability,
     );
     this.throwIfPlanningBlocked(command.device_id);
+    const current = clone(entity.state);
     const intended = applyCommandToState(entity.state, command);
+    const compensation = this.compensationPlan({
+      command,
+      previousState: current,
+      sourceOperation: "plan_command",
+      scope: "command",
+    });
 
     const plan = RoomAdapterDryRunPlanSchema.parse({
       plan_id: `plan-${command.command_id}`,
       command,
       provenance: this.provenance(command, "dry_run", null),
-      current_state: clone(entity.state),
+      current_state: current,
       intended_state: intended,
+      compensation,
       approval: command.approval,
       mode: "dry_run",
       executable_now: false,
@@ -198,6 +209,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       status: "planned",
       failureClass: null,
       provenance: plan.provenance,
+      compensation: plan.compensation ?? null,
     });
     return plan;
   }
@@ -271,7 +283,9 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     }
 
     if (this.failures.allowsPartialSuccess(command.device_id)) {
+      const previousState = clone(entity.state);
       entity.state = applyCommandToState(entity.state, command);
+      const partialSuccess = this.partialSuccessMetadata(command);
       const result = this.result({
         operation: "execute_command",
         mode: "approved_execution",
@@ -280,7 +294,14 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         state: clone(entity.state),
         ok: false,
         failureClass: "partial_success",
-        partialSuccess: this.partialSuccessMetadata(command),
+        partialSuccess,
+        compensation: this.compensationPlan({
+          command,
+          previousState,
+          sourceOperation: "execute_command",
+          scope: "partial_success",
+          partialSuccess,
+        }),
         approvalRequired: true,
         approvalId: input.context.approvalId,
       });
@@ -294,10 +315,12 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         status: "partial_success",
         failureClass: result.failure_class,
         provenance: result.provenance,
+        compensation: result.compensation ?? null,
       });
       return result;
     }
 
+    const previousState = clone(entity.state);
     entity.state = applyCommandToState(entity.state, command);
     const result = this.result({
       operation: "execute_command",
@@ -307,6 +330,12 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       state: clone(entity.state),
       ok: true,
       failureClass: null,
+      compensation: this.compensationPlan({
+        command,
+        previousState,
+        sourceOperation: "execute_command",
+        scope: "command",
+      }),
       approvalRequired: true,
       approvalId: input.context.approvalId,
     });
@@ -452,6 +481,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       status: partial ? "partial_success" : result.ok ? "ok" : "rejected",
       failureClass: result.failure_class,
       provenance: result.provenance,
+      compensation: result.compensation ?? null,
     });
   }
 
@@ -482,6 +512,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     status: FakeDeviceEventStatus;
     failureClass: RoomAdapterFailureClass | null;
     provenance: RoomAdapterProvenance | null;
+    compensation?: RoomAdapterCompensationPlan | null;
   }): void {
     this.events.emit({
       event_type: input.eventType,
@@ -497,6 +528,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       result_status: input.status,
       failure_class: input.failureClass,
       provenance: input.provenance,
+      compensation: input.compensation ?? null,
     });
   }
 
@@ -509,6 +541,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
     ok: boolean;
     failureClass: RoomAdapterFailureClass | null;
     partialSuccess?: RoomAdapterPartialSuccessMetadata | null;
+    compensation?: RoomAdapterCompensationPlan | null;
     approvalRequired: boolean;
     approvalId: string | null;
   }): RoomAdapterOperationResult {
@@ -532,6 +565,7 @@ export class FakeRoomAdapter implements RoomAdapterContract {
       state: input.state,
       failure_class: input.failureClass,
       partial_success: input.partialSuccess ?? null,
+      compensation: input.compensation ?? null,
       approval: {
         required: input.approvalRequired,
         policy_id: input.approvalRequired ? "fake-room-approval-policy" : null,
@@ -542,6 +576,83 @@ export class FakeRoomAdapter implements RoomAdapterContract {
         auto_approval_allowed: false,
         voice_only_approval_allowed: false,
       },
+      adapter_called: false,
+      hardware_io_performed: false,
+      network_called: false,
+      persisted: false,
+      ui_rendered: false,
+    });
+  }
+
+  private compensationPlan(input: {
+    command: RoomAdapterCommand;
+    previousState: DeviceState | SensorState;
+    sourceOperation: "plan_command" | "execute_command";
+    scope: "command" | "partial_success";
+    partialSuccess?: RoomAdapterPartialSuccessMetadata | null;
+  }): RoomAdapterCompensationPlan | null {
+    if (!isMutatingCapability(input.command.capability)) return null;
+    if (!isDeviceState(input.previousState)) return null;
+
+    const restoreValue = restoreValueForCapability(
+      input.previousState,
+      input.command.capability,
+    );
+    const subOperations = input.partialSuccess
+      ? [
+          ...input.partialSuccess.successful_operations.map((operation) => ({
+            operation_id: operation.operation_id,
+            device_id: operation.device_id,
+            capability: operation.capability,
+            source_status: operation.status,
+            compensation_required: true,
+            reason:
+              "Successful partial operation may need future approved compensation.",
+            metadata_only: true,
+          })),
+          ...input.partialSuccess.failed_operations.map((operation) => ({
+            operation_id: operation.operation_id,
+            device_id: operation.device_id,
+            capability: operation.capability,
+            source_status: operation.status,
+            compensation_required: false,
+            reason:
+              "Failed partial operation did not apply and has no compensation action.",
+            metadata_only: true,
+          })),
+        ]
+      : [
+          {
+            operation_id: `${input.command.command_id}-${input.command.capability.replace(".", "-")}`,
+            device_id: input.command.device_id,
+            capability: input.command.capability,
+            source_status: "success" as const,
+            compensation_required: true,
+            reason:
+              "Supported fake mutating command can describe a future approved compensation.",
+            metadata_only: true,
+          },
+        ];
+
+    return RoomAdapterCompensationPlanSchema.parse({
+      compensation_id: `compensation-${input.command.command_id}`,
+      source_command_id: input.command.command_id,
+      source_operation: input.sourceOperation,
+      scope: input.scope,
+      device_id: input.command.device_id,
+      capability: input.command.capability,
+      restore_action: restoreActionForCapability(input.command.capability),
+      restore_value: restoreValue,
+      description:
+        "Metadata-only compensation hint. It is not executable and requires a future approval lifecycle.",
+      sub_operations: subOperations,
+      descriptive_only: true,
+      requires_future_approval: true,
+      approval_lifecycle: "future_approval_required",
+      auto_execute: false,
+      executed: false,
+      rollback_execution_enabled: false,
+      metadata_only: true,
       adapter_called: false,
       hardware_io_performed: false,
       network_called: false,
@@ -685,6 +796,41 @@ function applyCommandToState(
     source: "mock",
   };
   return next;
+}
+
+function restoreActionForCapability(
+  capability: Capability,
+): RoomAdapterCommandAction {
+  switch (capability) {
+    case "power.switch":
+      return "set_power";
+    case "light.dimmer":
+      return "set_brightness";
+    case "light.color":
+      return "set_color";
+    case "light.temperature":
+      return "set_temperature";
+    default:
+      return "read";
+  }
+}
+
+function restoreValueForCapability(
+  state: DeviceState,
+  capability: Capability,
+): boolean | number | string | null {
+  switch (capability) {
+    case "power.switch":
+      return state.power === "on";
+    case "light.dimmer":
+      return state.brightness_percent;
+    case "light.color":
+      return state.color_hex;
+    case "light.temperature":
+      return state.color_temperature_kelvin;
+    default:
+      return null;
+  }
 }
 
 function isDeviceState(state: DeviceState | SensorState): state is DeviceState {

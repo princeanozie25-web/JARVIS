@@ -21,6 +21,14 @@ export const ROOM_ADAPTER_COMMAND_MODES = [
   "approved_execution",
 ] as const;
 
+export const ROOM_ADAPTER_COMMAND_ACTIONS = [
+  "read",
+  "set_power",
+  "set_brightness",
+  "set_color",
+  "set_temperature",
+] as const;
+
 export const ROOM_ADAPTER_FAILURE_CLASSES = [
   "unsupported_capability",
   "invalid_command",
@@ -42,6 +50,11 @@ export const ROOM_ADAPTER_PARTIAL_SUCCESS_SUB_OPERATION_STATUSES = [
   "failed",
 ] as const;
 
+export const ROOM_ADAPTER_COMPENSATION_SCOPES = [
+  "command",
+  "partial_success",
+] as const;
+
 export const ROOM_MUTATING_CAPABILITIES = [
   "power.switch",
   "light.dimmer",
@@ -53,11 +66,17 @@ export const RoomAdapterOperationNameSchema = z.enum(
   ROOM_ADAPTER_OPERATION_NAMES,
 );
 export const RoomAdapterCommandModeSchema = z.enum(ROOM_ADAPTER_COMMAND_MODES);
+export const RoomAdapterCommandActionSchema = z.enum(
+  ROOM_ADAPTER_COMMAND_ACTIONS,
+);
 export const RoomAdapterFailureClassSchema = z.enum(
   ROOM_ADAPTER_FAILURE_CLASSES,
 );
 export const RoomAdapterPartialSuccessSubOperationStatusSchema = z.enum(
   ROOM_ADAPTER_PARTIAL_SUCCESS_SUB_OPERATION_STATUSES,
+);
+export const RoomAdapterCompensationScopeSchema = z.enum(
+  ROOM_ADAPTER_COMPENSATION_SCOPES,
 );
 
 const RoomAdapterIdSchema = z
@@ -126,13 +145,7 @@ export const RoomAdapterCommandSchema = z
     mode: RoomAdapterCommandModeSchema,
     device_id: RoomAdapterIdSchema,
     capability: CapabilitySchema,
-    action: z.enum([
-      "read",
-      "set_power",
-      "set_brightness",
-      "set_color",
-      "set_temperature",
-    ]),
+    action: RoomAdapterCommandActionSchema,
     value: z.union([z.boolean(), z.number(), z.string(), z.null()]),
     one_command_one_action: z.literal(true),
     approval: RoomAdapterApprovalRequirementSchema,
@@ -178,21 +191,6 @@ export const RoomAdapterCommandSchema = z
     }
   });
 
-export const RoomAdapterDryRunPlanSchema = z.strictObject({
-  plan_id: RoomAdapterIdSchema,
-  command: RoomAdapterCommandSchema,
-  provenance: RoomAdapterProvenanceSchema,
-  current_state: z.union([DeviceStateSchema, SensorStateSchema]),
-  intended_state: z.union([DeviceStateSchema, SensorStateSchema]),
-  approval: RoomAdapterApprovalRequirementSchema,
-  mode: z.literal("dry_run"),
-  executable_now: z.literal(false),
-  adapter_called: z.literal(false),
-  hardware_io_performed: z.literal(false),
-  network_called: z.literal(false),
-  persisted: z.literal(false),
-});
-
 export const RoomAdapterPartialSuccessSubOperationSchema = z.strictObject({
   operation_id: RoomAdapterIdSchema,
   operation_type: z.enum(["adapter_write", "verification_read"]),
@@ -202,6 +200,57 @@ export const RoomAdapterPartialSuccessSubOperationSchema = z.strictObject({
   failure_class: RoomAdapterFailureClassSchema.nullable(),
   reason: z.string().trim().min(1).max(500).nullable(),
   metadata_only: z.literal(true),
+});
+
+export const RoomAdapterCompensationSubOperationSchema = z.strictObject({
+  operation_id: RoomAdapterIdSchema,
+  device_id: RoomAdapterIdSchema,
+  capability: CapabilitySchema,
+  source_status: RoomAdapterPartialSuccessSubOperationStatusSchema,
+  compensation_required: z.boolean(),
+  reason: z.string().trim().min(1).max(500),
+  metadata_only: z.literal(true),
+});
+
+export const RoomAdapterCompensationPlanSchema = z.strictObject({
+  compensation_id: RoomAdapterIdSchema,
+  source_command_id: RoomAdapterIdSchema,
+  source_operation: z.enum(["plan_command", "execute_command"]),
+  scope: RoomAdapterCompensationScopeSchema,
+  device_id: RoomAdapterIdSchema,
+  capability: CapabilitySchema,
+  restore_action: RoomAdapterCommandActionSchema,
+  restore_value: z.union([z.boolean(), z.number(), z.string(), z.null()]),
+  description: z.string().trim().min(1).max(500),
+  sub_operations: z.array(RoomAdapterCompensationSubOperationSchema).min(1),
+  descriptive_only: z.literal(true),
+  requires_future_approval: z.literal(true),
+  approval_lifecycle: z.literal("future_approval_required"),
+  auto_execute: z.literal(false),
+  executed: z.literal(false),
+  rollback_execution_enabled: z.literal(false),
+  metadata_only: z.literal(true),
+  adapter_called: z.literal(false),
+  hardware_io_performed: z.literal(false),
+  network_called: z.literal(false),
+  persisted: z.literal(false),
+  ui_rendered: z.literal(false),
+});
+
+export const RoomAdapterDryRunPlanSchema = z.strictObject({
+  plan_id: RoomAdapterIdSchema,
+  command: RoomAdapterCommandSchema,
+  provenance: RoomAdapterProvenanceSchema,
+  current_state: z.union([DeviceStateSchema, SensorStateSchema]),
+  intended_state: z.union([DeviceStateSchema, SensorStateSchema]),
+  compensation: RoomAdapterCompensationPlanSchema.nullable().optional(),
+  approval: RoomAdapterApprovalRequirementSchema,
+  mode: z.literal("dry_run"),
+  executable_now: z.literal(false),
+  adapter_called: z.literal(false),
+  hardware_io_performed: z.literal(false),
+  network_called: z.literal(false),
+  persisted: z.literal(false),
 });
 
 export const RoomAdapterPartialSuccessMetadataSchema = z.strictObject({
@@ -229,6 +278,7 @@ export const RoomAdapterOperationResultSchema = z
     failure_class: RoomAdapterFailureClassSchema.nullable(),
     partial_success:
       RoomAdapterPartialSuccessMetadataSchema.nullable().optional(),
+    compensation: RoomAdapterCompensationPlanSchema.nullable().optional(),
     approval: RoomAdapterApprovalRequirementSchema,
     adapter_called: z.literal(false),
     hardware_io_performed: z.literal(false),
@@ -298,8 +348,17 @@ export type RoomAdapterOperationName = z.infer<
 export type RoomAdapterCommandMode = z.infer<
   typeof RoomAdapterCommandModeSchema
 >;
+export type RoomAdapterCommandAction = z.infer<
+  typeof RoomAdapterCommandActionSchema
+>;
 export type RoomAdapterFailureClass = z.infer<
   typeof RoomAdapterFailureClassSchema
+>;
+export type RoomAdapterCompensationSubOperation = z.infer<
+  typeof RoomAdapterCompensationSubOperationSchema
+>;
+export type RoomAdapterCompensationPlan = z.infer<
+  typeof RoomAdapterCompensationPlanSchema
 >;
 export type RoomAdapterPartialSuccessSubOperation = z.infer<
   typeof RoomAdapterPartialSuccessSubOperationSchema
