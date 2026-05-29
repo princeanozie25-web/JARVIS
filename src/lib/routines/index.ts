@@ -842,3 +842,24 @@ export type {
   ForegroundSchedulerAuditPreviewInput,
   ForegroundSchedulerAuditRedactionStatus,
 } from "./scheduler-audit-preview";
+
+export {
+  ROUTINE_SUGGESTION_KINDS,
+  ROUTINE_SUGGESTION_REDACTION_STATUSES,
+  ROUTINE_SUGGESTION_VALIDATION_REASONS,
+  RoutineSuggestionKindSchema,
+  RoutineSuggestionRedactionStatusSchema,
+  RoutineSuggestionSchema,
+  RoutineSuggestionValidationReasonSchema,
+  RoutineSuggestionValidationSchema,
+  createEmptyRoutineSuggestion,
+  validateRoutineSuggestion,
+} from "./routine-suggestion";
+
+export type {
+  RoutineSuggestion,
+  RoutineSuggestionKind,
+  RoutineSuggestionRedactionStatus,
+  RoutineSuggestionValidation,
+  RoutineSuggestionValidationReason,
+} from "./routine-suggestion";
