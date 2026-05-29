@@ -654,3 +654,25 @@ export type {
   Phase17RoutineRegistryValidation,
   Phase17RoutineRegistryValidationReason,
 } from "./routine-registry";
+
+export {
+  SCHEDULED_ASSISTANCE_REJECTED_TICK_SOURCE_KINDS,
+  SCHEDULED_ASSISTANCE_TICK_DECISION_REASONS,
+  SCHEDULED_ASSISTANCE_TICK_SOURCE_KINDS,
+  ScheduledAssistanceRejectedTickSourceKindSchema,
+  ScheduledAssistanceTickDecisionReasonSchema,
+  ScheduledAssistanceTickDecisionSchema,
+  ScheduledAssistanceTickInputSchema,
+  ScheduledAssistanceTickInputSourceKindSchema,
+  ScheduledAssistanceTickSourceKindSchema,
+  evaluateScheduledAssistanceTick,
+} from "./scheduled-assistance-tick-source";
+
+export type {
+  ScheduledAssistanceRejectedTickSourceKind,
+  ScheduledAssistanceTickDecision,
+  ScheduledAssistanceTickDecisionReason,
+  ScheduledAssistanceTickInput,
+  ScheduledAssistanceTickInputSourceKind,
+  ScheduledAssistanceTickSourceKind,
+} from "./scheduled-assistance-tick-source";

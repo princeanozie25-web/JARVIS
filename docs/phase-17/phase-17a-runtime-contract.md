@@ -82,6 +82,24 @@ Each routine entry is:
 
 The registry rejects routines that request tool authority, device actions, memory writes, project mutations, approval execution, cloud/network authority, background/headless execution, or any side-effect flag.
 
+## Tick Source Contract
+
+Phase 17A.4 adds a foreground-only tick source contract for future scheduled assistance.
+
+Supported tick source metadata:
+
+- `manual`
+- `foreground_scheduler`
+- `test_fixture`
+
+Rejected tick source metadata:
+
+- background
+- headless
+- background/headless
+
+Every tick decision is metadata-only and denied in this slice. Scheduler execution, routine execution, catch-up runs, timers, reports, suggestions, persistence, tools, memory writes, project mutations, device actions, approvals, cloud, and network calls remain disabled. Missed ticks use `skip`.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -92,4 +110,4 @@ The registry rejects routines that request tool authority, device actions, memor
 
 ## Next Recommended Slice
 
-Phase 17A.4 - Scheduled Assistance Tick Source Contract.
+Phase 17A.5 - Scheduled Assistance Read Scope Contract.
