@@ -14,6 +14,7 @@ Scaffold only. No real Hue command execution exists.
 - Verification-facing metadata for the future read-after-write check, while keeping verification unsupported.
 - Audit/provenance metadata and a metadata-only audit preview helper, while keeping event-store writes unsupported.
 - Compensation precondition metadata derived from the dry-run compensation plan, while keeping rollback execution unsupported.
+- Failure, timeout, retry, fallback, and partial-success metadata for future execution, while keeping all handling inactive.
 
 ## Boundary Guarantees
 
@@ -34,6 +35,8 @@ Scaffold only. No real Hue command execution exists.
 - `compensation_required_if_executed` is always `true`.
 - `compensation_available_from_plan` reflects whether the dry-run plan has descriptive compensation metadata.
 - Compensation preconditions can be `satisfied` or `unavailable`, but compensation execution is always unsupported and not attempted.
+- Failure handling, timeout handling, and partial-success handling are required for future execution but unsupported in this scaffold.
+- Retry and fallback are unsupported and never attempted.
 - Dry-run plans remain non-executable.
 - Compensation remains descriptive-only.
 - Raw payload, raw config, and raw API key exposure remain pinned off.
@@ -55,6 +58,10 @@ Future Hue execution will require audit/event recording before any real write pa
 
 Future Hue execution must understand rollback/compensation before any write can be considered. Phase 16D.4 only evaluates whether the dry-run plan contains descriptive compensation metadata. Known current state can satisfy the compensation precondition; unknown or unavailable current state leaves compensation unavailable. Rollback execution remains deferred and unsupported.
 
+## Failure and Timeout Semantics
+
+Future Hue execution must model timeouts, retries, fallbacks, and partial success before any real write path can exist. Phase 16D.5 only records these requirements as metadata. Timeout handling is not active, retries are not attempted, fallback is not attempted, and partial-success handling remains unsupported.
+
 ## Explicitly Not Implemented
 
 - Real Hue writes.
@@ -62,6 +69,8 @@ Future Hue execution must understand rollback/compensation before any write can 
 - Approval execution.
 - Verification reads.
 - Compensation or rollback execution.
+- Retry/fallback behavior.
+- Active timeout handling.
 - Event-store writes.
 - Audit persistence.
 - Hue bridge discovery.
@@ -73,4 +82,4 @@ Future Hue execution must understand rollback/compensation before any write can 
 
 ## Next Recommended Slice
 
-Phase 16D.5 - Hue Execution Boundary Failure and Timeout Metadata.
+Phase 16D.6 - Hue Execution Boundary Closeout Guard.

@@ -26,6 +26,16 @@ export type HueExecutionCompensationPreconditionReason =
   | "dry_run_compensation_unavailable"
   | "compensation_execution_unsupported";
 
+export type HueExecutionBoundaryErrorClass =
+  | "approval_not_satisfied"
+  | "execution_not_implemented";
+
+export interface HueExecutionTimeoutPolicy {
+  readonly timeout_ms: number;
+  readonly source: "phase_16d_boundary_default";
+  readonly metadata_only: true;
+}
+
 export interface HueExecutionApprovalMetadata {
   readonly approval_id?: string | null;
   readonly approval_status?: HueExecutionApprovalStatus;
@@ -103,6 +113,20 @@ export interface HueExecutionBoundaryDecision {
   readonly compensation_precondition_error_class:
     | "compensation_unavailable"
     | null;
+  readonly failure_handling_required: true;
+  readonly failure_handling_supported: false;
+  readonly timeout_handling_required: true;
+  readonly timeout_ms: number;
+  readonly timeout_policy: HueExecutionTimeoutPolicy;
+  readonly timeout_supported: false;
+  readonly retry_supported: false;
+  readonly retry_attempted: false;
+  readonly fallback_supported: false;
+  readonly fallback_attempted: false;
+  readonly partial_success_handling_required: true;
+  readonly partial_success_handling_supported: false;
+  readonly boundary_error_class: HueExecutionBoundaryErrorClass;
+  readonly boundary_error_reason: HueExecutionBoundaryDenialReason;
   readonly network_allowed: false;
   readonly writes_allowed: false;
   readonly discovery_allowed: false;
@@ -139,6 +163,18 @@ export interface HueExecutionAuditPreview {
   readonly compensation_execution_attempted: false;
   readonly compensation_available_from_plan: boolean;
   readonly compensation_precondition_status: HueExecutionCompensationPreconditionStatus;
+  readonly failure_handling_required: true;
+  readonly failure_handling_supported: false;
+  readonly timeout_handling_required: true;
+  readonly timeout_supported: false;
+  readonly retry_supported: false;
+  readonly retry_attempted: false;
+  readonly fallback_supported: false;
+  readonly fallback_attempted: false;
+  readonly partial_success_handling_required: true;
+  readonly partial_success_handling_supported: false;
+  readonly boundary_error_class: HueExecutionBoundaryErrorClass;
+  readonly boundary_error_reason: HueExecutionBoundaryDenialReason;
   readonly raw_payload_exposed: false;
   readonly raw_config_exposed: false;
   readonly raw_api_key_exposed: false;
@@ -161,6 +197,8 @@ export function evaluateHueExecutionBoundary(
   const approvalStatus = approvalMetadata?.approval_status ?? "missing";
   const executionBoundaryId = `hue-execution-boundary-${sanitizeId(dryRunPlan.plan_id)}`;
   const compensationAvailable = dryRunPlan.compensation.compensation_available;
+  const denialReason = denialReasonFor(approvalStatus);
+  const timeoutMs = 10_000;
   const provenance: HueExecutionBoundaryProvenance = {
     execution_boundary_id: executionBoundaryId,
     source_plan_id: dryRunPlan.plan_id,
@@ -182,7 +220,7 @@ export function evaluateHueExecutionBoundary(
     approval_status: approvalStatus,
     execution_allowed: false,
     execution_supported: false,
-    denial_reason: denialReasonFor(approvalStatus),
+    denial_reason: denialReason,
     verification_required: true,
     verification_supported: false,
     verification_read_required_after_execution: true,
@@ -232,6 +270,27 @@ export function evaluateHueExecutionBoundary(
     compensation_precondition_error_class: compensationAvailable
       ? null
       : "compensation_unavailable",
+    failure_handling_required: true,
+    failure_handling_supported: false,
+    timeout_handling_required: true,
+    timeout_ms: timeoutMs,
+    timeout_policy: {
+      timeout_ms: timeoutMs,
+      source: "phase_16d_boundary_default",
+      metadata_only: true,
+    },
+    timeout_supported: false,
+    retry_supported: false,
+    retry_attempted: false,
+    fallback_supported: false,
+    fallback_attempted: false,
+    partial_success_handling_required: true,
+    partial_success_handling_supported: false,
+    boundary_error_class:
+      approvalStatus === "approved"
+        ? "execution_not_implemented"
+        : "approval_not_satisfied",
+    boundary_error_reason: denialReason,
     network_allowed: false,
     writes_allowed: false,
     discovery_allowed: false,
@@ -272,6 +331,18 @@ export function buildHueExecutionAuditPreview(
     compensation_execution_attempted: false,
     compensation_available_from_plan: decision.compensation_available_from_plan,
     compensation_precondition_status: decision.compensation_precondition_status,
+    failure_handling_required: true,
+    failure_handling_supported: false,
+    timeout_handling_required: true,
+    timeout_supported: false,
+    retry_supported: false,
+    retry_attempted: false,
+    fallback_supported: false,
+    fallback_attempted: false,
+    partial_success_handling_required: true,
+    partial_success_handling_supported: false,
+    boundary_error_class: decision.boundary_error_class,
+    boundary_error_reason: decision.boundary_error_reason,
     raw_payload_exposed: false,
     raw_config_exposed: false,
     raw_api_key_exposed: false,
