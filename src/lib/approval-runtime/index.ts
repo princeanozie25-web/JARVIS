@@ -366,3 +366,32 @@ export type {
   ApprovalExecutionAuthorityTokenStatus,
   ApprovalExecutionAuthorityTokenValidationReason,
 } from "./execution-authority-token";
+
+export {
+  APPROVAL_EXECUTION_AUTHORITY_SCOPE_CONSTRAINT_KEYS,
+  APPROVAL_EXECUTION_AUTHORITY_SCOPE_GUARD_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_AUTHORITY_SCOPE_GUARD_IDS,
+  APPROVAL_EXECUTION_AUTHORITY_SCOPE_VALIDATION_REASONS,
+  ApprovalExecutionAuthorityScopeConstraintDeclarationSchema,
+  ApprovalExecutionAuthorityScopeConstraintKeySchema,
+  ApprovalExecutionAuthorityScopeConstraintMetadataSchema,
+  ApprovalExecutionAuthorityScopeDisabledGuardOutputSchema,
+  ApprovalExecutionAuthorityScopeGuardContractSchema,
+  ApprovalExecutionAuthorityScopeGuardIdSchema,
+  ApprovalExecutionAuthorityScopeGuardResultSchema,
+  ApprovalExecutionAuthorityScopeValidationReasonSchema,
+  DEFAULT_APPROVAL_EXECUTION_AUTHORITY_SCOPE_GUARD_CONTRACT,
+  buildApprovalAuthorityScopeConstraints,
+  validateApprovalAuthorityTokenScopeMetadata,
+} from "./execution-authority-scope";
+
+export type {
+  ApprovalExecutionAuthorityScopeConstraintDeclaration,
+  ApprovalExecutionAuthorityScopeConstraintKey,
+  ApprovalExecutionAuthorityScopeConstraintMetadata,
+  ApprovalExecutionAuthorityScopeDisabledGuardOutput,
+  ApprovalExecutionAuthorityScopeGuardContract,
+  ApprovalExecutionAuthorityScopeGuardId,
+  ApprovalExecutionAuthorityScopeGuardResult,
+  ApprovalExecutionAuthorityScopeValidationReason,
+} from "./execution-authority-scope";
