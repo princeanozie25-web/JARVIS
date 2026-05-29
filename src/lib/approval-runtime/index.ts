@@ -153,3 +153,33 @@ export type {
   ApprovalProposalTrustClass,
   ApprovalProposalTrustMetadata,
 } from "./proposal-registry";
+
+export {
+  APPROVAL_VALIDATION_GUARD_CONTRACT_VERSION,
+  APPROVAL_VALIDATION_GUARD_IDS,
+  APPROVAL_VALIDATION_GUARD_REASON_CODES,
+  APPROVAL_VALIDATION_GUARD_SEVERITIES,
+  ApprovalValidationGuardDeclarationSchema,
+  ApprovalValidationGuardIdSchema,
+  ApprovalValidationGuardMatrixSchema,
+  ApprovalValidationGuardReasonCodeSchema,
+  ApprovalValidationGuardResultSchema,
+  ApprovalValidationGuardSeveritySchema,
+  DEFAULT_APPROVAL_VALIDATION_GUARD_MATRIX,
+  isApprovalLifecycleRecordMetadataValid,
+  isApprovalProposalMetadataValid,
+  validateApprovalAuthorityClassGuard,
+  validateApprovalForbiddenCapabilityGuard,
+  validateApprovalLifecycleRecordMetadataGuards,
+  validateApprovalProposalMetadataGuards,
+  validateApprovalValidationGuardMatrix,
+} from "./validation-guards";
+
+export type {
+  ApprovalValidationGuardDeclaration,
+  ApprovalValidationGuardId,
+  ApprovalValidationGuardMatrix,
+  ApprovalValidationGuardReasonCode,
+  ApprovalValidationGuardResult,
+  ApprovalValidationGuardSeverity,
+} from "./validation-guards";
