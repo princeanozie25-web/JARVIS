@@ -76,3 +76,38 @@ export type {
   ApprovalProposalContract,
   ApprovalStageTransition,
 } from "./contracts";
+
+export {
+  APPROVAL_AUTHORITY_BOUNDARY_CONTRACT_VERSION,
+  APPROVAL_AUTHORITY_BOUNDARY_VALIDATION_REASONS,
+  APPROVAL_AUTHORITY_CLASSES,
+  APPROVAL_AUTHORITY_CLASS_DESCRIPTIONS,
+  APPROVAL_FORBIDDEN_CAPABILITIES,
+  APPROVAL_METADATA_AUTHORITY_CLASSES,
+  APPROVAL_RESERVED_AUTHORITY_CLASSES,
+  ApprovalAuthorityBoundaryMatrixSchema,
+  ApprovalAuthorityBoundaryValidationReasonSchema,
+  ApprovalAuthorityBoundaryValidationSchema,
+  ApprovalAuthorityClassEntrySchema,
+  ApprovalAuthorityClassSchema,
+  ApprovalForbiddenCapabilityDeclarationSchema,
+  ApprovalForbiddenCapabilitySchema,
+  ApprovalMetadataAuthorityClassSchema,
+  ApprovalReservedAuthorityClassSchema,
+  DEFAULT_APPROVAL_AUTHORITY_BOUNDARY_MATRIX,
+  validateApprovalAuthorityBoundaryMatrix,
+  validateApprovalAuthorityClassMetadata,
+  validateApprovalForbiddenCapabilityMetadata,
+} from "./authority-boundary";
+
+export type {
+  ApprovalAuthorityBoundaryMatrix,
+  ApprovalAuthorityBoundaryValidation,
+  ApprovalAuthorityBoundaryValidationReason,
+  ApprovalAuthorityClass,
+  ApprovalAuthorityClassEntry,
+  ApprovalForbiddenCapability,
+  ApprovalForbiddenCapabilityDeclaration,
+  ApprovalMetadataAuthorityClass,
+  ApprovalReservedAuthorityClass,
+} from "./authority-boundary";
