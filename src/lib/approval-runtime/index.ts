@@ -293,3 +293,34 @@ export type {
   ApprovalReviewReasonKind,
   ApprovalReviewReasonMetadata,
 } from "./review-decision";
+
+export {
+  APPROVAL_REVIEW_SESSION_CONTRACT_VERSION,
+  APPROVAL_REVIEW_SESSION_EVIDENCE_STATUS_SUMMARIES,
+  APPROVAL_REVIEW_SESSION_PARTICIPANT_KINDS,
+  APPROVAL_REVIEW_SESSION_STATUSES,
+  ApprovalReviewSessionDecisionRequestMetadataSchema,
+  ApprovalReviewSessionDisabledAuthorityFlagsSchema,
+  ApprovalReviewSessionEvidenceMetadataSchema,
+  ApprovalReviewSessionEvidenceStatusSummarySchema,
+  ApprovalReviewSessionExpiresAtMetadataSchema,
+  ApprovalReviewSessionOpenedAtMetadataSchema,
+  ApprovalReviewSessionParticipantKindSchema,
+  ApprovalReviewSessionParticipantMetadataSchema,
+  ApprovalReviewSessionSnapshotSchema,
+  ApprovalReviewSessionStatusSchema,
+  buildApprovalReviewSessionSnapshot,
+} from "./review-session";
+
+export type {
+  ApprovalReviewSessionDecisionRequestMetadata,
+  ApprovalReviewSessionDisabledAuthorityFlags,
+  ApprovalReviewSessionEvidenceMetadata,
+  ApprovalReviewSessionEvidenceStatusSummary,
+  ApprovalReviewSessionExpiresAtMetadata,
+  ApprovalReviewSessionOpenedAtMetadata,
+  ApprovalReviewSessionParticipantKind,
+  ApprovalReviewSessionParticipantMetadata,
+  ApprovalReviewSessionSnapshot,
+  ApprovalReviewSessionStatus,
+} from "./review-session";
