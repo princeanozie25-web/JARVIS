@@ -399,11 +399,27 @@ export const Phase17SelfAuditReportWindowSchema = z
   });
 
 export const Phase17SelfAuditReportSectionSchema = z.strictObject({
+  section_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .regex(/^section:[a-z0-9._:-]+$/),
   section: Phase17SelfAuditReportSectionNameSchema,
+  section_kind: Phase17SelfAuditReportSectionNameSchema,
   metadata_only: z.literal(true),
+  collector_supported: z.literal(false),
+  collector_attempted: z.literal(false),
+  source_read_supported: z.literal(false),
+  source_read_attempted: z.literal(false),
   item_count: z.literal(0),
+  row_cap: z.number().int().positive().max(1_000),
+  max_items: z.number().int().positive().max(1_000),
   summary_available: z.literal(false),
+  summary_generated: z.literal(false),
   raw_payload_allowed: z.literal(false),
+  redaction_required: z.literal(true),
+  redaction_status: Phase17SelfAuditRedactionStatusSchema,
   pii_allowed: z.literal(false),
   secrets_allowed: z.literal(false),
   report_body_allowed: z.literal(false),
@@ -479,6 +495,31 @@ export const Phase17SelfAuditReportValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const Phase17SelfAuditSectionValidationSchema = z.strictObject({
+  kind: z.literal("phase17.self_audit_section_metadata_validation"),
+  pass: z.boolean(),
+  section_id: z.string().trim().min(1).max(120).nullable(),
+  section_kind: Phase17SelfAuditReportSectionNameSchema.nullable(),
+  violation_count: z.number().int().nonnegative(),
+  violations: z.array(Phase17SelfAuditReportValidationReasonSchema),
+  metadata_only: z.literal(true),
+  summary_generated: z.literal(false),
+  collector_attempted: z.literal(false),
+  source_read_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  persisted: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
 export type Phase17SelfAuditReportWindow = z.infer<
   typeof Phase17SelfAuditReportWindowSchema
 >;
@@ -490,6 +531,9 @@ export type Phase17SelfAuditReport = z.infer<
 >;
 export type Phase17SelfAuditReportValidation = z.infer<
   typeof Phase17SelfAuditReportValidationSchema
+>;
+export type Phase17SelfAuditSectionValidation = z.infer<
+  typeof Phase17SelfAuditSectionValidationSchema
 >;
 
 export function createEmptyPhase17SelfAuditReport(input: {
@@ -515,11 +559,22 @@ export function createEmptyPhase17SelfAuditReport(input: {
     persistence_supported: false,
     persistence_attempted: false,
     sections: PHASE_17_SELF_AUDIT_REPORT_SECTIONS.map((section) => ({
+      section_id: `section:${section}`,
       section,
+      section_kind: section,
       metadata_only: true,
+      collector_supported: false,
+      collector_attempted: false,
+      source_read_supported: false,
+      source_read_attempted: false,
       item_count: 0,
+      row_cap: 250,
+      max_items: 250,
       summary_available: false,
+      summary_generated: false,
       raw_payload_allowed: false,
+      redaction_required: true,
+      redaction_status: "not_started",
       pii_allowed: false,
       secrets_allowed: false,
       report_body_allowed: false,
@@ -572,7 +627,7 @@ export function validateSelfAuditReportSchema(
   }
 
   const sectionKinds = new Set(
-    parsed.data.sections.map((section) => section.section),
+    parsed.data.sections.map((section) => section.section_kind),
   );
   if (
     !PHASE_17_SELF_AUDIT_REPORT_SECTIONS.every((section) =>
@@ -586,6 +641,61 @@ export function validateSelfAuditReportSchema(
     report: parsed.data,
     violations,
     sectionCount: parsed.data.sections.length,
+  });
+}
+
+export function validateSelfAuditSectionMetadata(
+  input: unknown,
+): Phase17SelfAuditSectionValidation {
+  const parsed = Phase17SelfAuditReportSectionSchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>();
+
+  for (const violation of forbiddenPayloadViolations(input)) {
+    violations.add(violation);
+  }
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+    return sectionValidation({
+      section: null,
+      violations,
+    });
+  }
+
+  return sectionValidation({
+    section: parsed.data,
+    violations,
+  });
+}
+
+function sectionValidation(input: {
+  readonly section: Phase17SelfAuditReportSectionMetadata | null;
+  readonly violations: Set<Phase17SelfAuditReportValidationReason>;
+}): Phase17SelfAuditSectionValidation {
+  return Phase17SelfAuditSectionValidationSchema.parse({
+    kind: "phase17.self_audit_section_metadata_validation",
+    pass: input.violations.size === 0,
+    section_id: input.section?.section_id ?? null,
+    section_kind: input.section?.section_kind ?? null,
+    violation_count: input.violations.size,
+    violations:
+      input.violations.size === 0 ? ["valid_schema"] : [...input.violations],
+    metadata_only: true,
+    summary_generated: false,
+    collector_attempted: false,
+    source_read_attempted: false,
+    db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
   });
 }
 

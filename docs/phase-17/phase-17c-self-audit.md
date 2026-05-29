@@ -37,6 +37,28 @@ The report contains empty metadata-only sections for:
 
 Every section is empty, metadata-only, collector-free, and disallows raw payloads, PII, secrets, body text, and generated content.
 
+## Section Metadata Contracts
+
+Phase 17C.2 adds detailed metadata contracts for every report section.
+
+Each section includes:
+
+- `section_id`
+- `section_kind`
+- `metadata_only: true`
+- `collector_supported: false`
+- `collector_attempted: false`
+- `source_read_supported: false`
+- `source_read_attempted: false`
+- `raw_payload_allowed: false`
+- `redaction_required: true`
+- `redaction_status`
+- `row_cap`
+- `max_items`
+- `summary_generated: false`
+
+`validateSelfAuditSectionMetadata(section)` validates one section at a time and rejects raw payloads, text bodies, secrets, PII, project bodies, tool outputs, voice transcripts, OCR text, frames, prompts, and model outputs. It does not run collectors and does not read from a database or event store.
+
 ## Validation
 
 `validateSelfAuditReportSchema(report)` validates the schema and rejects:

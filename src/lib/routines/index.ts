@@ -255,6 +255,7 @@ export {
   Phase17SelfAuditReportSectionNameSchema,
   Phase17SelfAuditReportSectionSchema,
   Phase17SelfAuditReportSectionSchema as Phase17SelfAuditReportSectionMetadataSchema,
+  Phase17SelfAuditSectionValidationSchema,
   Phase17SelfAuditReportValidationReasonSchema,
   Phase17SelfAuditReportValidationSchema,
   Phase17SelfAuditReportWindowSchema,
@@ -269,6 +270,7 @@ export {
   SelfAuditReportWindowSchema,
   createEmptyPhase17SelfAuditReport,
   createSelfAuditReportTelemetryEvent,
+  validateSelfAuditSectionMetadata,
   validateSelfAuditReportSchema,
   validateSelfAuditReport,
 } from "./self-audit-report";
@@ -278,6 +280,7 @@ export type {
   Phase17SelfAuditReport,
   Phase17SelfAuditReportSection,
   Phase17SelfAuditReportSectionMetadata,
+  Phase17SelfAuditSectionValidation,
   Phase17SelfAuditReportValidation,
   Phase17SelfAuditReportValidationReason,
   Phase17SelfAuditReportWindow,

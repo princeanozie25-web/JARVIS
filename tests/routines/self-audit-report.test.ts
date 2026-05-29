@@ -7,6 +7,7 @@ import {
   PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
   Phase17SelfAuditReportSchema,
   createEmptyPhase17SelfAuditReport,
+  validateSelfAuditSectionMetadata,
   validateSelfAuditReportSchema,
 } from "../../src/lib/routines/self-audit-report";
 
@@ -59,10 +60,21 @@ describe("Phase 17C.1 self-audit report schema scaffold", () => {
   it("keeps all sections empty, metadata-only, and collector-free", () => {
     for (const section of validReport().sections) {
       expect(section).toMatchObject({
+        section_id: `section:${section.section}`,
+        section_kind: section.section,
         metadata_only: true,
+        collector_supported: false,
+        collector_attempted: false,
+        source_read_supported: false,
+        source_read_attempted: false,
         item_count: 0,
+        row_cap: 250,
+        max_items: 250,
         summary_available: false,
+        summary_generated: false,
         raw_payload_allowed: false,
+        redaction_required: true,
+        redaction_status: "not_started",
         pii_allowed: false,
         secrets_allowed: false,
         report_body_allowed: false,
@@ -73,6 +85,78 @@ describe("Phase 17C.1 self-audit report schema scaffold", () => {
         event_store_read_performed: false,
       });
     }
+  });
+
+  it("validates every detailed section metadata contract", () => {
+    for (const section of validReport().sections) {
+      expect(validateSelfAuditSectionMetadata(section)).toEqual({
+        kind: "phase17.self_audit_section_metadata_validation",
+        pass: true,
+        section_id: section.section_id,
+        section_kind: section.section_kind,
+        violation_count: 0,
+        violations: ["valid_schema"],
+        metadata_only: true,
+        summary_generated: false,
+        collector_attempted: false,
+        source_read_attempted: false,
+        db_read_performed: false,
+        event_store_read_performed: false,
+        event_store_write_performed: false,
+        persisted: false,
+        telemetry_attempted: false,
+        tool_called: false,
+        device_action_executed: false,
+        project_mutated: false,
+        memory_written: false,
+        approval_executed: false,
+        network_called: false,
+        cloud_called: false,
+      });
+    }
+  });
+
+  it("rejects unsafe section metadata fields", () => {
+    const unsafeSection = {
+      ...validReport().sections[0],
+      raw_payload: "raw",
+      report_body_text: "body",
+      api_key: "secret",
+      pii_email: "person@example.test",
+      tool_output: "tool",
+      project_body: "project",
+      voice_transcript: "voice",
+      ocr_text: "ocr",
+      raw_frame: "frame",
+      prompt: "prompt",
+      model_output: "model",
+    };
+
+    expect(validateSelfAuditSectionMetadata(unsafeSection)).toMatchObject({
+      pass: false,
+      section_id: null,
+      section_kind: null,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_payload_forbidden",
+        "secret_forbidden",
+        "pii_forbidden",
+        "report_body_forbidden",
+        "tool_output_forbidden",
+        "project_body_forbidden",
+        "voice_transcript_forbidden",
+        "ocr_text_forbidden",
+        "frame_payload_forbidden",
+        "prompt_forbidden",
+        "model_output_forbidden",
+      ]),
+      summary_generated: false,
+      collector_attempted: false,
+      source_read_attempted: false,
+      db_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+    });
   });
 
   it("rejects missing required sections and invalid schema shape", () => {
