@@ -631,3 +631,26 @@ export type {
   Phase17DisabledGuardMatrix,
   Phase17DisabledGuardReason,
 } from "./phase-17-disabled-guards";
+
+export {
+  DEFAULT_PHASE_17_ROUTINE_REGISTRY,
+  PHASE_17_ROUTINE_CLASSES,
+  PHASE_17_ROUTINE_OUTPUT_KINDS,
+  PHASE_17_ROUTINE_REGISTRY_VALIDATION_REASONS,
+  Phase17RoutineClassSchema,
+  Phase17RoutineEntrySchema,
+  Phase17RoutineOutputKindSchema,
+  Phase17RoutineRegistrySchema,
+  Phase17RoutineRegistryValidationReasonSchema,
+  Phase17RoutineRegistryValidationSchema,
+  validatePhase17RoutineRegistry,
+} from "./routine-registry";
+
+export type {
+  Phase17RoutineClass,
+  Phase17RoutineEntry,
+  Phase17RoutineOutputKind,
+  Phase17RoutineRegistry,
+  Phase17RoutineRegistryValidation,
+  Phase17RoutineRegistryValidationReason,
+} from "./routine-registry";

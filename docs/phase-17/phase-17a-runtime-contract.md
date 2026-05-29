@@ -66,6 +66,22 @@ Each guard evaluation returns `allowed: false`, metadata-only denial fields, and
 - `calibration_diff`
 - `next_action_suggest`
 
+## Routine Registry Alignment
+
+Phase 17A.3 adds an explicit scheduled assistance routine registry aligned with the runtime contract and disabled guard matrix.
+
+Each routine entry is:
+
+- disabled by default
+- opt-in only
+- metadata-only
+- foreground-only
+- kill-switch guarded
+- non-executing
+- side-effect free
+
+The registry rejects routines that request tool authority, device actions, memory writes, project mutations, approval execution, cloud/network authority, background/headless execution, or any side-effect flag.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -76,4 +92,4 @@ Each guard evaluation returns `allowed: false`, metadata-only denial fields, and
 
 ## Next Recommended Slice
 
-Phase 17A.2 - Scheduled Assistance Runtime Disabled Guard Matrix.
+Phase 17A.4 - Scheduled Assistance Tick Source Contract.
