@@ -100,6 +100,21 @@ Rejected tick source metadata:
 
 Every tick decision is metadata-only and denied in this slice. Scheduler execution, routine execution, catch-up runs, timers, reports, suggestions, persistence, tools, memory writes, project mutations, device actions, approvals, cloud, and network calls remain disabled. Missed ticks use `skip`.
 
+## Read Scope Contract
+
+Phase 17A.5 defines the metadata-only surfaces future scheduled assistance routines may read:
+
+- approvals metadata
+- tool call metadata
+- model/cost metadata
+- vision replay metadata
+- environment/room event metadata
+- project ledger metadata
+- router decision metadata
+- safety classifier metadata
+
+Each read scope is read-only, metadata-only, row-capped, and rejects raw payloads, PII, secrets, network access, writes, unknown surfaces, and any collector execution. This slice does not read from a database or event store.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -110,4 +125,4 @@ Every tick decision is metadata-only and denied in this slice. Scheduler executi
 
 ## Next Recommended Slice
 
-Phase 17A.5 - Scheduled Assistance Read Scope Contract.
+Phase 17A.6 - Scheduled Assistance Runtime Closeout Guard.

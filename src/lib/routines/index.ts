@@ -676,3 +676,21 @@ export type {
   ScheduledAssistanceTickInputSourceKind,
   ScheduledAssistanceTickSourceKind,
 } from "./scheduled-assistance-tick-source";
+
+export {
+  DEFAULT_SCHEDULED_ASSISTANCE_READ_SCOPES,
+  SCHEDULED_ASSISTANCE_READ_SCOPE_DENIAL_REASONS,
+  SCHEDULED_ASSISTANCE_READ_SCOPE_SURFACES,
+  ScheduledAssistanceReadScopeDecisionSchema,
+  ScheduledAssistanceReadScopeDenialReasonSchema,
+  ScheduledAssistanceReadScopeSchema,
+  ScheduledAssistanceReadScopeSurfaceSchema,
+  evaluateScheduledAssistanceReadScope,
+} from "./read-scope";
+
+export type {
+  ScheduledAssistanceReadScope,
+  ScheduledAssistanceReadScopeDecision,
+  ScheduledAssistanceReadScopeDenialReason,
+  ScheduledAssistanceReadScopeSurface,
+} from "./read-scope";
