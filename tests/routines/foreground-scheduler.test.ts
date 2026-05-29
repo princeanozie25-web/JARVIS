@@ -49,6 +49,18 @@ describe("Phase 17B.1 foreground scheduler tick evaluator scaffold", () => {
             routine_executed: false,
           }),
       ),
+      output_envelopes: DEFAULT_PHASE_17_ROUTINE_REGISTRY.routines.map(
+        (routine) =>
+          expect.objectContaining({
+            routine_id: routine.routine_id,
+            output_kind: "none",
+            output_supported: false,
+            output_generated: false,
+            raw_output_allowed: false,
+            persistence_attempted: false,
+            approval_bridge_attempted: false,
+          }),
+      ),
       eligible_routines: [],
       kill_switch_required: true,
       kill_switch_state: "safe",

@@ -761,3 +761,22 @@ export type {
   RoutineReadScopeBindingRoutine,
   RoutineReadScopeDeniedScope,
 } from "./read-scope-binding";
+
+export {
+  FOREGROUND_SCHEDULER_OUTPUT_KINDS,
+  FOREGROUND_SCHEDULER_REDACTION_STATUSES,
+  ForegroundSchedulerOutputEnvelopeInputSchema,
+  ForegroundSchedulerOutputEnvelopeRoutineSchema,
+  ForegroundSchedulerOutputEnvelopeSchema,
+  ForegroundSchedulerOutputKindSchema,
+  ForegroundSchedulerRedactionStatusSchema,
+  buildForegroundSchedulerOutputEnvelope,
+} from "./scheduler-output-envelope";
+
+export type {
+  ForegroundSchedulerOutputEnvelope,
+  ForegroundSchedulerOutputEnvelopeInput,
+  ForegroundSchedulerOutputEnvelopeRoutine,
+  ForegroundSchedulerOutputKind,
+  ForegroundSchedulerRedactionStatus,
+} from "./scheduler-output-envelope";

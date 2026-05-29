@@ -21,6 +21,10 @@ import {
   type RoutineEligibilityDecision,
   evaluateRoutineEligibility,
 } from "./routine-eligibility";
+import {
+  ForegroundSchedulerOutputEnvelopeSchema,
+  buildForegroundSchedulerOutputEnvelope,
+} from "./scheduler-output-envelope";
 
 export const FOREGROUND_SCHEDULER_KILL_SWITCH_STATES = [
   "safe",
@@ -109,6 +113,7 @@ export const ForegroundSchedulerTickDecisionSchema = z.strictObject({
   routine_execution_allowed: z.literal(false),
   side_effects_allowed: z.literal(false),
   routine_eligibility: z.array(RoutineEligibilityDecisionSchema),
+  output_envelopes: z.array(ForegroundSchedulerOutputEnvelopeSchema),
   eligible_routines: z.array(ForegroundSchedulerEligibleRoutineSchema),
   skipped_routines: z.array(ForegroundSchedulerSkippedRoutineSchema),
   kill_switch_required: z.literal(true),
@@ -194,6 +199,19 @@ export function evaluateForegroundSchedulerTick(
   const skippedRoutines = routineEligibility
     .filter((routine) => !routine.eligible)
     .map(toSkippedRoutine);
+  const outputEnvelopes =
+    parsedRegistry.success && registryValidation.pass
+      ? parsedRegistry.data.routines.map((routine) => {
+          const eligibility = routineEligibility.find(
+            (candidate) => candidate.routine_id === routine.routine_id,
+          );
+          return buildForegroundSchedulerOutputEnvelope({
+            tick_id: parsedTick.tick_id,
+            routine,
+            eligible: eligibility?.eligible ?? false,
+          });
+        })
+      : [];
 
   return ForegroundSchedulerTickDecisionSchema.parse({
     tick_id: parsedTick.tick_id,
@@ -214,6 +232,7 @@ export function evaluateForegroundSchedulerTick(
     routine_execution_allowed: false,
     side_effects_allowed: false,
     routine_eligibility: routineEligibility,
+    output_envelopes: outputEnvelopes,
     eligible_routines: eligibleRoutines,
     skipped_routines: skippedRoutines,
     kill_switch_required: true,

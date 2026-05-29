@@ -81,6 +81,31 @@ Routine bindings are fixed metadata maps against the Phase 17A.5 read scope cont
 
 Routine eligibility includes the read scope binding decision. A routine can only be marked eligible metadata if its read scope binding is complete and safe, and even then execution remains unsupported.
 
+## Output Envelope
+
+Phase 17B.4 adds `buildForegroundSchedulerOutputEnvelope(...)`.
+
+The output envelope records:
+
+- `envelope_id`
+- `tick_id`
+- `routine_id`
+- `output_kind`
+- `output_supported: false`
+- `output_generated: false`
+- `metadata_only: true`
+- `redaction_required: true`
+- `redaction_status`
+- `raw_output_allowed: false`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+- `approval_bridge_supported: false`
+- `approval_bridge_attempted: false`
+
+Eligible routine metadata can be shaped as `report`, `suggestion`, or `baseline_update`, but no output content is generated. Skipped routines receive `output_kind: none`. Redaction is required for future output, but redaction does not run in this scaffold because no raw output exists.
+
+Foreground scheduler decisions include output envelopes for routine metadata. The envelopes are not persistence records, approval requests, report bodies, suggestions, baseline updates, or collector outputs.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -90,6 +115,7 @@ Routine eligibility includes the read scope binding decision. A routine can only
 - No collectors.
 - No report generation.
 - No suggestion generation.
+- No baseline update generation.
 - No persistence or event-store reads/writes.
 - No tool calls.
 - No memory writes.
@@ -104,4 +130,4 @@ This slice keeps scheduled assistance foreground-only and non-executing. It only
 
 ## Next Recommended Slice
 
-Phase 17B.4 - Foreground Scheduler Output Envelope Scaffold.
+Phase 17B.5 - Foreground Scheduler Audit Preview Scaffold.
