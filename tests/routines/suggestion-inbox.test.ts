@@ -4,9 +4,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE,
+  DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY,
   PHASE_17_SUGGESTION_INBOX_STATUSES,
   Phase17SuggestionInboxItemSchema,
   createEmptySuggestionInboxItem,
+  validateInboxApprovalBridge,
+  validateSuggestionInboxSafety,
   validateSuggestionInboxItem,
 } from "../../src/lib/routines/suggestion-inbox";
 
@@ -166,6 +170,187 @@ describe("Phase 17D.2 suggestion inbox contract scaffold", () => {
       approval_executed: false,
       network_called: false,
       cloud_called: false,
+    });
+  });
+
+  it("validates the inbox redaction and safety boundary as required but unsupported", () => {
+    expect(
+      validateSuggestionInboxSafety(
+        DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY,
+      ),
+    ).toEqual({
+      kind: "phase17.suggestion_inbox_safety_validation",
+      pass: true,
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      redaction_required: true,
+      redaction_supported: false,
+      redaction_attempted: false,
+      safety_review_required: true,
+      safety_review_supported: false,
+      safety_review_attempted: false,
+      inbox_item_created: false,
+      body_attached: false,
+      suggestion_generated: false,
+      report_generated: false,
+      baseline_update_generated: false,
+      persisted: false,
+      persistence_attempted: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+      approval_bridge_attempted: false,
+      action_execution_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+    expect(DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY).toMatchObject({
+      raw_body_allowed: false,
+      raw_report_allowed: false,
+      raw_source_snapshot_allowed: false,
+      pii_allowed: false,
+      secrets_allowed: false,
+      project_body_allowed: false,
+      tool_output_allowed: false,
+      prompt_allowed: false,
+      model_output_allowed: false,
+      action_payload_allowed: false,
+    });
+  });
+
+  it("rejects unsafe inbox safety payloads", () => {
+    expect(
+      validateSuggestionInboxSafety({
+        ...DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY,
+        raw_body: "body",
+        raw_report: "report",
+        raw_source_snapshot: "snapshot",
+        pii_email: "person@example.test",
+        api_key: "secret",
+        project_body: "project",
+        tool_output: "tool",
+        prompt: "prompt",
+        model_output: "model",
+        action_payload: "action",
+        redaction_supported: true,
+        redaction_attempted: true,
+        safety_review_supported: true,
+        safety_review_attempted: true,
+        body_attached: true,
+        persistence_attempted: true,
+        approval_bridge_attempted: true,
+        action_execution_attempted: true,
+      }),
+    ).toMatchObject({
+      pass: false,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_body_forbidden",
+        "raw_report_forbidden",
+        "raw_source_snapshot_forbidden",
+        "pii_forbidden",
+        "secret_forbidden",
+        "project_body_forbidden",
+        "tool_output_forbidden",
+        "prompt_forbidden",
+        "model_output_forbidden",
+        "action_payload_forbidden",
+        "persistence_forbidden",
+        "approval_or_action_forbidden",
+      ]),
+      redaction_attempted: false,
+      safety_review_attempted: false,
+      body_attached: false,
+      persisted: false,
+      approval_bridge_attempted: false,
+      action_execution_attempted: false,
+    });
+  });
+
+  it("validates inbox approval bridge metadata as unavailable and non-executing", () => {
+    expect(
+      validateInboxApprovalBridge(
+        DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE,
+      ),
+    ).toEqual({
+      kind: "phase17.suggestion_inbox_approval_bridge_validation",
+      pass: true,
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      approval_bridge_supported: false,
+      approval_bridge_attempted: false,
+      approval_reference_allowed: false,
+      approval_reference_present: false,
+      action_execution_supported: false,
+      action_execution_attempted: false,
+      approval_required_if_executed: true,
+      approval_state: "unavailable",
+      inbox_item_created: false,
+      body_attached: false,
+      suggestion_generated: false,
+      report_generated: false,
+      baseline_update_generated: false,
+      persisted: false,
+      persistence_attempted: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_created: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("rejects inbox approval references and execution attempts", () => {
+    expect(
+      validateInboxApprovalBridge({
+        ...DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE,
+        approval_reference_allowed: true,
+        approval_reference_present: true,
+        approval_id: "approval:123",
+        approval_bridge_supported: true,
+        approval_bridge_attempted: true,
+        approval_state: "approved",
+        action_execution_supported: true,
+        action_execution_attempted: true,
+        approval_created: true,
+        approval_executed: true,
+        persistence_attempted: true,
+        db_write_performed: true,
+        event_store_write_performed: true,
+      }),
+    ).toMatchObject({
+      pass: false,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "approval_reference_forbidden",
+        "approval_or_action_forbidden",
+        "persistence_forbidden",
+      ]),
+      approval_bridge_attempted: false,
+      approval_reference_allowed: false,
+      approval_reference_present: false,
+      action_execution_attempted: false,
+      approval_state: "unavailable",
+      approval_created: false,
+      approval_executed: false,
+      persisted: false,
     });
   });
 

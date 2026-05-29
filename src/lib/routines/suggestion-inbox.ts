@@ -31,10 +31,18 @@ export const PHASE_17_SUGGESTION_INBOX_VALIDATION_REASONS = [
   "invalid_schema",
   "raw_body_forbidden",
   "raw_content_forbidden",
+  "raw_report_forbidden",
+  "raw_source_snapshot_forbidden",
   "secret_forbidden",
   "pii_forbidden",
+  "project_body_forbidden",
+  "tool_output_forbidden",
+  "prompt_forbidden",
+  "model_output_forbidden",
+  "action_payload_forbidden",
   "persistence_forbidden",
   "approval_or_action_forbidden",
+  "approval_reference_forbidden",
 ] as const;
 
 export type SuggestionInboxStatus = (typeof SUGGESTION_INBOX_STATUSES)[number];
@@ -199,6 +207,10 @@ export const Phase17SuggestionInboxItemSchema = z.strictObject({
   persistence_attempted: z.literal(false),
   approval_bridge_supported: z.literal(false),
   approval_bridge_attempted: z.literal(false),
+  approval_reference_allowed: z.literal(false),
+  approval_reference_present: z.literal(false),
+  approval_required_if_executed: z.literal(true),
+  approval_state: z.literal("unavailable"),
   action_execution_supported: z.literal(false),
   action_execution_attempted: z.literal(false),
   suggestion_generated: z.literal(false),
@@ -255,6 +267,159 @@ export const Phase17SuggestionInboxValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const Phase17SuggestionInboxSafetyBoundarySchema = z.strictObject({
+  redaction_required: z.literal(true),
+  redaction_supported: z.literal(false),
+  redaction_attempted: z.literal(false),
+  safety_review_required: z.literal(true),
+  safety_review_supported: z.literal(false),
+  safety_review_attempted: z.literal(false),
+  raw_body_allowed: z.literal(false),
+  raw_report_allowed: z.literal(false),
+  raw_source_snapshot_allowed: z.literal(false),
+  pii_allowed: z.literal(false),
+  secrets_allowed: z.literal(false),
+  project_body_allowed: z.literal(false),
+  tool_output_allowed: z.literal(false),
+  prompt_allowed: z.literal(false),
+  model_output_allowed: z.literal(false),
+  action_payload_allowed: z.literal(false),
+  metadata_only: z.literal(true),
+  inbox_item_created: z.literal(false),
+  body_attached: z.literal(false),
+  suggestion_generated: z.literal(false),
+  report_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  approval_bridge_supported: z.literal(false),
+  approval_bridge_attempted: z.literal(false),
+  approval_reference_allowed: z.literal(false),
+  approval_reference_present: z.literal(false),
+  approval_required_if_executed: z.literal(true),
+  approval_state: z.literal("unavailable"),
+  action_execution_supported: z.literal(false),
+  action_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SuggestionInboxSafetyValidationSchema = z.strictObject({
+  kind: z.literal("phase17.suggestion_inbox_safety_validation"),
+  pass: z.boolean(),
+  violation_count: z.number().int().nonnegative(),
+  violations: z.array(Phase17SuggestionInboxValidationReasonSchema),
+  metadata_only: z.literal(true),
+  redaction_required: z.literal(true),
+  redaction_supported: z.literal(false),
+  redaction_attempted: z.literal(false),
+  safety_review_required: z.literal(true),
+  safety_review_supported: z.literal(false),
+  safety_review_attempted: z.literal(false),
+  inbox_item_created: z.literal(false),
+  body_attached: z.literal(false),
+  suggestion_generated: z.literal(false),
+  report_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  persisted: z.literal(false),
+  persistence_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  approval_bridge_attempted: z.literal(false),
+  action_execution_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SuggestionInboxApprovalBridgeSchema = z.strictObject({
+  approval_bridge_supported: z.literal(false),
+  approval_bridge_attempted: z.literal(false),
+  approval_reference_allowed: z.literal(false),
+  approval_reference_present: z.literal(false),
+  action_execution_supported: z.literal(false),
+  action_execution_attempted: z.literal(false),
+  approval_required_if_executed: z.literal(true),
+  approval_state: z.literal("unavailable"),
+  metadata_only: z.literal(true),
+  inbox_item_created: z.literal(false),
+  body_attached: z.literal(false),
+  suggestion_generated: z.literal(false),
+  report_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_created: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SuggestionInboxApprovalBridgeValidationSchema =
+  z.strictObject({
+    kind: z.literal("phase17.suggestion_inbox_approval_bridge_validation"),
+    pass: z.boolean(),
+    violation_count: z.number().int().nonnegative(),
+    violations: z.array(Phase17SuggestionInboxValidationReasonSchema),
+    metadata_only: z.literal(true),
+    approval_bridge_supported: z.literal(false),
+    approval_bridge_attempted: z.literal(false),
+    approval_reference_allowed: z.literal(false),
+    approval_reference_present: z.literal(false),
+    action_execution_supported: z.literal(false),
+    action_execution_attempted: z.literal(false),
+    approval_required_if_executed: z.literal(true),
+    approval_state: z.literal("unavailable"),
+    inbox_item_created: z.literal(false),
+    body_attached: z.literal(false),
+    suggestion_generated: z.literal(false),
+    report_generated: z.literal(false),
+    baseline_update_generated: z.literal(false),
+    persisted: z.literal(false),
+    persistence_attempted: z.literal(false),
+    db_read_performed: z.literal(false),
+    db_write_performed: z.literal(false),
+    event_store_read_performed: z.literal(false),
+    event_store_write_performed: z.literal(false),
+    telemetry_attempted: z.literal(false),
+    tool_called: z.literal(false),
+    device_action_executed: z.literal(false),
+    project_mutated: z.literal(false),
+    memory_written: z.literal(false),
+    approval_created: z.literal(false),
+    approval_executed: z.literal(false),
+    network_called: z.literal(false),
+    cloud_called: z.literal(false),
+  });
+
 export type SuggestionInboxItem = z.infer<typeof SuggestionInboxItemSchema>;
 export type SuggestionInboxTransition = z.infer<
   typeof SuggestionInboxTransitionSchema
@@ -271,6 +436,101 @@ export type Phase17SuggestionInboxItem = z.infer<
 export type Phase17SuggestionInboxValidation = z.infer<
   typeof Phase17SuggestionInboxValidationSchema
 >;
+export type Phase17SuggestionInboxSafetyBoundary = z.infer<
+  typeof Phase17SuggestionInboxSafetyBoundarySchema
+>;
+export type Phase17SuggestionInboxSafetyValidation = z.infer<
+  typeof Phase17SuggestionInboxSafetyValidationSchema
+>;
+export type Phase17SuggestionInboxApprovalBridge = z.infer<
+  typeof Phase17SuggestionInboxApprovalBridgeSchema
+>;
+export type Phase17SuggestionInboxApprovalBridgeValidation = z.infer<
+  typeof Phase17SuggestionInboxApprovalBridgeValidationSchema
+>;
+
+export const DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY =
+  Phase17SuggestionInboxSafetyBoundarySchema.parse({
+    redaction_required: true,
+    redaction_supported: false,
+    redaction_attempted: false,
+    safety_review_required: true,
+    safety_review_supported: false,
+    safety_review_attempted: false,
+    raw_body_allowed: false,
+    raw_report_allowed: false,
+    raw_source_snapshot_allowed: false,
+    pii_allowed: false,
+    secrets_allowed: false,
+    project_body_allowed: false,
+    tool_output_allowed: false,
+    prompt_allowed: false,
+    model_output_allowed: false,
+    action_payload_allowed: false,
+    metadata_only: true,
+    inbox_item_created: false,
+    body_attached: false,
+    suggestion_generated: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    approval_bridge_supported: false,
+    approval_bridge_attempted: false,
+    approval_reference_allowed: false,
+    approval_reference_present: false,
+    approval_required_if_executed: true,
+    approval_state: "unavailable",
+    action_execution_supported: false,
+    action_execution_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+
+export const DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE =
+  Phase17SuggestionInboxApprovalBridgeSchema.parse({
+    approval_bridge_supported: false,
+    approval_bridge_attempted: false,
+    approval_reference_allowed: false,
+    approval_reference_present: false,
+    action_execution_supported: false,
+    action_execution_attempted: false,
+    approval_required_if_executed: true,
+    approval_state: "unavailable",
+    metadata_only: true,
+    inbox_item_created: false,
+    body_attached: false,
+    suggestion_generated: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_created: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
 
 const ALLOWED_TRANSITIONS = new Set<string>([
   "new->seen",
@@ -299,6 +559,10 @@ export function createEmptySuggestionInboxItem(input: {
     persistence_attempted: false,
     approval_bridge_supported: false,
     approval_bridge_attempted: false,
+    approval_reference_allowed: false,
+    approval_reference_present: false,
+    approval_required_if_executed: true,
+    approval_state: "unavailable",
     action_execution_supported: false,
     action_execution_attempted: false,
     suggestion_generated: false,
@@ -369,6 +633,103 @@ export function validateSuggestionInboxItem(
   });
 }
 
+export function validateSuggestionInboxSafety(
+  input: unknown,
+): Phase17SuggestionInboxSafetyValidation {
+  const parsed = Phase17SuggestionInboxSafetyBoundarySchema.safeParse(input);
+  const violations = new Set<Phase17SuggestionInboxValidationReason>(
+    forbiddenPhase17InboxViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return Phase17SuggestionInboxSafetyValidationSchema.parse({
+    kind: "phase17.suggestion_inbox_safety_validation",
+    pass: violations.size === 0,
+    violation_count: violations.size,
+    violations: violations.size === 0 ? ["valid_schema"] : [...violations],
+    metadata_only: true,
+    redaction_required: true,
+    redaction_supported: false,
+    redaction_attempted: false,
+    safety_review_required: true,
+    safety_review_supported: false,
+    safety_review_attempted: false,
+    inbox_item_created: false,
+    body_attached: false,
+    suggestion_generated: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    persisted: false,
+    persistence_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_attempted: false,
+    approval_bridge_attempted: false,
+    action_execution_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+export function validateInboxApprovalBridge(
+  input: unknown,
+): Phase17SuggestionInboxApprovalBridgeValidation {
+  const parsed = Phase17SuggestionInboxApprovalBridgeSchema.safeParse(input);
+  const violations = new Set<Phase17SuggestionInboxValidationReason>(
+    forbiddenPhase17InboxViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return Phase17SuggestionInboxApprovalBridgeValidationSchema.parse({
+    kind: "phase17.suggestion_inbox_approval_bridge_validation",
+    pass: violations.size === 0,
+    violation_count: violations.size,
+    violations: violations.size === 0 ? ["valid_schema"] : [...violations],
+    metadata_only: true,
+    approval_bridge_supported: false,
+    approval_bridge_attempted: false,
+    approval_reference_allowed: false,
+    approval_reference_present: false,
+    action_execution_supported: false,
+    action_execution_attempted: false,
+    approval_required_if_executed: true,
+    approval_state: "unavailable",
+    inbox_item_created: false,
+    body_attached: false,
+    suggestion_generated: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    persisted: false,
+    persistence_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_created: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
 export function createSuggestionInboxItem(input: {
   suggestion: NextActionSuggestion;
   created_at_ms: number;
@@ -427,6 +788,16 @@ function forbiddenPhase17InboxViolations(
         violations.add("raw_content_forbidden");
       }
     }
+    if (/raw_report|report_body|report_text/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("raw_report_forbidden");
+      }
+    }
+    if (/raw_source_snapshot|source_snapshot/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("raw_source_snapshot_forbidden");
+      }
+    }
     if (/secret|token|password|api_key|apikey/.test(normalized)) {
       if (value !== false && value !== undefined) {
         violations.add("secret_forbidden");
@@ -437,12 +808,46 @@ function forbiddenPhase17InboxViolations(
         violations.add("pii_forbidden");
       }
     }
+    if (/project_body|project_content/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("project_body_forbidden");
+      }
+    }
+    if (/tool_output/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("tool_output_forbidden");
+      }
+    }
+    if (/prompt/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("prompt_forbidden");
+      }
+    }
+    if (/model_output|model_response|llm_output/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("model_output_forbidden");
+      }
+    }
+    if (/action_payload/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("action_payload_forbidden");
+      }
+    }
     if (/persist|db_write|event_store_write/.test(normalized)) {
       if (value !== false && value !== undefined) {
         violations.add("persistence_forbidden");
       }
     }
-    if (/approval|action_execution|action_executed/.test(normalized)) {
+    if (/approval_reference|approval_id/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("approval_reference_forbidden");
+      }
+    }
+    if (
+      /approval|action_execution|action_executed/.test(normalized) &&
+      normalized !== "approval_required_if_executed" &&
+      normalized !== "approval_state"
+    ) {
       if (value !== false && value !== undefined) {
         violations.add("approval_or_action_forbidden");
       }

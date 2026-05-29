@@ -66,6 +66,54 @@ Supported metadata statuses are:
 
 `createEmptySuggestionInboxItem(...)` creates an inert placeholder. `validateSuggestionInboxItem(...)` validates the contract and rejects raw bodies, raw content, secrets, PII, persistence attempts, approval bridge attempts, and action execution attempts.
 
+## Redaction and Safety Guards
+
+Phase 17D.3 adds redaction and safety boundary validators for routine suggestions and inbox items:
+
+- `validateRoutineSuggestionSafety(...)`
+- `validateSuggestionInboxSafety(...)`
+
+Both boundaries require:
+
+- `redaction_required: true`
+- `redaction_supported: false`
+- `redaction_attempted: false`
+- `safety_review_required: true`
+- `safety_review_supported: false`
+- `safety_review_attempted: false`
+- `raw_body_allowed: false`
+- `raw_report_allowed: false`
+- `raw_source_snapshot_allowed: false`
+- `pii_allowed: false`
+- `secrets_allowed: false`
+- `project_body_allowed: false`
+- `tool_output_allowed: false`
+- `prompt_allowed: false`
+- `model_output_allowed: false`
+- `action_payload_allowed: false`
+
+The guards reject raw body, raw report, raw source snapshot, PII, secrets, project body, tool output, prompt, model output, and action payload fields. Redaction and safety review are required for future content, but this slice does not run either review because no suggestion bodies or action payloads exist.
+
+## Approval Bridge Metadata
+
+Phase 17D.4 adds metadata-only approval bridge validators for routine suggestions and inbox items:
+
+- `validateSuggestionApprovalBridge(...)`
+- `validateInboxApprovalBridge(...)`
+
+Both bridge contracts require:
+
+- `approval_bridge_supported: false`
+- `approval_bridge_attempted: false`
+- `approval_reference_allowed: false`
+- `approval_reference_present: false`
+- `action_execution_supported: false`
+- `action_execution_attempted: false`
+- `approval_required_if_executed: true`
+- `approval_state: unavailable`
+
+Approval references are rejected. The bridge does not create approvals, persist anything, execute actions, call tools, write memory, mutate projects, control devices, or call cloud/network services.
+
 ## Explicitly Not Implemented
 
 - No suggestion generation.
@@ -86,4 +134,4 @@ Supported metadata statuses are:
 
 ## Next Recommended Slice
 
-Phase 17D.3 - Suggestion Redaction and Safety Guard.
+Phase 17D.5 - Suggestion Audit Preview Scaffold.

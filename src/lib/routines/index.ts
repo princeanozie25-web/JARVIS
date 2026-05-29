@@ -495,11 +495,17 @@ export type {
 } from "./calibration-diff";
 
 export {
+  DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE,
+  DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY,
   PHASE_17_SUGGESTION_INBOX_STATUSES,
   PHASE_17_SUGGESTION_INBOX_VALIDATION_REASONS,
   SUGGESTION_INBOX_STATUSES,
   SUGGESTION_INBOX_TELEMETRY_EVENT_TYPES,
+  Phase17SuggestionInboxApprovalBridgeSchema,
+  Phase17SuggestionInboxApprovalBridgeValidationSchema,
   Phase17SuggestionInboxItemSchema,
+  Phase17SuggestionInboxSafetyBoundarySchema,
+  Phase17SuggestionInboxSafetyValidationSchema,
   Phase17SuggestionInboxStatusSchema,
   Phase17SuggestionInboxValidationReasonSchema,
   Phase17SuggestionInboxValidationSchema,
@@ -513,11 +519,17 @@ export {
   createSuggestionInboxItem,
   createSuggestionInboxTelemetryEvent,
   transitionSuggestionInboxItem,
+  validateInboxApprovalBridge,
+  validateSuggestionInboxSafety,
   validateSuggestionInboxItem,
 } from "./suggestion-inbox";
 
 export type {
+  Phase17SuggestionInboxApprovalBridge,
+  Phase17SuggestionInboxApprovalBridgeValidation,
   Phase17SuggestionInboxItem,
+  Phase17SuggestionInboxSafetyBoundary,
+  Phase17SuggestionInboxSafetyValidation,
   Phase17SuggestionInboxStatus,
   Phase17SuggestionInboxValidation,
   Phase17SuggestionInboxValidationReason,
@@ -856,22 +868,34 @@ export type {
 } from "./scheduler-audit-preview";
 
 export {
+  DEFAULT_ROUTINE_SUGGESTION_APPROVAL_BRIDGE,
+  DEFAULT_ROUTINE_SUGGESTION_SAFETY_BOUNDARY,
   ROUTINE_SUGGESTION_KINDS,
   ROUTINE_SUGGESTION_REDACTION_STATUSES,
   ROUTINE_SUGGESTION_VALIDATION_REASONS,
+  RoutineSuggestionApprovalBridgeSchema,
+  RoutineSuggestionApprovalBridgeValidationSchema,
   RoutineSuggestionKindSchema,
   RoutineSuggestionRedactionStatusSchema,
+  RoutineSuggestionSafetyBoundarySchema,
+  RoutineSuggestionSafetyValidationSchema,
   RoutineSuggestionSchema,
   RoutineSuggestionValidationReasonSchema,
   RoutineSuggestionValidationSchema,
   createEmptyRoutineSuggestion,
+  validateSuggestionApprovalBridge,
+  validateRoutineSuggestionSafety,
   validateRoutineSuggestion,
 } from "./routine-suggestion";
 
 export type {
   RoutineSuggestion,
+  RoutineSuggestionApprovalBridge,
+  RoutineSuggestionApprovalBridgeValidation,
   RoutineSuggestionKind,
   RoutineSuggestionRedactionStatus,
+  RoutineSuggestionSafetyBoundary,
+  RoutineSuggestionSafetyValidation,
   RoutineSuggestionValidation,
   RoutineSuggestionValidationReason,
 } from "./routine-suggestion";
