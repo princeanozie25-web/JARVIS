@@ -780,3 +780,17 @@ export type {
   ForegroundSchedulerOutputKind,
   ForegroundSchedulerRedactionStatus,
 } from "./scheduler-output-envelope";
+
+export {
+  FOREGROUND_SCHEDULER_AUDIT_REDACTION_STATUSES,
+  ForegroundSchedulerAuditPreviewInputSchema,
+  ForegroundSchedulerAuditPreviewSchema,
+  ForegroundSchedulerAuditRedactionStatusSchema,
+  buildForegroundSchedulerAuditPreview,
+} from "./scheduler-audit-preview";
+
+export type {
+  ForegroundSchedulerAuditPreview,
+  ForegroundSchedulerAuditPreviewInput,
+  ForegroundSchedulerAuditRedactionStatus,
+} from "./scheduler-audit-preview";

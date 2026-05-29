@@ -106,6 +106,31 @@ Eligible routine metadata can be shaped as `report`, `suggestion`, or `baseline_
 
 Foreground scheduler decisions include output envelopes for routine metadata. The envelopes are not persistence records, approval requests, report bodies, suggestions, baseline updates, or collector outputs.
 
+## Audit Preview
+
+Phase 17B.5 adds `buildForegroundSchedulerAuditPreview(decisionMetadata)`.
+
+The audit preview records:
+
+- `audit_preview_id`
+- `tick_id`
+- `source_kind`
+- `eligible_count`
+- `skipped_count`
+- `output_envelope_count`
+- `metadata_only: true`
+- `replay_safe: true`
+- `redaction_status`
+- `raw_payload_allowed: false`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+- `event_store_write_supported: false`
+- `event_store_write_attempted: false`
+- `telemetry_supported: false`
+- `telemetry_attempted: false`
+
+Foreground scheduler decisions include an audit preview summary. The preview is not persisted, is not written to an event store, is not emitted as telemetry, and contains no report, suggestion, baseline, collector, raw payload, or executable content.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -117,6 +142,7 @@ Foreground scheduler decisions include output envelopes for routine metadata. Th
 - No suggestion generation.
 - No baseline update generation.
 - No persistence or event-store reads/writes.
+- No telemetry writes.
 - No tool calls.
 - No memory writes.
 - No project mutations.
@@ -130,4 +156,4 @@ This slice keeps scheduled assistance foreground-only and non-executing. It only
 
 ## Next Recommended Slice
 
-Phase 17B.5 - Foreground Scheduler Audit Preview Scaffold.
+Phase 17B.6 - Foreground Scheduler Closeout Guard.

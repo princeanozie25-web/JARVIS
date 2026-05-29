@@ -25,6 +25,10 @@ import {
   ForegroundSchedulerOutputEnvelopeSchema,
   buildForegroundSchedulerOutputEnvelope,
 } from "./scheduler-output-envelope";
+import {
+  ForegroundSchedulerAuditPreviewSchema,
+  buildForegroundSchedulerAuditPreview,
+} from "./scheduler-audit-preview";
 
 export const FOREGROUND_SCHEDULER_KILL_SWITCH_STATES = [
   "safe",
@@ -114,6 +118,7 @@ export const ForegroundSchedulerTickDecisionSchema = z.strictObject({
   side_effects_allowed: z.literal(false),
   routine_eligibility: z.array(RoutineEligibilityDecisionSchema),
   output_envelopes: z.array(ForegroundSchedulerOutputEnvelopeSchema),
+  audit_preview: ForegroundSchedulerAuditPreviewSchema,
   eligible_routines: z.array(ForegroundSchedulerEligibleRoutineSchema),
   skipped_routines: z.array(ForegroundSchedulerSkippedRoutineSchema),
   kill_switch_required: z.literal(true),
@@ -212,6 +217,13 @@ export function evaluateForegroundSchedulerTick(
           });
         })
       : [];
+  const auditPreview = buildForegroundSchedulerAuditPreview({
+    tick_id: parsedTick.tick_id,
+    source_kind: parsedTick.tick_source_kind,
+    eligible_count: eligibleRoutines.length,
+    skipped_count: skippedRoutines.length,
+    output_envelope_count: outputEnvelopes.length,
+  });
 
   return ForegroundSchedulerTickDecisionSchema.parse({
     tick_id: parsedTick.tick_id,
@@ -233,6 +245,7 @@ export function evaluateForegroundSchedulerTick(
     side_effects_allowed: false,
     routine_eligibility: routineEligibility,
     output_envelopes: outputEnvelopes,
+    audit_preview: auditPreview,
     eligible_routines: eligibleRoutines,
     skipped_routines: skippedRoutines,
     kill_switch_required: true,
