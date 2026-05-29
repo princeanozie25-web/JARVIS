@@ -183,3 +183,32 @@ export type {
   ApprovalValidationGuardResult,
   ApprovalValidationGuardSeverity,
 } from "./validation-guards";
+
+export {
+  APPROVAL_AUDIT_PREVIEW_CONTRACT_VERSION,
+  APPROVAL_AUDIT_PREVIEW_REDACTION_STATUSES,
+  APPROVAL_AUDIT_PREVIEW_SECTIONS,
+  ApprovalAuditPreviewAuthorityBoundarySchema,
+  ApprovalAuditPreviewContractSchema,
+  ApprovalAuditPreviewDisabledExecutionStatusSchema,
+  ApprovalAuditPreviewForbiddenCapabilitiesSchema,
+  ApprovalAuditPreviewLifecycleStateSchema,
+  ApprovalAuditPreviewProposalSummarySchema,
+  ApprovalAuditPreviewRedactionMetadataSchema,
+  ApprovalAuditPreviewRedactionStatusSchema,
+  ApprovalAuditPreviewReplayMetadataSchema,
+  ApprovalAuditPreviewSectionDeclarationSchema,
+  ApprovalAuditPreviewSectionSchema,
+  ApprovalAuditPreviewValidationSummarySchema,
+  buildApprovalAuditPreviewContract,
+} from "./audit-preview";
+
+export type {
+  ApprovalAuditPreviewContract,
+  ApprovalAuditPreviewDisabledExecutionStatus,
+  ApprovalAuditPreviewProposalSummary,
+  ApprovalAuditPreviewRedactionStatus,
+  ApprovalAuditPreviewSection,
+  ApprovalAuditPreviewSectionDeclaration,
+  ApprovalAuditPreviewValidationSummary,
+} from "./audit-preview";
