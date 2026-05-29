@@ -324,3 +324,45 @@ export type {
   ApprovalReviewSessionSnapshot,
   ApprovalReviewSessionStatus,
 } from "./review-session";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18B_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18B_SLICES,
+  ApprovalRuntimePhase18BCloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18B_CLOSEOUT_GUARD,
+} from "./phase-18b-closeout";
+
+export type { ApprovalRuntimePhase18BCloseoutGuard } from "./phase-18b-closeout";
+
+export {
+  APPROVAL_EXECUTION_AUTHORITY_TOKEN_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_AUTHORITY_TOKEN_FORBIDDEN_STATUSES,
+  APPROVAL_EXECUTION_AUTHORITY_TOKEN_STATUSES,
+  APPROVAL_EXECUTION_AUTHORITY_TOKEN_VALIDATION_REASONS,
+  ApprovalExecutionAuthorityTokenContractSchema,
+  ApprovalExecutionAuthorityTokenDisabledUseFlagsSchema,
+  ApprovalExecutionAuthorityTokenExpiryMetadataSchema,
+  ApprovalExecutionAuthorityTokenForbiddenStatusSchema,
+  ApprovalExecutionAuthorityTokenMetadataSchema,
+  ApprovalExecutionAuthorityTokenProvenanceMetadataSchema,
+  ApprovalExecutionAuthorityTokenScopeMetadataSchema,
+  ApprovalExecutionAuthorityTokenShapeValidationSchema,
+  ApprovalExecutionAuthorityTokenStatusSchema,
+  ApprovalExecutionAuthorityTokenValidationReasonSchema,
+  DEFAULT_APPROVAL_EXECUTION_AUTHORITY_TOKEN_CONTRACT,
+  buildApprovalAuthorityTokenMetadata,
+  validateApprovalAuthorityTokenMetadataShape,
+} from "./execution-authority-token";
+
+export type {
+  ApprovalExecutionAuthorityTokenContract,
+  ApprovalExecutionAuthorityTokenDisabledUseFlags,
+  ApprovalExecutionAuthorityTokenExpiryMetadata,
+  ApprovalExecutionAuthorityTokenForbiddenStatus,
+  ApprovalExecutionAuthorityTokenMetadata,
+  ApprovalExecutionAuthorityTokenProvenanceMetadata,
+  ApprovalExecutionAuthorityTokenScopeMetadata,
+  ApprovalExecutionAuthorityTokenShapeValidation,
+  ApprovalExecutionAuthorityTokenStatus,
+  ApprovalExecutionAuthorityTokenValidationReason,
+} from "./execution-authority-token";
