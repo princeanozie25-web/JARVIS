@@ -212,3 +212,12 @@ export type {
   ApprovalAuditPreviewSectionDeclaration,
   ApprovalAuditPreviewValidationSummary,
 } from "./audit-preview";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18A_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18A_SLICES,
+  ApprovalRuntimePhase18ACloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18A_CLOSEOUT_GUARD,
+} from "./phase-18a-closeout";
+
+export type { ApprovalRuntimePhase18ACloseoutGuard } from "./phase-18a-closeout";
