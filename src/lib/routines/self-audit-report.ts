@@ -346,6 +346,33 @@ export const PHASE_17_SELF_AUDIT_REPORT_SECTIONS = [
   "routines_scheduler",
 ] as const;
 
+export const PHASE_17_SELF_AUDIT_SOURCE_KINDS = [
+  "approvals",
+  "tool_calls",
+  "model_cost",
+  "vision_replay",
+  "room_environment",
+  "project_ledger",
+  "router_decisions",
+  "safety_classifier",
+  "scheduler_routines",
+] as const;
+
+const PHASE_17_SELF_AUDIT_SOURCE_SECTION_MAP = {
+  approvals: "approvals",
+  tool_calls: "tools",
+  model_cost: "cost_model_usage",
+  vision_replay: "vision",
+  room_environment: "environment_room",
+  project_ledger: "projects",
+  router_decisions: "router",
+  safety_classifier: "safety",
+  scheduler_routines: "routines_scheduler",
+} as const satisfies Record<
+  (typeof PHASE_17_SELF_AUDIT_SOURCE_KINDS)[number],
+  (typeof PHASE_17_SELF_AUDIT_REPORT_SECTIONS)[number]
+>;
+
 export const PHASE_17_SELF_AUDIT_REDACTION_STATUSES = [
   "not_started",
   "unavailable",
@@ -375,6 +402,8 @@ export const PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS = [
 
 export type Phase17SelfAuditReportSection =
   (typeof PHASE_17_SELF_AUDIT_REPORT_SECTIONS)[number];
+export type Phase17SelfAuditSourceKind =
+  (typeof PHASE_17_SELF_AUDIT_SOURCE_KINDS)[number];
 export type Phase17SelfAuditRedactionStatus =
   (typeof PHASE_17_SELF_AUDIT_REDACTION_STATUSES)[number];
 export type Phase17SelfAuditReportValidationReason =
@@ -382,6 +411,9 @@ export type Phase17SelfAuditReportValidationReason =
 
 export const Phase17SelfAuditReportSectionNameSchema = z.enum(
   PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
+);
+export const Phase17SelfAuditSourceKindSchema = z.enum(
+  PHASE_17_SELF_AUDIT_SOURCE_KINDS,
 );
 export const Phase17SelfAuditRedactionStatusSchema = z.enum(
   PHASE_17_SELF_AUDIT_REDACTION_STATUSES,
@@ -610,6 +642,87 @@ export const Phase17SelfAuditBoundaryValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const Phase17SelfAuditSourceSnapshotSchema = z
+  .strictObject({
+    snapshot_id: z
+      .string()
+      .trim()
+      .min(1)
+      .max(140)
+      .regex(/^snapshot:[a-z0-9._:-]+$/),
+    source_kind: Phase17SelfAuditSourceKindSchema,
+    section_kind: Phase17SelfAuditReportSectionNameSchema,
+    metadata_only: z.literal(true),
+    source_read_supported: z.literal(false),
+    source_read_attempted: z.literal(false),
+    collector_supported: z.literal(false),
+    collector_attempted: z.literal(false),
+    row_count: z.literal(0),
+    row_cap: z.number().int().positive().max(1_000),
+    truncated: z.literal(false),
+    raw_payload_allowed: z.literal(false),
+    redaction_required: z.literal(true),
+    redaction_status: Phase17SelfAuditRedactionStatusSchema,
+    persistence_supported: z.literal(false),
+    persistence_attempted: z.literal(false),
+    report_generated: z.literal(false),
+    suggestion_generated: z.literal(false),
+    baseline_update_generated: z.literal(false),
+    db_read_performed: z.literal(false),
+    db_write_performed: z.literal(false),
+    event_store_read_performed: z.literal(false),
+    event_store_write_performed: z.literal(false),
+    telemetry_supported: z.literal(false),
+    telemetry_attempted: z.literal(false),
+    tool_called: z.literal(false),
+    device_action_executed: z.literal(false),
+    project_mutated: z.literal(false),
+    memory_written: z.literal(false),
+    approval_executed: z.literal(false),
+    network_called: z.literal(false),
+    cloud_called: z.literal(false),
+  })
+  .refine(
+    (snapshot) =>
+      PHASE_17_SELF_AUDIT_SOURCE_SECTION_MAP[snapshot.source_kind] ===
+      snapshot.section_kind,
+    {
+      message: "source kind must map to its self-audit section kind",
+      path: ["section_kind"],
+    },
+  );
+
+export const Phase17SelfAuditSourceSnapshotValidationSchema = z.strictObject({
+  kind: z.literal("phase17.self_audit_source_snapshot_validation"),
+  pass: z.boolean(),
+  snapshot_id: z.string().trim().min(1).max(140).nullable(),
+  source_kind: Phase17SelfAuditSourceKindSchema.nullable(),
+  section_kind: Phase17SelfAuditReportSectionNameSchema.nullable(),
+  violation_count: z.number().int().nonnegative(),
+  violations: z.array(Phase17SelfAuditReportValidationReasonSchema),
+  metadata_only: z.literal(true),
+  source_read_attempted: z.literal(false),
+  collector_attempted: z.literal(false),
+  row_count: z.literal(0),
+  truncated: z.literal(false),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  persisted: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
 export type Phase17SelfAuditReportWindow = z.infer<
   typeof Phase17SelfAuditReportWindowSchema
 >;
@@ -633,6 +746,12 @@ export type Phase17SelfAuditTelemetryBoundary = z.infer<
 >;
 export type Phase17SelfAuditBoundaryValidation = z.infer<
   typeof Phase17SelfAuditBoundaryValidationSchema
+>;
+export type Phase17SelfAuditSourceSnapshot = z.infer<
+  typeof Phase17SelfAuditSourceSnapshotSchema
+>;
+export type Phase17SelfAuditSourceSnapshotValidation = z.infer<
+  typeof Phase17SelfAuditSourceSnapshotValidationSchema
 >;
 
 export const DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY =
@@ -766,6 +885,47 @@ export function createEmptyPhase17SelfAuditReport(input: {
   });
 }
 
+export function createEmptySelfAuditSourceSnapshot(input: {
+  readonly snapshot_id: string;
+  readonly source_kind: Phase17SelfAuditSourceKind;
+  readonly row_cap?: number;
+}): Phase17SelfAuditSourceSnapshot {
+  return Phase17SelfAuditSourceSnapshotSchema.parse({
+    snapshot_id: input.snapshot_id,
+    source_kind: input.source_kind,
+    section_kind: PHASE_17_SELF_AUDIT_SOURCE_SECTION_MAP[input.source_kind],
+    metadata_only: true,
+    source_read_supported: false,
+    source_read_attempted: false,
+    collector_supported: false,
+    collector_attempted: false,
+    row_count: 0,
+    row_cap: input.row_cap ?? 250,
+    truncated: false,
+    raw_payload_allowed: false,
+    redaction_required: true,
+    redaction_status: "not_started",
+    persistence_supported: false,
+    persistence_attempted: false,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
 export function validateSelfAuditReportSchema(
   input: unknown,
 ): Phase17SelfAuditReportValidation {
@@ -865,6 +1025,24 @@ export function validateSelfAuditTelemetryBoundary(
   });
 }
 
+export function validateSelfAuditSourceSnapshot(
+  input: unknown,
+): Phase17SelfAuditSourceSnapshotValidation {
+  const parsed = Phase17SelfAuditSourceSnapshotSchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>(
+    forbiddenPayloadViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return sourceSnapshotValidation({
+    snapshot: parsed.success ? parsed.data : null,
+    violations,
+  });
+}
+
 function sectionValidation(input: {
   readonly section: Phase17SelfAuditReportSectionMetadata | null;
   readonly violations: Set<Phase17SelfAuditReportValidationReason>;
@@ -882,6 +1060,43 @@ function sectionValidation(input: {
     collector_attempted: false,
     source_read_attempted: false,
     db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+function sourceSnapshotValidation(input: {
+  readonly snapshot: Phase17SelfAuditSourceSnapshot | null;
+  readonly violations: Set<Phase17SelfAuditReportValidationReason>;
+}): Phase17SelfAuditSourceSnapshotValidation {
+  return Phase17SelfAuditSourceSnapshotValidationSchema.parse({
+    kind: "phase17.self_audit_source_snapshot_validation",
+    pass: input.violations.size === 0,
+    snapshot_id: input.snapshot?.snapshot_id ?? null,
+    source_kind: input.snapshot?.source_kind ?? null,
+    section_kind: input.snapshot?.section_kind ?? null,
+    violation_count: input.violations.size,
+    violations:
+      input.violations.size === 0 ? ["valid_schema"] : [...input.violations],
+    metadata_only: true,
+    source_read_attempted: false,
+    collector_attempted: false,
+    row_count: 0,
+    truncated: false,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    db_read_performed: false,
+    db_write_performed: false,
     event_store_read_performed: false,
     event_store_write_performed: false,
     persisted: false,

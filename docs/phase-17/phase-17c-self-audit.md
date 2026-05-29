@@ -95,6 +95,42 @@ The telemetry boundary requires:
 
 Telemetry remains forbidden as an output sink in this scaffold. No telemetry write, persistence write, event-store write, raw report payload, or raw section content is allowed.
 
+## Source Snapshots
+
+Phase 17C.4 adds metadata-only source snapshot contracts for future self-audit inputs.
+
+Declared source kinds:
+
+- approvals
+- tool calls
+- model/cost
+- vision replay
+- room/environment
+- project ledger
+- router decisions
+- safety classifier
+- scheduler/routines
+
+Each snapshot includes:
+
+- `snapshot_id`
+- `source_kind`
+- `section_kind`
+- `metadata_only: true`
+- `source_read_supported: false`
+- `source_read_attempted: false`
+- `collector_supported: false`
+- `collector_attempted: false`
+- `row_count: 0`
+- `row_cap`
+- `truncated: false`
+- `raw_payload_allowed: false`
+- `redaction_required: true`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+
+`createEmptySelfAuditSourceSnapshot(...)` creates an empty placeholder for a declared source kind. `validateSelfAuditSourceSnapshot(...)` validates source snapshot metadata and rejects raw payloads, user content, secrets, PII, report bodies, tool outputs, project bodies, voice transcripts, OCR text, frames, prompts, model outputs, persistence attempts, and telemetry attempts. It does not collect or read anything.
+
 ## Validation
 
 `validateSelfAuditReportSchema(report)` validates the schema and rejects:
@@ -136,4 +172,4 @@ Validation is metadata-only and does not read from or write to any store.
 
 ## Next Recommended Slice
 
-Phase 17C.2 - Self-Audit Section Metadata Contracts.
+Phase 17C.5 - Self-Audit Aggregation Envelope Scaffold.

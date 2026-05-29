@@ -5,12 +5,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
+  PHASE_17_SELF_AUDIT_SOURCE_KINDS,
   DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY,
   DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY,
   Phase17SelfAuditReportSchema,
   createEmptyPhase17SelfAuditReport,
+  createEmptySelfAuditSourceSnapshot,
   validateSelfAuditRedactionBoundary,
   validateSelfAuditSectionMetadata,
+  validateSelfAuditSourceSnapshot,
   validateSelfAuditTelemetryBoundary,
   validateSelfAuditReportSchema,
 } from "../../src/lib/routines/self-audit-report";
@@ -409,6 +412,176 @@ describe("Phase 17C.1 self-audit report schema scaffold", () => {
       event_store_write_performed: false,
       tool_called: false,
       approval_executed: false,
+    });
+  });
+
+  it("creates empty metadata-only source snapshots for every required source kind", () => {
+    const expectedSectionBySource = {
+      approvals: "approvals",
+      tool_calls: "tools",
+      model_cost: "cost_model_usage",
+      vision_replay: "vision",
+      room_environment: "environment_room",
+      project_ledger: "projects",
+      router_decisions: "router",
+      safety_classifier: "safety",
+      scheduler_routines: "routines_scheduler",
+    };
+
+    expect(PHASE_17_SELF_AUDIT_SOURCE_KINDS).toEqual([
+      "approvals",
+      "tool_calls",
+      "model_cost",
+      "vision_replay",
+      "room_environment",
+      "project_ledger",
+      "router_decisions",
+      "safety_classifier",
+      "scheduler_routines",
+    ]);
+
+    for (const sourceKind of PHASE_17_SELF_AUDIT_SOURCE_KINDS) {
+      const snapshot = createEmptySelfAuditSourceSnapshot({
+        snapshot_id: `snapshot:${sourceKind}`,
+        source_kind: sourceKind,
+      });
+
+      expect(snapshot).toMatchObject({
+        snapshot_id: `snapshot:${sourceKind}`,
+        source_kind: sourceKind,
+        section_kind: expectedSectionBySource[sourceKind],
+        metadata_only: true,
+        source_read_supported: false,
+        source_read_attempted: false,
+        collector_supported: false,
+        collector_attempted: false,
+        row_count: 0,
+        row_cap: 250,
+        truncated: false,
+        raw_payload_allowed: false,
+        redaction_required: true,
+        persistence_supported: false,
+        persistence_attempted: false,
+        report_generated: false,
+        suggestion_generated: false,
+        baseline_update_generated: false,
+        db_read_performed: false,
+        db_write_performed: false,
+        event_store_read_performed: false,
+        event_store_write_performed: false,
+        telemetry_attempted: false,
+        tool_called: false,
+        device_action_executed: false,
+        project_mutated: false,
+        memory_written: false,
+        approval_executed: false,
+        network_called: false,
+        cloud_called: false,
+      });
+    }
+  });
+
+  it("validates source snapshots without reading sources or running collectors", () => {
+    const snapshot = createEmptySelfAuditSourceSnapshot({
+      snapshot_id: "snapshot:vision_replay",
+      source_kind: "vision_replay",
+      row_cap: 100,
+    });
+
+    expect(validateSelfAuditSourceSnapshot(snapshot)).toEqual({
+      kind: "phase17.self_audit_source_snapshot_validation",
+      pass: true,
+      snapshot_id: "snapshot:vision_replay",
+      source_kind: "vision_replay",
+      section_kind: "vision",
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      source_read_attempted: false,
+      collector_attempted: false,
+      row_count: 0,
+      truncated: false,
+      report_generated: false,
+      suggestion_generated: false,
+      baseline_update_generated: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      persisted: false,
+      telemetry_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+    expect(snapshot).toMatchObject({
+      row_cap: 100,
+      row_count: 0,
+      truncated: false,
+    });
+  });
+
+  it("rejects unsafe source snapshot payloads and mismatched source sections", () => {
+    const unsafe = {
+      ...createEmptySelfAuditSourceSnapshot({
+        snapshot_id: "snapshot:project_ledger",
+        source_kind: "project_ledger",
+      }),
+      section_kind: "vision",
+      source_read_attempted: true,
+      collector_attempted: true,
+      row_count: 1,
+      truncated: true,
+      raw_payload: "raw",
+      user_content: "content",
+      api_key: "secret",
+      pii_email: "person@example.test",
+      report_body_text: "body",
+      tool_output: "tool",
+      project_body: "project",
+      voice_transcript: "voice",
+      ocr_text: "ocr",
+      raw_frame: "frame",
+      prompt: "prompt",
+      model_output: "model",
+      db_read_performed: true,
+      event_store_write_performed: true,
+      telemetry_attempted: true,
+      network_called: true,
+    };
+
+    expect(validateSelfAuditSourceSnapshot(unsafe)).toMatchObject({
+      pass: false,
+      snapshot_id: null,
+      source_kind: null,
+      section_kind: null,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_payload_forbidden",
+        "secret_forbidden",
+        "pii_forbidden",
+        "report_body_forbidden",
+        "tool_output_forbidden",
+        "project_body_forbidden",
+        "voice_transcript_forbidden",
+        "ocr_text_forbidden",
+        "frame_payload_forbidden",
+        "prompt_forbidden",
+        "model_output_forbidden",
+        "persistence_forbidden",
+        "telemetry_forbidden",
+      ]),
+      source_read_attempted: false,
+      collector_attempted: false,
+      db_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+      network_called: false,
+      cloud_called: false,
     });
   });
 
