@@ -613,3 +613,21 @@ export type {
   ScheduledAssistanceRuntimeContract,
   ScheduledAssistanceScheduleKind,
 } from "./runtime-contract";
+
+export {
+  DEFAULT_PHASE_17_DISABLED_GUARDS,
+  PHASE_17_DISABLED_FEATURES,
+  PHASE_17_DISABLED_GUARD_REASONS,
+  Phase17DisabledFeatureSchema,
+  Phase17DisabledGuardDecisionSchema,
+  Phase17DisabledGuardMatrixSchema,
+  Phase17DisabledGuardReasonSchema,
+  evaluatePhase17DisabledGuard,
+} from "./phase-17-disabled-guards";
+
+export type {
+  Phase17DisabledFeature,
+  Phase17DisabledGuardDecision,
+  Phase17DisabledGuardMatrix,
+  Phase17DisabledGuardReason,
+} from "./phase-17-disabled-guards";

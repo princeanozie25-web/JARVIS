@@ -35,6 +35,29 @@ The runtime contract also pins off:
 - `project_mutation_allowed`
 - `approval_execution_allowed`
 
+## Disabled Guard Matrix
+
+Phase 17A.2 adds a centralized disabled guard matrix for scheduled assistance. It pins off:
+
+- scheduler execution
+- background/headless scheduler execution
+- autonomous execution
+- tool calls
+- device actions
+- project mutations
+- memory writes
+- approval execution
+- cloud/network calls
+- routine chaining
+- self-modifying routines
+- auto-tuning thresholds, budgets, or policies
+- catch-up missed schedule runs
+- voice enable/disable/schedule changes
+- raw report telemetry
+- raw suggestion telemetry
+
+Each guard evaluation returns `allowed: false`, metadata-only denial fields, and no side-effect flags.
+
 ## Routine Classes
 
 - `daily_self_audit`
