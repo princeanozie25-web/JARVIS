@@ -694,3 +694,27 @@ export type {
   ScheduledAssistanceReadScopeDenialReason,
   ScheduledAssistanceReadScopeSurface,
 } from "./read-scope";
+
+export {
+  FOREGROUND_SCHEDULER_DECISION_REASONS,
+  FOREGROUND_SCHEDULER_KILL_SWITCH_STATES,
+  FOREGROUND_SCHEDULER_SKIPPED_ROUTINE_REASONS,
+  ForegroundSchedulerDecisionReasonSchema,
+  ForegroundSchedulerEligibleRoutineSchema,
+  ForegroundSchedulerKillSwitchStateSchema,
+  ForegroundSchedulerSkippedRoutineReasonSchema,
+  ForegroundSchedulerSkippedRoutineSchema,
+  ForegroundSchedulerTickDecisionSchema,
+  ForegroundSchedulerTickInputSchema,
+  evaluateForegroundSchedulerTick,
+} from "./foreground-scheduler";
+
+export type {
+  ForegroundSchedulerDecisionReason,
+  ForegroundSchedulerEligibleRoutine,
+  ForegroundSchedulerKillSwitchState,
+  ForegroundSchedulerSkippedRoutine,
+  ForegroundSchedulerSkippedRoutineReason,
+  ForegroundSchedulerTickDecision,
+  ForegroundSchedulerTickInput,
+} from "./foreground-scheduler";
