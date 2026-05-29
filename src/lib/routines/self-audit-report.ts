@@ -333,3 +333,363 @@ export function createSelfAuditReportTelemetryEvent(
     cloud_called: false,
   });
 }
+
+export const PHASE_17_SELF_AUDIT_REPORT_SECTIONS = [
+  "approvals",
+  "tools",
+  "cost_model_usage",
+  "vision",
+  "environment_room",
+  "projects",
+  "router",
+  "safety",
+  "routines_scheduler",
+] as const;
+
+export const PHASE_17_SELF_AUDIT_REDACTION_STATUSES = [
+  "not_started",
+  "unavailable",
+  "unsupported",
+] as const;
+
+export const PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS = [
+  "valid_schema",
+  "invalid_schema",
+  "missing_required_section",
+  "raw_payload_forbidden",
+  "secret_forbidden",
+  "pii_forbidden",
+  "report_body_forbidden",
+  "persistence_forbidden",
+  "tool_output_forbidden",
+  "project_body_forbidden",
+  "voice_transcript_forbidden",
+  "ocr_text_forbidden",
+  "frame_payload_forbidden",
+  "prompt_forbidden",
+  "model_output_forbidden",
+] as const;
+
+export type Phase17SelfAuditReportSection =
+  (typeof PHASE_17_SELF_AUDIT_REPORT_SECTIONS)[number];
+export type Phase17SelfAuditRedactionStatus =
+  (typeof PHASE_17_SELF_AUDIT_REDACTION_STATUSES)[number];
+export type Phase17SelfAuditReportValidationReason =
+  (typeof PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS)[number];
+
+export const Phase17SelfAuditReportSectionNameSchema = z.enum(
+  PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
+);
+export const Phase17SelfAuditRedactionStatusSchema = z.enum(
+  PHASE_17_SELF_AUDIT_REDACTION_STATUSES,
+);
+export const Phase17SelfAuditReportValidationReasonSchema = z.enum(
+  PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS,
+);
+
+export const Phase17SelfAuditReportWindowSchema = z
+  .strictObject({
+    start_ms: z.number().int().nonnegative(),
+    end_ms: z.number().int().nonnegative(),
+    metadata_only: z.literal(true),
+  })
+  .refine((window) => window.end_ms >= window.start_ms, {
+    message:
+      "self-audit report window end must be greater than or equal to start",
+  });
+
+export const Phase17SelfAuditReportSectionSchema = z.strictObject({
+  section: Phase17SelfAuditReportSectionNameSchema,
+  metadata_only: z.literal(true),
+  item_count: z.literal(0),
+  summary_available: z.literal(false),
+  raw_payload_allowed: z.literal(false),
+  pii_allowed: z.literal(false),
+  secrets_allowed: z.literal(false),
+  report_body_allowed: z.literal(false),
+  generated_content_allowed: z.literal(false),
+  collector_execution_supported: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+});
+
+export const Phase17SelfAuditReportSchema = z.strictObject({
+  report_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(180)
+    .regex(/^self_audit_report:phase17:[a-z0-9._:-]+$/),
+  routine_id: RoutineIdSchema,
+  window: Phase17SelfAuditReportWindowSchema,
+  generated_by_routine_id: RoutineIdSchema,
+  metadata_only: z.literal(true),
+  redaction_required: z.literal(true),
+  redaction_status: Phase17SelfAuditRedactionStatusSchema,
+  raw_payload_allowed: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  sections: z
+    .array(Phase17SelfAuditReportSectionSchema)
+    .length(PHASE_17_SELF_AUDIT_REPORT_SECTIONS.length),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  collector_execution_supported: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SelfAuditReportValidationSchema = z.strictObject({
+  kind: z.literal("phase17.self_audit_report_schema_validation"),
+  pass: z.boolean(),
+  report_id: z.string().trim().min(1).max(180).nullable(),
+  section_count: z.number().int().nonnegative(),
+  violation_count: z.number().int().nonnegative(),
+  violations: z.array(Phase17SelfAuditReportValidationReasonSchema),
+  metadata_only: z.literal(true),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  persisted: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export type Phase17SelfAuditReportWindow = z.infer<
+  typeof Phase17SelfAuditReportWindowSchema
+>;
+export type Phase17SelfAuditReportSectionMetadata = z.infer<
+  typeof Phase17SelfAuditReportSectionSchema
+>;
+export type Phase17SelfAuditReport = z.infer<
+  typeof Phase17SelfAuditReportSchema
+>;
+export type Phase17SelfAuditReportValidation = z.infer<
+  typeof Phase17SelfAuditReportValidationSchema
+>;
+
+export function createEmptyPhase17SelfAuditReport(input: {
+  readonly report_id: string;
+  readonly routine_id: string;
+  readonly generated_by_routine_id: string;
+  readonly start_ms: number;
+  readonly end_ms: number;
+}): Phase17SelfAuditReport {
+  return Phase17SelfAuditReportSchema.parse({
+    report_id: input.report_id,
+    routine_id: input.routine_id,
+    window: {
+      start_ms: input.start_ms,
+      end_ms: input.end_ms,
+      metadata_only: true,
+    },
+    generated_by_routine_id: input.generated_by_routine_id,
+    metadata_only: true,
+    redaction_required: true,
+    redaction_status: "not_started",
+    raw_payload_allowed: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    sections: PHASE_17_SELF_AUDIT_REPORT_SECTIONS.map((section) => ({
+      section,
+      metadata_only: true,
+      item_count: 0,
+      summary_available: false,
+      raw_payload_allowed: false,
+      pii_allowed: false,
+      secrets_allowed: false,
+      report_body_allowed: false,
+      generated_content_allowed: false,
+      collector_execution_supported: false,
+      collector_execution_attempted: false,
+      db_read_performed: false,
+      event_store_read_performed: false,
+    })),
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    collector_execution_supported: false,
+    collector_execution_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+export function validateSelfAuditReportSchema(
+  input: unknown,
+): Phase17SelfAuditReportValidation {
+  const parsed = Phase17SelfAuditReportSchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>();
+
+  for (const violation of forbiddenPayloadViolations(input)) {
+    violations.add(violation);
+  }
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+    return phase17Validation({
+      report: null,
+      violations,
+      sectionCount: Array.isArray((input as { sections?: unknown }).sections)
+        ? (input as { sections: unknown[] }).sections.length
+        : 0,
+    });
+  }
+
+  const sectionKinds = new Set(
+    parsed.data.sections.map((section) => section.section),
+  );
+  if (
+    !PHASE_17_SELF_AUDIT_REPORT_SECTIONS.every((section) =>
+      sectionKinds.has(section),
+    )
+  ) {
+    violations.add("missing_required_section");
+  }
+
+  return phase17Validation({
+    report: parsed.data,
+    violations,
+    sectionCount: parsed.data.sections.length,
+  });
+}
+
+function phase17Validation(input: {
+  readonly report: Phase17SelfAuditReport | null;
+  readonly violations: Set<Phase17SelfAuditReportValidationReason>;
+  readonly sectionCount: number;
+}): Phase17SelfAuditReportValidation {
+  return Phase17SelfAuditReportValidationSchema.parse({
+    kind: "phase17.self_audit_report_schema_validation",
+    pass: input.violations.size === 0,
+    report_id: input.report?.report_id ?? null,
+    section_count: input.sectionCount,
+    violation_count: input.violations.size,
+    violations:
+      input.violations.size === 0 ? ["valid_schema"] : [...input.violations],
+    metadata_only: true,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    collector_execution_attempted: false,
+    db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+function forbiddenPayloadViolations(
+  input: unknown,
+): Phase17SelfAuditReportValidationReason[] {
+  const violations = new Set<Phase17SelfAuditReportValidationReason>();
+
+  visitUnknown(input, (key, value) => {
+    const normalized = key.toLowerCase();
+    if (/raw|payload|body_text|report_body|content/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("raw_payload_forbidden");
+      }
+    }
+    if (/secret|token|password|api_key|apikey/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("secret_forbidden");
+      }
+    }
+    if (/pii|email|phone|address/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("pii_forbidden");
+      }
+    }
+    if (/report_body|body_text|report_text/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("report_body_forbidden");
+      }
+    }
+    if (/persist|db_write|event_store_write/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("persistence_forbidden");
+      }
+    }
+    if (/tool_output/.test(normalized)) {
+      violations.add("tool_output_forbidden");
+    }
+    if (/project_body|project_content/.test(normalized)) {
+      violations.add("project_body_forbidden");
+    }
+    if (/voice_transcript|transcript/.test(normalized)) {
+      violations.add("voice_transcript_forbidden");
+    }
+    if (/ocr_text|extracted_text/.test(normalized)) {
+      violations.add("ocr_text_forbidden");
+    }
+    if (/frame|raw_frame|image_bytes/.test(normalized)) {
+      violations.add("frame_payload_forbidden");
+    }
+    if (/prompt/.test(normalized)) {
+      violations.add("prompt_forbidden");
+    }
+    if (/model_output|model_response|llm_output/.test(normalized)) {
+      violations.add("model_output_forbidden");
+    }
+  });
+
+  return [...violations];
+}
+
+function visitUnknown(
+  input: unknown,
+  visit: (key: string, value: unknown) => void,
+): void {
+  if (!input || typeof input !== "object") {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(input)) {
+    visit(key, value);
+    visitUnknown(value, visit);
+  }
+}

@@ -243,10 +243,21 @@ export type {
 } from "./self-audit-collectors";
 
 export {
+  PHASE_17_SELF_AUDIT_REDACTION_STATUSES,
+  PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
+  PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS,
   SELF_AUDIT_REPORT_REDACTION_STATUSES,
   SELF_AUDIT_REPORT_SECTIONS,
   SELF_AUDIT_REPORT_TELEMETRY_EVENT_TYPES,
   SELF_AUDIT_REPORT_VALIDATION_REASONS,
+  Phase17SelfAuditRedactionStatusSchema,
+  Phase17SelfAuditReportSchema,
+  Phase17SelfAuditReportSectionNameSchema,
+  Phase17SelfAuditReportSectionSchema,
+  Phase17SelfAuditReportSectionSchema as Phase17SelfAuditReportSectionMetadataSchema,
+  Phase17SelfAuditReportValidationReasonSchema,
+  Phase17SelfAuditReportValidationSchema,
+  Phase17SelfAuditReportWindowSchema,
   SelfAuditReportRedactionStatusSchema,
   SelfAuditReportSchema,
   SelfAuditReportSectionNameSchema,
@@ -256,11 +267,20 @@ export {
   SelfAuditReportValidationReasonSchema,
   SelfAuditReportValidationSchema,
   SelfAuditReportWindowSchema,
+  createEmptyPhase17SelfAuditReport,
   createSelfAuditReportTelemetryEvent,
+  validateSelfAuditReportSchema,
   validateSelfAuditReport,
 } from "./self-audit-report";
 
 export type {
+  Phase17SelfAuditRedactionStatus,
+  Phase17SelfAuditReport,
+  Phase17SelfAuditReportSection,
+  Phase17SelfAuditReportSectionMetadata,
+  Phase17SelfAuditReportValidation,
+  Phase17SelfAuditReportValidationReason,
+  Phase17SelfAuditReportWindow,
   SelfAuditReport,
   SelfAuditReportRedactionStatus,
   SelfAuditReportSection,
