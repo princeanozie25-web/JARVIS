@@ -131,6 +131,30 @@ Each snapshot includes:
 
 `createEmptySelfAuditSourceSnapshot(...)` creates an empty placeholder for a declared source kind. `validateSelfAuditSourceSnapshot(...)` validates source snapshot metadata and rejects raw payloads, user content, secrets, PII, report bodies, tool outputs, project bodies, voice transcripts, OCR text, frames, prompts, model outputs, persistence attempts, and telemetry attempts. It does not collect or read anything.
 
+## Aggregation Envelope
+
+Phase 17C.5 adds a metadata-only aggregation envelope for future source snapshot aggregation.
+
+The envelope includes:
+
+- `aggregation_id`
+- `report_id`
+- `source_snapshot_ids`
+- `section_ids`
+- `metadata_only: true`
+- `aggregation_supported: false`
+- `aggregation_attempted: false`
+- `source_reads_attempted: false`
+- `collector_execution_attempted: false`
+- `report_body_generated: false`
+- `summary_generated: false`
+- `raw_payload_allowed: false`
+- `redaction_required: true`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+
+`createEmptySelfAuditAggregationEnvelope(...)` creates an envelope that can reference empty source snapshots and report section identifiers. `validateSelfAuditAggregationEnvelope(...)` validates that envelope without aggregating real data, reading sources, running collectors, generating report bodies, generating summaries, persisting output, or emitting telemetry.
+
 ## Validation
 
 `validateSelfAuditReportSchema(report)` validates the schema and rejects:
@@ -172,4 +196,4 @@ Validation is metadata-only and does not read from or write to any store.
 
 ## Next Recommended Slice
 
-Phase 17C.5 - Self-Audit Aggregation Envelope Scaffold.
+Phase 17C.6 - Self-Audit Report Closeout Guard.

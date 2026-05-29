@@ -9,6 +9,7 @@ import {
   DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY,
   DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY,
   Phase17SelfAuditReportSchema,
+  createEmptySelfAuditAggregationEnvelope,
   createEmptyPhase17SelfAuditReport,
   createEmptySelfAuditSourceSnapshot,
   validateSelfAuditRedactionBoundary,
@@ -16,6 +17,7 @@ import {
   validateSelfAuditSourceSnapshot,
   validateSelfAuditTelemetryBoundary,
   validateSelfAuditReportSchema,
+  validateSelfAuditAggregationEnvelope,
 } from "../../src/lib/routines/self-audit-report";
 
 const repoRoot = process.cwd();
@@ -585,6 +587,156 @@ describe("Phase 17C.1 self-audit report schema scaffold", () => {
     });
   });
 
+  it("creates a metadata-only aggregation envelope referencing source snapshots and sections", () => {
+    const report = validReport();
+    const snapshots = PHASE_17_SELF_AUDIT_SOURCE_KINDS.map((sourceKind) =>
+      createEmptySelfAuditSourceSnapshot({
+        snapshot_id: `snapshot:${sourceKind}`,
+        source_kind: sourceKind,
+      }),
+    );
+    const envelope = createEmptySelfAuditAggregationEnvelope({
+      aggregation_id: "aggregation:daily_self_audit:0:100",
+      report_id: report.report_id,
+      source_snapshot_ids: snapshots.map((snapshot) => snapshot.snapshot_id),
+      section_ids: report.sections.map((section) => section.section_id),
+    });
+
+    expect(envelope).toMatchObject({
+      aggregation_id: "aggregation:daily_self_audit:0:100",
+      report_id: report.report_id,
+      source_snapshot_ids: snapshots.map((snapshot) => snapshot.snapshot_id),
+      section_ids: report.sections.map((section) => section.section_id),
+      metadata_only: true,
+      aggregation_supported: false,
+      aggregation_attempted: false,
+      source_reads_attempted: false,
+      collector_execution_attempted: false,
+      report_body_generated: false,
+      summary_generated: false,
+      raw_payload_allowed: false,
+      redaction_required: true,
+      persistence_supported: false,
+      persistence_attempted: false,
+      report_generated: false,
+      suggestion_generated: false,
+      baseline_update_generated: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("validates aggregation envelopes without aggregating data or generating output", () => {
+    const envelope = validAggregationEnvelope();
+
+    expect(validateSelfAuditAggregationEnvelope(envelope)).toEqual({
+      kind: "phase17.self_audit_aggregation_envelope_validation",
+      pass: true,
+      aggregation_id: envelope.aggregation_id,
+      report_id: envelope.report_id,
+      source_snapshot_count: PHASE_17_SELF_AUDIT_SOURCE_KINDS.length,
+      section_count: PHASE_17_SELF_AUDIT_REPORT_SECTIONS.length,
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      aggregation_attempted: false,
+      source_reads_attempted: false,
+      collector_execution_attempted: false,
+      report_body_generated: false,
+      summary_generated: false,
+      report_generated: false,
+      suggestion_generated: false,
+      baseline_update_generated: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      persisted: false,
+      telemetry_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("rejects unsafe aggregation envelope payloads and attempted execution", () => {
+    const unsafe = {
+      ...validAggregationEnvelope(),
+      aggregation_supported: true,
+      aggregation_attempted: true,
+      source_reads_attempted: true,
+      collector_execution_attempted: true,
+      report_body_generated: true,
+      summary_generated: true,
+      raw_payload: "raw",
+      user_content: "content",
+      api_key: "secret",
+      pii_email: "person@example.test",
+      report_body_text: "body",
+      tool_output: "tool",
+      project_body: "project",
+      voice_transcript: "voice",
+      ocr_text: "ocr",
+      raw_frame: "frame",
+      prompt: "prompt",
+      model_output: "model",
+      db_read_performed: true,
+      db_write_performed: true,
+      event_store_write_performed: true,
+      telemetry_attempted: true,
+      network_called: true,
+      cloud_called: true,
+    };
+
+    expect(validateSelfAuditAggregationEnvelope(unsafe)).toMatchObject({
+      pass: false,
+      aggregation_id: null,
+      report_id: null,
+      source_snapshot_count: PHASE_17_SELF_AUDIT_SOURCE_KINDS.length,
+      section_count: PHASE_17_SELF_AUDIT_REPORT_SECTIONS.length,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_payload_forbidden",
+        "secret_forbidden",
+        "pii_forbidden",
+        "report_body_forbidden",
+        "tool_output_forbidden",
+        "project_body_forbidden",
+        "voice_transcript_forbidden",
+        "ocr_text_forbidden",
+        "frame_payload_forbidden",
+        "prompt_forbidden",
+        "model_output_forbidden",
+        "persistence_forbidden",
+        "telemetry_forbidden",
+      ]),
+      aggregation_attempted: false,
+      source_reads_attempted: false,
+      collector_execution_attempted: false,
+      report_body_generated: false,
+      summary_generated: false,
+      db_read_performed: false,
+      event_store_write_performed: false,
+      telemetry_attempted: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
   it("does not add collectors, DB/event-store reads or writes, report generation, suggestions, baselines, tools, mutations, approvals, cloud, or network behavior", () => {
     const source = read("src/lib/routines/self-audit-report.ts");
 
@@ -602,6 +754,18 @@ function validReport() {
     generated_by_routine_id: "routine:daily_self_audit",
     start_ms: 0,
     end_ms: 100,
+  });
+}
+
+function validAggregationEnvelope() {
+  const report = validReport();
+  return createEmptySelfAuditAggregationEnvelope({
+    aggregation_id: "aggregation:daily_self_audit:0:100",
+    report_id: report.report_id,
+    source_snapshot_ids: PHASE_17_SELF_AUDIT_SOURCE_KINDS.map(
+      (sourceKind) => `snapshot:${sourceKind}`,
+    ),
+    section_ids: report.sections.map((section) => section.section_id),
   });
 }
 

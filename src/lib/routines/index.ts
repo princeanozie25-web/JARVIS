@@ -254,6 +254,8 @@ export {
   SELF_AUDIT_REPORT_TELEMETRY_EVENT_TYPES,
   SELF_AUDIT_REPORT_VALIDATION_REASONS,
   Phase17SelfAuditBoundaryValidationSchema,
+  Phase17SelfAuditAggregationEnvelopeSchema,
+  Phase17SelfAuditAggregationEnvelopeValidationSchema,
   Phase17SelfAuditRedactionStatusSchema,
   Phase17SelfAuditRedactionBoundarySchema,
   Phase17SelfAuditReportSchema,
@@ -277,6 +279,7 @@ export {
   SelfAuditReportValidationReasonSchema,
   SelfAuditReportValidationSchema,
   SelfAuditReportWindowSchema,
+  createEmptySelfAuditAggregationEnvelope,
   createEmptyPhase17SelfAuditReport,
   createEmptySelfAuditSourceSnapshot,
   createSelfAuditReportTelemetryEvent,
@@ -285,11 +288,14 @@ export {
   validateSelfAuditSourceSnapshot,
   validateSelfAuditTelemetryBoundary,
   validateSelfAuditReportSchema,
+  validateSelfAuditAggregationEnvelope,
   validateSelfAuditReport,
 } from "./self-audit-report";
 
 export type {
   Phase17SelfAuditBoundaryValidation,
+  Phase17SelfAuditAggregationEnvelope,
+  Phase17SelfAuditAggregationEnvelopeValidation,
   Phase17SelfAuditRedactionStatus,
   Phase17SelfAuditRedactionBoundary,
   Phase17SelfAuditReport,

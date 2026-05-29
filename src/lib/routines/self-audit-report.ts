@@ -723,6 +723,103 @@ export const Phase17SelfAuditSourceSnapshotValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const Phase17SelfAuditAggregationEnvelopeSchema = z.strictObject({
+  aggregation_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(160)
+    .regex(/^aggregation:[a-z0-9._:-]+$/),
+  report_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(180)
+    .regex(/^self_audit_report:phase17:[a-z0-9._:-]+$/),
+  source_snapshot_ids: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(140)
+        .regex(/^snapshot:[a-z0-9._:-]+$/),
+    )
+    .max(PHASE_17_SELF_AUDIT_SOURCE_KINDS.length),
+  section_ids: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(120)
+        .regex(/^section:[a-z0-9._:-]+$/),
+    )
+    .max(PHASE_17_SELF_AUDIT_REPORT_SECTIONS.length),
+  metadata_only: z.literal(true),
+  aggregation_supported: z.literal(false),
+  aggregation_attempted: z.literal(false),
+  source_reads_attempted: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  report_body_generated: z.literal(false),
+  summary_generated: z.literal(false),
+  raw_payload_allowed: z.literal(false),
+  redaction_required: z.literal(true),
+  redaction_status: Phase17SelfAuditRedactionStatusSchema,
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SelfAuditAggregationEnvelopeValidationSchema =
+  z.strictObject({
+    kind: z.literal("phase17.self_audit_aggregation_envelope_validation"),
+    pass: z.boolean(),
+    aggregation_id: z.string().trim().min(1).max(160).nullable(),
+    report_id: z.string().trim().min(1).max(180).nullable(),
+    source_snapshot_count: z.number().int().nonnegative(),
+    section_count: z.number().int().nonnegative(),
+    violation_count: z.number().int().nonnegative(),
+    violations: z.array(Phase17SelfAuditReportValidationReasonSchema),
+    metadata_only: z.literal(true),
+    aggregation_attempted: z.literal(false),
+    source_reads_attempted: z.literal(false),
+    collector_execution_attempted: z.literal(false),
+    report_body_generated: z.literal(false),
+    summary_generated: z.literal(false),
+    report_generated: z.literal(false),
+    suggestion_generated: z.literal(false),
+    baseline_update_generated: z.literal(false),
+    db_read_performed: z.literal(false),
+    db_write_performed: z.literal(false),
+    event_store_read_performed: z.literal(false),
+    event_store_write_performed: z.literal(false),
+    persisted: z.literal(false),
+    telemetry_attempted: z.literal(false),
+    tool_called: z.literal(false),
+    device_action_executed: z.literal(false),
+    project_mutated: z.literal(false),
+    memory_written: z.literal(false),
+    approval_executed: z.literal(false),
+    network_called: z.literal(false),
+    cloud_called: z.literal(false),
+  });
+
 export type Phase17SelfAuditReportWindow = z.infer<
   typeof Phase17SelfAuditReportWindowSchema
 >;
@@ -752,6 +849,12 @@ export type Phase17SelfAuditSourceSnapshot = z.infer<
 >;
 export type Phase17SelfAuditSourceSnapshotValidation = z.infer<
   typeof Phase17SelfAuditSourceSnapshotValidationSchema
+>;
+export type Phase17SelfAuditAggregationEnvelope = z.infer<
+  typeof Phase17SelfAuditAggregationEnvelopeSchema
+>;
+export type Phase17SelfAuditAggregationEnvelopeValidation = z.infer<
+  typeof Phase17SelfAuditAggregationEnvelopeValidationSchema
 >;
 
 export const DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY =
@@ -926,6 +1029,48 @@ export function createEmptySelfAuditSourceSnapshot(input: {
   });
 }
 
+export function createEmptySelfAuditAggregationEnvelope(input: {
+  readonly aggregation_id: string;
+  readonly report_id: string;
+  readonly source_snapshot_ids: readonly string[];
+  readonly section_ids: readonly string[];
+}): Phase17SelfAuditAggregationEnvelope {
+  return Phase17SelfAuditAggregationEnvelopeSchema.parse({
+    aggregation_id: input.aggregation_id,
+    report_id: input.report_id,
+    source_snapshot_ids: [...input.source_snapshot_ids],
+    section_ids: [...input.section_ids],
+    metadata_only: true,
+    aggregation_supported: false,
+    aggregation_attempted: false,
+    source_reads_attempted: false,
+    collector_execution_attempted: false,
+    report_body_generated: false,
+    summary_generated: false,
+    raw_payload_allowed: false,
+    redaction_required: true,
+    redaction_status: "not_started",
+    persistence_supported: false,
+    persistence_attempted: false,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
 export function validateSelfAuditReportSchema(
   input: unknown,
 ): Phase17SelfAuditReportValidation {
@@ -1043,6 +1188,34 @@ export function validateSelfAuditSourceSnapshot(
   });
 }
 
+export function validateSelfAuditAggregationEnvelope(
+  input: unknown,
+): Phase17SelfAuditAggregationEnvelopeValidation {
+  const parsed = Phase17SelfAuditAggregationEnvelopeSchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>(
+    forbiddenPayloadViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return aggregationEnvelopeValidation({
+    envelope: parsed.success ? parsed.data : null,
+    sourceSnapshotCount: Array.isArray(
+      (input as { source_snapshot_ids?: unknown }).source_snapshot_ids,
+    )
+      ? (input as { source_snapshot_ids: unknown[] }).source_snapshot_ids.length
+      : 0,
+    sectionCount: Array.isArray(
+      (input as { section_ids?: unknown }).section_ids,
+    )
+      ? (input as { section_ids: unknown[] }).section_ids.length
+      : 0,
+    violations,
+  });
+}
+
 function sectionValidation(input: {
   readonly section: Phase17SelfAuditReportSectionMetadata | null;
   readonly violations: Set<Phase17SelfAuditReportValidationReason>;
@@ -1060,6 +1233,51 @@ function sectionValidation(input: {
     collector_attempted: false,
     source_read_attempted: false,
     db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+function aggregationEnvelopeValidation(input: {
+  readonly envelope: Phase17SelfAuditAggregationEnvelope | null;
+  readonly sourceSnapshotCount: number;
+  readonly sectionCount: number;
+  readonly violations: Set<Phase17SelfAuditReportValidationReason>;
+}): Phase17SelfAuditAggregationEnvelopeValidation {
+  return Phase17SelfAuditAggregationEnvelopeValidationSchema.parse({
+    kind: "phase17.self_audit_aggregation_envelope_validation",
+    pass: input.violations.size === 0,
+    aggregation_id: input.envelope?.aggregation_id ?? null,
+    report_id: input.envelope?.report_id ?? null,
+    source_snapshot_count: input.envelope
+      ? input.envelope.source_snapshot_ids.length
+      : input.sourceSnapshotCount,
+    section_count: input.envelope
+      ? input.envelope.section_ids.length
+      : input.sectionCount,
+    violation_count: input.violations.size,
+    violations:
+      input.violations.size === 0 ? ["valid_schema"] : [...input.violations],
+    metadata_only: true,
+    aggregation_attempted: false,
+    source_reads_attempted: false,
+    collector_execution_attempted: false,
+    report_body_generated: false,
+    summary_generated: false,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    db_read_performed: false,
+    db_write_performed: false,
     event_store_read_performed: false,
     event_store_write_performed: false,
     persisted: false,
