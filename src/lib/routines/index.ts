@@ -589,3 +589,27 @@ export type {
   RoutineCloseoutAuthoritySurfaceSummary,
   RoutineCloseoutDisabledFeatureStatus,
 } from "./closeout-audit-gate";
+
+export {
+  DEFAULT_SCHEDULED_ASSISTANCE_RUNTIME_CONTRACT,
+  SCHEDULED_ASSISTANCE_EXECUTION_MODES,
+  SCHEDULED_ASSISTANCE_OUTPUT_KINDS,
+  SCHEDULED_ASSISTANCE_ROUTINE_KINDS,
+  SCHEDULED_ASSISTANCE_SCHEDULE_KINDS,
+  ScheduledAssistanceExecutionModeSchema,
+  ScheduledAssistanceOutputKindSchema,
+  ScheduledAssistanceRoutineKindSchema,
+  ScheduledAssistanceRoutineMetadataSchema,
+  ScheduledAssistanceRuntimeContractSchema,
+  ScheduledAssistanceScheduleKindSchema,
+  getScheduledAssistanceRuntimeContract,
+} from "./runtime-contract";
+
+export type {
+  ScheduledAssistanceExecutionMode,
+  ScheduledAssistanceOutputKind,
+  ScheduledAssistanceRoutineKind,
+  ScheduledAssistanceRoutineMetadata,
+  ScheduledAssistanceRuntimeContract,
+  ScheduledAssistanceScheduleKind,
+} from "./runtime-contract";
