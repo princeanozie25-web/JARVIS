@@ -61,6 +61,26 @@ Eligibility denies disabled routines, absent/unknown/not-checked user presence, 
 
 A metadata-only opt-in routine can be marked eligible by the eligibility evaluator when all preconditions pass, but routine execution remains disallowed. The foreground scheduler still validates the registry contract and keeps execution attempted false.
 
+## Read Scope Binding
+
+Phase 17B.3 adds `evaluateRoutineReadScopeBinding(routine, scopeRegistry)`.
+
+The binding layer records:
+
+- `routine_id`
+- `allowed_read_scopes`
+- `denied_read_scopes`
+- `metadata_only: true`
+- `collector_execution_supported: false`
+- `db_read_supported: false`
+- `event_store_read_supported: false`
+- `report_generation_supported: false`
+- `suggestion_generation_supported: false`
+
+Routine bindings are fixed metadata maps against the Phase 17A.5 read scope contract. The evaluator denies undeclared scopes, unknown surfaces, raw payload scopes, PII scopes, secret-bearing scopes, network scopes, and write scopes. It does not run collectors and does not read from a database or event store.
+
+Routine eligibility includes the read scope binding decision. A routine can only be marked eligible metadata if its read scope binding is complete and safe, and even then execution remains unsupported.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -84,4 +104,4 @@ This slice keeps scheduled assistance foreground-only and non-executing. It only
 
 ## Next Recommended Slice
 
-Phase 17B.3 - Foreground Scheduler Read Scope Binding Scaffold.
+Phase 17B.4 - Foreground Scheduler Output Envelope Scaffold.

@@ -44,6 +44,14 @@ describe("Phase 17B.2 scheduled assistance routine eligibility matrix", () => {
       execution_supported: false,
       reason: "routine_disabled",
       error_class: "routine_disabled",
+      read_scope_binding: expect.objectContaining({
+        binding_complete: true,
+        denied_read_scopes: [],
+        metadata_only: true,
+        collector_execution_supported: false,
+        db_read_supported: false,
+        event_store_read_supported: false,
+      }),
       metadata_only: true,
       routine_execution_allowed: false,
       routine_executed: false,
@@ -226,6 +234,48 @@ describe("Phase 17B.2 scheduled assistance routine eligibility matrix", () => {
       project_mutated: false,
       device_action_executed: false,
       approval_executed: false,
+    });
+  });
+
+  it("denies otherwise eligible routines when read scope binding fails", () => {
+    const enabledRoutine = { ...defaultRoutine, enabled: true };
+    const unsafeScopeRegistry = [
+      {
+        scope_id: "scope:approvals_metadata",
+        surface_kind: "approvals_metadata",
+        read_only: true,
+        metadata_only: false,
+        raw_payload_allowed: true,
+        pii_allowed: false,
+        secrets_allowed: false,
+        network_allowed: false,
+        write_allowed: false,
+        row_cap: 250,
+      },
+    ];
+
+    expect(
+      evaluateRoutineEligibility(
+        enabledRoutine,
+        foregroundTick,
+        getScheduledAssistanceRuntimeContract(),
+        {
+          kill_switch_state: "safe",
+          user_present_state: "present",
+          read_scope_registry: unsafeScopeRegistry,
+        },
+      ),
+    ).toMatchObject({
+      eligible: false,
+      reason: "read_scope_binding_denied",
+      read_scope_binding: expect.objectContaining({
+        binding_complete: false,
+        collector_execution_supported: false,
+        db_read_supported: false,
+        event_store_read_supported: false,
+      }),
+      routine_execution_allowed: false,
+      routine_executed: false,
     });
   });
 

@@ -9,6 +9,11 @@ import {
   Phase17RoutineOutputKindSchema,
 } from "./routine-registry";
 import {
+  RoutineReadScopeBindingDecisionSchema,
+  evaluateRoutineReadScopeBinding,
+  type RoutineReadScopeBindingDecision,
+} from "./read-scope-binding";
+import {
   DEFAULT_SCHEDULED_ASSISTANCE_RUNTIME_CONTRACT,
   ScheduledAssistanceRoutineKindSchema,
   ScheduledAssistanceRuntimeContractSchema,
@@ -50,6 +55,7 @@ export const ROUTINE_ELIGIBILITY_REASONS = [
   "project_mutation_forbidden",
   "approval_execution_forbidden",
   "cloud_network_forbidden",
+  "read_scope_binding_denied",
 ] as const;
 
 export type RoutineEligibilityUserPresentState =
@@ -115,6 +121,7 @@ export const RoutineEligibilityGuardStateSchema = z.strictObject({
     RoutineEligibilityUserPresentStateSchema.default("not_checked"),
   kill_switch_state: RoutineEligibilityKillSwitchStateSchema.default("missing"),
   disabled_guards: z.unknown().default(DEFAULT_PHASE_17_DISABLED_GUARDS),
+  read_scope_registry: z.unknown().optional(),
 });
 
 export const RoutineEligibilityDecisionSchema = z.strictObject({
@@ -134,6 +141,7 @@ export const RoutineEligibilityDecisionSchema = z.strictObject({
   execution_supported: z.literal(false),
   reason: RoutineEligibilityReasonSchema,
   error_class: RoutineEligibilityReasonSchema,
+  read_scope_binding: RoutineReadScopeBindingDecisionSchema,
   metadata_only: z.literal(true),
   routine_execution_allowed: z.literal(false),
   routine_executed: z.literal(false),
@@ -180,6 +188,10 @@ export function evaluateRoutineEligibility(
   const parsedDisabledGuards = Phase17DisabledGuardMatrixSchema.safeParse(
     parsedGuardState.disabled_guards,
   );
+  const readScopeBinding = evaluateRoutineReadScopeBinding(
+    routine,
+    parsedGuardState.read_scope_registry,
+  );
 
   if (!parsedRoutine.success || !parsedTick.success) {
     return decision({
@@ -195,6 +207,7 @@ export function evaluateRoutineEligibility(
       tick_source_kind: "test_fixture",
       eligible: false,
       reason: "unsafe_routine_entry",
+      read_scope_binding: readScopeBinding,
     });
   }
 
@@ -203,6 +216,7 @@ export function evaluateRoutineEligibility(
     tick: parsedTick.data,
     runtimeSafe: parsedRuntime.success,
     disabledGuardsSafe: parsedDisabledGuards.success,
+    readScopesBound: readScopeBinding.binding_complete,
     userPresentState: parsedGuardState.user_present_state,
     killSwitchState: parsedGuardState.kill_switch_state,
   });
@@ -220,6 +234,7 @@ export function evaluateRoutineEligibility(
     tick_source_kind: parsedTick.data.tick_source_kind,
     eligible: reason === "eligible_metadata_only",
     reason,
+    read_scope_binding: readScopeBinding,
   });
 }
 
@@ -236,6 +251,7 @@ function decision(input: {
   readonly tick_source_kind: RoutineEligibilityDecision["tick_source_kind"];
   readonly eligible: boolean;
   readonly reason: RoutineEligibilityReason;
+  readonly read_scope_binding: RoutineReadScopeBindingDecision;
 }): RoutineEligibilityDecision {
   return RoutineEligibilityDecisionSchema.parse({
     routine_id: input.routine_id,
@@ -254,6 +270,7 @@ function decision(input: {
     execution_supported: false,
     reason: input.reason,
     error_class: input.reason,
+    read_scope_binding: input.read_scope_binding,
     metadata_only: true,
     routine_execution_allowed: false,
     routine_executed: false,
@@ -279,6 +296,7 @@ function reasonForEligibility(input: {
   readonly tick: RoutineEligibilityTickMetadata;
   readonly runtimeSafe: boolean;
   readonly disabledGuardsSafe: boolean;
+  readonly readScopesBound: boolean;
   readonly userPresentState: RoutineEligibilityUserPresentState;
   readonly killSwitchState: RoutineEligibilityKillSwitchState;
 }): RoutineEligibilityReason {
@@ -318,6 +336,9 @@ function reasonForEligibility(input: {
   }
   if (input.routine.cloud_network_allowed) {
     return "cloud_network_forbidden";
+  }
+  if (!input.readScopesBound) {
+    return "read_scope_binding_denied";
   }
   if (input.killSwitchState === "active") {
     return "kill_switch_active";

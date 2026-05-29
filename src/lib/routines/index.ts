@@ -742,3 +742,22 @@ export type {
   RoutineEligibilityTickMetadata,
   RoutineEligibilityUserPresentState,
 } from "./routine-eligibility";
+
+export {
+  DEFAULT_ROUTINE_READ_SCOPE_BINDINGS,
+  ROUTINE_READ_SCOPE_BINDING_REASONS,
+  RoutineReadScopeAllowedScopeSchema,
+  RoutineReadScopeBindingDecisionSchema,
+  RoutineReadScopeBindingReasonSchema,
+  RoutineReadScopeBindingRoutineSchema,
+  RoutineReadScopeDeniedScopeSchema,
+  evaluateRoutineReadScopeBinding,
+} from "./read-scope-binding";
+
+export type {
+  RoutineReadScopeAllowedScope,
+  RoutineReadScopeBindingDecision,
+  RoutineReadScopeBindingReason,
+  RoutineReadScopeBindingRoutine,
+  RoutineReadScopeDeniedScope,
+} from "./read-scope-binding";
