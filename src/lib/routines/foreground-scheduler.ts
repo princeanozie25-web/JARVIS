@@ -5,7 +5,6 @@ import {
   Phase17RoutineEntrySchema,
   Phase17RoutineRegistrySchema,
   validatePhase17RoutineRegistry,
-  type Phase17RoutineEntry,
 } from "./routine-registry";
 import {
   DEFAULT_SCHEDULED_ASSISTANCE_RUNTIME_CONTRACT,
@@ -15,6 +14,13 @@ import {
   ScheduledAssistanceTickInputSourceKindSchema,
   type ScheduledAssistanceTickInputSourceKind,
 } from "./scheduled-assistance-tick-source";
+import {
+  RoutineEligibilityDecisionSchema,
+  RoutineEligibilityReasonSchema,
+  RoutineEligibilityUserPresentStateSchema,
+  type RoutineEligibilityDecision,
+  evaluateRoutineEligibility,
+} from "./routine-eligibility";
 
 export const FOREGROUND_SCHEDULER_KILL_SWITCH_STATES = [
   "safe",
@@ -70,6 +76,8 @@ export const ForegroundSchedulerTickInputSchema = z.strictObject({
   catch_up_requested: z.boolean().default(false),
   kill_switch_state:
     ForegroundSchedulerKillSwitchStateSchema.default("missing"),
+  user_present_state:
+    RoutineEligibilityUserPresentStateSchema.default("not_checked"),
 });
 
 export const ForegroundSchedulerEligibleRoutineSchema = z.strictObject({
@@ -83,7 +91,7 @@ export const ForegroundSchedulerEligibleRoutineSchema = z.strictObject({
 export const ForegroundSchedulerSkippedRoutineSchema = z.strictObject({
   routine_id: z.string().trim().min(1).max(120),
   routine_kind: Phase17RoutineEntrySchema.shape.routine_kind,
-  reason: ForegroundSchedulerSkippedRoutineReasonSchema,
+  reason: RoutineEligibilityReasonSchema,
   metadata_only: z.literal(true),
   routine_execution_allowed: z.literal(false),
 });
@@ -100,6 +108,7 @@ export const ForegroundSchedulerTickDecisionSchema = z.strictObject({
   routine_execution_supported: z.literal(false),
   routine_execution_allowed: z.literal(false),
   side_effects_allowed: z.literal(false),
+  routine_eligibility: z.array(RoutineEligibilityDecisionSchema),
   eligible_routines: z.array(ForegroundSchedulerEligibleRoutineSchema),
   skipped_routines: z.array(ForegroundSchedulerSkippedRoutineSchema),
   kill_switch_required: z.literal(true),
@@ -154,10 +163,37 @@ export function evaluateForegroundSchedulerTick(
     ScheduledAssistanceRuntimeContractSchema.safeParse(runtimeContract);
   const registryValidation = validatePhase17RoutineRegistry(routineRegistry);
 
-  const skippedRoutines =
+  const routineEligibility =
     parsedRegistry.success && registryValidation.pass
-      ? parsedRegistry.data.routines.map(toSkippedRoutine)
+      ? parsedRegistry.data.routines.map((routine) =>
+          evaluateRoutineEligibility(
+            routine,
+            {
+              tick_id: parsedTick.tick_id,
+              tick_source_kind: parsedTick.tick_source_kind,
+            },
+            runtimeContract,
+            {
+              kill_switch_state: parsedTick.kill_switch_state,
+              user_present_state: parsedTick.user_present_state,
+            },
+          ),
+        )
       : [];
+  const eligibleRoutines = routineEligibility
+    .filter((routine) => routine.eligible)
+    .map((routine) =>
+      ForegroundSchedulerEligibleRoutineSchema.parse({
+        routine_id: routine.routine_id,
+        routine_kind: routine.routine_kind,
+        schedule_kind: routine.schedule_kind,
+        metadata_only: true,
+        routine_execution_allowed: false,
+      }),
+    );
+  const skippedRoutines = routineEligibility
+    .filter((routine) => !routine.eligible)
+    .map(toSkippedRoutine);
 
   return ForegroundSchedulerTickDecisionSchema.parse({
     tick_id: parsedTick.tick_id,
@@ -177,7 +213,8 @@ export function evaluateForegroundSchedulerTick(
     routine_execution_supported: false,
     routine_execution_allowed: false,
     side_effects_allowed: false,
-    eligible_routines: [],
+    routine_eligibility: routineEligibility,
+    eligible_routines: eligibleRoutines,
     skipped_routines: skippedRoutines,
     kill_switch_required: true,
     kill_switch_state: parsedTick.kill_switch_state,
@@ -208,12 +245,12 @@ export function evaluateForegroundSchedulerTick(
 }
 
 function toSkippedRoutine(
-  routine: Phase17RoutineEntry,
+  routine: RoutineEligibilityDecision,
 ): ForegroundSchedulerSkippedRoutine {
   return ForegroundSchedulerSkippedRoutineSchema.parse({
     routine_id: routine.routine_id,
     routine_kind: routine.routine_kind,
-    reason: "routine_disabled",
+    reason: routine.reason,
     metadata_only: true,
     routine_execution_allowed: false,
   });

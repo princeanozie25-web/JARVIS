@@ -718,3 +718,27 @@ export type {
   ForegroundSchedulerTickDecision,
   ForegroundSchedulerTickInput,
 } from "./foreground-scheduler";
+
+export {
+  ROUTINE_ELIGIBILITY_KILL_SWITCH_STATES,
+  ROUTINE_ELIGIBILITY_REASONS,
+  ROUTINE_ELIGIBILITY_USER_PRESENT_STATES,
+  RoutineEligibilityDecisionSchema,
+  RoutineEligibilityGuardStateSchema,
+  RoutineEligibilityKillSwitchStateSchema,
+  RoutineEligibilityReasonSchema,
+  RoutineEligibilityRoutineSchema,
+  RoutineEligibilityTickMetadataSchema,
+  RoutineEligibilityUserPresentStateSchema,
+  evaluateRoutineEligibility,
+} from "./routine-eligibility";
+
+export type {
+  RoutineEligibilityDecision,
+  RoutineEligibilityGuardState,
+  RoutineEligibilityKillSwitchState,
+  RoutineEligibilityReason,
+  RoutineEligibilityRoutine,
+  RoutineEligibilityTickMetadata,
+  RoutineEligibilityUserPresentState,
+} from "./routine-eligibility";

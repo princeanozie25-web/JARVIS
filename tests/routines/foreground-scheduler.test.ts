@@ -39,6 +39,16 @@ describe("Phase 17B.1 foreground scheduler tick evaluator scaffold", () => {
       routine_execution_supported: false,
       routine_execution_allowed: false,
       side_effects_allowed: false,
+      routine_eligibility: DEFAULT_PHASE_17_ROUTINE_REGISTRY.routines.map(
+        (routine) =>
+          expect.objectContaining({
+            routine_id: routine.routine_id,
+            eligible: false,
+            reason: "routine_disabled",
+            routine_execution_allowed: false,
+            routine_executed: false,
+          }),
+      ),
       eligible_routines: [],
       kill_switch_required: true,
       kill_switch_state: "safe",
@@ -58,6 +68,35 @@ describe("Phase 17B.1 foreground scheduler tick evaluator scaffold", () => {
         routine_execution_allowed: false,
       })),
     );
+  });
+
+  it("does not broaden registry authority for opt-in-like routine entries", () => {
+    const enabledRoutine = {
+      ...DEFAULT_PHASE_17_ROUTINE_REGISTRY.routines[0],
+      enabled: true,
+    };
+    const enabledRegistry = {
+      ...DEFAULT_PHASE_17_ROUTINE_REGISTRY,
+      routines: [enabledRoutine],
+    };
+    const decision = evaluateForegroundSchedulerTick(
+      {
+        tick_id: "tick:phase17b:eligible-metadata",
+        tick_source_kind: "manual",
+        kill_switch_state: "safe",
+        user_present_state: "present",
+      },
+      enabledRegistry,
+      getScheduledAssistanceRuntimeContract(),
+    );
+
+    expect(decision).toMatchObject({
+      reason: "unsafe_routine_registry",
+      eligible_routines: [],
+      skipped_routines: [],
+      execution_attempted: false,
+      routine_executed: false,
+    });
   });
 
   it("rejects background and headless ticks before routine eligibility", () => {

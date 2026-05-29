@@ -35,6 +35,32 @@ The evaluator denies:
 
 Disabled routines are represented in `skipped_routines` with explicit metadata-only reasons. No routine is silently executed or silently promoted to eligibility.
 
+## Routine Eligibility Matrix
+
+Phase 17B.2 adds `evaluateRoutineEligibility(routine, tick, runtimeContract, guardState)`.
+
+The eligibility matrix records:
+
+- `routine_id`
+- `eligible`
+- `enabled`
+- `enabled_by_default`
+- `user_present_required`
+- `user_present_state`
+- `kill_switch_required`
+- `kill_switch_state`
+- `schedule_kind`
+- `tick_source_kind`
+- `foreground_only`
+- `side_effects_allowed: false`
+- `execution_supported: false`
+- `reason`
+- `error_class`
+
+Eligibility denies disabled routines, absent/unknown/not-checked user presence, active/missing/unsafe kill switch state, background or headless ticks, unsafe runtime contracts, unsafe disabled guards, unsafe routine entries, and any routine requesting side effects, tools, devices, memory writes, project mutations, approval execution, cloud, or network authority.
+
+A metadata-only opt-in routine can be marked eligible by the eligibility evaluator when all preconditions pass, but routine execution remains disallowed. The foreground scheduler still validates the registry contract and keeps execution attempted false.
+
 ## Explicitly Not Implemented
 
 - No timers.
@@ -58,4 +84,4 @@ This slice keeps scheduled assistance foreground-only and non-executing. It only
 
 ## Next Recommended Slice
 
-Phase 17B.2 - Foreground Scheduler Routine Eligibility Matrix.
+Phase 17B.3 - Foreground Scheduler Read Scope Binding Scaffold.
