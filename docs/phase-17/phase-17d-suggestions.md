@@ -36,6 +36,36 @@ The Phase 17D.1 routine suggestion contract includes:
 
 `createEmptyRoutineSuggestion(...)` creates an empty placeholder suggestion. `validateRoutineSuggestion(...)` validates the metadata-only contract and rejects raw bodies, raw content, secrets, PII, persistence attempts, approval bridge attempts, and action execution attempts.
 
+## Suggestion Inbox Contract
+
+Phase 17D.2 adds a metadata-only suggestion inbox contract. This is not the live inbox and it does not create records.
+
+The inbox item contract includes:
+
+- `inbox_item_id`
+- `suggestion_id`
+- `routine_id`
+- `inbox_status`
+- `metadata_only: true`
+- `inbox_item_created: false`
+- `body_attached: false`
+- `raw_body_allowed: false`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+- `approval_bridge_supported: false`
+- `approval_bridge_attempted: false`
+- `action_execution_supported: false`
+- `action_execution_attempted: false`
+
+Supported metadata statuses are:
+
+- `unavailable`
+- `pending`
+- `dismissed`
+- `accepted_metadata_only`
+
+`createEmptySuggestionInboxItem(...)` creates an inert placeholder. `validateSuggestionInboxItem(...)` validates the contract and rejects raw bodies, raw content, secrets, PII, persistence attempts, approval bridge attempts, and action execution attempts.
+
 ## Explicitly Not Implemented
 
 - No suggestion generation.
@@ -56,4 +86,4 @@ The Phase 17D.1 routine suggestion contract includes:
 
 ## Next Recommended Slice
 
-Phase 17D.2 - Suggestion Inbox Contract Scaffold.
+Phase 17D.3 - Suggestion Redaction and Safety Guard.

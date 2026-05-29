@@ -495,20 +495,32 @@ export type {
 } from "./calibration-diff";
 
 export {
+  PHASE_17_SUGGESTION_INBOX_STATUSES,
+  PHASE_17_SUGGESTION_INBOX_VALIDATION_REASONS,
   SUGGESTION_INBOX_STATUSES,
   SUGGESTION_INBOX_TELEMETRY_EVENT_TYPES,
+  Phase17SuggestionInboxItemSchema,
+  Phase17SuggestionInboxStatusSchema,
+  Phase17SuggestionInboxValidationReasonSchema,
+  Phase17SuggestionInboxValidationSchema,
   SuggestionInboxItemSchema,
   SuggestionInboxStatusSchema,
   SuggestionInboxTelemetryEventSchema,
   SuggestionInboxTelemetryEventTypeSchema,
   SuggestionInboxTransitionResultSchema,
   SuggestionInboxTransitionSchema,
+  createEmptySuggestionInboxItem,
   createSuggestionInboxItem,
   createSuggestionInboxTelemetryEvent,
   transitionSuggestionInboxItem,
+  validateSuggestionInboxItem,
 } from "./suggestion-inbox";
 
 export type {
+  Phase17SuggestionInboxItem,
+  Phase17SuggestionInboxStatus,
+  Phase17SuggestionInboxValidation,
+  Phase17SuggestionInboxValidationReason,
   SuggestionInboxItem,
   SuggestionInboxStatus,
   SuggestionInboxTelemetryEvent,
