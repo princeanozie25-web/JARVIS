@@ -368,6 +368,9 @@ export const PHASE_17_SELF_AUDIT_REPORT_VALIDATION_REASONS = [
   "frame_payload_forbidden",
   "prompt_forbidden",
   "model_output_forbidden",
+  "raw_report_forbidden",
+  "raw_section_content_forbidden",
+  "telemetry_forbidden",
 ] as const;
 
 export type Phase17SelfAuditReportSection =
@@ -520,6 +523,93 @@ export const Phase17SelfAuditSectionValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const Phase17SelfAuditRedactionBoundarySchema = z.strictObject({
+  redaction_required: z.literal(true),
+  redaction_supported: z.literal(false),
+  redaction_attempted: z.literal(false),
+  raw_payload_allowed: z.literal(false),
+  pii_allowed: z.literal(false),
+  secrets_allowed: z.literal(false),
+  project_body_allowed: z.literal(false),
+  tool_output_allowed: z.literal(false),
+  voice_transcript_allowed: z.literal(false),
+  ocr_text_allowed: z.literal(false),
+  frame_data_allowed: z.literal(false),
+  prompt_allowed: z.literal(false),
+  model_output_allowed: z.literal(false),
+  metadata_only: z.literal(true),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  persisted: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SelfAuditTelemetryBoundarySchema = z.strictObject({
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  telemetry_payload_kind: z.literal("metadata_only"),
+  raw_report_allowed: z.literal(false),
+  raw_section_content_allowed: z.literal(false),
+  metadata_only: z.literal(true),
+  raw_payload_allowed: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  event_store_write_supported: z.literal(false),
+  event_store_write_attempted: z.literal(false),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
+export const Phase17SelfAuditBoundaryValidationSchema = z.strictObject({
+  kind: z.enum([
+    "phase17.self_audit_redaction_boundary_validation",
+    "phase17.self_audit_telemetry_boundary_validation",
+  ]),
+  pass: z.boolean(),
+  violation_count: z.number().int().nonnegative(),
+  violations: z.array(Phase17SelfAuditReportValidationReasonSchema),
+  metadata_only: z.literal(true),
+  report_generated: z.literal(false),
+  suggestion_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  collector_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  event_store_write_performed: z.literal(false),
+  persisted: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
 export type Phase17SelfAuditReportWindow = z.infer<
   typeof Phase17SelfAuditReportWindowSchema
 >;
@@ -535,6 +625,77 @@ export type Phase17SelfAuditReportValidation = z.infer<
 export type Phase17SelfAuditSectionValidation = z.infer<
   typeof Phase17SelfAuditSectionValidationSchema
 >;
+export type Phase17SelfAuditRedactionBoundary = z.infer<
+  typeof Phase17SelfAuditRedactionBoundarySchema
+>;
+export type Phase17SelfAuditTelemetryBoundary = z.infer<
+  typeof Phase17SelfAuditTelemetryBoundarySchema
+>;
+export type Phase17SelfAuditBoundaryValidation = z.infer<
+  typeof Phase17SelfAuditBoundaryValidationSchema
+>;
+
+export const DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY =
+  Phase17SelfAuditRedactionBoundarySchema.parse({
+    redaction_required: true,
+    redaction_supported: false,
+    redaction_attempted: false,
+    raw_payload_allowed: false,
+    pii_allowed: false,
+    secrets_allowed: false,
+    project_body_allowed: false,
+    tool_output_allowed: false,
+    voice_transcript_allowed: false,
+    ocr_text_allowed: false,
+    frame_data_allowed: false,
+    prompt_allowed: false,
+    model_output_allowed: false,
+    metadata_only: true,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    collector_execution_attempted: false,
+    db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+
+export const DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY =
+  Phase17SelfAuditTelemetryBoundarySchema.parse({
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    telemetry_payload_kind: "metadata_only",
+    raw_report_allowed: false,
+    raw_section_content_allowed: false,
+    metadata_only: true,
+    raw_payload_allowed: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    event_store_write_supported: false,
+    event_store_write_attempted: false,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    collector_execution_attempted: false,
+    db_read_performed: false,
+    event_store_read_performed: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
 
 export function createEmptyPhase17SelfAuditReport(input: {
   readonly report_id: string;
@@ -668,6 +829,42 @@ export function validateSelfAuditSectionMetadata(
   });
 }
 
+export function validateSelfAuditRedactionBoundary(
+  input: unknown,
+): Phase17SelfAuditBoundaryValidation {
+  const parsed = Phase17SelfAuditRedactionBoundarySchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>(
+    forbiddenPayloadViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return boundaryValidation({
+    kind: "phase17.self_audit_redaction_boundary_validation",
+    violations,
+  });
+}
+
+export function validateSelfAuditTelemetryBoundary(
+  input: unknown,
+): Phase17SelfAuditBoundaryValidation {
+  const parsed = Phase17SelfAuditTelemetryBoundarySchema.safeParse(input);
+  const violations = new Set<Phase17SelfAuditReportValidationReason>(
+    forbiddenPayloadViolations(input),
+  );
+
+  if (!parsed.success) {
+    violations.add("invalid_schema");
+  }
+
+  return boundaryValidation({
+    kind: "phase17.self_audit_telemetry_boundary_validation",
+    violations,
+  });
+}
+
 function sectionValidation(input: {
   readonly section: Phase17SelfAuditReportSectionMetadata | null;
   readonly violations: Set<Phase17SelfAuditReportValidationReason>;
@@ -684,6 +881,38 @@ function sectionValidation(input: {
     summary_generated: false,
     collector_attempted: false,
     source_read_attempted: false,
+    db_read_performed: false,
+    event_store_read_performed: false,
+    event_store_write_performed: false,
+    persisted: false,
+    telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+function boundaryValidation(input: {
+  readonly kind:
+    | "phase17.self_audit_redaction_boundary_validation"
+    | "phase17.self_audit_telemetry_boundary_validation";
+  readonly violations: Set<Phase17SelfAuditReportValidationReason>;
+}): Phase17SelfAuditBoundaryValidation {
+  return Phase17SelfAuditBoundaryValidationSchema.parse({
+    kind: input.kind,
+    pass: input.violations.size === 0,
+    violation_count: input.violations.size,
+    violations:
+      input.violations.size === 0 ? ["valid_schema"] : [...input.violations],
+    metadata_only: true,
+    report_generated: false,
+    suggestion_generated: false,
+    baseline_update_generated: false,
+    collector_execution_attempted: false,
     db_read_performed: false,
     event_store_read_performed: false,
     event_store_write_performed: false,
@@ -739,9 +968,22 @@ function forbiddenPayloadViolations(
 
   visitUnknown(input, (key, value) => {
     const normalized = key.toLowerCase();
-    if (/raw|payload|body_text|report_body|content/.test(normalized)) {
+    if (
+      /raw|payload|body_text|report_body|content/.test(normalized) &&
+      normalized !== "telemetry_payload_kind"
+    ) {
       if (value !== false && value !== undefined) {
         violations.add("raw_payload_forbidden");
+      }
+    }
+    if (/raw_report/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("raw_report_forbidden");
+      }
+    }
+    if (/raw_section_content|section_content/.test(normalized)) {
+      if (value !== false && value !== undefined) {
+        violations.add("raw_section_content_forbidden");
       }
     }
     if (/secret|token|password|api_key|apikey/.test(normalized)) {
@@ -764,26 +1006,45 @@ function forbiddenPayloadViolations(
         violations.add("persistence_forbidden");
       }
     }
+    if (/telemetry/.test(normalized)) {
+      if (value !== false && value !== undefined && value !== "metadata_only") {
+        violations.add("telemetry_forbidden");
+      }
+    }
     if (/tool_output/.test(normalized)) {
-      violations.add("tool_output_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("tool_output_forbidden");
+      }
     }
     if (/project_body|project_content/.test(normalized)) {
-      violations.add("project_body_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("project_body_forbidden");
+      }
     }
     if (/voice_transcript|transcript/.test(normalized)) {
-      violations.add("voice_transcript_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("voice_transcript_forbidden");
+      }
     }
     if (/ocr_text|extracted_text/.test(normalized)) {
-      violations.add("ocr_text_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("ocr_text_forbidden");
+      }
     }
     if (/frame|raw_frame|image_bytes/.test(normalized)) {
-      violations.add("frame_payload_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("frame_payload_forbidden");
+      }
     }
     if (/prompt/.test(normalized)) {
-      violations.add("prompt_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("prompt_forbidden");
+      }
     }
     if (/model_output|model_response|llm_output/.test(normalized)) {
-      violations.add("model_output_forbidden");
+      if (value !== false && value !== undefined) {
+        violations.add("model_output_forbidden");
+      }
     }
   });
 

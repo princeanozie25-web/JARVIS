@@ -59,6 +59,42 @@ Each section includes:
 
 `validateSelfAuditSectionMetadata(section)` validates one section at a time and rejects raw payloads, text bodies, secrets, PII, project bodies, tool outputs, voice transcripts, OCR text, frames, prompts, and model outputs. It does not run collectors and does not read from a database or event store.
 
+## Redaction Boundary
+
+Phase 17C.3 adds `validateSelfAuditRedactionBoundary(...)`.
+
+The redaction boundary requires:
+
+- `redaction_required: true`
+- `redaction_supported: false`
+- `redaction_attempted: false`
+- `raw_payload_allowed: false`
+- `pii_allowed: false`
+- `secrets_allowed: false`
+- `project_body_allowed: false`
+- `tool_output_allowed: false`
+- `voice_transcript_allowed: false`
+- `ocr_text_allowed: false`
+- `frame_data_allowed: false`
+- `prompt_allowed: false`
+- `model_output_allowed: false`
+
+This slice defines what future redaction must protect, but it does not run redaction because no report content is generated.
+
+## Telemetry Boundary
+
+Phase 17C.3 also adds `validateSelfAuditTelemetryBoundary(...)`.
+
+The telemetry boundary requires:
+
+- `telemetry_supported: false`
+- `telemetry_attempted: false`
+- `telemetry_payload_kind: metadata_only`
+- `raw_report_allowed: false`
+- `raw_section_content_allowed: false`
+
+Telemetry remains forbidden as an output sink in this scaffold. No telemetry write, persistence write, event-store write, raw report payload, or raw section content is allowed.
+
 ## Validation
 
 `validateSelfAuditReportSchema(report)` validates the schema and rejects:

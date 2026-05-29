@@ -5,9 +5,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   PHASE_17_SELF_AUDIT_REPORT_SECTIONS,
+  DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY,
+  DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY,
   Phase17SelfAuditReportSchema,
   createEmptyPhase17SelfAuditReport,
+  validateSelfAuditRedactionBoundary,
   validateSelfAuditSectionMetadata,
+  validateSelfAuditTelemetryBoundary,
   validateSelfAuditReportSchema,
 } from "../../src/lib/routines/self-audit-report";
 
@@ -260,6 +264,151 @@ describe("Phase 17C.1 self-audit report schema scaffold", () => {
       collector_execution_attempted: false,
       db_read_performed: false,
       telemetry_attempted: false,
+    });
+  });
+
+  it("validates the disabled redaction boundary as metadata-only", () => {
+    expect(
+      validateSelfAuditRedactionBoundary(
+        DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY,
+      ),
+    ).toEqual({
+      kind: "phase17.self_audit_redaction_boundary_validation",
+      pass: true,
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      report_generated: false,
+      suggestion_generated: false,
+      baseline_update_generated: false,
+      collector_execution_attempted: false,
+      db_read_performed: false,
+      event_store_read_performed: false,
+      event_store_write_performed: false,
+      persisted: false,
+      telemetry_attempted: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+    expect(DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY).toMatchObject({
+      redaction_required: true,
+      redaction_supported: false,
+      redaction_attempted: false,
+      raw_payload_allowed: false,
+      pii_allowed: false,
+      secrets_allowed: false,
+      project_body_allowed: false,
+      tool_output_allowed: false,
+      voice_transcript_allowed: false,
+      ocr_text_allowed: false,
+      frame_data_allowed: false,
+      prompt_allowed: false,
+      model_output_allowed: false,
+    });
+  });
+
+  it("rejects unsafe redaction boundary payloads", () => {
+    const unsafe = {
+      ...DEFAULT_PHASE_17_SELF_AUDIT_REDACTION_BOUNDARY,
+      redaction_supported: true,
+      redaction_attempted: true,
+      raw_payload: "raw",
+      pii_email: "person@example.test",
+      api_key: "secret",
+      project_body: "project",
+      tool_output: "tool",
+      voice_transcript: "voice",
+      ocr_text: "ocr",
+      raw_frame: "frame",
+      prompt: "prompt",
+      model_output: "model",
+    };
+
+    expect(validateSelfAuditRedactionBoundary(unsafe)).toMatchObject({
+      pass: false,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_payload_forbidden",
+        "pii_forbidden",
+        "secret_forbidden",
+        "project_body_forbidden",
+        "tool_output_forbidden",
+        "voice_transcript_forbidden",
+        "ocr_text_forbidden",
+        "frame_payload_forbidden",
+        "prompt_forbidden",
+        "model_output_forbidden",
+      ]),
+      telemetry_attempted: false,
+      event_store_write_performed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("validates the disabled telemetry boundary as metadata-only", () => {
+    expect(
+      validateSelfAuditTelemetryBoundary(
+        DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY,
+      ),
+    ).toMatchObject({
+      kind: "phase17.self_audit_telemetry_boundary_validation",
+      pass: true,
+      violation_count: 0,
+      violations: ["valid_schema"],
+      metadata_only: true,
+      telemetry_attempted: false,
+      persisted: false,
+      event_store_write_performed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+    expect(DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY).toMatchObject({
+      telemetry_supported: false,
+      telemetry_attempted: false,
+      telemetry_payload_kind: "metadata_only",
+      raw_report_allowed: false,
+      raw_section_content_allowed: false,
+      raw_payload_allowed: false,
+      persistence_supported: false,
+      persistence_attempted: false,
+      event_store_write_supported: false,
+      event_store_write_attempted: false,
+    });
+  });
+
+  it("rejects telemetry boundaries with raw report or section content", () => {
+    const unsafe = {
+      ...DEFAULT_PHASE_17_SELF_AUDIT_TELEMETRY_BOUNDARY,
+      telemetry_supported: true,
+      telemetry_attempted: true,
+      telemetry_payload_kind: "raw_report",
+      raw_report_allowed: true,
+      raw_section_content_allowed: true,
+      raw_report: "report",
+      raw_section_content: "section",
+      event_store_write_attempted: true,
+    };
+
+    expect(validateSelfAuditTelemetryBoundary(unsafe)).toMatchObject({
+      pass: false,
+      violations: expect.arrayContaining([
+        "invalid_schema",
+        "raw_payload_forbidden",
+        "raw_report_forbidden",
+        "raw_section_content_forbidden",
+        "telemetry_forbidden",
+        "persistence_forbidden",
+      ]),
+      telemetry_attempted: false,
+      event_store_write_performed: false,
+      tool_called: false,
+      approval_executed: false,
     });
   });
 
