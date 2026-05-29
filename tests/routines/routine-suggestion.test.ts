@@ -7,7 +7,9 @@ import {
   DEFAULT_ROUTINE_SUGGESTION_APPROVAL_BRIDGE,
   DEFAULT_ROUTINE_SUGGESTION_SAFETY_BOUNDARY,
   ROUTINE_SUGGESTION_KINDS,
+  RoutineSuggestionAuditPreviewSchema,
   RoutineSuggestionSchema,
+  buildRoutineSuggestionAuditPreview,
   createEmptyRoutineSuggestion,
   validateSuggestionApprovalBridge,
   validateRoutineSuggestionSafety,
@@ -355,6 +357,73 @@ describe("Phase 17D.1 suggestion output contract scaffold", () => {
       approval_executed: false,
       persisted: false,
     });
+  });
+
+  it("builds replay-safe suggestion audit previews without persistence or telemetry", () => {
+    expect(buildRoutineSuggestionAuditPreview(validSuggestion())).toEqual({
+      audit_preview_id: "audit_preview:suggestion:next_action",
+      suggestion_id: "suggestion:next_action",
+      routine_id: "routine:next_action_suggest",
+      suggestion_kind: "next_action",
+      audit_preview_supported: false,
+      audit_preview_attempted: false,
+      audit_payload_kind: "metadata_only",
+      replay_safe: true,
+      raw_payload_allowed: false,
+      persistence_supported: false,
+      persistence_attempted: false,
+      event_store_write_supported: false,
+      event_store_write_attempted: false,
+      telemetry_supported: false,
+      telemetry_attempted: false,
+      metadata_only: true,
+      redaction_required: true,
+      safety_review_required: true,
+      approval_bridge_supported: false,
+      approval_bridge_attempted: false,
+      action_execution_supported: false,
+      action_execution_attempted: false,
+      suggestion_generated: false,
+      body_generated: false,
+      body_attached: false,
+      inbox_item_created: false,
+      report_generated: false,
+      baseline_update_generated: false,
+      scheduler_execution_attempted: false,
+      routine_execution_attempted: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_created: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("rejects mutated suggestion audit previews with raw payloads or write attempts", () => {
+    const preview = buildRoutineSuggestionAuditPreview(validSuggestion());
+
+    expect(
+      RoutineSuggestionAuditPreviewSchema.safeParse({
+        ...preview,
+        raw_payload_allowed: true,
+        persistence_supported: true,
+        persistence_attempted: true,
+        event_store_write_supported: true,
+        event_store_write_attempted: true,
+        telemetry_supported: true,
+        telemetry_attempted: true,
+        approval_bridge_supported: true,
+        action_execution_supported: true,
+        suggestion_generated: true,
+        body_attached: true,
+      }).success,
+    ).toBe(false);
   });
 
   it("does not add inbox creation, reports, DB/event-store, tools, approvals, cloud, or network behavior", () => {

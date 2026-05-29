@@ -420,6 +420,55 @@ export const Phase17SuggestionInboxApprovalBridgeValidationSchema =
     cloud_called: z.literal(false),
   });
 
+export const Phase17SuggestionInboxAuditPreviewSchema = z.strictObject({
+  audit_preview_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(240)
+    .regex(/^audit_preview:inbox_item:[a-z0-9._:-]+$/),
+  inbox_item_id: Phase17InboxItemIdSchema,
+  suggestion_id: Phase17SuggestionIdSchema,
+  routine_id: RoutineIdSchema,
+  inbox_status: Phase17SuggestionInboxStatusSchema,
+  audit_preview_supported: z.literal(false),
+  audit_preview_attempted: z.literal(false),
+  audit_payload_kind: z.literal("metadata_only"),
+  replay_safe: z.literal(true),
+  raw_payload_allowed: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  event_store_write_supported: z.literal(false),
+  event_store_write_attempted: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  metadata_only: z.literal(true),
+  redaction_required: z.literal(true),
+  safety_review_required: z.literal(true),
+  approval_bridge_supported: z.literal(false),
+  approval_bridge_attempted: z.literal(false),
+  action_execution_supported: z.literal(false),
+  action_execution_attempted: z.literal(false),
+  inbox_item_created: z.literal(false),
+  body_attached: z.literal(false),
+  suggestion_generated: z.literal(false),
+  report_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  scheduler_execution_attempted: z.literal(false),
+  routine_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_created: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
 export type SuggestionInboxItem = z.infer<typeof SuggestionInboxItemSchema>;
 export type SuggestionInboxTransition = z.infer<
   typeof SuggestionInboxTransitionSchema
@@ -447,6 +496,9 @@ export type Phase17SuggestionInboxApprovalBridge = z.infer<
 >;
 export type Phase17SuggestionInboxApprovalBridgeValidation = z.infer<
   typeof Phase17SuggestionInboxApprovalBridgeValidationSchema
+>;
+export type Phase17SuggestionInboxAuditPreview = z.infer<
+  typeof Phase17SuggestionInboxAuditPreviewSchema
 >;
 
 export const DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY =
@@ -719,6 +771,55 @@ export function validateInboxApprovalBridge(
     event_store_read_performed: false,
     event_store_write_performed: false,
     telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_created: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+export function buildSuggestionInboxAuditPreview(
+  input: Phase17SuggestionInboxItem,
+): Phase17SuggestionInboxAuditPreview {
+  const item = Phase17SuggestionInboxItemSchema.parse(input);
+  return Phase17SuggestionInboxAuditPreviewSchema.parse({
+    audit_preview_id: `audit_preview:inbox_item:${item.inbox_item_id.replace(/^inbox_item:/, "")}`,
+    inbox_item_id: item.inbox_item_id,
+    suggestion_id: item.suggestion_id,
+    routine_id: item.routine_id,
+    inbox_status: item.inbox_status,
+    audit_preview_supported: false,
+    audit_preview_attempted: false,
+    audit_payload_kind: "metadata_only",
+    replay_safe: true,
+    raw_payload_allowed: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    event_store_write_supported: false,
+    event_store_write_attempted: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    metadata_only: true,
+    redaction_required: true,
+    safety_review_required: true,
+    approval_bridge_supported: false,
+    approval_bridge_attempted: false,
+    action_execution_supported: false,
+    action_execution_attempted: false,
+    inbox_item_created: false,
+    body_attached: false,
+    suggestion_generated: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    scheduler_execution_attempted: false,
+    routine_execution_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
     tool_called: false,
     device_action_executed: false,
     project_mutated: false,

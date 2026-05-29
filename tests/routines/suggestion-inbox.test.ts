@@ -7,7 +7,9 @@ import {
   DEFAULT_PHASE_17_SUGGESTION_INBOX_APPROVAL_BRIDGE,
   DEFAULT_PHASE_17_SUGGESTION_INBOX_SAFETY_BOUNDARY,
   PHASE_17_SUGGESTION_INBOX_STATUSES,
+  Phase17SuggestionInboxAuditPreviewSchema,
   Phase17SuggestionInboxItemSchema,
+  buildSuggestionInboxAuditPreview,
   createEmptySuggestionInboxItem,
   validateInboxApprovalBridge,
   validateSuggestionInboxSafety,
@@ -352,6 +354,73 @@ describe("Phase 17D.2 suggestion inbox contract scaffold", () => {
       approval_executed: false,
       persisted: false,
     });
+  });
+
+  it("builds replay-safe inbox audit previews without persistence or telemetry", () => {
+    expect(buildSuggestionInboxAuditPreview(validInboxItem())).toEqual({
+      audit_preview_id: "audit_preview:inbox_item:next_action",
+      inbox_item_id: "inbox_item:next_action",
+      suggestion_id: "suggestion:next_action",
+      routine_id: "routine:next_action_suggest",
+      inbox_status: "unavailable",
+      audit_preview_supported: false,
+      audit_preview_attempted: false,
+      audit_payload_kind: "metadata_only",
+      replay_safe: true,
+      raw_payload_allowed: false,
+      persistence_supported: false,
+      persistence_attempted: false,
+      event_store_write_supported: false,
+      event_store_write_attempted: false,
+      telemetry_supported: false,
+      telemetry_attempted: false,
+      metadata_only: true,
+      redaction_required: true,
+      safety_review_required: true,
+      approval_bridge_supported: false,
+      approval_bridge_attempted: false,
+      action_execution_supported: false,
+      action_execution_attempted: false,
+      inbox_item_created: false,
+      body_attached: false,
+      suggestion_generated: false,
+      report_generated: false,
+      baseline_update_generated: false,
+      scheduler_execution_attempted: false,
+      routine_execution_attempted: false,
+      db_read_performed: false,
+      db_write_performed: false,
+      event_store_read_performed: false,
+      tool_called: false,
+      device_action_executed: false,
+      project_mutated: false,
+      memory_written: false,
+      approval_created: false,
+      approval_executed: false,
+      network_called: false,
+      cloud_called: false,
+    });
+  });
+
+  it("rejects mutated inbox audit previews with raw payloads or write attempts", () => {
+    const preview = buildSuggestionInboxAuditPreview(validInboxItem());
+
+    expect(
+      Phase17SuggestionInboxAuditPreviewSchema.safeParse({
+        ...preview,
+        raw_payload_allowed: true,
+        persistence_supported: true,
+        persistence_attempted: true,
+        event_store_write_supported: true,
+        event_store_write_attempted: true,
+        telemetry_supported: true,
+        telemetry_attempted: true,
+        approval_bridge_supported: true,
+        action_execution_supported: true,
+        inbox_item_created: true,
+        body_attached: true,
+      }).success,
+    ).toBe(false);
   });
 
   it("keeps the Phase 17D inbox scaffold free of new runtime side-effect markers", () => {

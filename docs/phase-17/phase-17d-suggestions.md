@@ -114,6 +114,29 @@ Both bridge contracts require:
 
 Approval references are rejected. The bridge does not create approvals, persist anything, execute actions, call tools, write memory, mutate projects, control devices, or call cloud/network services.
 
+## Audit Preview
+
+Phase 17D.5 adds metadata-only audit preview builders for suggestion and inbox placeholders:
+
+- `buildRoutineSuggestionAuditPreview(...)`
+- `buildSuggestionInboxAuditPreview(...)`
+
+Audit previews include:
+
+- `audit_preview_supported: false`
+- `audit_preview_attempted: false`
+- `audit_payload_kind: metadata_only`
+- `replay_safe: true`
+- `raw_payload_allowed: false`
+- `persistence_supported: false`
+- `persistence_attempted: false`
+- `event_store_write_supported: false`
+- `event_store_write_attempted: false`
+- `telemetry_supported: false`
+- `telemetry_attempted: false`
+
+The preview builders do not persist, write to an event store, emit telemetry, generate suggestions, attach bodies, create inbox records, bridge to approvals, execute actions, read stores, call tools, or use cloud/network services.
+
 ## Explicitly Not Implemented
 
 - No suggestion generation.
@@ -134,4 +157,4 @@ Approval references are rejected. The bridge does not create approvals, persist 
 
 ## Next Recommended Slice
 
-Phase 17D.5 - Suggestion Audit Preview Scaffold.
+Phase 17D.6 - Suggestion Output Closeout Guard.

@@ -287,6 +287,55 @@ export const RoutineSuggestionApprovalBridgeValidationSchema = z.strictObject({
   cloud_called: z.literal(false),
 });
 
+export const RoutineSuggestionAuditPreviewSchema = z.strictObject({
+  audit_preview_id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(220)
+    .regex(/^audit_preview:suggestion:[a-z0-9._:-]+$/),
+  suggestion_id: SuggestionIdSchema,
+  routine_id: RoutineIdSchema,
+  suggestion_kind: RoutineSuggestionKindSchema,
+  audit_preview_supported: z.literal(false),
+  audit_preview_attempted: z.literal(false),
+  audit_payload_kind: z.literal("metadata_only"),
+  replay_safe: z.literal(true),
+  raw_payload_allowed: z.literal(false),
+  persistence_supported: z.literal(false),
+  persistence_attempted: z.literal(false),
+  event_store_write_supported: z.literal(false),
+  event_store_write_attempted: z.literal(false),
+  telemetry_supported: z.literal(false),
+  telemetry_attempted: z.literal(false),
+  metadata_only: z.literal(true),
+  redaction_required: z.literal(true),
+  safety_review_required: z.literal(true),
+  approval_bridge_supported: z.literal(false),
+  approval_bridge_attempted: z.literal(false),
+  action_execution_supported: z.literal(false),
+  action_execution_attempted: z.literal(false),
+  suggestion_generated: z.literal(false),
+  body_generated: z.literal(false),
+  body_attached: z.literal(false),
+  inbox_item_created: z.literal(false),
+  report_generated: z.literal(false),
+  baseline_update_generated: z.literal(false),
+  scheduler_execution_attempted: z.literal(false),
+  routine_execution_attempted: z.literal(false),
+  db_read_performed: z.literal(false),
+  db_write_performed: z.literal(false),
+  event_store_read_performed: z.literal(false),
+  tool_called: z.literal(false),
+  device_action_executed: z.literal(false),
+  project_mutated: z.literal(false),
+  memory_written: z.literal(false),
+  approval_created: z.literal(false),
+  approval_executed: z.literal(false),
+  network_called: z.literal(false),
+  cloud_called: z.literal(false),
+});
+
 export type RoutineSuggestion = z.infer<typeof RoutineSuggestionSchema>;
 export type RoutineSuggestionValidation = z.infer<
   typeof RoutineSuggestionValidationSchema
@@ -302,6 +351,9 @@ export type RoutineSuggestionApprovalBridge = z.infer<
 >;
 export type RoutineSuggestionApprovalBridgeValidation = z.infer<
   typeof RoutineSuggestionApprovalBridgeValidationSchema
+>;
+export type RoutineSuggestionAuditPreview = z.infer<
+  typeof RoutineSuggestionAuditPreviewSchema
 >;
 
 export const DEFAULT_ROUTINE_SUGGESTION_SAFETY_BOUNDARY =
@@ -560,6 +612,55 @@ export function validateSuggestionApprovalBridge(
     event_store_read_performed: false,
     event_store_write_performed: false,
     telemetry_attempted: false,
+    tool_called: false,
+    device_action_executed: false,
+    project_mutated: false,
+    memory_written: false,
+    approval_created: false,
+    approval_executed: false,
+    network_called: false,
+    cloud_called: false,
+  });
+}
+
+export function buildRoutineSuggestionAuditPreview(
+  input: RoutineSuggestion,
+): RoutineSuggestionAuditPreview {
+  const suggestion = RoutineSuggestionSchema.parse(input);
+  return RoutineSuggestionAuditPreviewSchema.parse({
+    audit_preview_id: `audit_preview:suggestion:${suggestion.suggestion_id.replace(/^suggestion:/, "")}`,
+    suggestion_id: suggestion.suggestion_id,
+    routine_id: suggestion.routine_id,
+    suggestion_kind: suggestion.suggestion_kind,
+    audit_preview_supported: false,
+    audit_preview_attempted: false,
+    audit_payload_kind: "metadata_only",
+    replay_safe: true,
+    raw_payload_allowed: false,
+    persistence_supported: false,
+    persistence_attempted: false,
+    event_store_write_supported: false,
+    event_store_write_attempted: false,
+    telemetry_supported: false,
+    telemetry_attempted: false,
+    metadata_only: true,
+    redaction_required: true,
+    safety_review_required: true,
+    approval_bridge_supported: false,
+    approval_bridge_attempted: false,
+    action_execution_supported: false,
+    action_execution_attempted: false,
+    suggestion_generated: false,
+    body_generated: false,
+    body_attached: false,
+    inbox_item_created: false,
+    report_generated: false,
+    baseline_update_generated: false,
+    scheduler_execution_attempted: false,
+    routine_execution_attempted: false,
+    db_read_performed: false,
+    db_write_performed: false,
+    event_store_read_performed: false,
     tool_called: false,
     device_action_executed: false,
     project_mutated: false,
