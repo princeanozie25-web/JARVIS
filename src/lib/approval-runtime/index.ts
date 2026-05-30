@@ -496,3 +496,33 @@ export type {
   ApprovalDecisionValidationPolicyMatrix,
   ApprovalDecisionValidationReasonCode,
 } from "./approval-decision-validation";
+
+export {
+  APPROVAL_DECISION_AUDIT_PREVIEW_CONTRACT_VERSION,
+  APPROVAL_DECISION_AUDIT_PREVIEW_REDACTION_STATUSES,
+  APPROVAL_DECISION_AUDIT_PREVIEW_SECTIONS,
+  ApprovalDecisionAuditPreviewChannelPolicySchema,
+  ApprovalDecisionAuditPreviewContractSchema,
+  ApprovalDecisionAuditPreviewDisabledAuthorityStatusSchema,
+  ApprovalDecisionAuditPreviewForbiddenChannelsSchema,
+  ApprovalDecisionAuditPreviewProposalReferenceSchema,
+  ApprovalDecisionAuditPreviewRedactionMetadataSchema,
+  ApprovalDecisionAuditPreviewRedactionStatusSchema,
+  ApprovalDecisionAuditPreviewReplayMetadataSchema,
+  ApprovalDecisionAuditPreviewReviewSessionReferenceSchema,
+  ApprovalDecisionAuditPreviewSectionDeclarationSchema,
+  ApprovalDecisionAuditPreviewSectionSchema,
+  ApprovalDecisionAuditPreviewSummarySchema,
+  ApprovalDecisionAuditPreviewValidationSummarySchema,
+  buildApprovalDecisionAuditPreviewContract,
+} from "./approval-decision-audit-preview";
+
+export type {
+  ApprovalDecisionAuditPreviewContract,
+  ApprovalDecisionAuditPreviewDisabledAuthorityStatus,
+  ApprovalDecisionAuditPreviewRedactionStatus,
+  ApprovalDecisionAuditPreviewSection,
+  ApprovalDecisionAuditPreviewSectionDeclaration,
+  ApprovalDecisionAuditPreviewSummary,
+  ApprovalDecisionAuditPreviewValidationSummary,
+} from "./approval-decision-audit-preview";
