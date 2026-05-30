@@ -545,10 +545,10 @@ function globalWarnings(): TelemetryCockpitWarning[] {
   ];
 }
 
-export function buildTelemetryCockpitProjection(): TelemetryCockpitProjection {
+function createTelemetryCockpitProjection(): TelemetryCockpitProjection {
   const panels = TELEMETRY_COCKPIT_PANEL_KINDS.map(panel);
   const warnings = globalWarnings();
-  const projection = TelemetryCockpitProjectionSchema.parse({
+  return TelemetryCockpitProjectionSchema.parse({
     projection_id: "telemetry-cockpit:phase-19b1-projection",
     contract_version: TELEMETRY_COCKPIT_CONTRACT_VERSION,
     generated_from: "deterministic_existing_projection_metadata",
@@ -565,8 +565,15 @@ export function buildTelemetryCockpitProjection(): TelemetryCockpitProjection {
     redaction_safe: true,
     payload_classes_exposed: [],
   });
+}
 
-  return copyProjection(TelemetryCockpitProjectionSchema, projection);
+const STATIC_TELEMETRY_COCKPIT_PROJECTION = createTelemetryCockpitProjection();
+
+export function buildTelemetryCockpitProjection(): TelemetryCockpitProjection {
+  return copyProjection(
+    TelemetryCockpitProjectionSchema,
+    STATIC_TELEMETRY_COCKPIT_PROJECTION,
+  );
 }
 
 export function buildTelemetryCockpitStats(): TelemetryCockpitStats {

@@ -40,3 +40,38 @@ export type {
   TelemetryCockpitTimeWindow,
   TelemetryCockpitWarning,
 } from "./contracts";
+
+export {
+  TelemetryCockpitPanelSummarySchema,
+  filterTelemetryCockpitPanelsByHealth,
+  getTelemetryCockpitAlertsForPanel,
+  getTelemetryCockpitMetricsForPanel,
+  getTelemetryCockpitPanelById,
+  getTelemetryCockpitPanelsByKind,
+  getTelemetryCockpitWarningsForPanel,
+  listTelemetryCockpitPanelKinds,
+  summarizeTelemetryCockpitPanel,
+} from "./queries";
+
+export type { TelemetryCockpitPanelSummary } from "./queries";
+
+export {
+  TELEMETRY_COCKPIT_SAFETY_GUARD_VERSION,
+  TELEMETRY_COCKPIT_SAFETY_SCAN_TARGETS,
+  TELEMETRY_COCKPIT_SAFETY_VIOLATION_KINDS,
+  TelemetryCockpitSafetyResultSchema,
+  TelemetryCockpitSafetyScanTargetSchema,
+  TelemetryCockpitSafetyViolationKindSchema,
+  TelemetryCockpitSafetyViolationSchema,
+  assertTelemetryCockpitSafe,
+  listTelemetryCockpitForbiddenAffordanceNames,
+  listTelemetryCockpitForbiddenFieldNames,
+  scanTelemetryCockpitSafety,
+} from "./safety-guard";
+
+export type {
+  TelemetryCockpitSafetyResult,
+  TelemetryCockpitSafetyScanTarget,
+  TelemetryCockpitSafetyViolation,
+  TelemetryCockpitSafetyViolationKind,
+} from "./safety-guard";
