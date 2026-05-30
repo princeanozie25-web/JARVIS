@@ -194,6 +194,37 @@ export type {
 } from "./cai-mock-provider";
 
 export {
+  CAI_APPROVAL_BINDING_DISABLED_CAPABILITIES,
+  CAI_APPROVAL_BINDING_VERSION,
+  CAI_APPROVAL_DENIED_REASONS,
+  CAI_APPROVAL_REQUIRED_EVIDENCE_IDS,
+  CaiApprovalAuditPreviewSchema,
+  CaiApprovalBindingDisabledCapabilitySchema,
+  CaiApprovalBindingPolicySchema,
+  CaiApprovalBindingResultSchema,
+  CaiApprovalDeniedReasonSchema,
+  CaiApprovalProposalSchema,
+  CaiApprovalRequiredEvidenceIdSchema,
+  CaiApprovalRequiredEvidenceSchema,
+  assertCaiRequiresApproval,
+  buildCaiApprovalAuditPreview,
+  buildCaiApprovalProposal,
+  listCaiApprovalBindingDisabledCapabilities,
+  validateCaiApprovalProposal,
+} from "./cai-approval-binding";
+
+export type {
+  CaiApprovalAuditPreview,
+  CaiApprovalBindingDisabledCapability,
+  CaiApprovalBindingPolicy,
+  CaiApprovalBindingResult,
+  CaiApprovalDeniedReason,
+  CaiApprovalProposal,
+  CaiApprovalRequiredEvidence,
+  CaiApprovalRequiredEvidenceId,
+} from "./cai-approval-binding";
+
+export {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
   PHASE_19D_CLOSEOUT_VERDICTS,
   PHASE_19D_CLOSEOUT_VERSION,
