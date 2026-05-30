@@ -1,14 +1,26 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
 import {
   assertArchitectureGraphProjectionSafe,
   buildArchitectureGraphProjection,
   buildArchitectureGraphProjectionStats,
   getArchitectureNodeDependencies,
   getArchitectureNodeDependents,
+  getArchitectureNodeForbiddenEdges,
+  getArchitectureNodeGovernanceEdges,
+  getArchitectureNodeInboundEdges,
+  getArchitectureNodeOutboundEdges,
   listArchitectureGraphProjectionWarnings,
   summarizeArchitectureNode,
+  type ArchitectureGraphEdge,
+  type ArchitectureGraphEdgeKind,
   type ArchitectureGraphNodeSummary,
   type ArchitectureGraphProjection,
   type ArchitectureGraphProjectionEdge,
+  type ArchitectureGraphProjectionGroup,
+  type ArchitectureGraphProjectionNode,
   type ArchitectureGraphProjectionStats,
   type ArchitectureGraphProjectionWarning,
 } from "@/lib/architecture-graph";
@@ -36,6 +48,94 @@ export interface ArchitectureGraphViewerModel {
   metadata_only: true;
   read_only: true;
 }
+
+type ArchitectureGraphGroupFilter =
+  | "all"
+  | ArchitectureGraphProjectionGroup["id"];
+type ArchitectureGraphEdgeFilter =
+  | "all"
+  | "dependency"
+  | "read"
+  | "write"
+  | "gate"
+  | "observe"
+  | "async"
+  | "projection"
+  | "render"
+  | "tripwire";
+
+export interface ArchitectureGraphViewerControls {
+  selectedNodeId?: string;
+  groupFilter?: ArchitectureGraphGroupFilter;
+  edgeFilter?: ArchitectureGraphEdgeFilter;
+  showTripwires?: boolean;
+  searchQuery?: string;
+}
+
+export interface ArchitectureGraphViewerEdgeDetail {
+  id: string;
+  label: string;
+  kind: ArchitectureGraphEdgeKind;
+  layer: string;
+  tripwire: boolean;
+}
+
+export interface ArchitectureGraphViewerNodeDetail {
+  node: ArchitectureGraphProjectionNode;
+  summary: ArchitectureGraphNodeSummary;
+  inbound_edges: readonly ArchitectureGraphViewerEdgeDetail[];
+  outbound_edges: readonly ArchitectureGraphViewerEdgeDetail[];
+  dependencies: readonly string[];
+  dependents: readonly string[];
+  governance_edges: readonly ArchitectureGraphViewerEdgeDetail[];
+  tripwire_edges: readonly ArchitectureGraphViewerEdgeDetail[];
+}
+
+export interface ArchitectureGraphViewerState {
+  selected_node_id: string;
+  group_filter: ArchitectureGraphGroupFilter;
+  edge_filter: ArchitectureGraphEdgeFilter;
+  show_tripwires: boolean;
+  search_query: string;
+  visible_nodes: readonly ArchitectureGraphProjectionNode[];
+  visible_edges: readonly ArchitectureGraphProjectionEdge[];
+  visible_groups: readonly ArchitectureGraphProjectionGroup[];
+  visible_warnings: readonly ArchitectureGraphProjectionWarning[];
+  selected_detail: ArchitectureGraphViewerNodeDetail;
+  metadata_only: true;
+  read_only: true;
+}
+
+const EDGE_FILTER_TO_KIND: Record<
+  Exclude<ArchitectureGraphEdgeFilter, "all">,
+  ArchitectureGraphEdgeKind
+> = {
+  dependency: "depends_on",
+  read: "reads_from",
+  write: "writes_to",
+  gate: "gates",
+  observe: "observes",
+  async: "dispatches_to",
+  projection: "projects_to",
+  render: "renders",
+  tripwire: "forbidden",
+};
+
+const EDGE_FILTER_OPTIONS: readonly {
+  readonly id: ArchitectureGraphEdgeFilter;
+  readonly label: string;
+}[] = [
+  { id: "all", label: "Any path" },
+  { id: "dependency", label: "Dependency" },
+  { id: "read", label: "Read path" },
+  { id: "write", label: "Write path" },
+  { id: "gate", label: "Governance gate" },
+  { id: "observe", label: "Observation path" },
+  { id: "async", label: "Async boundary" },
+  { id: "projection", label: "Projection path" },
+  { id: "render", label: "Render path" },
+  { id: "tripwire", label: "Tripwire" },
+];
 
 export function buildArchitectureGraphViewerModel(): ArchitectureGraphViewerModel {
   const projection = buildArchitectureGraphProjection();
@@ -69,9 +169,128 @@ export function buildArchitectureGraphViewerModel(): ArchitectureGraphViewerMode
   };
 }
 
+export function buildArchitectureGraphViewerState(
+  model: ArchitectureGraphViewerModel,
+  controls: ArchitectureGraphViewerControls = {},
+): ArchitectureGraphViewerState {
+  const groupFilter = controls.groupFilter ?? "all";
+  const edgeFilter = controls.edgeFilter ?? "all";
+  const showTripwires = controls.showTripwires ?? true;
+  const searchQuery = (controls.searchQuery ?? "").trim().toLowerCase();
+
+  const searchedNodes = model.projection.nodes.filter((node) => {
+    const matchesGroup =
+      groupFilter === "all" || node.display_group === groupFilter;
+    const matchesSearch =
+      searchQuery.length === 0 ||
+      node.label.toLowerCase().includes(searchQuery) ||
+      node.id.toLowerCase().includes(searchQuery);
+
+    return matchesGroup && matchesSearch;
+  });
+  const visibleNodeIds = new Set(searchedNodes.map((node) => node.id));
+
+  const visibleEdges = model.projection.edges.filter((edge) => {
+    const matchesNode =
+      visibleNodeIds.has(edge.from) || visibleNodeIds.has(edge.to);
+    const matchesTripwire = showTripwires || !edge.tripwire;
+    const matchesKind =
+      edgeFilter === "all" || edge.kind === EDGE_FILTER_TO_KIND[edgeFilter];
+
+    return matchesNode && matchesTripwire && matchesKind;
+  });
+  const visibleWarnings = showTripwires
+    ? model.warnings.filter((warning) =>
+        visibleEdges.some((edge) => edge.id === warning.edge_id),
+      )
+    : [];
+  const selectedNodeId =
+    searchedNodes.find((node) => node.id === controls.selectedNodeId)?.id ??
+    searchedNodes[0]?.id ??
+    model.projection.nodes[0].id;
+  const selectedNode =
+    model.projection.nodes.find((node) => node.id === selectedNodeId) ??
+    model.projection.nodes[0];
+  const summary = summarizeArchitectureNode(selectedNode.id);
+
+  if (!summary) {
+    throw new Error(
+      `Missing architecture graph detail summary for ${selectedNode.id}`,
+    );
+  }
+
+  return {
+    selected_node_id: selectedNode.id,
+    group_filter: groupFilter,
+    edge_filter: edgeFilter,
+    show_tripwires: showTripwires,
+    search_query: searchQuery,
+    visible_nodes: searchedNodes,
+    visible_edges: visibleEdges,
+    visible_groups: model.projection.groups
+      .map((group) => ({
+        ...group,
+        node_ids: group.node_ids.filter((nodeId) => visibleNodeIds.has(nodeId)),
+      }))
+      .filter((group) => group.node_ids.length > 0),
+    visible_warnings: visibleWarnings,
+    selected_detail: {
+      node: selectedNode,
+      summary,
+      inbound_edges: getArchitectureNodeInboundEdges(selectedNode.id).map(
+        edgeDetail,
+      ),
+      outbound_edges: getArchitectureNodeOutboundEdges(selectedNode.id).map(
+        edgeDetail,
+      ),
+      dependencies: getArchitectureNodeDependencies(selectedNode.id).map(
+        (node) => node.label,
+      ),
+      dependents: getArchitectureNodeDependents(selectedNode.id).map(
+        (node) => node.label,
+      ),
+      governance_edges: getArchitectureNodeGovernanceEdges(selectedNode.id).map(
+        edgeDetail,
+      ),
+      tripwire_edges: getArchitectureNodeForbiddenEdges(selectedNode.id).map(
+        edgeDetail,
+      ),
+    },
+    metadata_only: true,
+    read_only: true,
+  };
+}
+
 export function ArchitectureGraphViewer() {
-  const model = buildArchitectureGraphViewerModel();
-  const { projection, stats, warnings, summaries } = model;
+  const model = useMemo(() => buildArchitectureGraphViewerModel(), []);
+  const [selectedNodeId, setSelectedNodeId] = useState(
+    "arch-node:approval-runtime",
+  );
+  const [groupFilter, setGroupFilter] =
+    useState<ArchitectureGraphGroupFilter>("all");
+  const [edgeFilter, setEdgeFilter] =
+    useState<ArchitectureGraphEdgeFilter>("all");
+  const [showTripwires, setShowTripwires] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const state = useMemo(
+    () =>
+      buildArchitectureGraphViewerState(model, {
+        selectedNodeId,
+        groupFilter,
+        edgeFilter,
+        showTripwires,
+        searchQuery,
+      }),
+    [
+      edgeFilter,
+      groupFilter,
+      model,
+      searchQuery,
+      selectedNodeId,
+      showTripwires,
+    ],
+  );
+  const { projection, stats, summaries } = model;
 
   return (
     <main
@@ -122,13 +341,74 @@ export function ArchitectureGraphViewer() {
         </section>
 
         <section
+          aria-label="Architecture graph explorer controls"
+          data-architecture-graph-controls="safe-read-only"
+          className="grid gap-3 border border-white/10 bg-slate-950/62 p-5 lg:grid-cols-[1.4fr_1fr_1fr_auto]"
+        >
+          <label className="grid gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+            Find node
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              className="border border-white/10 bg-white/[0.04] px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none"
+              placeholder="Label or id"
+            />
+          </label>
+          <label className="grid gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+            Group
+            <select
+              value={groupFilter}
+              onChange={(event) =>
+                setGroupFilter(event.currentTarget.value as never)
+              }
+              className="border border-white/10 bg-slate-950 px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none"
+            >
+              <option value="all">All groups</option>
+              {projection.groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+            Edge path
+            <select
+              value={edgeFilter}
+              onChange={(event) =>
+                setEdgeFilter(event.currentTarget.value as never)
+              }
+              className="border border-white/10 bg-slate-950 px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none"
+            >
+              {EDGE_FILTER_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-end gap-3 border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              checked={showTripwires}
+              onChange={(event) =>
+                setShowTripwires(event.currentTarget.checked)
+              }
+              className="h-4 w-4"
+            />
+            Show tripwires
+          </label>
+        </section>
+
+        <section
           aria-label="Architecture graph node groups"
           className="grid gap-4 xl:grid-cols-2"
         >
-          {projection.groups.map((group) => {
+          {state.visible_groups.map((group) => {
             const nodes = group.node_ids
               .map((nodeId) =>
-                projection.nodes.find((node) => node.id === nodeId),
+                state.visible_nodes.find((node) => node.id === nodeId),
               )
               .filter((node) => !!node);
 
@@ -154,11 +434,15 @@ export function ArchitectureGraphViewer() {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h3 className="font-semibold text-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedNodeId(node.id)}
+                            className="text-left font-semibold text-slate-100 underline decoration-cyan-200/30 underline-offset-4"
+                          >
                             {node.label}
-                          </h3>
+                          </button>
                           <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
-                            {formatToken(node.kind)} · {node.health}
+                            {formatToken(node.kind)} / {node.health}
                           </p>
                         </div>
                         <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -188,6 +472,8 @@ export function ArchitectureGraphViewer() {
           })}
         </section>
 
+        <NodeInspectionPanel detail={state.selected_detail} />
+
         <section
           aria-label="Architecture graph edges"
           className="border border-white/10 bg-slate-950/62 p-5"
@@ -199,7 +485,7 @@ export function ArchitectureGraphViewer() {
             </span>
           </div>
           <ul className="mt-4 grid gap-2 lg:grid-cols-2">
-            {projection.edges.map((edge) => (
+            {state.visible_edges.map((edge) => (
               <li
                 key={edge.id}
                 className="border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-300"
@@ -208,7 +494,7 @@ export function ArchitectureGraphViewer() {
                   {safeEdgeLabel(edge)}
                 </span>
                 <span className="ml-2 text-xs uppercase tracking-[0.14em] text-slate-500">
-                  {formatToken(edge.kind)} · {formatToken(edge.layer)}
+                  {safeLegendLabel(edge.kind)} / {formatToken(edge.layer)}
                 </span>
               </li>
             ))}
@@ -245,7 +531,7 @@ export function ArchitectureGraphViewer() {
             Tripwire Warnings
           </h2>
           <ul className="mt-4 grid gap-2">
-            {warnings.map((warning) => (
+            {state.visible_warnings.map((warning) => (
               <li
                 key={warning.id}
                 className="border border-amber-100/15 bg-black/20 px-3 py-2 text-sm text-amber-50/85"
@@ -301,6 +587,62 @@ export function ArchitectureGraphViewer() {
   );
 }
 
+function NodeInspectionPanel({
+  detail,
+}: {
+  readonly detail: ArchitectureGraphViewerNodeDetail;
+}) {
+  return (
+    <section
+      aria-label="Architecture graph node inspection"
+      data-selected-node-id={detail.node.id}
+      className="border border-cyan-100/15 bg-cyan-300/[0.04] p-5"
+    >
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-cyan-100/60">
+            Selected node
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            {detail.node.label}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            {detail.node.id}
+          </p>
+        </div>
+        <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <MiniStat label="In" value={detail.summary.inbound_edge_count} />
+          <MiniStat label="Out" value={detail.summary.outbound_edge_count} />
+          <MiniStat label="Gov" value={detail.summary.governance_edge_count} />
+          <MiniStat label="Trip" value={detail.summary.forbidden_edge_count} />
+        </dl>
+      </div>
+
+      <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-4">
+        <DetailStat label="Kind" value={formatToken(detail.node.kind)} />
+        <DetailStat
+          label="Group"
+          value={formatToken(detail.node.display_group)}
+        />
+        <DetailStat label="Health" value={detail.node.health} />
+        <DetailStat
+          label="Observed calls"
+          value={String(detail.node.activity_summary.observed_call_count)}
+        />
+      </dl>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <DetailList title="Inbound edges" items={detail.inbound_edges} />
+        <DetailList title="Outbound edges" items={detail.outbound_edges} />
+        <TextList title="Dependencies" items={detail.dependencies} />
+        <TextList title="Dependents" items={detail.dependents} />
+        <DetailList title="Governance edges" items={detail.governance_edges} />
+        <DetailList title="Tripwire edges" items={detail.tripwire_edges} />
+      </div>
+    </section>
+  );
+}
+
 function Stat({
   label,
   value,
@@ -330,6 +672,70 @@ function MiniStat({
       <dt className="uppercase tracking-[0.14em] text-slate-500">{label}</dt>
       <dd className="mt-1 text-slate-200">{value}</dd>
     </div>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+}: {
+  readonly label: string;
+  readonly value: string;
+}) {
+  return (
+    <div className="border border-white/10 bg-black/15 px-3 py-2">
+      <dt className="uppercase tracking-[0.14em] text-slate-500">{label}</dt>
+      <dd className="mt-1 text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
+function TextList({
+  title,
+  items,
+}: {
+  readonly title: string;
+  readonly items: readonly string[];
+}) {
+  return (
+    <section className="border border-white/10 bg-black/15 p-3">
+      <h3 className="text-xs uppercase tracking-[0.16em] text-slate-500">
+        {title}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-slate-300">
+        {formatList(items)}
+      </p>
+    </section>
+  );
+}
+
+function DetailList({
+  title,
+  items,
+}: {
+  readonly title: string;
+  readonly items: readonly ArchitectureGraphViewerEdgeDetail[];
+}) {
+  return (
+    <section className="border border-white/10 bg-black/15 p-3">
+      <h3 className="text-xs uppercase tracking-[0.16em] text-slate-500">
+        {title}
+      </h3>
+      <ul className="mt-2 grid gap-2 text-sm text-slate-300">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <li key={item.id}>
+              <span className="text-slate-100">{item.label}</span>
+              <span className="ml-2 text-xs uppercase tracking-[0.14em] text-slate-500">
+                {safeLegendLabel(item.kind)}
+              </span>
+            </li>
+          ))
+        ) : (
+          <li>None</li>
+        )}
+      </ul>
+    </section>
   );
 }
 
@@ -372,6 +778,19 @@ function safeEdgeLabel(edge: ArchitectureGraphProjectionEdge): string {
   }
 
   return safeTripwireText(edge.id);
+}
+
+function edgeDetail(
+  edge: ArchitectureGraphEdge,
+): ArchitectureGraphViewerEdgeDetail {
+  return {
+    id: edge.edge_id,
+    label:
+      edge.kind === "forbidden" ? safeTripwireText(edge.edge_id) : edge.label,
+    kind: edge.kind,
+    layer: edge.layer,
+    tripwire: edge.kind === "forbidden",
+  };
 }
 
 function safeWarningLabel(warning: ArchitectureGraphProjectionWarning): string {
