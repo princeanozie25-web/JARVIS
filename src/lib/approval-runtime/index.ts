@@ -895,3 +895,27 @@ export type {
   ApprovalLifecycleIntegrationStatus,
   ApprovalLifecycleIntegrationValidationReason,
 } from "./approval-lifecycle-integration";
+
+export {
+  APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_CONTRACT_VERSION,
+  APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_GUARD_IDS,
+  APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_GUARD_SEVERITIES,
+  APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_REASON_CODES,
+  ApprovalLifecycleIntegrationValidationGuardDeclarationSchema,
+  ApprovalLifecycleIntegrationValidationGuardIdSchema,
+  ApprovalLifecycleIntegrationValidationGuardResultSchema,
+  ApprovalLifecycleIntegrationValidationGuardSeveritySchema,
+  ApprovalLifecycleIntegrationValidationPolicyMatrixSchema,
+  ApprovalLifecycleIntegrationValidationReasonCodeSchema,
+  DEFAULT_APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_POLICY_MATRIX,
+  validateApprovalLifecycleIntegrationPolicyMetadata,
+} from "./approval-lifecycle-integration-validation";
+
+export type {
+  ApprovalLifecycleIntegrationValidationGuardDeclaration,
+  ApprovalLifecycleIntegrationValidationGuardId,
+  ApprovalLifecycleIntegrationValidationGuardResult,
+  ApprovalLifecycleIntegrationValidationGuardSeverity,
+  ApprovalLifecycleIntegrationValidationPolicyMatrix,
+  ApprovalLifecycleIntegrationValidationReasonCode,
+} from "./approval-lifecycle-integration-validation";
