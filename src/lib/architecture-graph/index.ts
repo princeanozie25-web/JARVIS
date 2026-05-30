@@ -74,3 +74,36 @@ export type {
   ArchitectureGraphNodeSummary,
   ArchitectureGraphPathResult,
 } from "./queries";
+
+export {
+  ARCHITECTURE_GRAPH_PROJECTION_CONTRACT_VERSION,
+  ARCHITECTURE_GRAPH_PROJECTION_GROUPS,
+  ARCHITECTURE_GRAPH_PROJECTION_POLICY_STATUSES,
+  ARCHITECTURE_GRAPH_PROJECTION_STYLE_TOKENS,
+  ArchitectureGraphProjectionActivitySummarySchema,
+  ArchitectureGraphProjectionEdgeSchema,
+  ArchitectureGraphProjectionGroupIdSchema,
+  ArchitectureGraphProjectionGroupSchema,
+  ArchitectureGraphProjectionLegendSchema,
+  ArchitectureGraphProjectionNodeSchema,
+  ArchitectureGraphProjectionPolicyStatusSchema,
+  ArchitectureGraphProjectionSchema,
+  ArchitectureGraphProjectionStatsSchema,
+  ArchitectureGraphProjectionStyleTokenSchema,
+  ArchitectureGraphProjectionWarningSchema,
+  buildArchitectureGraphProjection,
+  buildArchitectureGraphProjectionForNode,
+  buildArchitectureGraphProjectionStats,
+  listArchitectureGraphProjectionWarnings,
+} from "./projections";
+
+export type {
+  ArchitectureGraphProjection,
+  ArchitectureGraphProjectionActivitySummary,
+  ArchitectureGraphProjectionEdge,
+  ArchitectureGraphProjectionGroup,
+  ArchitectureGraphProjectionLegend,
+  ArchitectureGraphProjectionNode,
+  ArchitectureGraphProjectionStats,
+  ArchitectureGraphProjectionWarning,
+} from "./projections";
