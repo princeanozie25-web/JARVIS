@@ -683,3 +683,27 @@ export type {
   ApprovalExecutionVerificationTargetMetadata,
   ApprovalExecutionVerificationValidationReason,
 } from "./execution-verification";
+
+export {
+  APPROVAL_EXECUTION_VERIFICATION_VALIDATION_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_VERIFICATION_VALIDATION_GUARD_IDS,
+  APPROVAL_EXECUTION_VERIFICATION_VALIDATION_GUARD_SEVERITIES,
+  APPROVAL_EXECUTION_VERIFICATION_VALIDATION_REASON_CODES,
+  ApprovalExecutionVerificationValidationGuardDeclarationSchema,
+  ApprovalExecutionVerificationValidationGuardIdSchema,
+  ApprovalExecutionVerificationValidationGuardResultSchema,
+  ApprovalExecutionVerificationValidationGuardSeveritySchema,
+  ApprovalExecutionVerificationValidationPolicyMatrixSchema,
+  ApprovalExecutionVerificationValidationReasonCodeSchema,
+  DEFAULT_APPROVAL_EXECUTION_VERIFICATION_VALIDATION_POLICY_MATRIX,
+  validateApprovalExecutionVerificationPolicyMetadata,
+} from "./execution-verification-validation";
+
+export type {
+  ApprovalExecutionVerificationValidationGuardDeclaration,
+  ApprovalExecutionVerificationValidationGuardId,
+  ApprovalExecutionVerificationValidationGuardResult,
+  ApprovalExecutionVerificationValidationGuardSeverity,
+  ApprovalExecutionVerificationValidationPolicyMatrix,
+  ApprovalExecutionVerificationValidationReasonCode,
+} from "./execution-verification-validation";
