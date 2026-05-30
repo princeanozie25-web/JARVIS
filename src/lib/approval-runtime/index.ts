@@ -748,3 +748,49 @@ export {
 } from "./phase-18f-closeout";
 
 export type { ApprovalRuntimePhase18FCloseoutGuard } from "./phase-18f-closeout";
+
+export {
+  APPROVAL_EXECUTION_COMPENSATION_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_COMPENSATION_EVIDENCE_KINDS,
+  APPROVAL_EXECUTION_COMPENSATION_FORBIDDEN_STATUSES,
+  APPROVAL_EXECUTION_COMPENSATION_HINT_KINDS,
+  APPROVAL_EXECUTION_COMPENSATION_STATUSES,
+  APPROVAL_EXECUTION_COMPENSATION_STRATEGIES,
+  APPROVAL_EXECUTION_COMPENSATION_VALIDATION_REASONS,
+  ApprovalExecutionCompensationContractSchema,
+  ApprovalExecutionCompensationDisabledAuthorityFlagsSchema,
+  ApprovalExecutionCompensationEligibilityMetadataSchema,
+  ApprovalExecutionCompensationEvidenceKindSchema,
+  ApprovalExecutionCompensationEvidenceMetadataSchema,
+  ApprovalExecutionCompensationForbiddenStatusSchema,
+  ApprovalExecutionCompensationHintKindSchema,
+  ApprovalExecutionCompensationHintMetadataSchema,
+  ApprovalExecutionCompensationMetadataSchema,
+  ApprovalExecutionCompensationShapeValidationSchema,
+  ApprovalExecutionCompensationStatusSchema,
+  ApprovalExecutionCompensationStrategyMetadataSchema,
+  ApprovalExecutionCompensationStrategySchema,
+  ApprovalExecutionCompensationTargetMetadataSchema,
+  ApprovalExecutionCompensationValidationReasonSchema,
+  DEFAULT_APPROVAL_EXECUTION_COMPENSATION_CONTRACT,
+  buildApprovalExecutionCompensationMetadata,
+  validateApprovalExecutionCompensationMetadataShape,
+} from "./execution-compensation";
+
+export type {
+  ApprovalExecutionCompensationContract,
+  ApprovalExecutionCompensationDisabledAuthorityFlags,
+  ApprovalExecutionCompensationEligibilityMetadata,
+  ApprovalExecutionCompensationEvidenceKind,
+  ApprovalExecutionCompensationEvidenceMetadata,
+  ApprovalExecutionCompensationForbiddenStatus,
+  ApprovalExecutionCompensationHintKind,
+  ApprovalExecutionCompensationHintMetadata,
+  ApprovalExecutionCompensationMetadata,
+  ApprovalExecutionCompensationShapeValidation,
+  ApprovalExecutionCompensationStatus,
+  ApprovalExecutionCompensationStrategy,
+  ApprovalExecutionCompensationStrategyMetadata,
+  ApprovalExecutionCompensationTargetMetadata,
+  ApprovalExecutionCompensationValidationReason,
+} from "./execution-compensation";
