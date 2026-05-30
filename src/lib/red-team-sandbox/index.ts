@@ -98,3 +98,29 @@ export type {
   RedTeamSandboxSafetyViolation,
   RedTeamSandboxSafetyViolationKind,
 } from "./safety-guard";
+
+export {
+  PHASE_19D_CLOSEOUT_CHECK_IDS,
+  PHASE_19D_CLOSEOUT_VERDICTS,
+  PHASE_19D_CLOSEOUT_VERSION,
+  PHASE_19D_DISABLED_CAPABILITIES,
+  PHASE_19D_VIEWER_LOCAL_CONTROLS,
+  PHASE_19D_VIEWER_REQUIRED_SECTIONS,
+  PHASE_19D_VIEWER_ROUTE,
+  Phase19DCloseoutCheckIdSchema,
+  Phase19DCloseoutCheckSchema,
+  Phase19DCloseoutEvidenceSchema,
+  Phase19DCloseoutReportSchema,
+  Phase19DCloseoutVerdictSchema,
+  assertPhase19DCloseoutPasses,
+  buildPhase19DCloseoutReport,
+  listPhase19DDisabledCapabilities,
+} from "./phase-19d-closeout";
+
+export type {
+  Phase19DCloseoutCheck,
+  Phase19DCloseoutCheckId,
+  Phase19DCloseoutEvidence,
+  Phase19DCloseoutReport,
+  Phase19DCloseoutVerdict,
+} from "./phase-19d-closeout";
