@@ -863,3 +863,35 @@ export {
 } from "./phase-18g-closeout";
 
 export type { ApprovalRuntimePhase18GCloseoutGuard } from "./phase-18g-closeout";
+
+export {
+  APPROVAL_LIFECYCLE_INTEGRATION_CONTRACT_VERSION,
+  APPROVAL_LIFECYCLE_INTEGRATION_FORBIDDEN_STATUSES,
+  APPROVAL_LIFECYCLE_INTEGRATION_SEGMENTS,
+  APPROVAL_LIFECYCLE_INTEGRATION_STATUSES,
+  APPROVAL_LIFECYCLE_INTEGRATION_VALIDATION_REASONS,
+  ApprovalLifecycleIntegrationContractSchema,
+  ApprovalLifecycleIntegrationDisabledAuthorityFlagsSchema,
+  ApprovalLifecycleIntegrationForbiddenStatusSchema,
+  ApprovalLifecycleIntegrationSegmentMetadataSchema,
+  ApprovalLifecycleIntegrationSegmentSchema,
+  ApprovalLifecycleIntegrationShapeValidationSchema,
+  ApprovalLifecycleIntegrationSnapshotSchema,
+  ApprovalLifecycleIntegrationStatusSchema,
+  ApprovalLifecycleIntegrationValidationReasonSchema,
+  DEFAULT_APPROVAL_LIFECYCLE_INTEGRATION_CONTRACT,
+  buildApprovalLifecycleIntegrationSnapshot,
+  validateApprovalLifecycleIntegrationSnapshotShape,
+} from "./approval-lifecycle-integration";
+
+export type {
+  ApprovalLifecycleIntegrationContract,
+  ApprovalLifecycleIntegrationDisabledAuthorityFlags,
+  ApprovalLifecycleIntegrationForbiddenStatus,
+  ApprovalLifecycleIntegrationSegment,
+  ApprovalLifecycleIntegrationSegmentMetadata,
+  ApprovalLifecycleIntegrationShapeValidation,
+  ApprovalLifecycleIntegrationSnapshot,
+  ApprovalLifecycleIntegrationStatus,
+  ApprovalLifecycleIntegrationValidationReason,
+} from "./approval-lifecycle-integration";
