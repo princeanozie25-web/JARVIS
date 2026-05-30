@@ -225,6 +225,41 @@ export type {
 } from "./cai-approval-binding";
 
 export {
+  CAI_LOCALHOST_EXECUTION_BLOCKER_IDS,
+  CAI_LOCALHOST_EXECUTION_DISABLED_CAPABILITIES,
+  CAI_LOCALHOST_EXECUTION_GATE_VERSION,
+  CAI_LOCALHOST_EXECUTION_MODES,
+  CAI_LOCALHOST_EXECUTION_PREREQUISITE_IDS,
+  CAI_LOCALHOST_EXECUTION_VERDICTS,
+  CaiLocalhostExecutionBlockerIdSchema,
+  CaiLocalhostExecutionBlockerSchema,
+  CaiLocalhostExecutionDisabledCapabilitySchema,
+  CaiLocalhostExecutionGateSchema,
+  CaiLocalhostExecutionModeSchema,
+  CaiLocalhostExecutionPrerequisiteIdSchema,
+  CaiLocalhostExecutionPrerequisiteSchema,
+  CaiLocalhostExecutionReadinessReportSchema,
+  CaiLocalhostExecutionVerdictSchema,
+  assertCaiLocalhostExecutionBlocked,
+  buildCaiLocalhostExecutionReadinessReport,
+  listCaiLocalhostExecutionBlockers,
+  listCaiLocalhostExecutionDisabledCapabilities,
+  listCaiLocalhostExecutionPrerequisites,
+} from "./cai-localhost-execution-gate";
+
+export type {
+  CaiLocalhostExecutionBlocker,
+  CaiLocalhostExecutionBlockerId,
+  CaiLocalhostExecutionDisabledCapability,
+  CaiLocalhostExecutionGate,
+  CaiLocalhostExecutionMode,
+  CaiLocalhostExecutionPrerequisite,
+  CaiLocalhostExecutionPrerequisiteId,
+  CaiLocalhostExecutionReadinessReport,
+  CaiLocalhostExecutionVerdict,
+} from "./cai-localhost-execution-gate";
+
+export {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
   PHASE_19D_CLOSEOUT_VERDICTS,
   PHASE_19D_CLOSEOUT_VERSION,
