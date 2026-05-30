@@ -919,3 +919,12 @@ export type {
   ApprovalLifecycleIntegrationValidationPolicyMatrix,
   ApprovalLifecycleIntegrationValidationReasonCode,
 } from "./approval-lifecycle-integration-validation";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18_CLOSEOUT_FOUNDATIONS,
+  APPROVAL_RUNTIME_PHASE_18_FINAL_CLOSEOUT_VERSION,
+  ApprovalRuntimePhase18FinalCloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18_FINAL_CLOSEOUT_GUARD,
+} from "./phase-18-final-closeout";
+
+export type { ApprovalRuntimePhase18FinalCloseoutGuard } from "./phase-18-final-closeout";
