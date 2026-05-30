@@ -100,6 +100,40 @@ export type {
 } from "./safety-guard";
 
 export {
+  CAI_ADAPTER_CAPABILITIES,
+  CAI_ADAPTER_CONTRACT_VERSION,
+  CAI_ADAPTER_DISABLED_CAPABILITY_FLAGS,
+  CAI_ADAPTER_DISABLED_REASONS,
+  CAI_ADAPTER_HEALTH_STATES,
+  CAI_ADAPTER_MODES,
+  CaiAdapterAuditEnvelopeSchema,
+  CaiAdapterCapabilityMetadataSchema,
+  CaiAdapterCapabilitySchema,
+  CaiAdapterDisabledCapabilityFlagsSchema,
+  CaiAdapterDisabledReasonSchema,
+  CaiAdapterDryRunResultSchema,
+  CaiAdapterHealthSchema,
+  CaiAdapterHealthStateSchema,
+  CaiAdapterModeSchema,
+  CaiAdapterRunRequestSchema,
+  buildCaiAdapterRunRequest,
+  createMockCaiAdapter,
+  getDefaultCaiAdapterHealth,
+} from "./cai-adapter-contract";
+
+export type {
+  CaiAdapter,
+  CaiAdapterAuditEnvelope,
+  CaiAdapterCapability,
+  CaiAdapterCapabilityMetadata,
+  CaiAdapterDisabledReason,
+  CaiAdapterDryRunResult,
+  CaiAdapterHealth,
+  CaiAdapterMode,
+  CaiAdapterRunRequest,
+} from "./cai-adapter-contract";
+
+export {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
   PHASE_19D_CLOSEOUT_VERDICTS,
   PHASE_19D_CLOSEOUT_VERSION,
