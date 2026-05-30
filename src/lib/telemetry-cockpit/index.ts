@@ -75,3 +75,29 @@ export type {
   TelemetryCockpitSafetyViolation,
   TelemetryCockpitSafetyViolationKind,
 } from "./safety-guard";
+
+export {
+  PHASE_19B_CLOSEOUT_CHECK_IDS,
+  PHASE_19B_CLOSEOUT_VERDICTS,
+  PHASE_19B_CLOSEOUT_VERSION,
+  PHASE_19B_DISABLED_CAPABILITIES,
+  PHASE_19B_VIEWER_LOCAL_CONTROLS,
+  PHASE_19B_VIEWER_REQUIRED_SECTIONS,
+  PHASE_19B_VIEWER_ROUTE,
+  Phase19BCloseoutCheckIdSchema,
+  Phase19BCloseoutCheckSchema,
+  Phase19BCloseoutEvidenceSchema,
+  Phase19BCloseoutReportSchema,
+  Phase19BCloseoutVerdictSchema,
+  assertPhase19BCloseoutPasses,
+  buildPhase19BCloseoutReport,
+  listPhase19BDisabledCapabilities,
+} from "./phase-19b-closeout";
+
+export type {
+  Phase19BCloseoutCheck,
+  Phase19BCloseoutCheckId,
+  Phase19BCloseoutEvidence,
+  Phase19BCloseoutReport,
+  Phase19BCloseoutVerdict,
+} from "./phase-19b-closeout";
