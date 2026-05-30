@@ -573,3 +573,27 @@ export type {
   ApprovalExecutionStepKind,
   ApprovalExecutionStepMetadata,
 } from "./execution-plan";
+
+export {
+  APPROVAL_EXECUTION_PLAN_VALIDATION_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_PLAN_VALIDATION_GUARD_IDS,
+  APPROVAL_EXECUTION_PLAN_VALIDATION_GUARD_SEVERITIES,
+  APPROVAL_EXECUTION_PLAN_VALIDATION_REASON_CODES,
+  ApprovalExecutionPlanValidationGuardDeclarationSchema,
+  ApprovalExecutionPlanValidationGuardIdSchema,
+  ApprovalExecutionPlanValidationGuardResultSchema,
+  ApprovalExecutionPlanValidationGuardSeveritySchema,
+  ApprovalExecutionPlanValidationPolicyMatrixSchema,
+  ApprovalExecutionPlanValidationReasonCodeSchema,
+  DEFAULT_APPROVAL_EXECUTION_PLAN_VALIDATION_POLICY_MATRIX,
+  validateApprovalExecutionPlanPolicyMetadata,
+} from "./execution-plan-validation";
+
+export type {
+  ApprovalExecutionPlanValidationGuardDeclaration,
+  ApprovalExecutionPlanValidationGuardId,
+  ApprovalExecutionPlanValidationGuardResult,
+  ApprovalExecutionPlanValidationGuardSeverity,
+  ApprovalExecutionPlanValidationPolicyMatrix,
+  ApprovalExecutionPlanValidationReasonCode,
+} from "./execution-plan-validation";
