@@ -134,6 +134,37 @@ export type {
 } from "./cai-adapter-contract";
 
 export {
+  CAI_PROVIDER_DISABLED_CAPABILITIES,
+  CAI_PROVIDER_EXECUTION_STATES,
+  CAI_PROVIDER_INSTALL_STATES,
+  CAI_PROVIDER_MANIFEST_VERSION,
+  CAI_PROVIDER_READINESS_CHECK_IDS,
+  CaiProviderExecutionStateSchema,
+  CaiProviderInstallStateSchema,
+  CaiProviderManifestSchema,
+  CaiProviderPackageRequirementSchema,
+  CaiProviderReadinessCheckIdSchema,
+  CaiProviderReadinessCheckSchema,
+  CaiProviderReadinessReportSchema,
+  CaiProviderRuntimeRequirementSchema,
+  assertCaiProviderNotExecutable,
+  buildCaiProviderReadinessReport,
+  getCaiProviderManifest,
+  listCaiProviderDisabledCapabilities,
+} from "./cai-provider-manifest";
+
+export type {
+  CaiProviderExecutionState,
+  CaiProviderInstallState,
+  CaiProviderManifest,
+  CaiProviderPackageRequirement,
+  CaiProviderReadinessCheck,
+  CaiProviderReadinessCheckId,
+  CaiProviderReadinessReport,
+  CaiProviderRuntimeRequirement,
+} from "./cai-provider-manifest";
+
+export {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
   PHASE_19D_CLOSEOUT_VERDICTS,
   PHASE_19D_CLOSEOUT_VERSION,
