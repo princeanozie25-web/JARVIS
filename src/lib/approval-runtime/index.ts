@@ -535,3 +535,41 @@ export {
 } from "./phase-18d-closeout";
 
 export type { ApprovalRuntimePhase18DCloseoutGuard } from "./phase-18d-closeout";
+
+export {
+  APPROVAL_EXECUTION_PLAN_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_PLAN_FORBIDDEN_STATUSES,
+  APPROVAL_EXECUTION_PLAN_STATUSES,
+  APPROVAL_EXECUTION_PLAN_VALIDATION_REASONS,
+  APPROVAL_EXECUTION_STEP_KINDS,
+  ApprovalExecutionPlanContractSchema,
+  ApprovalExecutionPlanDisabledAuthorityFlagsSchema,
+  ApprovalExecutionPlanDryRunMetadataSchema,
+  ApprovalExecutionPlanForbiddenStatusSchema,
+  ApprovalExecutionPlanMetadataSchema,
+  ApprovalExecutionPlanPreconditionMetadataSchema,
+  ApprovalExecutionPlanShapeValidationSchema,
+  ApprovalExecutionPlanStatusSchema,
+  ApprovalExecutionPlanTargetMetadataSchema,
+  ApprovalExecutionPlanValidationReasonSchema,
+  ApprovalExecutionStepKindSchema,
+  ApprovalExecutionStepMetadataSchema,
+  DEFAULT_APPROVAL_EXECUTION_PLAN_CONTRACT,
+  buildApprovalExecutionPlanMetadata,
+  validateApprovalExecutionPlanMetadataShape,
+} from "./execution-plan";
+
+export type {
+  ApprovalExecutionPlanContract,
+  ApprovalExecutionPlanDisabledAuthorityFlags,
+  ApprovalExecutionPlanDryRunMetadata,
+  ApprovalExecutionPlanForbiddenStatus,
+  ApprovalExecutionPlanMetadata,
+  ApprovalExecutionPlanPreconditionMetadata,
+  ApprovalExecutionPlanShapeValidation,
+  ApprovalExecutionPlanStatus,
+  ApprovalExecutionPlanTargetMetadata,
+  ApprovalExecutionPlanValidationReason,
+  ApprovalExecutionStepKind,
+  ApprovalExecutionStepMetadata,
+} from "./execution-plan";
