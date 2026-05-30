@@ -42,3 +42,41 @@ export type {
   GovernanceBoundaryValidation,
   GovernanceBoundaryWarning,
 } from "./contracts";
+
+export {
+  GovernanceBoundaryNodeSummarySchema,
+  getGovernanceBoundaryEdgesForNode,
+  getGovernanceBoundaryInboundEdges,
+  getGovernanceBoundaryNodeById,
+  getGovernanceBoundaryOutboundEdges,
+  listGovernanceBoundaryEdges,
+  listGovernanceBoundaryEdgesByGate,
+  listGovernanceBoundaryEdgesByPolicy,
+  listGovernanceBoundaryEdgesByTrustClass,
+  listGovernanceBoundaryNodes,
+  listGovernanceBoundaryTripwiresForNode,
+  summarizeGovernanceBoundaryNode,
+} from "./queries";
+
+export type { GovernanceBoundaryNodeSummary } from "./queries";
+
+export {
+  GOVERNANCE_BOUNDARY_SAFETY_GUARD_VERSION,
+  GOVERNANCE_BOUNDARY_SAFETY_SCAN_TARGETS,
+  GOVERNANCE_BOUNDARY_SAFETY_VIOLATION_KINDS,
+  GovernanceBoundarySafetyResultSchema,
+  GovernanceBoundarySafetyScanTargetSchema,
+  GovernanceBoundarySafetyViolationKindSchema,
+  GovernanceBoundarySafetyViolationSchema,
+  assertGovernanceBoundarySafe,
+  listGovernanceBoundaryForbiddenAffordanceNames,
+  listGovernanceBoundaryForbiddenFieldNames,
+  scanGovernanceBoundarySafety,
+} from "./safety-guard";
+
+export type {
+  GovernanceBoundarySafetyResult,
+  GovernanceBoundarySafetyScanTarget,
+  GovernanceBoundarySafetyViolation,
+  GovernanceBoundarySafetyViolationKind,
+} from "./safety-guard";
