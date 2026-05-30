@@ -854,3 +854,12 @@ export type {
   ApprovalExecutionCompensationAuditPreviewSummary,
   ApprovalExecutionCompensationAuditPreviewValidationSummary,
 } from "./execution-compensation-audit-preview";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18G_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18G_SLICES,
+  ApprovalRuntimePhase18GCloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18G_CLOSEOUT_GUARD,
+} from "./phase-18g-closeout";
+
+export type { ApprovalRuntimePhase18GCloseoutGuard } from "./phase-18g-closeout";
