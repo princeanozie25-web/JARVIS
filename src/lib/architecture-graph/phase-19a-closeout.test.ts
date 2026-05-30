@@ -1,9 +1,19 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import ArchitectureGraphPage from "../../app/audit/architecture-graph/page";
+import {
+  buildArchitectureGraphViewerModel,
+  buildArchitectureGraphViewerState,
+} from "../../components/architecture-graph/ArchitectureGraphViewer";
 import * as architectureGraph from "./index";
 import {
   PHASE_19A_CLOSEOUT_CHECK_IDS,
   PHASE_19A_DISABLED_CAPABILITIES,
+  PHASE_19A_VIEWER_NAVIGATION_CONTROLS,
+  PHASE_19A_VIEWER_REQUIRED_SECTIONS,
+  PHASE_19A_VIEWER_ROUTE,
   Phase19ACloseoutReportSchema,
   assertPhase19ACloseoutPasses,
   buildArchitectureGraphProjection,
@@ -63,10 +73,10 @@ function collectKeys(input: unknown): string[] {
   ]);
 }
 
-describe("Phase 19A.6 architecture graph closeout guard", () => {
+describe("Phase 19A.9 final architecture graph feature closeout guard", () => {
   it("returns PASS WITH NOTES for the current implementation", () => {
     expect(buildPhase19ACloseoutReport()).toMatchObject({
-      report_version: "19A.6",
+      report_version: "19A.9",
       report_id: "phase-19a-architecture-graph-closeout",
       verdict: "PASS_WITH_NOTES",
       metadata_only: true,
@@ -74,7 +84,16 @@ describe("Phase 19A.6 architecture graph closeout guard", () => {
       deterministic: true,
       redaction_safe: true,
       ready_for_future_ui_rendering: true,
-      ui_rendered: false,
+      feature_complete_for_phase_19a: true,
+      foundation_only: false,
+      viewer_route: "/audit/architecture-graph",
+      viewer_route_visible: true,
+      viewer_sections: PHASE_19A_VIEWER_REQUIRED_SECTIONS,
+      viewer_navigation_controls: PHASE_19A_VIEWER_NAVIGATION_CONTROLS,
+      ui_rendered: true,
+      viewer_read_only: true,
+      viewer_safety_guarded_before_render: true,
+      viewer_warning_tripwires_only: true,
       react_flow_or_d3_added: false,
       source_imports_parsed: false,
       filesystem_read: false,
@@ -106,20 +125,38 @@ describe("Phase 19A.6 architecture graph closeout guard", () => {
     );
     expect(listPhase19ADisabledCapabilities()).toEqual(
       expect.arrayContaining([
-        "UI rendering",
-        "React Flow/D3 graph rendering",
+        "graph-driven execution",
+        "observed runtime telemetry graph",
         "source import parsing",
         "filesystem scanning",
         "database reads",
         "telemetry ingestion",
         "runtime observers",
-        "observed runtime graph",
-        "graph-driven execution",
-        "run/retry/approve/execute/mutate/dispatch affordances",
-        "tool calls",
-        "approval decisions",
+        "React Flow/D3 rendering",
+        "run/retry/approve/execute/mutate/dispatch/tool-call controls",
         "authority token creation",
+        "approval decisions",
         "side effects",
+      ]),
+    );
+  });
+
+  it("includes final viewer route and navigation checks", () => {
+    const checks = buildPhase19ACloseoutReport().checks.map(
+      (check) => check.check_id,
+    );
+
+    expect(PHASE_19A_VIEWER_ROUTE).toBe("/audit/architecture-graph");
+    expect(checks).toEqual(
+      expect.arrayContaining([
+        "phase_19a7_viewer_route_exists",
+        "phase_19a8_navigation_inspection_exists",
+        "graph_visible_at_audit_architecture_graph",
+        "projection_safety_guarded_before_render",
+        "viewer_renders_stats_groups_nodes_edges_legend_warnings",
+        "local_selection_search_filtering_supported",
+        "forbidden_tripwire_edges_render_as_warnings_only",
+        "phase_19a_feature_complete_not_foundation_only",
       ]),
     );
   });
@@ -144,7 +181,7 @@ describe("Phase 19A.6 architecture graph closeout guard", () => {
       check_id: "phase_19a1_contracts_exist",
       label: "Phase 19A.1 graph contracts exist.",
     });
-    expect(freshReport.disabled_capabilities[0]).toBe("UI rendering");
+    expect(freshReport.disabled_capabilities[0]).toBe("graph-driven execution");
   });
 
   it("closeout output does not leak forbidden raw data", () => {
@@ -162,7 +199,54 @@ describe("Phase 19A.6 architecture graph closeout guard", () => {
     });
   });
 
-  it("architecture graph suite remains aligned with Phase 19A.1 through 19A.5", () => {
+  it("viewer route renders the final read-only feature surface", () => {
+    const html = renderToStaticMarkup(createElement(ArchitectureGraphPage));
+
+    expect(html).toContain('data-architecture-graph-viewer="read-only"');
+    expect(html).toContain('data-projection-safety-checked="true"');
+    expect(html).toContain('data-architecture-graph-controls="safe-read-only"');
+    expect(html).toContain("Architecture Graph");
+    expect(html).toContain("Tripwire Warnings");
+    expect(html).toContain("Selected node");
+    expect(html).toContain("Find node");
+    expect(html).toContain("Edge path");
+    expect(html).toContain("Show tripwires");
+    expect(html).not.toMatch(
+      /\b(approve|retry|run|mutate|dispatch|execute|tool-call)\b/i,
+    );
+    expect(html).not.toMatch(
+      /raw_payload|tool_args|raw_prompt|model output|voice transcript|ocr text|frame bytes|secret|approval token/i,
+    );
+  });
+
+  it("navigation state proves Phase 19A is feature-complete, not foundation-only", () => {
+    const model = buildArchitectureGraphViewerModel();
+    const state = buildArchitectureGraphViewerState(model, {
+      selectedNodeId: "arch-node:command-center",
+      searchQuery: "command",
+      groupFilter: "surfaces",
+      edgeFilter: "read",
+      showTripwires: true,
+    });
+
+    expect(state).toMatchObject({
+      metadata_only: true,
+      read_only: true,
+      selected_node_id: "arch-node:command-center",
+      group_filter: "surfaces",
+      edge_filter: "read",
+      search_query: "command",
+    });
+    expect(state.selected_detail.dependencies).toContain("Observability API");
+    expect(state.visible_nodes.map((node) => node.label)).toContain(
+      "Command Center",
+    );
+    expect(
+      state.visible_edges.every((edge) => edge.kind === "reads_from"),
+    ).toBe(true);
+  });
+
+  it("architecture graph suite remains aligned with Phase 19A.1 through 19A.9", () => {
     expect(
       validateArchitectureGraphMetadata(getStaticArchitectureGraph()),
     ).toMatchObject({
@@ -177,7 +261,16 @@ describe("Phase 19A.6 architecture graph closeout guard", () => {
     });
     expect(
       buildPhase19ACloseoutReport().evidence.map((item) => item.source_slice),
-    ).toEqual(["19A.1", "19A.2", "19A.3", "19A.4", "19A.5"]);
+    ).toEqual([
+      "19A.1",
+      "19A.2",
+      "19A.3",
+      "19A.4",
+      "19A.5",
+      "19A.7",
+      "19A.8",
+      "19A.9",
+    ]);
   });
 
   it("closeout exports introduce no execution affordance names", () => {

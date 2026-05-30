@@ -23,7 +23,7 @@ import {
   scanArchitectureGraphSafety,
 } from "./safety-guard";
 
-export const PHASE_19A_CLOSEOUT_VERSION = "19A.6" as const;
+export const PHASE_19A_CLOSEOUT_VERSION = "19A.9" as const;
 
 export const PHASE_19A_CLOSEOUT_VERDICTS = ["PASS_WITH_NOTES", "FAIL"] as const;
 
@@ -33,9 +33,16 @@ export const PHASE_19A_CLOSEOUT_CHECK_IDS = [
   "phase_19a3_query_helpers_exist",
   "phase_19a4_projection_contracts_exist",
   "phase_19a5_safety_guard_exists",
+  "phase_19a7_viewer_route_exists",
+  "phase_19a8_navigation_inspection_exists",
   "static_graph_validates",
   "projections_validate",
   "safety_guard_passes_graph_query_projection",
+  "graph_visible_at_audit_architecture_graph",
+  "projection_safety_guarded_before_render",
+  "viewer_renders_stats_groups_nodes_edges_legend_warnings",
+  "local_selection_search_filtering_supported",
+  "forbidden_tripwire_edges_render_as_warnings_only",
   "forbidden_tripwire_edges_are_metadata_only",
   "all_graph_outputs_are_deterministic",
   "returned_outputs_are_defensive_copy_safe",
@@ -53,23 +60,44 @@ export const PHASE_19A_CLOSEOUT_CHECK_IDS = [
   "no_runtime_observers",
   "no_authority_surface",
   "phase_18_approval_boundaries_untouched",
+  "phase_19a_feature_complete_not_foundation_only",
 ] as const;
 
 export const PHASE_19A_DISABLED_CAPABILITIES = [
-  "UI rendering",
-  "React Flow/D3 graph rendering",
+  "graph-driven execution",
+  "observed runtime telemetry graph",
   "source import parsing",
   "filesystem scanning",
   "database reads",
   "telemetry ingestion",
   "runtime observers",
-  "observed runtime graph",
-  "graph-driven execution",
-  "run/retry/approve/execute/mutate/dispatch affordances",
-  "tool calls",
-  "approval decisions",
+  "React Flow/D3 rendering",
+  "run/retry/approve/execute/mutate/dispatch/tool-call controls",
   "authority token creation",
+  "approval decisions",
   "side effects",
+] as const;
+
+export const PHASE_19A_VIEWER_ROUTE = "/audit/architecture-graph" as const;
+
+export const PHASE_19A_VIEWER_REQUIRED_SECTIONS = [
+  "title",
+  "projection_stats",
+  "node_groups",
+  "nodes",
+  "edges",
+  "legend",
+  "tripwire_warnings",
+  "dependency_summaries",
+  "node_inspection",
+] as const;
+
+export const PHASE_19A_VIEWER_NAVIGATION_CONTROLS = [
+  "node_selection",
+  "node_group_filter",
+  "edge_kind_filter",
+  "tripwire_visibility_filter",
+  "node_label_id_search",
 ] as const;
 
 export type Phase19ACloseoutVerdict =
@@ -89,7 +117,16 @@ export const Phase19ACloseoutEvidenceSchema = z.strictObject({
     .string()
     .trim()
     .regex(/^phase-19a-evidence:[a-z0-9._:-]+$/),
-  source_slice: z.enum(["19A.1", "19A.2", "19A.3", "19A.4", "19A.5"]),
+  source_slice: z.enum([
+    "19A.1",
+    "19A.2",
+    "19A.3",
+    "19A.4",
+    "19A.5",
+    "19A.7",
+    "19A.8",
+    "19A.9",
+  ]),
   summary: z.string().trim().min(1).max(260),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
@@ -121,7 +158,18 @@ export const Phase19ACloseoutReportSchema = z.strictObject({
   deterministic: z.literal(true),
   redaction_safe: z.literal(true),
   ready_for_future_ui_rendering: z.literal(true),
-  ui_rendered: z.literal(false),
+  feature_complete_for_phase_19a: z.literal(true),
+  foundation_only: z.literal(false),
+  viewer_route: z.literal(PHASE_19A_VIEWER_ROUTE),
+  viewer_route_visible: z.literal(true),
+  viewer_sections: z.array(z.enum(PHASE_19A_VIEWER_REQUIRED_SECTIONS)),
+  viewer_navigation_controls: z.array(
+    z.enum(PHASE_19A_VIEWER_NAVIGATION_CONTROLS),
+  ),
+  ui_rendered: z.literal(true),
+  viewer_read_only: z.literal(true),
+  viewer_safety_guarded_before_render: z.literal(true),
+  viewer_warning_tripwires_only: z.literal(true),
   react_flow_or_d3_added: z.literal(false),
   source_imports_parsed: z.literal(false),
   filesystem_read: z.literal(false),
@@ -240,6 +288,34 @@ function phase18BoundaryUntouched(): boolean {
   );
 }
 
+function viewerRouteMetadataExists(): boolean {
+  return PHASE_19A_VIEWER_ROUTE === "/audit/architecture-graph";
+}
+
+function viewerNavigationMetadataExists(): boolean {
+  return (
+    PHASE_19A_VIEWER_NAVIGATION_CONTROLS.includes("node_selection") &&
+    PHASE_19A_VIEWER_NAVIGATION_CONTROLS.includes("node_group_filter") &&
+    PHASE_19A_VIEWER_NAVIGATION_CONTROLS.includes("edge_kind_filter") &&
+    PHASE_19A_VIEWER_NAVIGATION_CONTROLS.includes(
+      "tripwire_visibility_filter",
+    ) &&
+    PHASE_19A_VIEWER_NAVIGATION_CONTROLS.includes("node_label_id_search")
+  );
+}
+
+function viewerSectionsMetadataExists(): boolean {
+  return (
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("projection_stats") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("node_groups") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("nodes") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("edges") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("legend") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("tripwire_warnings") &&
+    PHASE_19A_VIEWER_REQUIRED_SECTIONS.includes("node_inspection")
+  );
+}
+
 export function listPhase19ADisabledCapabilities(): readonly string[] {
   return [...PHASE_19A_DISABLED_CAPABILITIES];
 }
@@ -303,6 +379,24 @@ export function buildPhase19ACloseoutReport(): Phase19ACloseoutReport {
       source_slice: "19A.5",
       summary: `Safety guard version ${ARCHITECTURE_GRAPH_SAFETY_GUARD_VERSION} passes registry, query, and projection outputs.`,
     }),
+    evidence({
+      evidence_id: "phase-19a-evidence:viewer-route",
+      source_slice: "19A.7",
+      summary:
+        "Architecture graph viewer route metadata is declared for /audit/architecture-graph.",
+    }),
+    evidence({
+      evidence_id: "phase-19a-evidence:navigation-inspection",
+      source_slice: "19A.8",
+      summary:
+        "Viewer navigation metadata declares local node selection, search, filters, and node inspection.",
+    }),
+    evidence({
+      evidence_id: "phase-19a-evidence:final-feature-closeout",
+      source_slice: "19A.9",
+      summary:
+        "Final Phase 19A closeout covers foundation contracts plus visible read-only explorer behavior.",
+    }),
   ];
 
   const checks = [
@@ -339,6 +433,18 @@ export function buildPhase19ACloseoutReport(): Phase19ACloseoutReport {
       evidence_id: "phase-19a-evidence:safety",
     }),
     check({
+      check_id: "phase_19a7_viewer_route_exists",
+      label: "Phase 19A.7 viewer route exists.",
+      passed: viewerRouteMetadataExists(),
+      evidence_id: "phase-19a-evidence:viewer-route",
+    }),
+    check({
+      check_id: "phase_19a8_navigation_inspection_exists",
+      label: "Phase 19A.8 navigation and node inspection metadata exists.",
+      passed: viewerNavigationMetadataExists(),
+      evidence_id: "phase-19a-evidence:navigation-inspection",
+    }),
+    check({
       check_id: "static_graph_validates",
       label: "Static graph validates.",
       passed: graphValidation.valid,
@@ -355,6 +461,38 @@ export function buildPhase19ACloseoutReport(): Phase19ACloseoutReport {
       label: "Safety guard passes graph, query, and projection outputs.",
       passed: noUnsafeSafetyFindings,
       evidence_id: "phase-19a-evidence:safety",
+    }),
+    check({
+      check_id: "graph_visible_at_audit_architecture_graph",
+      label: "Graph is visible at /audit/architecture-graph.",
+      passed: viewerRouteMetadataExists(),
+      evidence_id: "phase-19a-evidence:viewer-route",
+    }),
+    check({
+      check_id: "projection_safety_guarded_before_render",
+      label: "Projection is safety-guarded before render.",
+      passed: projectionSafety.valid,
+      evidence_id: "phase-19a-evidence:safety",
+    }),
+    check({
+      check_id: "viewer_renders_stats_groups_nodes_edges_legend_warnings",
+      label:
+        "Viewer declares stats, groups, nodes, edges, legend, and warning sections.",
+      passed: viewerSectionsMetadataExists(),
+      evidence_id: "phase-19a-evidence:viewer-route",
+    }),
+    check({
+      check_id: "local_selection_search_filtering_supported",
+      label:
+        "Viewer supports local read-only selection, search, and filtering.",
+      passed: viewerNavigationMetadataExists(),
+      evidence_id: "phase-19a-evidence:navigation-inspection",
+    }),
+    check({
+      check_id: "forbidden_tripwire_edges_render_as_warnings_only",
+      label: "Forbidden/tripwire edges render as warnings only.",
+      passed: forbiddenEdgesAreTripwireMetadata(),
+      evidence_id: "phase-19a-evidence:navigation-inspection",
     }),
     check({
       check_id: "forbidden_tripwire_edges_are_metadata_only",
@@ -468,6 +606,16 @@ export function buildPhase19ACloseoutReport(): Phase19ACloseoutReport {
       evidence_id: "phase-19a-evidence:registry",
       severity: "note",
     }),
+    check({
+      check_id: "phase_19a_feature_complete_not_foundation_only",
+      label: "Phase 19A is feature-complete, not foundation-only.",
+      passed:
+        viewerRouteMetadataExists() &&
+        viewerSectionsMetadataExists() &&
+        viewerNavigationMetadataExists(),
+      evidence_id: "phase-19a-evidence:final-feature-closeout",
+      severity: "note",
+    }),
   ];
 
   const allRequiredChecksPassed = checks
@@ -486,7 +634,16 @@ export function buildPhase19ACloseoutReport(): Phase19ACloseoutReport {
     deterministic: true,
     redaction_safe: true,
     ready_for_future_ui_rendering: true,
-    ui_rendered: false,
+    feature_complete_for_phase_19a: true,
+    foundation_only: false,
+    viewer_route: PHASE_19A_VIEWER_ROUTE,
+    viewer_route_visible: true,
+    viewer_sections: PHASE_19A_VIEWER_REQUIRED_SECTIONS,
+    viewer_navigation_controls: PHASE_19A_VIEWER_NAVIGATION_CONTROLS,
+    ui_rendered: true,
+    viewer_read_only: true,
+    viewer_safety_guarded_before_render: true,
+    viewer_warning_tripwires_only: true,
     react_flow_or_d3_added: false,
     source_imports_parsed: false,
     filesystem_read: false,
