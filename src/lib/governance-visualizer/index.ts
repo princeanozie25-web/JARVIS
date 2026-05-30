@@ -80,3 +80,29 @@ export type {
   GovernanceBoundarySafetyViolation,
   GovernanceBoundarySafetyViolationKind,
 } from "./safety-guard";
+
+export {
+  PHASE_19C_CLOSEOUT_CHECK_IDS,
+  PHASE_19C_CLOSEOUT_VERDICTS,
+  PHASE_19C_CLOSEOUT_VERSION,
+  PHASE_19C_DISABLED_CAPABILITIES,
+  PHASE_19C_VIEWER_LOCAL_CONTROLS,
+  PHASE_19C_VIEWER_REQUIRED_SECTIONS,
+  PHASE_19C_VIEWER_ROUTE,
+  Phase19CCloseoutCheckIdSchema,
+  Phase19CCloseoutCheckSchema,
+  Phase19CCloseoutEvidenceSchema,
+  Phase19CCloseoutReportSchema,
+  Phase19CCloseoutVerdictSchema,
+  assertPhase19CCloseoutPasses,
+  buildPhase19CCloseoutReport,
+  listPhase19CDisabledCapabilities,
+} from "./phase-19c-closeout";
+
+export type {
+  Phase19CCloseoutCheck,
+  Phase19CCloseoutCheckId,
+  Phase19CCloseoutEvidence,
+  Phase19CCloseoutReport,
+  Phase19CCloseoutVerdict,
+} from "./phase-19c-closeout";
