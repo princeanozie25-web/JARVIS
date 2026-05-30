@@ -472,3 +472,27 @@ export type {
   ApprovalDecisionRecordShapeValidation,
   ApprovalDecisionRecordValidationReason,
 } from "./approval-decision-record";
+
+export {
+  APPROVAL_DECISION_VALIDATION_CONTRACT_VERSION,
+  APPROVAL_DECISION_VALIDATION_GUARD_IDS,
+  APPROVAL_DECISION_VALIDATION_GUARD_SEVERITIES,
+  APPROVAL_DECISION_VALIDATION_REASON_CODES,
+  ApprovalDecisionValidationGuardDeclarationSchema,
+  ApprovalDecisionValidationGuardIdSchema,
+  ApprovalDecisionValidationGuardResultSchema,
+  ApprovalDecisionValidationGuardSeveritySchema,
+  ApprovalDecisionValidationPolicyMatrixSchema,
+  ApprovalDecisionValidationReasonCodeSchema,
+  DEFAULT_APPROVAL_DECISION_VALIDATION_POLICY_MATRIX,
+  validateApprovalDecisionRecordPolicyMetadata,
+} from "./approval-decision-validation";
+
+export type {
+  ApprovalDecisionValidationGuardDeclaration,
+  ApprovalDecisionValidationGuardId,
+  ApprovalDecisionValidationGuardResult,
+  ApprovalDecisionValidationGuardSeverity,
+  ApprovalDecisionValidationPolicyMatrix,
+  ApprovalDecisionValidationReasonCode,
+} from "./approval-decision-validation";
