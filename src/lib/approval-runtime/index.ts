@@ -630,3 +630,56 @@ export type {
   ApprovalExecutionPlanAuditPreviewStepSummary,
   ApprovalExecutionPlanAuditPreviewValidationSummary,
 } from "./execution-plan-audit-preview";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18E_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18E_SLICES,
+  ApprovalRuntimePhase18ECloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18E_CLOSEOUT_GUARD,
+} from "./phase-18e-closeout";
+
+export type { ApprovalRuntimePhase18ECloseoutGuard } from "./phase-18e-closeout";
+
+export {
+  APPROVAL_EXECUTION_VERIFICATION_CONFIDENCE_BANDS,
+  APPROVAL_EXECUTION_VERIFICATION_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_VERIFICATION_EVIDENCE_KINDS,
+  APPROVAL_EXECUTION_VERIFICATION_FORBIDDEN_STATUSES,
+  APPROVAL_EXECUTION_VERIFICATION_METHODS,
+  APPROVAL_EXECUTION_VERIFICATION_STATUSES,
+  APPROVAL_EXECUTION_VERIFICATION_VALIDATION_REASONS,
+  ApprovalExecutionVerificationConfidenceBandSchema,
+  ApprovalExecutionVerificationContractSchema,
+  ApprovalExecutionVerificationDisabledAuthorityFlagsSchema,
+  ApprovalExecutionVerificationEvidenceKindSchema,
+  ApprovalExecutionVerificationEvidenceMetadataSchema,
+  ApprovalExecutionVerificationForbiddenStatusSchema,
+  ApprovalExecutionVerificationFreshnessMetadataSchema,
+  ApprovalExecutionVerificationMetadataSchema,
+  ApprovalExecutionVerificationMethodMetadataSchema,
+  ApprovalExecutionVerificationMethodSchema,
+  ApprovalExecutionVerificationShapeValidationSchema,
+  ApprovalExecutionVerificationStatusSchema,
+  ApprovalExecutionVerificationTargetMetadataSchema,
+  ApprovalExecutionVerificationValidationReasonSchema,
+  DEFAULT_APPROVAL_EXECUTION_VERIFICATION_CONTRACT,
+  buildApprovalExecutionVerificationMetadata,
+  validateApprovalExecutionVerificationMetadataShape,
+} from "./execution-verification";
+
+export type {
+  ApprovalExecutionVerificationConfidenceBand,
+  ApprovalExecutionVerificationContract,
+  ApprovalExecutionVerificationDisabledAuthorityFlags,
+  ApprovalExecutionVerificationEvidenceKind,
+  ApprovalExecutionVerificationEvidenceMetadata,
+  ApprovalExecutionVerificationForbiddenStatus,
+  ApprovalExecutionVerificationFreshnessMetadata,
+  ApprovalExecutionVerificationMetadata,
+  ApprovalExecutionVerificationMethod,
+  ApprovalExecutionVerificationMethodMetadata,
+  ApprovalExecutionVerificationShapeValidation,
+  ApprovalExecutionVerificationStatus,
+  ApprovalExecutionVerificationTargetMetadata,
+  ApprovalExecutionVerificationValidationReason,
+} from "./execution-verification";
