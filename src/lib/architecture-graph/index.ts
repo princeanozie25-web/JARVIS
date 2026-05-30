@@ -134,3 +134,26 @@ export type {
   ArchitectureGraphSafetyViolation,
   ArchitectureGraphSafetyViolationKind,
 } from "./safety-guard";
+
+export {
+  PHASE_19A_CLOSEOUT_CHECK_IDS,
+  PHASE_19A_CLOSEOUT_VERDICTS,
+  PHASE_19A_CLOSEOUT_VERSION,
+  PHASE_19A_DISABLED_CAPABILITIES,
+  Phase19ACloseoutCheckIdSchema,
+  Phase19ACloseoutCheckSchema,
+  Phase19ACloseoutEvidenceSchema,
+  Phase19ACloseoutReportSchema,
+  Phase19ACloseoutVerdictSchema,
+  assertPhase19ACloseoutPasses,
+  buildPhase19ACloseoutReport,
+  listPhase19ADisabledCapabilities,
+} from "./phase-19a-closeout";
+
+export type {
+  Phase19ACloseoutCheck,
+  Phase19ACloseoutCheckId,
+  Phase19ACloseoutEvidence,
+  Phase19ACloseoutReport,
+  Phase19ACloseoutVerdict,
+} from "./phase-19a-closeout";
