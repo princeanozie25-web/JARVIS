@@ -422,3 +422,53 @@ export type {
   ApprovalExecutionAuthorityExpiryReason,
   ApprovalExecutionAuthorityExpiryWindowMetadata,
 } from "./execution-authority-expiry";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18C_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18C_SLICES,
+  ApprovalRuntimePhase18CCloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18C_CLOSEOUT_GUARD,
+} from "./phase-18c-closeout";
+
+export type { ApprovalRuntimePhase18CCloseoutGuard } from "./phase-18c-closeout";
+
+export {
+  APPROVAL_DECISION_RECORD_CHANNELS,
+  APPROVAL_DECISION_RECORD_CONTRACT_VERSION,
+  APPROVAL_DECISION_RECORD_FORBIDDEN_CHANNELS,
+  APPROVAL_DECISION_RECORD_OUTCOMES,
+  APPROVAL_DECISION_RECORD_REASON_KINDS,
+  APPROVAL_DECISION_RECORD_VALIDATION_REASONS,
+  ApprovalDecisionRecordActorMetadataSchema,
+  ApprovalDecisionRecordChannelMetadataSchema,
+  ApprovalDecisionRecordChannelSchema,
+  ApprovalDecisionRecordContractSchema,
+  ApprovalDecisionRecordDisabledAuthorityFlagsSchema,
+  ApprovalDecisionRecordForbiddenChannelSchema,
+  ApprovalDecisionRecordMetadataSchema,
+  ApprovalDecisionRecordOutcomeSchema,
+  ApprovalDecisionRecordProvenanceMetadataSchema,
+  ApprovalDecisionRecordReasonKindSchema,
+  ApprovalDecisionRecordReasonMetadataSchema,
+  ApprovalDecisionRecordShapeValidationSchema,
+  ApprovalDecisionRecordValidationReasonSchema,
+  DEFAULT_APPROVAL_DECISION_RECORD_CONTRACT,
+  buildApprovalDecisionRecordMetadata,
+  validateApprovalDecisionRecordMetadataShape,
+} from "./approval-decision-record";
+
+export type {
+  ApprovalDecisionRecordActorMetadata,
+  ApprovalDecisionRecordChannel,
+  ApprovalDecisionRecordChannelMetadata,
+  ApprovalDecisionRecordContract,
+  ApprovalDecisionRecordDisabledAuthorityFlags,
+  ApprovalDecisionRecordForbiddenChannel,
+  ApprovalDecisionRecordMetadata,
+  ApprovalDecisionRecordOutcome,
+  ApprovalDecisionRecordProvenanceMetadata,
+  ApprovalDecisionRecordReasonKind,
+  ApprovalDecisionRecordReasonMetadata,
+  ApprovalDecisionRecordShapeValidation,
+  ApprovalDecisionRecordValidationReason,
+} from "./approval-decision-record";
