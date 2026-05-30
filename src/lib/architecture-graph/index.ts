@@ -107,3 +107,30 @@ export type {
   ArchitectureGraphProjectionStats,
   ArchitectureGraphProjectionWarning,
 } from "./projections";
+
+export {
+  ARCHITECTURE_GRAPH_SAFETY_GUARD_VERSION,
+  ARCHITECTURE_GRAPH_SAFETY_SCAN_TARGETS,
+  ARCHITECTURE_GRAPH_SAFETY_SEVERITIES,
+  ARCHITECTURE_GRAPH_SAFETY_VIOLATION_KINDS,
+  ArchitectureGraphSafetyPolicySchema,
+  ArchitectureGraphSafetyResultSchema,
+  ArchitectureGraphSafetyScanTargetSchema,
+  ArchitectureGraphSafetyViolationKindSchema,
+  ArchitectureGraphSafetyViolationSchema,
+  DEFAULT_ARCHITECTURE_GRAPH_SAFETY_POLICY,
+  assertArchitectureGraphProjectionSafe,
+  assertArchitectureGraphSafe,
+  listArchitectureGraphForbiddenAffordanceNames,
+  listArchitectureGraphForbiddenFieldNames,
+  scanArchitectureGraphProjectionSafety,
+  scanArchitectureGraphSafety,
+} from "./safety-guard";
+
+export type {
+  ArchitectureGraphSafetyPolicy,
+  ArchitectureGraphSafetyResult,
+  ArchitectureGraphSafetyScanTarget,
+  ArchitectureGraphSafetyViolation,
+  ArchitectureGraphSafetyViolationKind,
+} from "./safety-guard";
