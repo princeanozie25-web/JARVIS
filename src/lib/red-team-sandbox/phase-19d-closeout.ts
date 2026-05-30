@@ -34,8 +34,35 @@ import {
   listRedTeamSandboxForbiddenAffordanceNames,
   scanRedTeamSandboxSafety,
 } from "./safety-guard";
+import {
+  CAI_ADAPTER_CONTRACT_VERSION,
+  buildCaiAdapterRunRequest,
+  getDefaultCaiAdapterHealth,
+} from "./cai-adapter-contract";
+import {
+  CAI_PROVIDER_MANIFEST_VERSION,
+  assertCaiProviderNotExecutable,
+  buildCaiProviderReadinessReport,
+  getCaiProviderManifest,
+} from "./cai-provider-manifest";
+import {
+  CAI_MOCK_PROVIDER_VERSION,
+  buildCaiMockFindingFixture,
+  runCaiMockDryRun,
+} from "./cai-mock-provider";
+import {
+  CAI_APPROVAL_BINDING_VERSION,
+  assertCaiRequiresApproval,
+  buildCaiApprovalProposal,
+  validateCaiApprovalProposal,
+} from "./cai-approval-binding";
+import {
+  CAI_LOCALHOST_EXECUTION_GATE_VERSION,
+  assertCaiLocalhostExecutionBlocked,
+  buildCaiLocalhostExecutionReadinessReport,
+} from "./cai-localhost-execution-gate";
 
-export const PHASE_19D_CLOSEOUT_VERSION = "19D.5" as const;
+export const PHASE_19D_CLOSEOUT_VERSION = "19D.11" as const;
 
 export const PHASE_19D_CLOSEOUT_VERDICTS = ["PASS_WITH_NOTES", "FAIL"] as const;
 
@@ -46,12 +73,26 @@ export const PHASE_19D_CLOSEOUT_CHECK_IDS = [
   "phase_19d2_queries_safety_guard_exist",
   "phase_19d3_visible_route_exists",
   "phase_19d4_inspection_filtering_exists",
+  "phase_19d5_foundation_closeout_evidence_exists",
+  "phase_19d6_cai_adapter_contract_exists",
+  "phase_19d7_cai_provider_manifest_readiness_exists",
+  "phase_19d8_cai_mock_dry_run_provider_exists",
+  "phase_19d9_cai_approval_binding_exists",
+  "phase_19d10_cai_localhost_execution_gate_exists",
   "safe_target_scopes_whitelisted",
   "forbidden_target_scopes_denied",
   "safe_action_classes_whitelisted",
   "forbidden_action_classes_denied",
+  "safe_fixtures_pass",
+  "unsafe_fixtures_fail",
+  "mock_dry_run_metadata_only_synthetic",
+  "cai_provider_not_installed",
+  "cai_execution_state_disabled",
+  "localhost_execution_gate_blocked",
   "every_proposal_requires_approval_metadata",
+  "every_cai_proposal_requires_approval_metadata",
   "every_plan_is_dry_run_first",
+  "every_cai_request_is_dry_run_first",
   "denied_examples_stay_denied_only",
   "viewer_renders_required_sections",
   "local_selection_search_filtering_supported",
@@ -60,7 +101,7 @@ export const PHASE_19D_CLOSEOUT_CHECK_IDS = [
   "exposed_data_metadata_only",
   "no_raw_prompts_model_outputs_tool_args_tokens_voice_ocr_frame_secrets",
   "no_shell_exploit_network_scan_credential_payloads_render",
-  "no_cai_install_call_sidecar_execution_path",
+  "no_cai_install_import_call_sidecar_execution_path",
   "no_forbidden_affordances_exported_or_rendered",
   "no_filesystem_reads",
   "no_database_reads",
@@ -71,14 +112,16 @@ export const PHASE_19D_CLOSEOUT_CHECK_IDS = [
   "no_authority_tokens",
   "no_phase_18_bypass",
   "phase_18_approval_boundaries_untouched",
-  "phase_19d_feature_complete_not_cai_executing",
+  "phase_19d_cai_governed_ready_not_executing",
 ] as const;
 
 export const PHASE_19D_DISABLED_CAPABILITIES = [
   "CAI installation",
-  "CAI execution",
+  "CAI import",
+  "CAI real execution",
   "Python sidecar",
   "command execution",
+  "process spawn",
   "network scanning",
   "public internet target access",
   "private LAN target access",
@@ -142,8 +185,20 @@ export const Phase19DCloseoutEvidenceSchema = z.strictObject({
     .string()
     .trim()
     .regex(/^phase-19d-evidence:[a-z0-9._:-]+$/),
-  source_slice: z.enum(["19D.1", "19D.2", "19D.3", "19D.4", "19D.5"]),
-  summary: z.string().trim().min(1).max(300),
+  source_slice: z.enum([
+    "19D.1",
+    "19D.2",
+    "19D.3",
+    "19D.4",
+    "19D.5",
+    "19D.6",
+    "19D.7",
+    "19D.8",
+    "19D.9",
+    "19D.10",
+    "19D.11",
+  ]),
+  summary: z.string().trim().min(1).max(360),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
   raw_value_included: z.literal(false),
@@ -151,7 +206,7 @@ export const Phase19DCloseoutEvidenceSchema = z.strictObject({
 
 export const Phase19DCloseoutCheckSchema = z.strictObject({
   check_id: Phase19DCloseoutCheckIdSchema,
-  label: z.string().trim().min(1).max(300),
+  label: z.string().trim().min(1).max(340),
   passed: z.boolean(),
   evidence_id: z
     .string()
@@ -164,7 +219,7 @@ export const Phase19DCloseoutCheckSchema = z.strictObject({
 
 export const Phase19DCloseoutReportSchema = z.strictObject({
   report_version: z.literal(PHASE_19D_CLOSEOUT_VERSION),
-  report_id: z.literal("phase-19d-red-team-sandbox-closeout"),
+  report_id: z.literal("phase-19d-cai-governed-red-team-closeout"),
   verdict: Phase19DCloseoutVerdictSchema,
   checks: z.array(Phase19DCloseoutCheckSchema),
   evidence: z.array(Phase19DCloseoutEvidenceSchema),
@@ -174,7 +229,10 @@ export const Phase19DCloseoutReportSchema = z.strictObject({
   deterministic: z.literal(true),
   redaction_safe: z.literal(true),
   feature_complete_for_phase_19d: z.literal(true),
+  cai_governed_ready: z.literal(true),
   cai_executing: z.literal(false),
+  cai_integration_path_modeled: z.literal(true),
+  real_cai_execution_blocked_until_future_enablement: z.literal(true),
   viewer_route: z.literal(PHASE_19D_VIEWER_ROUTE),
   viewer_route_visible: z.literal(true),
   viewer_sections: z.array(z.enum(PHASE_19D_VIEWER_REQUIRED_SECTIONS)),
@@ -182,9 +240,14 @@ export const Phase19DCloseoutReportSchema = z.strictObject({
   viewer_safety_guarded_before_render: z.literal(true),
   denied_examples_denied_only: z.literal(true),
   cai_installed: z.literal(false),
+  cai_imported: z.literal(false),
   cai_called: z.literal(false),
+  cai_provider_install_state: z.literal("not_installed"),
+  cai_provider_execution_state: z.literal("disabled"),
+  localhost_execution_gate_verdict: z.literal("blocked"),
   python_sidecar_created: z.literal(false),
   command_executed: z.literal(false),
+  process_spawned: z.literal(false),
   filesystem_read: z.literal(false),
   database_read: z.literal(false),
   network_scan_performed: z.literal(false),
@@ -285,6 +348,33 @@ function viewerSafeOutput() {
   };
 }
 
+function caiGovernedOutput() {
+  const request = buildCaiAdapterRunRequest({
+    request_id: "cai-adapter-request:phase-19d-closeout",
+    proposal: buildSafeLocalhostStaticAnalysisProposal(),
+  });
+  const approvalProposal = buildCaiApprovalProposal(request);
+  const adapterHealth = getDefaultCaiAdapterHealth();
+  const providerManifest = getCaiProviderManifest();
+  const providerReadiness = buildCaiProviderReadinessReport();
+  const mockDryRun = runCaiMockDryRun(request);
+  const localhostGate = buildCaiLocalhostExecutionReadinessReport();
+  return {
+    adapter_mode: adapterHealth.mode,
+    adapter_execution_enabled: adapterHealth.execution_enabled,
+    provider_install_state: providerManifest.install_state,
+    provider_execution_state: providerManifest.execution_state,
+    provider_executable: providerReadiness.executable,
+    mock_status: mockDryRun.status,
+    mock_accepted: mockDryRun.accepted,
+    mock_finding_count: buildCaiMockFindingFixture().length,
+    approval_binding_valid: validateCaiApprovalProposal(approvalProposal).valid,
+    localhost_gate_verdict: localhostGate.verdict,
+    metadata_only: true,
+    read_only: true,
+  };
+}
+
 function viewerRendersRequiredSections(): boolean {
   return (
     PHASE_19D_VIEWER_REQUIRED_SECTIONS.includes("sandbox_status") &&
@@ -363,6 +453,29 @@ function everyProposalRequiresApprovalMetadata(): boolean {
   return listRedTeamSandboxFixtures().every(proposalRequiresApprovalMetadata);
 }
 
+function everyCaiProposalRequiresApprovalMetadata(): boolean {
+  const proposal = buildCaiApprovalProposal(
+    buildCaiAdapterRunRequest({
+      request_id: "cai-adapter-request:phase-19d-approval-proof",
+      proposal: buildSafeLocalhostStaticAnalysisProposal(),
+    }),
+  );
+  try {
+    assertCaiRequiresApproval(proposal);
+  } catch {
+    return false;
+  }
+  return (
+    proposal.approval_required &&
+    proposal.approval_metadata_present &&
+    proposal.required_evidence.some(
+      (item) =>
+        item.evidence_id === "phase_18_approval_metadata" && item.satisfied,
+    ) &&
+    validateCaiApprovalProposal(proposal).valid
+  );
+}
+
 function everyPlanIsDryRunFirst(): boolean {
   return listRedTeamSandboxFixtures().every((proposal) => {
     const plan = buildRedTeamRunPlan(proposal);
@@ -378,6 +491,21 @@ function everyPlanIsDryRunFirst(): boolean {
   });
 }
 
+function everyCaiRequestIsDryRunFirst(): boolean {
+  const request = buildCaiAdapterRunRequest({
+    request_id: "cai-adapter-request:phase-19d-dry-run-proof",
+    proposal: buildSafeLocalhostStaticAnalysisProposal(),
+  });
+  const approvalProposal = buildCaiApprovalProposal(request);
+  return (
+    request.dry_run_required &&
+    request.approval_metadata_required &&
+    approvalProposal.dry_run_required &&
+    approvalProposal.dry_run_first &&
+    runCaiMockDryRun(request).status === "dry_run_metadata_ready"
+  );
+}
+
 function deniedExamplesStayDeniedOnly(): boolean {
   return [
     buildDeniedPublicInternetScanProposal(),
@@ -386,6 +514,82 @@ function deniedExamplesStayDeniedOnly(): boolean {
     (proposal) =>
       validateRedTeamRunProposal(proposal).verdict === "denied" &&
       buildRedTeamAuditPreview(proposal).verdict === "denied",
+  );
+}
+
+function mockDryRunIsMetadataOnlySynthetic(): boolean {
+  const result = runCaiMockDryRun(
+    buildCaiAdapterRunRequest({
+      request_id: "cai-adapter-request:phase-19d-mock-proof",
+      proposal: buildSafeLocalhostStaticAnalysisProposal(),
+    }),
+  );
+  return (
+    result.accepted &&
+    result.metadata_only &&
+    result.synthetic_only &&
+    result.redaction_safe &&
+    !result.raw_value_included &&
+    !result.cai_installed &&
+    !result.cai_imported &&
+    !result.cai_called &&
+    !result.execution_enabled &&
+    !result.subprocess_launch_enabled &&
+    !result.process_spawn_enabled &&
+    !result.command_execution_enabled &&
+    !result.network_scan_enabled &&
+    !result.filesystem_read_enabled &&
+    !result.database_read_enabled &&
+    result.findings.length === 4 &&
+    result.findings.every((finding) => finding.synthetic_only)
+  );
+}
+
+function caiProviderIsNotInstalledOrExecutable(): boolean {
+  const manifest = getCaiProviderManifest();
+  const readiness = buildCaiProviderReadinessReport();
+  try {
+    assertCaiProviderNotExecutable();
+  } catch {
+    return false;
+  }
+  return (
+    manifest.install_state === "not_installed" &&
+    manifest.execution_state === "disabled" &&
+    !manifest.cai_imported &&
+    !manifest.cai_called &&
+    !manifest.cai_installed &&
+    !manifest.execution_enabled &&
+    !manifest.subprocess_enabled &&
+    !manifest.network_scan_enabled &&
+    !manifest.filesystem_read_enabled &&
+    !manifest.database_read_enabled &&
+    !readiness.executable &&
+    !readiness.cai_imported &&
+    !readiness.cai_called &&
+    !readiness.cai_installed
+  );
+}
+
+function localhostExecutionGateIsBlocked(): boolean {
+  const report = buildCaiLocalhostExecutionReadinessReport();
+  try {
+    assertCaiLocalhostExecutionBlocked();
+  } catch {
+    return false;
+  }
+  return (
+    report.verdict === "blocked" &&
+    report.gate.mode === "disabled" &&
+    report.provider_install_state === "not_installed" &&
+    report.provider_execution_state === "disabled" &&
+    !report.execution_enabled &&
+    !report.cai_installed &&
+    !report.cai_imported &&
+    !report.cai_called &&
+    !report.approval_decision_exists &&
+    !report.authority_token_exists &&
+    !report.python_sidecar_exists
   );
 }
 
@@ -414,7 +618,8 @@ function outputsAreDeterministic(): boolean {
     JSON.stringify(safeFixtureOutput()) ===
       JSON.stringify(safeFixtureOutput()) &&
     JSON.stringify(querySafeOutput()) === JSON.stringify(querySafeOutput()) &&
-    JSON.stringify(viewerSafeOutput()) === JSON.stringify(viewerSafeOutput())
+    JSON.stringify(viewerSafeOutput()) === JSON.stringify(viewerSafeOutput()) &&
+    JSON.stringify(caiGovernedOutput()) === JSON.stringify(caiGovernedOutput())
   );
 }
 
@@ -443,7 +648,8 @@ function phase18ApprovalBoundariesUntouched(): boolean {
     !policy.authority_grant_allowed &&
     !policy.execution_inferred &&
     !policy.permission_inferred &&
-    everyProposalRequiresApprovalMetadata()
+    everyProposalRequiresApprovalMetadata() &&
+    everyCaiProposalRequiresApprovalMetadata()
   );
 }
 
@@ -484,11 +690,18 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
     viewerSafeOutput(),
     "query_result",
   );
+  const caiSafety = scanRedTeamSandboxSafety(
+    caiGovernedOutput(),
+    "query_result",
+  );
   const safetyPassed =
     safeProposalSafety.passed &&
     safePlanSafety.passed &&
     querySafety.passed &&
-    viewerSafety.passed;
+    viewerSafety.passed &&
+    caiSafety.passed;
+  const providerManifest = getCaiProviderManifest();
+  const localhostGate = buildCaiLocalhostExecutionReadinessReport();
 
   const evidenceItems = [
     evidence({
@@ -499,7 +712,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
     evidence({
       evidence_id: "phase-19d-evidence:queries-safety",
       source_slice: "19D.2",
-      summary: `Query helpers and safety guard version ${RED_TEAM_SANDBOX_SAFETY_GUARD_VERSION} validate safe proposal, plan, query, and viewer metadata.`,
+      summary: `Query helpers and safety guard version ${RED_TEAM_SANDBOX_SAFETY_GUARD_VERSION} validate safe proposal, plan, query, viewer, and CAI metadata.`,
     }),
     evidence({
       evidence_id: "phase-19d-evidence:viewer-route",
@@ -514,10 +727,41 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
         "Viewer supports local read-only profile, proposal, and warning selection plus target, action, verdict, severity, visibility, and search filters.",
     }),
     evidence({
-      evidence_id: "phase-19d-evidence:final-closeout",
+      evidence_id: "phase-19d-evidence:foundation-closeout",
       source_slice: "19D.5",
       summary:
-        "Final Phase 19D closeout proves the governed red-team sandbox is feature-complete for this phase while CAI remains inactive and unexecuted.",
+        "Foundation closeout evidence remains incorporated and superseded by the final CAI-governed closeout.",
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:cai-adapter-contract",
+      source_slice: "19D.6",
+      summary: `CAI adapter contract version ${CAI_ADAPTER_CONTRACT_VERSION} exposes disabled/default metadata and dry-run-only adapter shapes.`,
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:cai-provider-manifest",
+      source_slice: "19D.7",
+      summary: `CAI provider manifest version ${CAI_PROVIDER_MANIFEST_VERSION} keeps install_state not_installed and execution_state disabled.`,
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:cai-mock-provider",
+      source_slice: "19D.8",
+      summary: `CAI mock provider version ${CAI_MOCK_PROVIDER_VERSION} returns synthetic metadata-only dry-run results without CAI execution.`,
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:cai-approval-binding",
+      source_slice: "19D.9",
+      summary: `CAI approval binding version ${CAI_APPROVAL_BINDING_VERSION} binds CAI requests to Phase 18-style approval metadata without creating decisions or tokens.`,
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:cai-localhost-gate",
+      source_slice: "19D.10",
+      summary: `CAI localhost execution gate version ${CAI_LOCALHOST_EXECUTION_GATE_VERSION} models prerequisites and remains blocked by default.`,
+    }),
+    evidence({
+      evidence_id: "phase-19d-evidence:final-cai-closeout",
+      source_slice: "19D.11",
+      summary:
+        "Final Phase 19D closeout proves the integration path is governed and CAI-ready while real CAI execution remains blocked until a future explicit enablement phase.",
     }),
   ];
 
@@ -527,9 +771,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Phase 19D.1 sandbox contracts, validators, and fixtures exist.",
       passed:
         RED_TEAM_SANDBOX_CONTRACT_VERSION === "19D.1" &&
-        listRedTeamSandboxFixtures().length === 3 &&
-        safeFixturesPass() &&
-        unsafeFixturesFail(),
+        listRedTeamSandboxFixtures().length === 3,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -552,6 +794,54 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Phase 19D.4 inspection and filtering exists.",
       passed: localInspectionFilteringExists(),
       evidence_id: "phase-19d-evidence:inspection-filtering",
+    }),
+    check({
+      check_id: "phase_19d5_foundation_closeout_evidence_exists",
+      label: "Phase 19D.5 foundation closeout evidence exists.",
+      passed: true,
+      evidence_id: "phase-19d-evidence:foundation-closeout",
+      severity: "note",
+    }),
+    check({
+      check_id: "phase_19d6_cai_adapter_contract_exists",
+      label: "Phase 19D.6 CAI adapter contract exists.",
+      passed:
+        CAI_ADAPTER_CONTRACT_VERSION === "19D.6" &&
+        getDefaultCaiAdapterHealth().mode === "disabled" &&
+        !getDefaultCaiAdapterHealth().execution_enabled,
+      evidence_id: "phase-19d-evidence:cai-adapter-contract",
+    }),
+    check({
+      check_id: "phase_19d7_cai_provider_manifest_readiness_exists",
+      label: "Phase 19D.7 CAI provider manifest and readiness exists.",
+      passed:
+        CAI_PROVIDER_MANIFEST_VERSION === "19D.7" &&
+        caiProviderIsNotInstalledOrExecutable(),
+      evidence_id: "phase-19d-evidence:cai-provider-manifest",
+    }),
+    check({
+      check_id: "phase_19d8_cai_mock_dry_run_provider_exists",
+      label: "Phase 19D.8 CAI mock dry-run provider exists.",
+      passed:
+        CAI_MOCK_PROVIDER_VERSION === "19D.8" &&
+        mockDryRunIsMetadataOnlySynthetic(),
+      evidence_id: "phase-19d-evidence:cai-mock-provider",
+    }),
+    check({
+      check_id: "phase_19d9_cai_approval_binding_exists",
+      label: "Phase 19D.9 CAI approval binding exists.",
+      passed:
+        CAI_APPROVAL_BINDING_VERSION === "19D.9" &&
+        everyCaiProposalRequiresApprovalMetadata(),
+      evidence_id: "phase-19d-evidence:cai-approval-binding",
+    }),
+    check({
+      check_id: "phase_19d10_cai_localhost_execution_gate_exists",
+      label: "Phase 19D.10 CAI localhost execution gate exists.",
+      passed:
+        CAI_LOCALHOST_EXECUTION_GATE_VERSION === "19D.10" &&
+        localhostExecutionGateIsBlocked(),
+      evidence_id: "phase-19d-evidence:cai-localhost-gate",
     }),
     check({
       check_id: "safe_target_scopes_whitelisted",
@@ -590,16 +880,68 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
+      check_id: "safe_fixtures_pass",
+      label: "Safe fixtures pass.",
+      passed: safeFixturesPass(),
+      evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
+    }),
+    check({
+      check_id: "unsafe_fixtures_fail",
+      label: "Unsafe fixtures fail.",
+      passed: unsafeFixturesFail(),
+      evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
+    }),
+    check({
+      check_id: "mock_dry_run_metadata_only_synthetic",
+      label: "Mock dry-run produces metadata-only synthetic results.",
+      passed: mockDryRunIsMetadataOnlySynthetic(),
+      evidence_id: "phase-19d-evidence:cai-mock-provider",
+    }),
+    check({
+      check_id: "cai_provider_not_installed",
+      label: "CAI provider install_state remains not_installed.",
+      passed:
+        providerManifest.install_state === "not_installed" &&
+        !providerManifest.cai_installed,
+      evidence_id: "phase-19d-evidence:cai-provider-manifest",
+    }),
+    check({
+      check_id: "cai_execution_state_disabled",
+      label: "CAI execution_state remains disabled.",
+      passed:
+        providerManifest.execution_state === "disabled" &&
+        !providerManifest.execution_enabled,
+      evidence_id: "phase-19d-evidence:cai-provider-manifest",
+    }),
+    check({
+      check_id: "localhost_execution_gate_blocked",
+      label: "CAI localhost execution gate verdict remains blocked.",
+      passed: localhostExecutionGateIsBlocked(),
+      evidence_id: "phase-19d-evidence:cai-localhost-gate",
+    }),
+    check({
       check_id: "every_proposal_requires_approval_metadata",
       label: "Every proposal requires Phase 18 approval metadata.",
       passed: everyProposalRequiresApprovalMetadata(),
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
+      check_id: "every_cai_proposal_requires_approval_metadata",
+      label: "Every CAI proposal requires approval metadata.",
+      passed: everyCaiProposalRequiresApprovalMetadata(),
+      evidence_id: "phase-19d-evidence:cai-approval-binding",
+    }),
+    check({
       check_id: "every_plan_is_dry_run_first",
       label: "Every plan is dry-run-first metadata.",
       passed: everyPlanIsDryRunFirst(),
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
+    }),
+    check({
+      check_id: "every_cai_request_is_dry_run_first",
+      label: "Every CAI request remains dry-run-first.",
+      passed: everyCaiRequestIsDryRunFirst(),
+      evidence_id: "phase-19d-evidence:cai-approval-binding",
     }),
     check({
       check_id: "denied_examples_stay_denied_only",
@@ -640,7 +982,8 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
         safeProposalValidation.metadata_only &&
         safePlanValidation.metadata_only &&
         safeAuditValidation.metadata_only &&
-        disabledAuthorityFlagsRemainDisabled(),
+        disabledAuthorityFlagsRemainDisabled() &&
+        mockDryRunIsMetadataOnlySynthetic(),
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -667,13 +1010,12 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       evidence_id: "phase-19d-evidence:queries-safety",
     }),
     check({
-      check_id: "no_cai_install_call_sidecar_execution_path",
-      label: "No CAI install, call, sidecar, or execution path exists.",
+      check_id: "no_cai_install_import_call_sidecar_execution_path",
+      label: "No CAI install, import, call, sidecar, or execution path exists.",
       passed:
-        !getRedTeamSandboxProfile().disabled_authority_flags.cai_installed &&
-        !getRedTeamSandboxProfile().disabled_authority_flags
-          .cai_execution_enabled,
-      evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
+        caiProviderIsNotInstalledOrExecutable() &&
+        localhostExecutionGateIsBlocked(),
+      evidence_id: "phase-19d-evidence:cai-provider-manifest",
     }),
     check({
       check_id: "no_forbidden_affordances_exported_or_rendered",
@@ -687,7 +1029,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Sandbox performs no filesystem reads.",
       passed:
         !getRedTeamSandboxProfile().disabled_authority_flags
-          .filesystem_read_enabled,
+          .filesystem_read_enabled && !providerManifest.filesystem_read_enabled,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -695,7 +1037,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Sandbox performs no database reads.",
       passed:
         !getRedTeamSandboxProfile().disabled_authority_flags
-          .database_read_enabled,
+          .database_read_enabled && !providerManifest.database_read_enabled,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -703,7 +1045,9 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Sandbox performs no network scans.",
       passed:
         !getRedTeamSandboxProfile().disabled_authority_flags
-          .network_scan_enabled,
+          .network_scan_enabled &&
+        !providerManifest.network_scan_enabled &&
+        !localhostGate.network_scan_enabled,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -727,7 +1071,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Sandbox creates no approval decisions.",
       passed:
         !getRedTeamSandboxProfile().disabled_authority_flags
-          .approval_decision_enabled,
+          .approval_decision_enabled && !localhostGate.approval_decision_exists,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -735,7 +1079,8 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       label: "Sandbox creates no authority tokens.",
       passed:
         !getRedTeamSandboxProfile().disabled_authority_flags
-          .authority_material_creation_enabled,
+          .authority_material_creation_enabled &&
+        !localhostGate.authority_token_exists,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -746,7 +1091,8 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
           .phase_18_bypass_enabled &&
         listRedTeamSandboxFixtures().every(
           (proposal) => !proposal.phase_18_bypass_enabled,
-        ),
+        ) &&
+        !localhostGate.phase_18_bypass_enabled,
       evidence_id: "phase-19d-evidence:contracts-validators-fixtures",
     }),
     check({
@@ -757,15 +1103,19 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
       severity: "note",
     }),
     check({
-      check_id: "phase_19d_feature_complete_not_cai_executing",
-      label: "Phase 19D is feature-complete for this phase, not CAI-executing.",
+      check_id: "phase_19d_cai_governed_ready_not_executing",
+      label:
+        "Phase 19D is feature-complete as CAI-governed and CAI-ready, not CAI-executing.",
       passed:
         PHASE_19D_VIEWER_ROUTE === "/audit/red-team-sandbox" &&
         viewerRendersRequiredSections() &&
         localInspectionFilteringExists() &&
         safeFixturesPass() &&
-        unsafeFixturesFail(),
-      evidence_id: "phase-19d-evidence:final-closeout",
+        unsafeFixturesFail() &&
+        mockDryRunIsMetadataOnlySynthetic() &&
+        caiProviderIsNotInstalledOrExecutable() &&
+        localhostExecutionGateIsBlocked(),
+      evidence_id: "phase-19d-evidence:final-cai-closeout",
       severity: "note",
     }),
   ];
@@ -776,7 +1126,7 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
 
   return Phase19DCloseoutReportSchema.parse({
     report_version: PHASE_19D_CLOSEOUT_VERSION,
-    report_id: "phase-19d-red-team-sandbox-closeout",
+    report_id: "phase-19d-cai-governed-red-team-closeout",
     verdict: allRequiredChecksPassed ? "PASS_WITH_NOTES" : "FAIL",
     checks,
     evidence: evidenceItems,
@@ -786,7 +1136,10 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
     deterministic: true,
     redaction_safe: true,
     feature_complete_for_phase_19d: true,
+    cai_governed_ready: true,
     cai_executing: false,
+    cai_integration_path_modeled: true,
+    real_cai_execution_blocked_until_future_enablement: true,
     viewer_route: PHASE_19D_VIEWER_ROUTE,
     viewer_route_visible: true,
     viewer_sections: PHASE_19D_VIEWER_REQUIRED_SECTIONS,
@@ -794,9 +1147,14 @@ export function buildPhase19DCloseoutReport(): Phase19DCloseoutReport {
     viewer_safety_guarded_before_render: true,
     denied_examples_denied_only: true,
     cai_installed: false,
+    cai_imported: false,
     cai_called: false,
+    cai_provider_install_state: providerManifest.install_state,
+    cai_provider_execution_state: providerManifest.execution_state,
+    localhost_execution_gate_verdict: localhostGate.verdict,
     python_sidecar_created: false,
     command_executed: false,
+    process_spawned: false,
     filesystem_read: false,
     database_read: false,
     network_scan_performed: false,

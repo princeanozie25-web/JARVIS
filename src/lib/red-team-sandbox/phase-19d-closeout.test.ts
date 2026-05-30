@@ -17,11 +17,17 @@ import {
   PHASE_19D_VIEWER_REQUIRED_SECTIONS,
   Phase19DCloseoutReportSchema,
   assertPhase19DCloseoutPasses,
+  buildCaiAdapterRunRequest,
+  buildCaiApprovalProposal,
+  buildCaiLocalhostExecutionReadinessReport,
+  buildCaiProviderReadinessReport,
   buildDeniedDestructiveActionProposal,
   buildDeniedPublicInternetScanProposal,
   buildPhase19DCloseoutReport,
   buildSafeLocalhostStaticAnalysisProposal,
+  getCaiProviderManifest,
   listPhase19DDisabledCapabilities,
+  runCaiMockDryRun,
   validateRedTeamRunProposal,
 } from "./index";
 
@@ -79,18 +85,21 @@ function collectKeys(input: unknown): string[] {
   ]);
 }
 
-describe("Phase 19D.5 red-team sandbox final feature closeout", () => {
+describe("Phase 19D.11 final CAI-governed red-team closeout", () => {
   it("returns PASS WITH NOTES for the current implementation", () => {
     expect(buildPhase19DCloseoutReport()).toMatchObject({
-      report_version: "19D.5",
-      report_id: "phase-19d-red-team-sandbox-closeout",
+      report_version: "19D.11",
+      report_id: "phase-19d-cai-governed-red-team-closeout",
       verdict: "PASS_WITH_NOTES",
       metadata_only: true,
       read_only: true,
       deterministic: true,
       redaction_safe: true,
       feature_complete_for_phase_19d: true,
+      cai_governed_ready: true,
       cai_executing: false,
+      cai_integration_path_modeled: true,
+      real_cai_execution_blocked_until_future_enablement: true,
       viewer_route: "/audit/red-team-sandbox",
       viewer_route_visible: true,
       viewer_sections: PHASE_19D_VIEWER_REQUIRED_SECTIONS,
@@ -98,9 +107,14 @@ describe("Phase 19D.5 red-team sandbox final feature closeout", () => {
       viewer_safety_guarded_before_render: true,
       denied_examples_denied_only: true,
       cai_installed: false,
+      cai_imported: false,
       cai_called: false,
+      cai_provider_install_state: "not_installed",
+      cai_provider_execution_state: "disabled",
+      localhost_execution_gate_verdict: "blocked",
       python_sidecar_created: false,
       command_executed: false,
+      process_spawned: false,
       filesystem_read: false,
       database_read: false,
       network_scan_performed: false,
@@ -134,9 +148,11 @@ describe("Phase 19D.5 red-team sandbox final feature closeout", () => {
     expect(listPhase19DDisabledCapabilities()).toEqual(
       expect.arrayContaining([
         "CAI installation",
-        "CAI execution",
+        "CAI import",
+        "CAI real execution",
         "Python sidecar",
         "command execution",
+        "process spawn",
         "network scanning",
         "public internet target access",
         "private LAN target access",
@@ -183,6 +199,12 @@ describe("Phase 19D.5 red-team sandbox final feature closeout", () => {
       "19D.3",
       "19D.4",
       "19D.5",
+      "19D.6",
+      "19D.7",
+      "19D.8",
+      "19D.9",
+      "19D.10",
+      "19D.11",
     ]);
     expect(report.checks.map((check) => check.check_id)).toEqual(
       expect.arrayContaining([
@@ -190,9 +212,107 @@ describe("Phase 19D.5 red-team sandbox final feature closeout", () => {
         "phase_19d4_inspection_filtering_exists",
         "viewer_renders_required_sections",
         "local_selection_search_filtering_supported",
-        "phase_19d_feature_complete_not_cai_executing",
+        "phase_19d_cai_governed_ready_not_executing",
       ]),
     );
+  });
+
+  it("includes CAI modeled-but-not-executable evidence", () => {
+    const report = buildPhase19DCloseoutReport();
+    const checkIds = report.checks.map((check) => check.check_id);
+
+    expect(checkIds).toEqual(
+      expect.arrayContaining([
+        "phase_19d6_cai_adapter_contract_exists",
+        "phase_19d7_cai_provider_manifest_readiness_exists",
+        "phase_19d8_cai_mock_dry_run_provider_exists",
+        "phase_19d9_cai_approval_binding_exists",
+        "phase_19d10_cai_localhost_execution_gate_exists",
+        "mock_dry_run_metadata_only_synthetic",
+        "cai_provider_not_installed",
+        "cai_execution_state_disabled",
+        "localhost_execution_gate_blocked",
+        "every_cai_proposal_requires_approval_metadata",
+        "every_cai_request_is_dry_run_first",
+      ]),
+    );
+    expect(report.evidence.map((item) => item.evidence_id)).toEqual(
+      expect.arrayContaining([
+        "phase-19d-evidence:cai-adapter-contract",
+        "phase-19d-evidence:cai-provider-manifest",
+        "phase-19d-evidence:cai-mock-provider",
+        "phase-19d-evidence:cai-approval-binding",
+        "phase-19d-evidence:cai-localhost-gate",
+        "phase-19d-evidence:final-cai-closeout",
+      ]),
+    );
+    expect(report.cai_integration_path_modeled).toBe(true);
+    expect(report.real_cai_execution_blocked_until_future_enablement).toBe(
+      true,
+    );
+  });
+
+  it("proves CAI is modeled but not installed or executed", () => {
+    const manifest = getCaiProviderManifest();
+    const readiness = buildCaiProviderReadinessReport();
+    const gate = buildCaiLocalhostExecutionReadinessReport();
+
+    expect(manifest).toMatchObject({
+      install_state: "not_installed",
+      execution_state: "disabled",
+      cai_imported: false,
+      cai_called: false,
+      cai_installed: false,
+      execution_enabled: false,
+    });
+    expect(readiness).toMatchObject({
+      executable: false,
+      cai_imported: false,
+      cai_called: false,
+      cai_installed: false,
+      command_executed: false,
+      approval_decision_created: false,
+      authority_token_created: false,
+    });
+    expect(gate).toMatchObject({
+      verdict: "blocked",
+      execution_enabled: false,
+      approval_decision_exists: false,
+      authority_token_exists: false,
+      python_sidecar_exists: false,
+    });
+  });
+
+  it("includes mock provider, approval binding, and localhost gate proof", () => {
+    const request = buildCaiAdapterRunRequest({
+      request_id: "cai-adapter-request:phase-19d-closeout-test",
+      proposal: buildSafeLocalhostStaticAnalysisProposal(),
+    });
+    const dryRun = runCaiMockDryRun(request);
+    const approvalProposal = buildCaiApprovalProposal(request);
+    const gate = buildCaiLocalhostExecutionReadinessReport();
+
+    expect(dryRun).toMatchObject({
+      accepted: true,
+      metadata_only: true,
+      synthetic_only: true,
+      cai_called: false,
+      execution_enabled: false,
+      subprocess_launch_enabled: false,
+      process_spawn_enabled: false,
+      network_scan_enabled: false,
+    });
+    expect(approvalProposal).toMatchObject({
+      approval_required: true,
+      approval_metadata_present: true,
+      dry_run_required: true,
+      dry_run_first: true,
+      approval_decision_created: false,
+      authority_token_created: false,
+      execution_plan_dispatch_enabled: false,
+      cai_execution_enabled: false,
+    });
+    expect(gate.verdict).toBe("blocked");
   });
 
   it("assertion helper passes for the current implementation", () => {
