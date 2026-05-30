@@ -597,3 +597,36 @@ export type {
   ApprovalExecutionPlanValidationPolicyMatrix,
   ApprovalExecutionPlanValidationReasonCode,
 } from "./execution-plan-validation";
+
+export {
+  APPROVAL_EXECUTION_PLAN_AUDIT_PREVIEW_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_PLAN_AUDIT_PREVIEW_REDACTION_STATUSES,
+  APPROVAL_EXECUTION_PLAN_AUDIT_PREVIEW_SECTIONS,
+  ApprovalExecutionPlanAuditPreviewContractSchema,
+  ApprovalExecutionPlanAuditPreviewDecisionReferenceSchema,
+  ApprovalExecutionPlanAuditPreviewDisabledExecutionStatusSchema,
+  ApprovalExecutionPlanAuditPreviewDryRunStatusSchema,
+  ApprovalExecutionPlanAuditPreviewPlanSummarySchema,
+  ApprovalExecutionPlanAuditPreviewProposalReferenceSchema,
+  ApprovalExecutionPlanAuditPreviewRedactionMetadataSchema,
+  ApprovalExecutionPlanAuditPreviewRedactionStatusSchema,
+  ApprovalExecutionPlanAuditPreviewReplayMetadataSchema,
+  ApprovalExecutionPlanAuditPreviewSectionDeclarationSchema,
+  ApprovalExecutionPlanAuditPreviewSectionSchema,
+  ApprovalExecutionPlanAuditPreviewStepSummaryItemSchema,
+  ApprovalExecutionPlanAuditPreviewStepSummarySchema,
+  ApprovalExecutionPlanAuditPreviewTargetSummarySchema,
+  ApprovalExecutionPlanAuditPreviewValidationSummarySchema,
+  buildApprovalExecutionPlanAuditPreviewContract,
+} from "./execution-plan-audit-preview";
+
+export type {
+  ApprovalExecutionPlanAuditPreviewContract,
+  ApprovalExecutionPlanAuditPreviewDisabledExecutionStatus,
+  ApprovalExecutionPlanAuditPreviewPlanSummary,
+  ApprovalExecutionPlanAuditPreviewRedactionStatus,
+  ApprovalExecutionPlanAuditPreviewSection,
+  ApprovalExecutionPlanAuditPreviewSectionDeclaration,
+  ApprovalExecutionPlanAuditPreviewStepSummary,
+  ApprovalExecutionPlanAuditPreviewValidationSummary,
+} from "./execution-plan-audit-preview";
