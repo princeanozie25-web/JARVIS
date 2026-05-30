@@ -165,6 +165,35 @@ export type {
 } from "./cai-provider-manifest";
 
 export {
+  CAI_MOCK_PROVIDER_DISABLED_CAPABILITIES,
+  CAI_MOCK_PROVIDER_FINDING_KINDS,
+  CAI_MOCK_PROVIDER_FINDING_SEVERITIES,
+  CAI_MOCK_PROVIDER_RUN_STATUSES,
+  CAI_MOCK_PROVIDER_VERSION,
+  CaiMockProviderDisabledCapabilitySchema,
+  CaiMockProviderFindingKindSchema,
+  CaiMockProviderFindingSchema,
+  CaiMockProviderFindingSeveritySchema,
+  CaiMockProviderHealthSchema,
+  CaiMockProviderResultSchema,
+  CaiMockProviderRunStatusSchema,
+  buildCaiMockFindingFixture,
+  createCaiMockProvider,
+  listCaiMockProviderDisabledCapabilities,
+  runCaiMockDryRun,
+} from "./cai-mock-provider";
+
+export type {
+  CaiMockProvider,
+  CaiMockProviderDisabledCapability,
+  CaiMockProviderFinding,
+  CaiMockProviderFindingSeverity,
+  CaiMockProviderHealth,
+  CaiMockProviderResult,
+  CaiMockProviderRunStatus,
+} from "./cai-mock-provider";
+
+export {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
   PHASE_19D_CLOSEOUT_VERDICTS,
   PHASE_19D_CLOSEOUT_VERSION,
