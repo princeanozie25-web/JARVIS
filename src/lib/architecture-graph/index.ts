@@ -54,3 +54,23 @@ export {
   listArchitectureGraphEdges,
   listArchitectureGraphNodes,
 } from "./static-registry";
+
+export {
+  ArchitectureGraphNodeSummarySchema,
+  ArchitectureGraphPathResultSchema,
+  findArchitecturePath,
+  getArchitectureNodeDependencies,
+  getArchitectureNodeDependents,
+  getArchitectureNodeForbiddenEdges,
+  getArchitectureNodeGovernanceEdges,
+  getArchitectureNodeInboundEdges,
+  getArchitectureNodeOutboundEdges,
+  getArchitectureNodeReadEdges,
+  getArchitectureNodeWriteEdges,
+  summarizeArchitectureNode,
+} from "./queries";
+
+export type {
+  ArchitectureGraphNodeSummary,
+  ArchitectureGraphPathResult,
+} from "./queries";
