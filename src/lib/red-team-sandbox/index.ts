@@ -54,3 +54,47 @@ export type {
   RedTeamTarget,
   RedTeamTargetScope,
 } from "./contracts";
+
+export {
+  RedTeamAuthorizationSummarySchema,
+  RedTeamRunPlanSummarySchema,
+  RedTeamRunProposalSummarySchema,
+  buildRedTeamAuthorizationSummary,
+  buildRedTeamPlanSummaryForProposal,
+  getRedTeamSandboxProfileById,
+  listRedTeamAllowedActionClasses,
+  listRedTeamAllowedTargetScopes,
+  listRedTeamForbiddenActionClasses,
+  listRedTeamForbiddenTargetScopes,
+  listRedTeamSandboxProfiles,
+  listRedTeamSandboxViolationsForProposal,
+  summarizeRedTeamRunPlan,
+  summarizeRedTeamRunProposal,
+} from "./queries";
+
+export type {
+  RedTeamAuthorizationSummary,
+  RedTeamRunPlanSummary,
+  RedTeamRunProposalSummary,
+} from "./queries";
+
+export {
+  RED_TEAM_SANDBOX_SAFETY_GUARD_VERSION,
+  RED_TEAM_SANDBOX_SAFETY_SCAN_TARGETS,
+  RED_TEAM_SANDBOX_SAFETY_VIOLATION_KINDS,
+  RedTeamSandboxSafetyResultSchema,
+  RedTeamSandboxSafetyScanTargetSchema,
+  RedTeamSandboxSafetyViolationKindSchema,
+  RedTeamSandboxSafetyViolationSchema,
+  assertRedTeamSandboxSafe,
+  listRedTeamSandboxForbiddenAffordanceNames,
+  listRedTeamSandboxForbiddenFieldNames,
+  scanRedTeamSandboxSafety,
+} from "./safety-guard";
+
+export type {
+  RedTeamSandboxSafetyResult,
+  RedTeamSandboxSafetyScanTarget,
+  RedTeamSandboxSafetyViolation,
+  RedTeamSandboxSafetyViolationKind,
+} from "./safety-guard";
