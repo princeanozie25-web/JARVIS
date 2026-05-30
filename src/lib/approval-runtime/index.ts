@@ -707,3 +707,44 @@ export type {
   ApprovalExecutionVerificationValidationPolicyMatrix,
   ApprovalExecutionVerificationValidationReasonCode,
 } from "./execution-verification-validation";
+
+export {
+  APPROVAL_EXECUTION_VERIFICATION_AUDIT_PREVIEW_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_VERIFICATION_AUDIT_PREVIEW_REDACTION_STATUSES,
+  APPROVAL_EXECUTION_VERIFICATION_AUDIT_PREVIEW_SECTIONS,
+  ApprovalExecutionVerificationAuditPreviewContractSchema,
+  ApprovalExecutionVerificationAuditPreviewDisabledStatusSchema,
+  ApprovalExecutionVerificationAuditPreviewEvidenceSummaryItemSchema,
+  ApprovalExecutionVerificationAuditPreviewEvidenceSummarySchema,
+  ApprovalExecutionVerificationAuditPreviewMethodSummarySchema,
+  ApprovalExecutionVerificationAuditPreviewPlanReferenceSchema,
+  ApprovalExecutionVerificationAuditPreviewProposalReferenceSchema,
+  ApprovalExecutionVerificationAuditPreviewRedactionMetadataSchema,
+  ApprovalExecutionVerificationAuditPreviewRedactionStatusSchema,
+  ApprovalExecutionVerificationAuditPreviewReplayMetadataSchema,
+  ApprovalExecutionVerificationAuditPreviewSectionDeclarationSchema,
+  ApprovalExecutionVerificationAuditPreviewSectionSchema,
+  ApprovalExecutionVerificationAuditPreviewSummarySchema,
+  ApprovalExecutionVerificationAuditPreviewValidationSummarySchema,
+  buildApprovalExecutionVerificationAuditPreviewContract,
+} from "./execution-verification-audit-preview";
+
+export type {
+  ApprovalExecutionVerificationAuditPreviewContract,
+  ApprovalExecutionVerificationAuditPreviewDisabledStatus,
+  ApprovalExecutionVerificationAuditPreviewEvidenceSummary,
+  ApprovalExecutionVerificationAuditPreviewRedactionStatus,
+  ApprovalExecutionVerificationAuditPreviewSection,
+  ApprovalExecutionVerificationAuditPreviewSectionDeclaration,
+  ApprovalExecutionVerificationAuditPreviewSummary,
+  ApprovalExecutionVerificationAuditPreviewValidationSummary,
+} from "./execution-verification-audit-preview";
+
+export {
+  APPROVAL_RUNTIME_PHASE_18F_CLOSEOUT_VERSION,
+  APPROVAL_RUNTIME_PHASE_18F_SLICES,
+  ApprovalRuntimePhase18FCloseoutGuardSchema,
+  DEFAULT_APPROVAL_RUNTIME_PHASE_18F_CLOSEOUT_GUARD,
+} from "./phase-18f-closeout";
+
+export type { ApprovalRuntimePhase18FCloseoutGuard } from "./phase-18f-closeout";
