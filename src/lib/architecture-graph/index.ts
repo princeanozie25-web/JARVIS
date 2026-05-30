@@ -46,3 +46,11 @@ export {
   PHASE_19A1_SAMPLE_ARCHITECTURE_GRAPH,
   buildPhase19A1SampleArchitectureGraph,
 } from "./fixtures";
+
+export {
+  getArchitectureGraphEdgesForNode,
+  getArchitectureGraphNodeById,
+  getStaticArchitectureGraph,
+  listArchitectureGraphEdges,
+  listArchitectureGraphNodes,
+} from "./static-registry";
