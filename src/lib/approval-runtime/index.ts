@@ -794,3 +794,27 @@ export type {
   ApprovalExecutionCompensationTargetMetadata,
   ApprovalExecutionCompensationValidationReason,
 } from "./execution-compensation";
+
+export {
+  APPROVAL_EXECUTION_COMPENSATION_VALIDATION_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_COMPENSATION_VALIDATION_GUARD_IDS,
+  APPROVAL_EXECUTION_COMPENSATION_VALIDATION_GUARD_SEVERITIES,
+  APPROVAL_EXECUTION_COMPENSATION_VALIDATION_REASON_CODES,
+  ApprovalExecutionCompensationValidationGuardDeclarationSchema,
+  ApprovalExecutionCompensationValidationGuardIdSchema,
+  ApprovalExecutionCompensationValidationGuardResultSchema,
+  ApprovalExecutionCompensationValidationGuardSeveritySchema,
+  ApprovalExecutionCompensationValidationPolicyMatrixSchema,
+  ApprovalExecutionCompensationValidationReasonCodeSchema,
+  DEFAULT_APPROVAL_EXECUTION_COMPENSATION_VALIDATION_POLICY_MATRIX,
+  validateApprovalExecutionCompensationPolicyMetadata,
+} from "./execution-compensation-validation";
+
+export type {
+  ApprovalExecutionCompensationValidationGuardDeclaration,
+  ApprovalExecutionCompensationValidationGuardId,
+  ApprovalExecutionCompensationValidationGuardResult,
+  ApprovalExecutionCompensationValidationGuardSeverity,
+  ApprovalExecutionCompensationValidationPolicyMatrix,
+  ApprovalExecutionCompensationValidationReasonCode,
+} from "./execution-compensation-validation";
