@@ -395,3 +395,30 @@ export type {
   ApprovalExecutionAuthorityScopeGuardResult,
   ApprovalExecutionAuthorityScopeValidationReason,
 } from "./execution-authority-scope";
+
+export {
+  APPROVAL_EXECUTION_AUTHORITY_EXPIRY_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_AUTHORITY_EXPIRY_DEFAULT_MS,
+  APPROVAL_EXECUTION_AUTHORITY_EXPIRY_MAX_MS,
+  APPROVAL_EXECUTION_AUTHORITY_EXPIRY_REASONS,
+  ApprovalExecutionAuthorityExpiryDisabledGuardOutputSchema,
+  ApprovalExecutionAuthorityExpiryEvaluationMetadataSchema,
+  ApprovalExecutionAuthorityExpiryGuardOutputSchema,
+  ApprovalExecutionAuthorityExpiryPolicyContractSchema,
+  ApprovalExecutionAuthorityExpiryPolicySchema,
+  ApprovalExecutionAuthorityExpiryReasonSchema,
+  ApprovalExecutionAuthorityExpiryWindowMetadataSchema,
+  DEFAULT_APPROVAL_EXECUTION_AUTHORITY_EXPIRY_CONTRACT,
+  buildApprovalAuthorityExpiryWindowMetadata,
+  evaluateApprovalAuthorityExpiryMetadataShape,
+} from "./execution-authority-expiry";
+
+export type {
+  ApprovalExecutionAuthorityExpiryDisabledGuardOutput,
+  ApprovalExecutionAuthorityExpiryEvaluationMetadata,
+  ApprovalExecutionAuthorityExpiryGuardOutput,
+  ApprovalExecutionAuthorityExpiryPolicy,
+  ApprovalExecutionAuthorityExpiryPolicyContract,
+  ApprovalExecutionAuthorityExpiryReason,
+  ApprovalExecutionAuthorityExpiryWindowMetadata,
+} from "./execution-authority-expiry";
