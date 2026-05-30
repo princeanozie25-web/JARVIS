@@ -818,3 +818,39 @@ export type {
   ApprovalExecutionCompensationValidationPolicyMatrix,
   ApprovalExecutionCompensationValidationReasonCode,
 } from "./execution-compensation-validation";
+
+export {
+  APPROVAL_EXECUTION_COMPENSATION_AUDIT_PREVIEW_CONTRACT_VERSION,
+  APPROVAL_EXECUTION_COMPENSATION_AUDIT_PREVIEW_REDACTION_STATUSES,
+  APPROVAL_EXECUTION_COMPENSATION_AUDIT_PREVIEW_SECTIONS,
+  ApprovalExecutionCompensationAuditPreviewContractSchema,
+  ApprovalExecutionCompensationAuditPreviewDisabledStatusSchema,
+  ApprovalExecutionCompensationAuditPreviewEligibilitySummarySchema,
+  ApprovalExecutionCompensationAuditPreviewEvidenceSummaryItemSchema,
+  ApprovalExecutionCompensationAuditPreviewEvidenceSummarySchema,
+  ApprovalExecutionCompensationAuditPreviewHintSummaryItemSchema,
+  ApprovalExecutionCompensationAuditPreviewHintSummarySchema,
+  ApprovalExecutionCompensationAuditPreviewPlanReferenceSchema,
+  ApprovalExecutionCompensationAuditPreviewRedactionMetadataSchema,
+  ApprovalExecutionCompensationAuditPreviewRedactionStatusSchema,
+  ApprovalExecutionCompensationAuditPreviewReplayMetadataSchema,
+  ApprovalExecutionCompensationAuditPreviewSectionDeclarationSchema,
+  ApprovalExecutionCompensationAuditPreviewSectionSchema,
+  ApprovalExecutionCompensationAuditPreviewStrategySummarySchema,
+  ApprovalExecutionCompensationAuditPreviewSummarySchema,
+  ApprovalExecutionCompensationAuditPreviewValidationSummarySchema,
+  ApprovalExecutionCompensationAuditPreviewVerificationReferenceSchema,
+  buildApprovalExecutionCompensationAuditPreviewContract,
+} from "./execution-compensation-audit-preview";
+
+export type {
+  ApprovalExecutionCompensationAuditPreviewContract,
+  ApprovalExecutionCompensationAuditPreviewDisabledStatus,
+  ApprovalExecutionCompensationAuditPreviewEvidenceSummary,
+  ApprovalExecutionCompensationAuditPreviewHintSummary,
+  ApprovalExecutionCompensationAuditPreviewRedactionStatus,
+  ApprovalExecutionCompensationAuditPreviewSection,
+  ApprovalExecutionCompensationAuditPreviewSectionDeclaration,
+  ApprovalExecutionCompensationAuditPreviewSummary,
+  ApprovalExecutionCompensationAuditPreviewValidationSummary,
+} from "./execution-compensation-audit-preview";
