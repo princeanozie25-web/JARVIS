@@ -39,6 +39,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20A.6 final readiness layer closeout                 | Starting Phase 20B packaging/onboarding work     |
 | Phase 20B.1 bootstrap readiness contract                   | Bootstrap execution or installation automation   |
 | Phase 20B.2 doctor check registry                          | Runtime doctor check execution                   |
+| Phase 20B.3 doctor result contract                         | Filesystem-backed doctor observations            |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -61,6 +62,7 @@ Completed or contract-frozen highlights:
 - Phase 20A.6: Final Readiness Layer Closeout. Typed deterministic closeout guard proving the Phase 20A readiness/governance layer is complete, capability-neutral, and ready for Phase 20B packaging, bootstrap, and onboarding hardening.
 - Phase 20B.1: Bootstrap Readiness Contract. Typed metadata-only contract describing fresh-machine prerequisites across environment, runtime, project, and validation categories without executing installation, shell commands, network calls, provider calls, filesystem mutation, or bootstrap automation.
 - Phase 20B.2: Doctor Check Registry. Typed metadata-only registry of future doctor checks derived from the bootstrap readiness contract, covering environment, project, runtime, local-first/cloud-gated posture, and disabled-provider posture without executing checks.
+- Phase 20B.3: Doctor Result Contract. Typed metadata-only result and summary contracts for future doctor checks, including pending placeholders, expected and unobserved posture, remediation hints, blocking status, deterministic source metadata, and aggregation helpers without executing checks.
 
 ## Architecture
 
@@ -205,6 +207,10 @@ Helpers return the contract, requirements, validation targets, and summary count
 Phase 20B.2 adds a deterministic doctor check registry derived from the bootstrap readiness contract. It defines metadata for future checks covering Node.js, npm/pnpm, TypeScript tooling, OS/platform support, required project directories, config files, env defaults, registries, SQLite, Tauri, Ollama/local model runtime, voice prerequisites, vision prerequisites, local-first/cloud-gated posture, and disabled-by-default provider posture.
 
 The doctor registry helpers return all checks, checks by category, required checks, and summary counts. Phase 20B.2 does not execute checks, inspect the filesystem, spawn processes, run shell commands, install dependencies, mutate state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
+
+Phase 20B.3 adds typed result contracts for future doctor output. `createPendingDoctorResults()` derives deterministic pending placeholders from the doctor check registry, while `summarizeDoctorResults()`, `getBlockingDoctorResults()`, and `getDoctorResultsByStatus()` aggregate supplied metadata-only result objects. Observed posture remains explicitly unobserved, timestamps remain null placeholders, and remediation hints are descriptive only.
+
+Phase 20B.3 does not execute doctor checks, inspect files, spawn processes, run shell commands, install dependencies, mutate runtime state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
 
 ## Getting Started
 

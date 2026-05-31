@@ -66,3 +66,27 @@ export type {
   DoctorCheckRuntime,
   DoctorCheckSeverity,
 } from "./doctor-checks";
+
+export {
+  DOCTOR_CHECK_STATUSES,
+  DOCTOR_RESULT_CONTRACT_VERSION,
+  DoctorCheckResultSchema,
+  DoctorCheckStatusSchema,
+  DoctorObservedPostureSchema,
+  DoctorRemediationHintSchema,
+  DoctorResultSourceSchema,
+  DoctorRunSummarySchema,
+  createPendingDoctorResults,
+  getBlockingDoctorResults,
+  getDoctorResultsByStatus,
+  summarizeDoctorResults,
+} from "./doctor-results";
+
+export type {
+  DoctorCheckResult,
+  DoctorCheckStatus,
+  DoctorObservedPosture,
+  DoctorRemediationHint,
+  DoctorResultSource,
+  DoctorRunSummary,
+} from "./doctor-results";
