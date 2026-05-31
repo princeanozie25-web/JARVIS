@@ -34,6 +34,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20A.1 final system status registry                   | Phase 20 packaging automation                |
 | Phase 20A.2 final readiness report generator               | Runtime final-readiness generation           |
 | Phase 20A.3 final disabled-feature matrix                  | Enabling disabled features from prior phases |
+| Phase 20A.4 final authority surface inventory              | Reclassifying or enabling authority surfaces |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -51,6 +52,7 @@ Completed or contract-frozen highlights:
 - Phase 20A.1: Final System Status Registry. Typed, read-only Phase 20 integration registry summarizing Phase 10-19 operational status, evidence, authority posture, disabled-feature posture, and packaging relevance without adding routes, provider calls, execution hooks, or authority.
 - Phase 20A.2: Final Readiness Report Generator. Deterministic metadata-only report builder over the final-system-status registry, summarizing readiness, phase coverage, authority surfaces, disabled features, packaging, move-in, portfolio/demo relevance, and final governance posture.
 - Phase 20A.3: Final Disabled-Feature Matrix. Static, typed, metadata-only matrix consolidating intentionally disabled risky surfaces across Phases 10-19 and Phase 20 hardening, including wake word, hidden capture, auto-approval, graph-driven execution, unapproved device actions, scheduler side effects, and ungoverned provider escalation.
+- Phase 20A.4: Final Authority Surface Inventory. Static, typed, metadata-only inventory of authority-bearing and authority-adjacent surfaces across Phases 10-19, including model/runtime/provider, voice, vision, room adapter, scheduler, approval, tool, UI, graph, telemetry, governance, red-team, persistence, project, and memory surfaces.
 
 ## Architecture
 
@@ -92,7 +94,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      final-system-status/     Phase 20A metadata-only status, readiness, and disabled-feature matrix
+      final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, and authority inventories
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -160,7 +162,7 @@ Deferred:
 
 ## Phase 20A Final Integration
 
-Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, and disabled-feature matrix for completed core phases 10-19.
+Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, disabled-feature matrix, and authority surface inventory for completed core phases 10-19.
 
 The registry records:
 
@@ -174,6 +176,8 @@ The registry records:
 Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.2 adds `buildFinalReadinessReport()`, which produces deterministic sections for summary, phase coverage, readiness categories, authority surfaces, disabled features, packaging readiness, move-in readiness, portfolio readiness, and governance verdict.
 
 Phase 20A.3 adds `getFinalDisabledFeatureMatrix()`, `getDisabledFeaturesByCategory()`, `getCriticalDisabledFeatures()`, and `summarizeDisabledFeaturePosture()` for final hardening audits. The matrix pins wake word, always-listening, background/hidden capture, autonomous device execution, public dashboards, voice-only approval, auto-approval, graph-driven execution, unredacted telemetry/UI exposure, remote/cloud defaults, whole-home control, CAI non-whitelisted targets, UI run/retry/mutate controls, scheduler side effects, routine chaining, unapproved room actions, and ungoverned provider escalation as still disabled.
+
+Phase 20A.4 adds `getFinalAuthoritySurfaceInventory()`, `getAuthoritySurfacesRequiringApproval()`, `getExecutableAuthoritySurfaces()`, `getNetworkCapableAuthoritySurfaces()`, and `summarizeAuthoritySurfacePosture()`. The inventory records read/write/execute posture, approval requirements, network posture, raw payload posture, disabled-feature dependencies, governance notes, and final Phase 20 posture for every authority-bearing or authority-adjacent surface without reclassifying or enabling any surface.
 
 Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
 

@@ -45,6 +45,47 @@ export type {
 } from "./contracts";
 
 export {
+  FINAL_AUTHORITY_APPROVAL_REQUIREMENTS,
+  FINAL_AUTHORITY_EXECUTE_POSTURES,
+  FINAL_AUTHORITY_NETWORK_POSTURES,
+  FINAL_AUTHORITY_PHASE20_POSTURES,
+  FINAL_AUTHORITY_RAW_PAYLOAD_POSTURES,
+  FINAL_AUTHORITY_READ_POSTURES,
+  FINAL_AUTHORITY_SURFACE_IDS,
+  FINAL_AUTHORITY_SURFACE_INVENTORY,
+  FINAL_AUTHORITY_SURFACE_INVENTORY_VERSION,
+  FINAL_AUTHORITY_WRITE_POSTURES,
+  FinalAuthorityApprovalRequirementSchema,
+  FinalAuthorityExecutePostureSchema,
+  FinalAuthorityNetworkPostureSchema,
+  FinalAuthorityPhase20PostureSchema,
+  FinalAuthorityRawPayloadPostureSchema,
+  FinalAuthorityReadPostureSchema,
+  FinalAuthoritySurfaceIdSchema,
+  FinalAuthoritySurfacePostureSummarySchema,
+  FinalAuthoritySurfaceRecordSchema,
+  FinalAuthorityWritePostureSchema,
+  getAuthoritySurfacesRequiringApproval,
+  getExecutableAuthoritySurfaces,
+  getFinalAuthoritySurfaceInventory,
+  getNetworkCapableAuthoritySurfaces,
+  summarizeAuthoritySurfacePosture,
+} from "./authority-surface-inventory";
+
+export type {
+  FinalAuthorityApprovalRequirement,
+  FinalAuthorityExecutePosture,
+  FinalAuthorityNetworkPosture,
+  FinalAuthorityPhase20Posture,
+  FinalAuthorityRawPayloadPosture,
+  FinalAuthorityReadPosture,
+  FinalAuthoritySurfaceId,
+  FinalAuthoritySurfacePostureSummary,
+  FinalAuthoritySurfaceRecord,
+  FinalAuthorityWritePosture,
+} from "./authority-surface-inventory";
+
+export {
   FINAL_DISABLED_FEATURE_CATEGORIES,
   FINAL_DISABLED_FEATURE_ENFORCEMENT_POSTURES,
   FINAL_DISABLED_FEATURE_IDS,
