@@ -38,6 +38,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20A.5 final governance readiness summary             | Treating Phase 20A metadata as runtime authority |
 | Phase 20A.6 final readiness layer closeout                 | Starting Phase 20B packaging/onboarding work     |
 | Phase 20B.1 bootstrap readiness contract                   | Bootstrap execution or installation automation   |
+| Phase 20B.2 doctor check registry                          | Runtime doctor check execution                   |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -59,6 +60,7 @@ Completed or contract-frozen highlights:
 - Phase 20A.5: Final Governance Readiness Summary. Deterministic metadata-only rollup over the Phase 20A registry, report, disabled-feature matrix, and authority inventory answering whether governance is ready for Phase 20 hardening while preserving capability neutrality.
 - Phase 20A.6: Final Readiness Layer Closeout. Typed deterministic closeout guard proving the Phase 20A readiness/governance layer is complete, capability-neutral, and ready for Phase 20B packaging, bootstrap, and onboarding hardening.
 - Phase 20B.1: Bootstrap Readiness Contract. Typed metadata-only contract describing fresh-machine prerequisites across environment, runtime, project, and validation categories without executing installation, shell commands, network calls, provider calls, filesystem mutation, or bootstrap automation.
+- Phase 20B.2: Doctor Check Registry. Typed metadata-only registry of future doctor checks derived from the bootstrap readiness contract, covering environment, project, runtime, local-first/cloud-gated posture, and disabled-provider posture without executing checks.
 
 ## Architecture
 
@@ -100,7 +102,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      bootstrap-readiness/     Phase 20B metadata-only bootstrap prerequisite contract
+      bootstrap-readiness/     Phase 20B metadata-only bootstrap prerequisite contract and doctor check registry
       final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, authority, governance, and closeout summaries
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
@@ -199,6 +201,10 @@ Phase 20B begins Packaging & Bootstrap Hardening. Phase 20B.1 adds `src/lib/boot
 The contract covers environment prerequisites such as Node.js, npm/pnpm, TypeScript, and supported platforms; runtime prerequisites such as Ollama, local model runtime, SQLite, Tauri, voice, and vision; project prerequisites such as required directories, config files, env defaults, and registries; and validation targets for doctor integration and future verification.
 
 Helpers return the contract, requirements, validation targets, and summary counts. Phase 20B.1 does not execute bootstrap, install dependencies, run shell commands, mutate files or environment, call providers, call the network, add runtime hooks, create authority surfaces, or add capabilities.
+
+Phase 20B.2 adds a deterministic doctor check registry derived from the bootstrap readiness contract. It defines metadata for future checks covering Node.js, npm/pnpm, TypeScript tooling, OS/platform support, required project directories, config files, env defaults, registries, SQLite, Tauri, Ollama/local model runtime, voice prerequisites, vision prerequisites, local-first/cloud-gated posture, and disabled-by-default provider posture.
+
+The doctor registry helpers return all checks, checks by category, required checks, and summary counts. Phase 20B.2 does not execute checks, inspect the filesystem, spawn processes, run shell commands, install dependencies, mutate state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
 
 ## Getting Started
 

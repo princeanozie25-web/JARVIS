@@ -34,3 +34,35 @@ export {
   getBootstrapValidationTargets,
   summarizeBootstrapReadiness,
 } from "./registry";
+
+export {
+  DOCTOR_CHECK_CATEGORIES,
+  DOCTOR_CHECK_IDS,
+  DOCTOR_CHECK_REGISTRY,
+  DOCTOR_CHECK_REGISTRY_VERSION,
+  DOCTOR_CHECK_RUNTIMES,
+  DOCTOR_CHECK_SEVERITIES,
+  DoctorCheckCategorySchema,
+  DoctorCheckExpectedPostureSchema,
+  DoctorCheckIdSchema,
+  DoctorCheckRegistrySchema,
+  DoctorCheckRegistrySummarySchema,
+  DoctorCheckRuntimeSchema,
+  DoctorCheckSchema,
+  DoctorCheckSeveritySchema,
+  getDoctorCheckRegistry,
+  getDoctorChecksByCategory,
+  getRequiredDoctorChecks,
+  summarizeDoctorCheckRegistry,
+} from "./doctor-checks";
+
+export type {
+  DoctorCheck,
+  DoctorCheckCategory,
+  DoctorCheckExpectedPosture,
+  DoctorCheckId,
+  DoctorCheckRegistry,
+  DoctorCheckRegistrySummary,
+  DoctorCheckRuntime,
+  DoctorCheckSeverity,
+} from "./doctor-checks";
