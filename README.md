@@ -40,6 +40,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20B.1 bootstrap readiness contract                   | Bootstrap execution or installation automation   |
 | Phase 20B.2 doctor check registry                          | Runtime doctor check execution                   |
 | Phase 20B.3 doctor result contract                         | Filesystem-backed doctor observations            |
+| Phase 20B.4 doctor dry-run evaluator                       | Real machine/environment inspection              |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -63,6 +64,7 @@ Completed or contract-frozen highlights:
 - Phase 20B.1: Bootstrap Readiness Contract. Typed metadata-only contract describing fresh-machine prerequisites across environment, runtime, project, and validation categories without executing installation, shell commands, network calls, provider calls, filesystem mutation, or bootstrap automation.
 - Phase 20B.2: Doctor Check Registry. Typed metadata-only registry of future doctor checks derived from the bootstrap readiness contract, covering environment, project, runtime, local-first/cloud-gated posture, and disabled-provider posture without executing checks.
 - Phase 20B.3: Doctor Result Contract. Typed metadata-only result and summary contracts for future doctor checks, including pending placeholders, expected and unobserved posture, remediation hints, blocking status, deterministic source metadata, and aggregation helpers without executing checks.
+- Phase 20B.4: Doctor Dry-Run Evaluator. Deterministic input-driven evaluator that maps supplied mock observations onto doctor check results, leaves missing observations pending, and summarizes output without inspecting the real machine.
 
 ## Architecture
 
@@ -211,6 +213,10 @@ The doctor registry helpers return all checks, checks by category, required chec
 Phase 20B.3 adds typed result contracts for future doctor output. `createPendingDoctorResults()` derives deterministic pending placeholders from the doctor check registry, while `summarizeDoctorResults()`, `getBlockingDoctorResults()`, and `getDoctorResultsByStatus()` aggregate supplied metadata-only result objects. Observed posture remains explicitly unobserved, timestamps remain null placeholders, and remediation hints are descriptive only.
 
 Phase 20B.3 does not execute doctor checks, inspect files, spawn processes, run shell commands, install dependencies, mutate runtime state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
+
+Phase 20B.4 adds `evaluateDoctorDryRun()`, a deterministic dry-run evaluator for supplied mock observations. It loads the doctor check registry, matches observations by check id, emits pending results for missing observations, classifies blocking checks from registry metadata, and reuses the existing doctor result summary helper.
+
+Phase 20B.4 remains input-driven only. It does not inspect the real environment, read the filesystem, spawn processes, run shell commands, install dependencies, mutate runtime state, call providers, call the network, bypass approvals, add UI routes, create authority surfaces, or add capabilities.
 
 ## Getting Started
 

@@ -90,3 +90,19 @@ export type {
   DoctorResultSource,
   DoctorRunSummary,
 } from "./doctor-results";
+
+export {
+  DOCTOR_DRY_RUN_EVALUATOR_VERSION,
+  DoctorDryRunEvaluationSchema,
+  DoctorDryRunInputSchema,
+  DoctorDryRunObservationSchema,
+  DoctorDryRunObservedPostureInputSchema,
+  evaluateDoctorDryRun,
+} from "./doctor-dry-run";
+
+export type {
+  DoctorDryRunEvaluation,
+  DoctorDryRunInput,
+  DoctorDryRunObservation,
+  DoctorDryRunObservedPostureInput,
+} from "./doctor-dry-run";

@@ -28,11 +28,11 @@ export type DoctorCheckStatus = (typeof DOCTOR_CHECK_STATUSES)[number];
 export const DoctorCheckStatusSchema = z.enum(DOCTOR_CHECK_STATUSES);
 
 export const DoctorObservedPostureSchema = z.strictObject({
-  observation_status: z.literal("not_observed"),
-  local_first: z.literal(null),
-  cloud_gated: z.literal(null),
-  disabled_by_default: z.literal(null),
-  provider_disabled_by_default: z.literal(null),
+  observation_status: z.enum(["not_observed", "supplied_dry_run_observation"]),
+  local_first: z.boolean().nullable(),
+  cloud_gated: z.boolean().nullable(),
+  disabled_by_default: z.boolean().nullable(),
+  provider_disabled_by_default: z.boolean().nullable(),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
   deterministic: z.literal(true),
@@ -47,11 +47,14 @@ export const DoctorObservedPostureSchema = z.strictObject({
 
 export const DoctorResultSourceSchema = z.strictObject({
   contract_version: z.literal(DOCTOR_RESULT_CONTRACT_VERSION),
-  source_kind: z.literal("doctor-check-registry-placeholder"),
+  source_kind: z.enum([
+    "doctor-check-registry-placeholder",
+    "doctor-dry-run-input",
+  ]),
   source_registry_version: z.literal(DOCTOR_CHECK_REGISTRY_VERSION),
-  observed_at: z.literal(null),
+  observed_at: z.string().trim().min(1).max(80).nullable(),
   generated_at: z.literal(null),
-  deterministic_placeholder: z.literal(true),
+  deterministic_placeholder: z.boolean(),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
   filesystem_inspection_enabled: z.literal(false),
