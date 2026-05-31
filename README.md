@@ -31,6 +31,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Observability Command Center contracts                     | Runtime dependency observers              |
 | Phase 18 Approval Runtime foundation                       | Source import parsing for graph           |
 | Phase 19A architecture graph contracts and static registry | Database/telemetry-backed graph ingestion |
+| Phase 20A.1 final system status registry                   | Phase 20 packaging automation             |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -45,6 +46,7 @@ Completed or contract-frozen highlights:
 - Phase 18: Approval-Gated Execution Layer. This is metadata-only and frozen as the governed lifecycle foundation: proposal, review, decision record, inert authority token metadata, execution plan metadata, verification metadata, compensation metadata, and integrated lifecycle closeout. It proves there is no unapproved execution path.
 - Phase 19A.1: Architecture Graph Foundation. Typed, read-only graph contracts for nodes, edges, layers, health, discrepancies, governance boundaries, and validation.
 - Phase 19A.2: Static Architecture Graph Registry. Deterministic registry describing the designed JARVIS subsystem graph and inert forbidden/tripwire edges.
+- Phase 20A.1: Final System Status Registry. Typed, read-only Phase 20 integration registry summarizing Phase 10-19 operational status, evidence, authority posture, disabled-feature posture, and packaging relevance without adding routes, provider calls, execution hooks, or authority.
 
 ## Architecture
 
@@ -86,6 +88,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
+      final-system-status/     Phase 20A.1 metadata-only status registry for final audits and packaging readiness
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -151,6 +154,21 @@ Deferred:
 - No runtime observers.
 - No graph-driven execution.
 
+## Phase 20A Final Integration
+
+Phase 20A.1 starts final integration without introducing a new subsystem. The first slice adds `src/lib/final-system-status`, a static, typed, read-only registry for completed core phases 10-19.
+
+The registry records:
+
+- Phase id, phase name, and current status.
+- Metadata-only evidence references.
+- Readiness categories for final audit, packaging, move-in, onboarding, portfolio, and disabled-feature matrix work.
+- Authority posture for authority-bearing phases.
+- Disabled-feature posture for risky surfaces.
+- Packaging relevance for later Phase 20 slices.
+
+Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.1 adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, or new authority surface.
+
 ## Getting Started
 
 Prerequisites: Node.js 20+ and pnpm. The repo currently also includes an npm lockfile, so npm equivalents work.
@@ -179,6 +197,7 @@ npx tsc --noEmit
 Useful targeted commands:
 
 ```bash
+npm test -- final-system-status
 npm test -- --run architecture-graph
 npm test -- src/lib/approval-runtime
 ```
