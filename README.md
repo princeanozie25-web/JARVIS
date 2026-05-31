@@ -32,6 +32,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 18 Approval Runtime foundation                       | Source import parsing for graph           |
 | Phase 19A architecture graph contracts and static registry | Database/telemetry-backed graph ingestion |
 | Phase 20A.1 final system status registry                   | Phase 20 packaging automation             |
+| Phase 20A.2 final readiness report generator               | Runtime final-readiness generation        |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -47,6 +48,7 @@ Completed or contract-frozen highlights:
 - Phase 19A.1: Architecture Graph Foundation. Typed, read-only graph contracts for nodes, edges, layers, health, discrepancies, governance boundaries, and validation.
 - Phase 19A.2: Static Architecture Graph Registry. Deterministic registry describing the designed JARVIS subsystem graph and inert forbidden/tripwire edges.
 - Phase 20A.1: Final System Status Registry. Typed, read-only Phase 20 integration registry summarizing Phase 10-19 operational status, evidence, authority posture, disabled-feature posture, and packaging relevance without adding routes, provider calls, execution hooks, or authority.
+- Phase 20A.2: Final Readiness Report Generator. Deterministic metadata-only report builder over the final-system-status registry, summarizing readiness, phase coverage, authority surfaces, disabled features, packaging, move-in, portfolio/demo relevance, and final governance posture.
 
 ## Architecture
 
@@ -88,7 +90,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      final-system-status/     Phase 20A.1 metadata-only status registry for final audits and packaging readiness
+      final-system-status/     Phase 20A metadata-only status registry and readiness report generator
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -156,7 +158,7 @@ Deferred:
 
 ## Phase 20A Final Integration
 
-Phase 20A.1 starts final integration without introducing a new subsystem. The first slice adds `src/lib/final-system-status`, a static, typed, read-only registry for completed core phases 10-19.
+Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry and report layer for completed core phases 10-19.
 
 The registry records:
 
@@ -167,7 +169,9 @@ The registry records:
 - Disabled-feature posture for risky surfaces.
 - Packaging relevance for later Phase 20 slices.
 
-Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.1 adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, or new authority surface.
+Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.2 adds `buildFinalReadinessReport()`, which produces deterministic sections for summary, phase coverage, readiness categories, authority surfaces, disabled features, packaging readiness, move-in readiness, portfolio readiness, and governance verdict.
+
+Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
 
 ## Getting Started
 

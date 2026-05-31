@@ -45,6 +45,36 @@ export type {
 } from "./contracts";
 
 export {
+  FINAL_READINESS_GOVERNANCE_VERDICTS,
+  FINAL_READINESS_OVERALL_STATUSES,
+  FINAL_READINESS_REPORT_VERSION,
+  FinalReadinessAuthoritySurfaceSchema,
+  FinalReadinessCategorySectionSchema,
+  FinalReadinessContextSectionSchema,
+  FinalReadinessDisabledFeatureSectionSchema,
+  FinalReadinessGovernanceVerdictSchema,
+  FinalReadinessGovernanceVerdictValueSchema,
+  FinalReadinessOverallStatusSchema,
+  FinalReadinessPhaseCoverageSchema,
+  FinalReadinessReportSchema,
+  FinalReadinessReportSummarySchema,
+  buildFinalReadinessReport,
+} from "./report";
+
+export type {
+  FinalReadinessAuthoritySurface,
+  FinalReadinessCategorySection,
+  FinalReadinessContextSection,
+  FinalReadinessDisabledFeatureSection,
+  FinalReadinessGovernanceVerdict,
+  FinalReadinessGovernanceVerdictValue,
+  FinalReadinessOverallStatus,
+  FinalReadinessPhaseCoverage,
+  FinalReadinessReport,
+  FinalReadinessReportSummary,
+} from "./report";
+
+export {
   FINAL_SYSTEM_STATUS_REGISTRY,
   buildFinalReadinessSummary,
   getFinalSystemPhaseStatus,
