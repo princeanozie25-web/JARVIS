@@ -37,6 +37,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20A.4 final authority surface inventory              | Reclassifying or enabling authority surfaces     |
 | Phase 20A.5 final governance readiness summary             | Treating Phase 20A metadata as runtime authority |
 | Phase 20A.6 final readiness layer closeout                 | Starting Phase 20B packaging/onboarding work     |
+| Phase 20B.1 bootstrap readiness contract                   | Bootstrap execution or installation automation   |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -57,6 +58,7 @@ Completed or contract-frozen highlights:
 - Phase 20A.4: Final Authority Surface Inventory. Static, typed, metadata-only inventory of authority-bearing and authority-adjacent surfaces across Phases 10-19, including model/runtime/provider, voice, vision, room adapter, scheduler, approval, tool, UI, graph, telemetry, governance, red-team, persistence, project, and memory surfaces.
 - Phase 20A.5: Final Governance Readiness Summary. Deterministic metadata-only rollup over the Phase 20A registry, report, disabled-feature matrix, and authority inventory answering whether governance is ready for Phase 20 hardening while preserving capability neutrality.
 - Phase 20A.6: Final Readiness Layer Closeout. Typed deterministic closeout guard proving the Phase 20A readiness/governance layer is complete, capability-neutral, and ready for Phase 20B packaging, bootstrap, and onboarding hardening.
+- Phase 20B.1: Bootstrap Readiness Contract. Typed metadata-only contract describing fresh-machine prerequisites across environment, runtime, project, and validation categories without executing installation, shell commands, network calls, provider calls, filesystem mutation, or bootstrap automation.
 
 ## Architecture
 
@@ -98,6 +100,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
+      bootstrap-readiness/     Phase 20B metadata-only bootstrap prerequisite contract
       final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, authority, governance, and closeout summaries
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
@@ -188,6 +191,14 @@ Phase 20A.5 adds `buildFinalGovernanceReadinessSummary()`, a deterministic rollu
 Phase 20A.6 adds `buildPhase20ACloseoutReport()`, a typed deterministic closeout guard proving the registry, readiness report, disabled-feature matrix, authority inventory, and governance readiness summary are integrated. The closeout declares Phase 20A complete and ready for Phase 20B packaging/bootstrap/onboarding hardening without starting that work.
 
 Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
+
+## Phase 20B Bootstrap Readiness
+
+Phase 20B begins Packaging & Bootstrap Hardening. Phase 20B.1 adds `src/lib/bootstrap-readiness`, a typed, deterministic, metadata-only contract for the prerequisites required to bootstrap and run JARVIS OS v1 on a fresh machine.
+
+The contract covers environment prerequisites such as Node.js, npm/pnpm, TypeScript, and supported platforms; runtime prerequisites such as Ollama, local model runtime, SQLite, Tauri, voice, and vision; project prerequisites such as required directories, config files, env defaults, and registries; and validation targets for doctor integration and future verification.
+
+Helpers return the contract, requirements, validation targets, and summary counts. Phase 20B.1 does not execute bootstrap, install dependencies, run shell commands, mutate files or environment, call providers, call the network, add runtime hooks, create authority surfaces, or add capabilities.
 
 ## Getting Started
 
