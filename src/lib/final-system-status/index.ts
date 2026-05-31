@@ -45,6 +45,38 @@ export type {
 } from "./contracts";
 
 export {
+  FINAL_DISABLED_FEATURE_CATEGORIES,
+  FINAL_DISABLED_FEATURE_ENFORCEMENT_POSTURES,
+  FINAL_DISABLED_FEATURE_IDS,
+  FINAL_DISABLED_FEATURE_MATRIX,
+  FINAL_DISABLED_FEATURE_MATRIX_VERSION,
+  FINAL_DISABLED_FEATURE_PHASE20_POSTURES,
+  FinalDisabledFeatureCategorySchema,
+  FinalDisabledFeatureCategorySummarySchema,
+  FinalDisabledFeatureEnforcementPostureSchema,
+  FinalDisabledFeatureIdSchema,
+  FinalDisabledFeatureOriginatingPhaseSchema,
+  FinalDisabledFeaturePhase20PostureSchema,
+  FinalDisabledFeaturePostureSummarySchema,
+  FinalDisabledFeatureRecordSchema,
+  getCriticalDisabledFeatures,
+  getDisabledFeaturesByCategory,
+  getFinalDisabledFeatureMatrix,
+  summarizeDisabledFeaturePosture,
+} from "./disabled-feature-matrix";
+
+export type {
+  FinalDisabledFeatureCategory,
+  FinalDisabledFeatureCategorySummary,
+  FinalDisabledFeatureEnforcementPosture,
+  FinalDisabledFeatureId,
+  FinalDisabledFeatureOriginatingPhase,
+  FinalDisabledFeaturePhase20Posture,
+  FinalDisabledFeaturePostureSummary,
+  FinalDisabledFeatureRecord,
+} from "./disabled-feature-matrix";
+
+export {
   FINAL_READINESS_GOVERNANCE_VERDICTS,
   FINAL_READINESS_OVERALL_STATUSES,
   FINAL_READINESS_REPORT_VERSION,

@@ -14,25 +14,26 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 
 ## Current Status
 
-| Built / Frozen / In Progress                               | Deliberately Not Enabled                  |
-| ---------------------------------------------------------- | ----------------------------------------- |
-| Governance architecture                                    | Wake word                                 |
-| Runtime governance                                         | Always-listening                          |
-| Safety enforcement                                         | Autonomous execution                      |
-| Tool orchestration contracts                               | Background camera                         |
-| Persistent memory architecture                             | Auto-approval of any action               |
-| Project continuity and registry layers                     | Voice-only approval                       |
-| Voice orchestration and streaming boundaries               | Unapproved device actions                 |
-| STT/TTS provider contracts and queues                      | Cloud providers by default                |
-| Runtime command governance                                 | Remote/public dashboard                   |
-| Environmental/smart-room scaffolding                       | Graph-driven execution                    |
-| Vision layer contracts                                     | Architecture graph UI                     |
-| Scheduled self-audit contracts                             | React Flow/D3 graph rendering             |
-| Observability Command Center contracts                     | Runtime dependency observers              |
-| Phase 18 Approval Runtime foundation                       | Source import parsing for graph           |
-| Phase 19A architecture graph contracts and static registry | Database/telemetry-backed graph ingestion |
-| Phase 20A.1 final system status registry                   | Phase 20 packaging automation             |
-| Phase 20A.2 final readiness report generator               | Runtime final-readiness generation        |
+| Built / Frozen / In Progress                               | Deliberately Not Enabled                     |
+| ---------------------------------------------------------- | -------------------------------------------- |
+| Governance architecture                                    | Wake word                                    |
+| Runtime governance                                         | Always-listening                             |
+| Safety enforcement                                         | Autonomous execution                         |
+| Tool orchestration contracts                               | Background camera                            |
+| Persistent memory architecture                             | Auto-approval of any action                  |
+| Project continuity and registry layers                     | Voice-only approval                          |
+| Voice orchestration and streaming boundaries               | Unapproved device actions                    |
+| STT/TTS provider contracts and queues                      | Cloud providers by default                   |
+| Runtime command governance                                 | Remote/public dashboard                      |
+| Environmental/smart-room scaffolding                       | Graph-driven execution                       |
+| Vision layer contracts                                     | Architecture graph UI                        |
+| Scheduled self-audit contracts                             | React Flow/D3 graph rendering                |
+| Observability Command Center contracts                     | Runtime dependency observers                 |
+| Phase 18 Approval Runtime foundation                       | Source import parsing for graph              |
+| Phase 19A architecture graph contracts and static registry | Database/telemetry-backed graph ingestion    |
+| Phase 20A.1 final system status registry                   | Phase 20 packaging automation                |
+| Phase 20A.2 final readiness report generator               | Runtime final-readiness generation           |
+| Phase 20A.3 final disabled-feature matrix                  | Enabling disabled features from prior phases |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -49,6 +50,7 @@ Completed or contract-frozen highlights:
 - Phase 19A.2: Static Architecture Graph Registry. Deterministic registry describing the designed JARVIS subsystem graph and inert forbidden/tripwire edges.
 - Phase 20A.1: Final System Status Registry. Typed, read-only Phase 20 integration registry summarizing Phase 10-19 operational status, evidence, authority posture, disabled-feature posture, and packaging relevance without adding routes, provider calls, execution hooks, or authority.
 - Phase 20A.2: Final Readiness Report Generator. Deterministic metadata-only report builder over the final-system-status registry, summarizing readiness, phase coverage, authority surfaces, disabled features, packaging, move-in, portfolio/demo relevance, and final governance posture.
+- Phase 20A.3: Final Disabled-Feature Matrix. Static, typed, metadata-only matrix consolidating intentionally disabled risky surfaces across Phases 10-19 and Phase 20 hardening, including wake word, hidden capture, auto-approval, graph-driven execution, unapproved device actions, scheduler side effects, and ungoverned provider escalation.
 
 ## Architecture
 
@@ -90,7 +92,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      final-system-status/     Phase 20A metadata-only status registry and readiness report generator
+      final-system-status/     Phase 20A metadata-only status, readiness, and disabled-feature matrix
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -158,7 +160,7 @@ Deferred:
 
 ## Phase 20A Final Integration
 
-Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry and report layer for completed core phases 10-19.
+Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, and disabled-feature matrix for completed core phases 10-19.
 
 The registry records:
 
@@ -170,6 +172,8 @@ The registry records:
 - Packaging relevance for later Phase 20 slices.
 
 Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.2 adds `buildFinalReadinessReport()`, which produces deterministic sections for summary, phase coverage, readiness categories, authority surfaces, disabled features, packaging readiness, move-in readiness, portfolio readiness, and governance verdict.
+
+Phase 20A.3 adds `getFinalDisabledFeatureMatrix()`, `getDisabledFeaturesByCategory()`, `getCriticalDisabledFeatures()`, and `summarizeDisabledFeaturePosture()` for final hardening audits. The matrix pins wake word, always-listening, background/hidden capture, autonomous device execution, public dashboards, voice-only approval, auto-approval, graph-driven execution, unredacted telemetry/UI exposure, remote/cloud defaults, whole-home control, CAI non-whitelisted targets, UI run/retry/mutate controls, scheduler side effects, routine chaining, unapproved room actions, and ungoverned provider escalation as still disabled.
 
 Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
 
