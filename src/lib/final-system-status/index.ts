@@ -45,6 +45,29 @@ export type {
 } from "./contracts";
 
 export {
+  PHASE_20A_CLOSEOUT_CHECK_IDS,
+  PHASE_20A_CLOSEOUT_VERDICTS,
+  PHASE_20A_CLOSEOUT_VERSION,
+  PHASE_20A_MODULE_IDS,
+  Phase20ACapabilityNeutralitySchema,
+  Phase20ACloseoutCheckIdSchema,
+  Phase20ACloseoutCheckSchema,
+  Phase20ACloseoutReportSchema,
+  Phase20ACloseoutVerdictSchema,
+  Phase20AModuleIdSchema,
+  buildPhase20ACloseoutReport,
+} from "./phase-20a-closeout";
+
+export type {
+  Phase20ACapabilityNeutrality,
+  Phase20ACloseoutCheck,
+  Phase20ACloseoutCheckId,
+  Phase20ACloseoutReport,
+  Phase20ACloseoutVerdict,
+  Phase20AModuleId,
+} from "./phase-20a-closeout";
+
+export {
   FINAL_GOVERNANCE_READINESS_SUMMARY_VERSION,
   FINAL_GOVERNANCE_READINESS_VERDICTS,
   FinalGovernanceApprovalSummarySchema,

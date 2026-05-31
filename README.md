@@ -36,6 +36,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20A.3 final disabled-feature matrix                  | Enabling disabled features from prior phases     |
 | Phase 20A.4 final authority surface inventory              | Reclassifying or enabling authority surfaces     |
 | Phase 20A.5 final governance readiness summary             | Treating Phase 20A metadata as runtime authority |
+| Phase 20A.6 final readiness layer closeout                 | Starting Phase 20B packaging/onboarding work     |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -55,6 +56,7 @@ Completed or contract-frozen highlights:
 - Phase 20A.3: Final Disabled-Feature Matrix. Static, typed, metadata-only matrix consolidating intentionally disabled risky surfaces across Phases 10-19 and Phase 20 hardening, including wake word, hidden capture, auto-approval, graph-driven execution, unapproved device actions, scheduler side effects, and ungoverned provider escalation.
 - Phase 20A.4: Final Authority Surface Inventory. Static, typed, metadata-only inventory of authority-bearing and authority-adjacent surfaces across Phases 10-19, including model/runtime/provider, voice, vision, room adapter, scheduler, approval, tool, UI, graph, telemetry, governance, red-team, persistence, project, and memory surfaces.
 - Phase 20A.5: Final Governance Readiness Summary. Deterministic metadata-only rollup over the Phase 20A registry, report, disabled-feature matrix, and authority inventory answering whether governance is ready for Phase 20 hardening while preserving capability neutrality.
+- Phase 20A.6: Final Readiness Layer Closeout. Typed deterministic closeout guard proving the Phase 20A readiness/governance layer is complete, capability-neutral, and ready for Phase 20B packaging, bootstrap, and onboarding hardening.
 
 ## Architecture
 
@@ -96,7 +98,7 @@ jarvis/
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
       architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, authority, and governance summaries
+      final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, authority, governance, and closeout summaries
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -164,7 +166,7 @@ Deferred:
 
 ## Phase 20A Final Integration
 
-Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, disabled-feature matrix, authority surface inventory, and governance readiness summary for completed core phases 10-19.
+Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, disabled-feature matrix, authority surface inventory, governance readiness summary, and final closeout guard for completed core phases 10-19.
 
 The registry records:
 
@@ -182,6 +184,8 @@ Phase 20A.3 adds `getFinalDisabledFeatureMatrix()`, `getDisabledFeaturesByCatego
 Phase 20A.4 adds `getFinalAuthoritySurfaceInventory()`, `getAuthoritySurfacesRequiringApproval()`, `getExecutableAuthoritySurfaces()`, `getNetworkCapableAuthoritySurfaces()`, and `summarizeAuthoritySurfacePosture()`. The inventory records read/write/execute posture, approval requirements, network posture, raw payload posture, disabled-feature dependencies, governance notes, and final Phase 20 posture for every authority-bearing or authority-adjacent surface without reclassifying or enabling any surface.
 
 Phase 20A.5 adds `buildFinalGovernanceReadinessSummary()`, a deterministic rollup over the Phase 20A metadata artifacts. It answers whether phases 10-19 are represented, whether blocked/missing items exist, whether critical disabled features remain disabled, whether authority and execution-capable surfaces are governed, whether network surfaces remain local-first/cloud-gated/whitelisted, whether auto-approval or source-material exposure exists, and whether Phase 20 remains capability-neutral.
+
+Phase 20A.6 adds `buildPhase20ACloseoutReport()`, a typed deterministic closeout guard proving the registry, readiness report, disabled-feature matrix, authority inventory, and governance readiness summary are integrated. The closeout declares Phase 20A complete and ready for Phase 20B packaging/bootstrap/onboarding hardening without starting that work.
 
 Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
 
