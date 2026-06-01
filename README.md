@@ -14,30 +14,30 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 
 ## Current Status
 
-| Built / Frozen / In Progress                                    | Deliberately Not Enabled                                                       |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Governance architecture                                         | Cloud wake word or pre-wake audio buffering/storage                            |
-| Runtime governance                                              | Always-listening or background capture                                         |
-| Safety enforcement                                              | Autonomous execution                                                           |
-| Tool orchestration contracts                                    | Background camera                                                              |
-| Persistent memory architecture                                  | Auto-approval of any action                                                    |
-| Project continuity and registry layers                          | T2/T3 voice-only approval                                                      |
-| Voice orchestration and streaming boundaries                    | Unapproved device actions                                                      |
-| STT/TTS provider contracts and queues                           | Cloud providers by default                                                     |
-| Runtime command governance                                      | Remote/public dashboard                                                        |
-| Environmental/smart-room scaffolding                            | Graph-driven execution                                                         |
-| Vision layer contracts                                          | Architecture graph UI                                                          |
-| Scheduled self-audit contracts                                  | React Flow/D3 graph rendering                                                  |
-| Observability Command Center contracts                          | Runtime dependency observers                                                   |
-| Phase 18 Approval Runtime foundation                            | Source import parsing for graph                                                |
-| Phase 19 architecture graph contracts and static registry       | Database/telemetry-backed graph ingestion                                      |
-| Phase 20 final integration, hardening, packaging, and readiness | Packaging/install automation, authority expansion, or expansion-era completion |
+| Built / Frozen / In Progress                                    | Deliberately Not Enabled                                                    |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Governance architecture                                         | Cloud wake word or pre-wake audio buffering/storage                         |
+| Runtime governance                                              | Always-listening or background capture                                      |
+| Safety enforcement                                              | Autonomous execution                                                        |
+| Tool orchestration contracts                                    | Background camera                                                           |
+| Persistent memory architecture                                  | Auto-approval of any action                                                 |
+| Project continuity and registry layers                          | T2/T3 voice-only approval                                                   |
+| Voice orchestration and streaming boundaries                    | Unapproved device actions                                                   |
+| STT/TTS provider contracts and queues                           | Cloud providers by default                                                  |
+| Runtime command governance                                      | Remote/public dashboard                                                     |
+| Environmental/smart-room scaffolding                            | Graph-driven execution                                                      |
+| Vision layer contracts                                          | Architecture graph UI                                                       |
+| Scheduled self-audit contracts                                  | React Flow/D3 graph rendering                                               |
+| Observability Command Center contracts                          | Runtime dependency observers                                                |
+| Phase 18 Approval Runtime foundation                            | Source import parsing for graph                                             |
+| Phase 19 architecture graph contracts and static registry       | Database/telemetry-backed graph ingestion                                   |
+| Phase 20 final integration, hardening, packaging, and readiness | Packaging/install automation or unapproved expansion-era runtime enablement |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second. Expansion Era voice work may add local-only wake/conversation mode and tiered voice authority, but cloud wake word, pre-wake audio storage, auto-approval, destructive voice approval, public dashboards, and unapproved device actions remain forbidden.
 
 ## Phase Status
 
-JARVIS has moved beyond the original nine-phase governance substrate into the operationalization roadmap described in [docs/ARCHITECTURE_OPERATIONALIZATION.md](docs/ARCHITECTURE_OPERATIONALIZATION.md).
+JARVIS has completed the Phase 1-20 governance and operationalization substrate described in [docs/ARCHITECTURE_OPERATIONALIZATION.md](docs/ARCHITECTURE_OPERATIONALIZATION.md). The Expansion Era is now the active post-Phase-20 roadmap, with future capability openings governed by the Expansion Era authority model instead of by the historical substrate alone.
 
 Completed or contract-frozen highlights:
 
@@ -153,7 +153,7 @@ Implemented so far:
 - `src/lib/architecture-graph/static-registry.ts`: deterministic static registry for completed JARVIS subsystems and designed dependency edges.
 - `src/lib/architecture-graph/index.ts`: safe exports for read-only graph contracts and registry helpers.
 
-The static registry includes Phase 10 through Phase 19 nodes, core runtime/module nodes, designed dependency edges, and forbidden/tripwire edges such as "Voice Runtime must not approve actions" and "Architecture Graph must not execute traces." These are metadata tripwires only, not executable behavior.
+The static registry includes Phase 10 through Phase 19 nodes, core runtime/module nodes, designed dependency edges, and forbidden/tripwire edges such as voice approval-bypass guards and "Architecture Graph must not execute traces." These are metadata tripwires only, not executable behavior. They protect the Phase 1-20 substrate and do not override the Expansion Era T0-T3 voice authority model described below.
 
 Deferred:
 
@@ -195,11 +195,19 @@ Phase 20 preserves the architecture boundaries: read-only where required, metada
 
 The only bounded runtime added in Phase 20 is the safe local doctor path, which checks local readiness through constrained adapters and never installs, auto-fixes, calls providers, calls the network, executes Ollama/Tauri/voice/vision runtimes, or performs room/device actions.
 
-Expansion-era work remains future-only: Obsidian integration, Graphify overlay, LLM Council, HITNEXUS integration, LLM Wiki, future research systems, and real CAI execution enablement are not shipped capabilities.
+Expansion Era is active as the post-Phase-20 roadmap, but its runtime openings are not shipped by default. Obsidian integration, Graphify overlay, LLM Council, HITNEXUS integration, LLM Wiki, future research systems, and real CAI execution enablement remain future planned capabilities until explicitly opened under Expansion Era governance.
+
+CAI status is governed and integrated, but execution-blocked: Phase 19D includes the red-team sandbox contracts, provider manifest, mock dry-run provider, approval binding, localhost execution gate, and visible sandbox route. CAI is not installed, imported, called, sidecar-backed, subprocess-backed, network-scanning, approval-creating, or authority-token-creating. Real CAI execution requires an explicit future opening.
 
 ## Expansion Era Direction
 
-The Expansion Era is the post-Phase-20 execution era. It turns frozen scaffolds into real integrations without reopening the Phase 1-20 governance substrate.
+The Expansion Era is the active post-Phase-20 execution era. It turns frozen scaffolds into real integrations without reopening the Phase 1-20 governance substrate.
+
+Expansion Era roadmap structure:
+
+- Priority 0: alignment, authority clarification, and readiness work. This includes README/architecture alignment and the Voice Authority Amendment; it does not activate runtime features by documentation alone.
+- Phase 21: the first governed implementation-opening phase after Priority 0. Any capability opened here must preserve Phase 1-20 approval, redaction, local-first, telemetry, and authority boundaries.
+- Phase 22+: later Expansion Era integrations. These remain future planned capabilities until their own explicit opening, tests, and closeout gates exist.
 
 Planned voice changes are no longer described as outside the roadmap forever. The intended voice overhaul keeps voice local-first: local-only wake word, no pre-wake audio buffering or storage, conversation mode with timeout, and explicit sleep commands such as "Jarvis sleep" or "Goodnight Jarvis." Cloud wake word remains forbidden.
 
@@ -226,6 +234,24 @@ pnpm lint
 ```
 
 Open `http://localhost:3000` for the current local app surface. There is no standalone `demo` script yet; demo/recruiter mode exists as tested Command Center contracts and view models.
+
+Optional provider environment:
+
+- Put local secrets in `.env.local`; do not commit that file.
+- `DEEPSEEK_API_KEY` is required only for the manual DeepSeek smoke path.
+- `DEEPSEEK_BASE_URL` is optional and defaults to the OpenAI-compatible DeepSeek endpoint `https://api.deepseek.com`.
+- Setting these variables does not enable cloud routing. DeepSeek remains disabled until the `deepseek-v4-flash` and `deepseek-v4-pro` registry entries are intentionally enabled and the smoke command applies its explicit DeepSeek-only runtime cloud policy.
+- To verify DeepSeek, set `DEEPSEEK_API_KEY`, temporarily change both DeepSeek registry entries in `config/models/registry.yaml` to `visibility: enabled`, run `npm run smoke:deepseek`, then restore both entries to `visibility: disabled`.
+
+Optional Obsidian pull-only index:
+
+- `OBSIDIAN_VAULT_PATH` points at an existing Obsidian vault directory.
+- Run `npm run obsidian:index` to perform a manual pull-only scan.
+- The scan builds an in-memory metadata index of markdown notes and folders, including note id, title, relative path, size, timestamps, and tags. It does not watch files, run in the background, create notes, mutate the vault, generate embeddings, or call cloud services.
+- Retrieval is available through the Obsidian pull-indexer module for note metadata lookup and bounded snippet reads by note id or relative path. Snippets are read on demand from disk and are not stored in telemetry.
+- Run `npm run obsidian:embed` to perform a manual local semantic population pass. This reads the vault through the pull-only indexer, embeds note text with the local Ollama `nomic-embed-text` model, and stores vectors in a local `sqlite-vec` table outside the vault.
+- Optional semantic env: `OBSIDIAN_EMBEDDING_MODEL` defaults to `nomic-embed-text`, `OBSIDIAN_EMBEDDING_DIMENSION` defaults to `768`, `OBSIDIAN_EMBEDDING_TIMEOUT_MS` defaults to `30000`, and `JARVIS_OLLAMA_BASE_URL` defaults to `http://127.0.0.1:11434`.
+- `OBSIDIAN_SEMANTIC_QUERY` can be set for the manual embed command to print metadata-only top-k result ids and scores. It never prints the query text, snippets, embeddings, note bodies, or the absolute vault path.
 
 ## Testing
 
