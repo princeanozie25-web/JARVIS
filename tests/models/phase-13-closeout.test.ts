@@ -41,6 +41,8 @@ const PHASE_13_SOURCE_FILES = [
   "src/models/providers/mock-provider.ts",
   "src/models/providers/ollama-client.ts",
   "src/models/providers/ollama-provider.ts",
+  "src/models/providers/deepseek-client.ts",
+  "src/models/providers/deepseek-provider.ts",
   "src/models/resolver.ts",
   "src/models/runtime.ts",
   "src/models/model-call-event.ts",
@@ -49,6 +51,11 @@ const PHASE_13_SOURCE_FILES = [
   "src/models/model-runtime-observability.ts",
   "scripts/model-runtime-smoke.ts",
 ] as const;
+
+const PHASE_13_APPROVED_NETWORK_FILES = new Set([
+  "src/models/providers/ollama-client.ts",
+  "src/models/providers/deepseek-client.ts",
+]);
 
 afterEach(() => {
   while (tempDirs.length > 0) {
@@ -813,8 +820,8 @@ unknown_field: true
 
   it("freezes Phase 13 source against disabled features and authority widening", () => {
     const source = phase13Source();
-    const sourceOutsideOllamaClient = PHASE_13_SOURCE_FILES.filter(
-      (path) => path !== "src/models/providers/ollama-client.ts",
+    const sourceOutsideApprovedClients = PHASE_13_SOURCE_FILES.filter(
+      (path) => !PHASE_13_APPROVED_NETWORK_FILES.has(path),
     )
       .map(sourceFor)
       .join("\n");
@@ -822,7 +829,7 @@ unknown_field: true
       sourceFor("src/models/model-call-projection.ts") +
       sourceFor("src/models/model-runtime-observability.ts");
 
-    expect(sourceOutsideOllamaClient).not.toMatch(
+    expect(sourceOutsideApprovedClients).not.toMatch(
       /\bfetch\s*\(|globalThis\.fetch|WebSocket|EventSource|XMLHttpRequest|from\s+["'](?:node:http|node:https|openai|@anthropic-ai\/sdk|ollama)["']/,
     );
     expect(source).not.toMatch(

@@ -60,10 +60,16 @@ export type ModelRuntimeFallbackPlanner = (
 export interface ModelRuntimeOptions {
   readonly registry: ModelRegistryLoader;
   readonly providers: ModelRuntimeProviderMap;
+  readonly cloudExecutionPolicy?: ModelRuntimeCloudExecutionPolicy;
   readonly resolver?: ModelRuntimeResolver;
   readonly fallbackPlanner?: ModelRuntimeFallbackPlanner;
   readonly now?: () => number;
   readonly persistence?: ModelRuntimePersistenceOptions;
+}
+
+export interface ModelRuntimeCloudExecutionPolicy {
+  readonly enabled_provider_kinds?: readonly ModelProviderKind[];
+  readonly enabled_model_ids?: readonly string[];
 }
 
 export type ModelRuntimeCreateModelCallEvent = (
@@ -244,16 +250,25 @@ const ZERO_TOKEN_USAGE: ModelProviderTokenUsage = {
 interface NormalizedRuntimeOptions {
   readonly registry: ModelRegistryLoader;
   readonly providers: ReadonlyMap<string, ModelProvider>;
+  readonly cloudExecutionPolicy: NormalizedCloudExecutionPolicy;
   readonly resolver: ModelRuntimeResolver;
   readonly fallbackPlanner: ModelRuntimeFallbackPlanner;
   readonly now: () => number;
   readonly persistence?: ModelRuntimePersistenceOptions;
 }
 
+interface NormalizedCloudExecutionPolicy {
+  readonly enabledProviderKinds: ReadonlySet<ModelProviderKind>;
+  readonly enabledModelIds: ReadonlySet<string>;
+}
+
 export function createModelRuntime(options: ModelRuntimeOptions): ModelRuntime {
   const config: NormalizedRuntimeOptions = {
     registry: options.registry,
     providers: normalizeProviders(options.providers),
+    cloudExecutionPolicy: normalizeCloudExecutionPolicy(
+      options.cloudExecutionPolicy,
+    ),
     resolver: options.resolver ?? resolveModel,
     fallbackPlanner: options.fallbackPlanner ?? buildFallbackPlan,
     now: options.now ?? (() => 0),
@@ -328,7 +343,7 @@ async function execute(
   for (const [index, entry] of attemptEntries.entries()) {
     attemptedModels.push(entry.id);
 
-    if (entry.runtime_class === "cloud") {
+    if (isPolicyBlockedCloudEntry(config, entry)) {
       failedModels.push({
         model_id: entry.id,
         failure_class: "policy_blocked",
@@ -557,7 +572,7 @@ async function* stream(
     attemptedModels.push(entry.id);
     const fallbackUsed = index > 0;
 
-    if (entry.runtime_class === "cloud") {
+    if (isPolicyBlockedCloudEntry(config, entry)) {
       lastFailure = {
         providerId: null,
         failureClass: "policy_blocked",
@@ -833,6 +848,24 @@ function createAttemptEntries(
   }
 
   return entries;
+}
+
+function isPolicyBlockedCloudEntry(
+  config: NormalizedRuntimeOptions,
+  entry: ModelRegistryEntry,
+): boolean {
+  if (entry.runtime_class !== "cloud") return false;
+  return !isCloudExecutionAllowed(config.cloudExecutionPolicy, entry);
+}
+
+function isCloudExecutionAllowed(
+  policy: NormalizedCloudExecutionPolicy,
+  entry: ModelRegistryEntry,
+): boolean {
+  return (
+    policy.enabledProviderKinds.has(entry.provider) &&
+    policy.enabledModelIds.has(entry.id)
+  );
 }
 
 function isGovernanceEquivalent(
@@ -1166,6 +1199,15 @@ function normalizeProviders(
 ): ReadonlyMap<string, ModelProvider> {
   if (providers instanceof Map) return new Map(providers);
   return new Map(Object.entries(providers));
+}
+
+function normalizeCloudExecutionPolicy(
+  policy: ModelRuntimeCloudExecutionPolicy | undefined,
+): NormalizedCloudExecutionPolicy {
+  return {
+    enabledProviderKinds: new Set(policy?.enabled_provider_kinds ?? []),
+    enabledModelIds: new Set(policy?.enabled_model_ids ?? []),
+  };
 }
 
 function elapsedMs(startedAt: number, endedAt: number): number {

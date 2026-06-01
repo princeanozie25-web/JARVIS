@@ -275,6 +275,39 @@ describe("Phase 13E.4 model call projection adapter", () => {
     });
   });
 
+  it("preserves exact DeepSeek V4 model ids through safe projections", () => {
+    const path = databasePath();
+    appendEvents(path, [
+      event("event-deepseek-flash", 1000, {
+        execution_id: "deepseek-execution-flash",
+        request_id: "deepseek-request-flash",
+        selected_model_id: "deepseek-v4-flash",
+        selected_provider: "deepseek",
+        attempted_models: ["deepseek-v4-flash"],
+        successful_model: "deepseek-v4-flash",
+        provider_kind: "deepseek",
+      }),
+      event("event-deepseek-pro", 1001, {
+        execution_id: "deepseek-execution-pro",
+        request_id: "deepseek-request-pro",
+        selected_model_id: "deepseek-v4-pro",
+        selected_provider: "deepseek",
+        attempted_models: ["deepseek-v4-pro"],
+        successful_model: "deepseek-v4-pro",
+        provider_kind: "deepseek",
+      }),
+    ]);
+
+    expect(getRecentModelCalls({ databasePath: path }).calls).toMatchObject([
+      { model_id: "deepseek-v4-pro", provider_kind: "deepseek" },
+      { model_id: "deepseek-v4-flash", provider_kind: "deepseek" },
+    ]);
+    expect(getModelCallRollup({ databasePath: path }).calls_by_model).toEqual([
+      { key: "deepseek-v4-flash", count: 1 },
+      { key: "deepseek-v4-pro", count: 1 },
+    ]);
+  });
+
   it("withholds malformed rows and reports degraded projection status", () => {
     const path = databasePath();
     const store = initializeEventStore({ databasePath: path });

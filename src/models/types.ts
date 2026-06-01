@@ -3,6 +3,7 @@ import type { ModelRegistryEntrySchema, ModelRegistrySchema } from "./schema";
 
 export const MODEL_PROVIDER_KINDS = [
   "ollama",
+  "deepseek",
   "anthropic",
   "openai",
   "mock",

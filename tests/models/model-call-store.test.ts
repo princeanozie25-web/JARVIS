@@ -156,6 +156,71 @@ describe("Phase 13E.2 model call event store bridge", () => {
     });
   });
 
+  it("preserves exact DeepSeek V4 model ids when metadata is eligible for model_calls storage", () => {
+    const path = databasePath();
+    const store = initializeEventStore({ databasePath: path });
+    const modelEvent = createModelCallEvent(
+      summary({
+        execution_id: "deepseek-execution-1",
+        request_id: "deepseek-request-1",
+        selected_model_id: "deepseek-v4-flash",
+        selected_provider: "deepseek",
+        attempted_models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+        successful_model: "deepseek-v4-pro",
+        fallback_chain: ["deepseek-v4-pro"],
+        provider_kind: "deepseek",
+      }),
+      {
+        eventIdFactory: () => "event-deepseek-v4",
+        now: () => 1003,
+      },
+    );
+
+    appendModelCallEvent(store, modelEvent);
+    store.close();
+
+    const raw = openRaw(path);
+    const row = raw
+      .prepare(
+        `
+          SELECT mc.model_id, e.metadata_json
+          FROM model_calls mc
+          INNER JOIN events e ON e.event_id = mc.event_id
+        `,
+      )
+      .get() as {
+      model_id: string;
+      metadata_json: string;
+    };
+    raw.close();
+
+    expect(row.model_id).toBe("deepseek-v4-flash");
+    expect(JSON.parse(row.metadata_json)).toMatchObject({
+      selected_model_id: "deepseek-v4-flash",
+      attempted_models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+      successful_model: "deepseek-v4-pro",
+    });
+  });
+
+  it("continues to reject executable cloud model call persistence", () => {
+    const store = initializeEventStore({ databasePath: databasePath() });
+    const cloudEvent = createModelCallEvent(
+      summary({
+        selected_provider: "deepseek",
+        provider_kind: "deepseek",
+        runtime_class: "cloud",
+        selected_model_id: "deepseek-v4-flash",
+      }),
+      {
+        eventIdFactory: () => "event-deepseek-cloud",
+        now: () => 1004,
+      },
+    );
+
+    expect(() => appendModelCallEvent(store, cloudEvent)).toThrow(/cloud/);
+    store.close();
+  });
+
   it("fails closed on invalid event shapes without appending", () => {
     const path = databasePath();
     const store = initializeEventStore({ databasePath: path });

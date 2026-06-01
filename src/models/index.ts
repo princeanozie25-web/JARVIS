@@ -66,6 +66,7 @@ export { createModelRuntime, createModelRuntimeProviderKey } from "./runtime";
 export type {
   ModelRuntime,
   ModelRuntimeAppendModelCallEvent,
+  ModelRuntimeCloudExecutionPolicy,
   ModelRuntimeCreateModelCallEvent,
   ModelRuntimeExecuteRequest,
   ModelRuntimeExecuteResult,
@@ -194,3 +195,27 @@ export type {
   OllamaStreamEvent,
   OllamaTokenUsage,
 } from "./providers/ollama-client";
+
+export {
+  DEEPSEEK_MODEL_PROVIDER_DEFAULT_CAPABILITIES,
+  createDeepSeekModelProvider,
+} from "./providers/deepseek-provider";
+export type { DeepSeekProviderOptions } from "./providers/deepseek-provider";
+
+export {
+  createDeepSeekClientError,
+  createDeepSeekHttpClient,
+} from "./providers/deepseek-client";
+export type {
+  DeepSeekClient,
+  DeepSeekClientCallOptions,
+  DeepSeekClientError,
+  DeepSeekClientFailureClass,
+  DeepSeekCompleteRequest,
+  DeepSeekCompleteResult,
+  DeepSeekFetchImpl,
+  DeepSeekFetchResponse,
+  DeepSeekHttpClientOptions,
+  DeepSeekMessage,
+  DeepSeekTokenUsage,
+} from "./providers/deepseek-client";

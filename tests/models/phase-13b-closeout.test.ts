@@ -26,9 +26,14 @@ const MODEL_SOURCE_FILES = [
   "src/models/providers/mock-provider.ts",
   "src/models/providers/ollama-provider.ts",
   "src/models/providers/ollama-client.ts",
+  "src/models/providers/deepseek-provider.ts",
+  "src/models/providers/deepseek-client.ts",
 ] as const;
 
-const APPROVED_NETWORK_FILE = "src/models/providers/ollama-client.ts";
+const APPROVED_NETWORK_FILES = new Set([
+  "src/models/providers/ollama-client.ts",
+  "src/models/providers/deepseek-client.ts",
+]);
 
 function sourceFor(path: string): string {
   return readFileSync(join(process.cwd(), path), "utf8");
@@ -39,7 +44,7 @@ function modelSource(): string {
 }
 
 function modelSourceOutsideApprovedAdapter(): string {
-  return MODEL_SOURCE_FILES.filter((path) => path !== APPROVED_NETWORK_FILE)
+  return MODEL_SOURCE_FILES.filter((path) => !APPROVED_NETWORK_FILES.has(path))
     .map(sourceFor)
     .join("\n");
 }
@@ -122,7 +127,9 @@ describe("Phase 13B Ollama provider closeout", () => {
 
   it("keeps fetch and network imports isolated to the approved Ollama adapter", () => {
     const outsideAdapter = modelSourceOutsideApprovedAdapter();
-    const adapter = sourceFor(APPROVED_NETWORK_FILE);
+    const adapter =
+      sourceFor("src/models/providers/ollama-client.ts") +
+      sourceFor("src/models/providers/deepseek-client.ts");
 
     expect(outsideAdapter).not.toMatch(
       /\bfetch\s*\(|globalThis\.fetch|WebSocket|EventSource|XMLHttpRequest|from\s+["'](?:node:http|node:https)["']/,
@@ -280,6 +287,16 @@ describe("Phase 13B Ollama provider closeout", () => {
       .filter((model) => model.runtime_class === "cloud");
 
     expect(cloudModels).toEqual([
+      expect.objectContaining({
+        id: "deepseek-v4-flash",
+        provider: "deepseek",
+        visibility: "disabled",
+      }),
+      expect.objectContaining({
+        id: "deepseek-v4-pro",
+        provider: "deepseek",
+        visibility: "disabled",
+      }),
       expect.objectContaining({
         id: "claude-haiku",
         provider: "anthropic",

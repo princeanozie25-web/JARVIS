@@ -412,6 +412,28 @@ describe("telemetry_events", () => {
     expect(rows[1]?.cost_usd).toBeCloseTo(0.0001);
     expect(rows[1]?.execution_id).toBe("exec-1");
   });
+
+  it.each(["deepseek-v4-flash", "deepseek-v4-pro"])(
+    "preserves exact telemetry model_id %s",
+    (modelId) => {
+      insertTelemetryEvent(db, {
+        timestamp: 3_000,
+        event_type: "model_call",
+        success: true,
+        model_id: modelId,
+        input_tokens: 1,
+        output_tokens: 1,
+        latency_ms: 20,
+        cost_usd: 0,
+        execution_id: `exec-${modelId}`,
+      });
+
+      expect(listTelemetryEvents(db)[0]).toMatchObject({
+        model_id: modelId,
+        execution_id: `exec-${modelId}`,
+      });
+    },
+  );
 });
 
 describe("tool_calls", () => {

@@ -42,6 +42,32 @@ describe("OpenAIProvider streaming", () => {
     createMock.mockReset();
   });
 
+  it("passes the configured model name through generate without alias mapping", async () => {
+    const { OpenAIProvider } = await import("./openai");
+    createMock.mockResolvedValue({
+      model: "configured-provider-model",
+      choices: [{ message: { content: "ok" } }],
+      usage: { prompt_tokens: 3, completion_tokens: 2 },
+    });
+
+    const provider = new OpenAIProvider("test-key");
+    await expect(
+      provider.generate([{ role: "user", content: "Hi" }], {
+        model: "configured-provider-model",
+      }),
+    ).resolves.toMatchObject({
+      modelId: "configured-provider-model",
+      inputTokens: 3,
+      outputTokens: 2,
+    });
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "configured-provider-model",
+      }),
+      expect.objectContaining({ signal: undefined }),
+    );
+  });
+
   it("emits text, usage, and done events from streamed chat chunks", async () => {
     const { OpenAIProvider } = await import("./openai");
     createMock.mockResolvedValue(
@@ -62,7 +88,7 @@ describe("OpenAIProvider streaming", () => {
 
     const provider = new OpenAIProvider("test-key");
     const stream = await provider.stream([{ role: "user", content: "Hi" }], {
-      model: "gpt-4o-mini",
+      model: "configured-openai-compatible-model",
     });
 
     await expect(collect(stream.events)).resolves.toMatchObject([
@@ -81,6 +107,7 @@ describe("OpenAIProvider streaming", () => {
     ]);
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        model: "configured-openai-compatible-model",
         stream: true,
         stream_options: { include_usage: true },
       }),

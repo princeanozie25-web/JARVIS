@@ -101,6 +101,7 @@ function validateProviderRuntimeCombination(
 ) {
   const supportedRuntimeByProvider = {
     ollama: "local",
+    deepseek: "cloud",
     anthropic: "cloud",
     openai: "cloud",
     mock: "mock",
@@ -115,11 +116,16 @@ function validateProviderRuntimeCombination(
     });
   }
 
-  if (entry.runtime_class === "cloud" && entry.visibility !== "disabled") {
+  if (
+    entry.runtime_class === "cloud" &&
+    entry.visibility === "enabled" &&
+    entry.provider !== "deepseek"
+  ) {
     ctx.addIssue({
       code: "custom",
       path: ["visibility"],
-      message: "Cloud model registry entries must be disabled by default.",
+      message:
+        "Only DeepSeek cloud entries may be intentionally enabled for the governed smoke path.",
     });
   }
 }

@@ -24,10 +24,15 @@ const MODEL_SOURCE_FILES = [
   "src/models/providers/mock-provider.ts",
   "src/models/providers/ollama-provider.ts",
   "src/models/providers/ollama-client.ts",
+  "src/models/providers/deepseek-provider.ts",
+  "src/models/providers/deepseek-client.ts",
   "scripts/model-runtime-smoke.ts",
 ] as const;
 
-const APPROVED_NETWORK_FILE = "src/models/providers/ollama-client.ts";
+const APPROVED_NETWORK_FILES = new Set([
+  "src/models/providers/ollama-client.ts",
+  "src/models/providers/deepseek-client.ts",
+]);
 
 function sourceFor(path: string): string {
   return readFileSync(join(process.cwd(), path), "utf8");
@@ -38,7 +43,7 @@ function phase13cSource(): string {
 }
 
 function sourceOutsideApprovedAdapter(): string {
-  return MODEL_SOURCE_FILES.filter((path) => path !== APPROVED_NETWORK_FILE)
+  return MODEL_SOURCE_FILES.filter((path) => !APPROVED_NETWORK_FILES.has(path))
     .map(sourceFor)
     .join("\n");
 }
@@ -246,7 +251,9 @@ describe("Phase 13C runtime closeout", () => {
 
   it("keeps network calls isolated, localhost-defaulted, and free of provider install/download paths", () => {
     const outsideAdapter = sourceOutsideApprovedAdapter();
-    const adapter = sourceFor(APPROVED_NETWORK_FILE);
+    const adapter =
+      sourceFor("src/models/providers/ollama-client.ts") +
+      sourceFor("src/models/providers/deepseek-client.ts");
     const packageJson = sourceFor("package.json");
 
     expect(packageJson).not.toMatch(/"ollama"\s*:/i);

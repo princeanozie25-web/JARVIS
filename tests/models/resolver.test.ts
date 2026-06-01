@@ -48,6 +48,14 @@ describe("Phase 13C.1 model resolver", () => {
       capability: "chat",
     });
 
+    expect(rejected(result, "deepseek-v4-flash")).toEqual([
+      "disabled",
+      "cloud_not_allowed",
+    ]);
+    expect(rejected(result, "deepseek-v4-pro")).toEqual([
+      "disabled",
+      "cloud_not_allowed",
+    ]);
     expect(rejected(result, "claude-haiku")).toEqual([
       "disabled",
       "cloud_not_allowed",
@@ -69,6 +77,8 @@ describe("Phase 13C.1 model resolver", () => {
       allow_cloud: true,
     });
 
+    expect(rejected(result, "deepseek-v4-flash")).toEqual(["disabled"]);
+    expect(rejected(result, "deepseek-v4-pro")).toEqual(["disabled"]);
     expect(rejected(result, "claude-haiku")).toEqual(["disabled"]);
     expect(rejected(result, "claude-opus")).toEqual(["disabled"]);
     expect(
@@ -164,6 +174,10 @@ describe("Phase 13C.1 model resolver", () => {
 
     expect(result.selected?.id).toBe("qwen2.5:7b");
     expect(cloudPreferred.selected?.runtime_class).toBe("local");
+    expect(rejected(cloudPreferred, "deepseek-v4-pro")).toEqual([
+      "disabled",
+      "cloud_not_allowed",
+    ]);
     expect(rejected(cloudPreferred, "claude-haiku")).toEqual([
       "disabled",
       "cloud_not_allowed",
@@ -380,6 +394,8 @@ describe("Phase 13C.2 resolver fallback planning", () => {
     expect(fallbackIds(plan)).not.toContain("claude-haiku");
     expect(fallbackIds(plan)).not.toContain("claude-opus");
     expect(plan.rejection_reasons.cloud_not_allowed).toEqual([
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
     ]);
@@ -401,8 +417,14 @@ describe("Phase 13C.2 resolver fallback planning", () => {
       allow_disabled: true,
     });
 
+    expect(fallbackIds(cloudOnly)).not.toContain("deepseek-v4-flash");
+    expect(planRejected(cloudOnly, "deepseek-v4-flash")).toEqual(["disabled"]);
     expect(fallbackIds(cloudOnly)).not.toContain("claude-haiku");
     expect(planRejected(cloudOnly, "claude-haiku")).toEqual(["disabled"]);
+    expect(fallbackIds(disabledOnly)).not.toContain("deepseek-v4-flash");
+    expect(planRejected(disabledOnly, "deepseek-v4-flash")).toEqual([
+      "cloud_not_allowed",
+    ]);
     expect(fallbackIds(disabledOnly)).not.toContain("claude-haiku");
     expect(planRejected(disabledOnly, "claude-haiku")).toEqual([
       "cloud_not_allowed",
@@ -410,6 +432,8 @@ describe("Phase 13C.2 resolver fallback planning", () => {
     expect(fallbackIds(fullyOptedIn)).toEqual([
       "llama3.2:3b",
       "qwen2.5:7b",
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
     ]);
@@ -524,6 +548,8 @@ models:
       "mock-local-model",
       "llama3.2:3b",
       "qwen2.5:7b",
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
     ]);

@@ -187,6 +187,39 @@ describe("Phase 13E.1 model call event contract", () => {
     expect(JSON.stringify(event)).not.toContain("delta");
   });
 
+  it("preserves exact DeepSeek V4 model ids in metadata-only call events", () => {
+    const event = createModelCallEvent(
+      successfulSummary({
+        execution_id: "deepseek-execution-1",
+        request_id: "deepseek-request-1",
+        selected_model_id: "deepseek-v4-flash",
+        selected_provider: "deepseek",
+        attempted_models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+        successful_model: "deepseek-v4-pro",
+        fallback_chain: ["deepseek-v4-pro"],
+        runtime_class: "cloud",
+        provider_kind: "deepseek",
+      }),
+      {
+        eventIdFactory: () => "deepseek-event-1",
+        now: () => 6000,
+      },
+    );
+
+    expect(event).toMatchObject({
+      event_id: "deepseek-event-1",
+      selected_model_id: "deepseek-v4-flash",
+      selected_provider: "deepseek",
+      attempted_models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+      successful_model: "deepseek-v4-pro",
+      fallback_chain: ["deepseek-v4-pro"],
+      runtime_class: "cloud",
+      provider_kind: "deepseek",
+    });
+    expect(JSON.stringify(event)).not.toContain("deepseek-chat");
+    expect(JSON.stringify(event)).not.toContain("deepseek-reasoner");
+  });
+
   it("fails closed on missing or invalid summaries", () => {
     expect(() => createModelCallEvent(null)).toThrow(ModelCallEventError);
     expect(() => createModelCallEvent({})).toThrow(ModelCallEventError);

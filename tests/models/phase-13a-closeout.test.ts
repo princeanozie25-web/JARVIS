@@ -26,7 +26,13 @@ function modelSource(): string {
 describe("Phase 13A model runtime closeout", () => {
   it("exports the Phase 13A substrate without exporting test-only conformance helpers", () => {
     expect(modelRuntime).toMatchObject({
-      MODEL_PROVIDER_KINDS: ["ollama", "anthropic", "openai", "mock"],
+      MODEL_PROVIDER_KINDS: [
+        "ollama",
+        "deepseek",
+        "anthropic",
+        "openai",
+        "mock",
+      ],
       ModelRegistrySchema: expect.any(Object),
       loadDefaultModelRegistry: expect.any(Function),
       createMockModelProvider: expect.any(Function),
@@ -101,6 +107,8 @@ describe("Phase 13A model runtime closeout", () => {
     expect(cloudModels.map((model) => model.visibility)).toEqual([
       "disabled",
       "disabled",
+      "disabled",
+      "disabled",
     ]);
     expect(enabledModels.map((model) => model.runtime_class).sort()).toEqual([
       "local",
@@ -128,6 +136,8 @@ describe("Phase 13A model runtime closeout", () => {
       "mock-local-model",
       "llama3.2:3b",
       "qwen2.5:7b",
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
     ]);

@@ -119,6 +119,8 @@ function key(id: string) {
 
 interface RecordingProviderOptions {
   readonly providerId?: string;
+  readonly providerKind?: ModelProvider["kind"];
+  readonly runtimeClass?: ModelProvider["runtime_class"];
   readonly failureClass?: ModelProviderFailureClass | null;
   readonly responseLatencyMs?: number;
   readonly streamFailureClass?: ModelProviderFailureClass | null;
@@ -134,15 +136,17 @@ function createRecordingProvider(options: RecordingProviderOptions = {}) {
   const calls: ModelProviderRequest[] = [];
   const streamCalls: ModelProviderRequest[] = [];
   const providerId = options.providerId ?? "ollama-test-provider";
+  const providerKind = options.providerKind ?? "ollama";
+  const runtimeClass = options.runtimeClass ?? "local";
   const provider: ModelProvider = {
     id: providerId,
-    kind: "ollama",
-    runtime_class: "local",
+    kind: providerKind,
+    runtime_class: runtimeClass,
     capabilities: ["chat"],
     metadata: {
       provider_id: providerId,
       display_name: "Recording Local Provider",
-      runtime_class: "local",
+      runtime_class: runtimeClass,
       supported_capabilities: ["chat"],
       supports_streaming: false,
       supports_abort: true,
@@ -658,6 +662,148 @@ describe("Phase 13C.3 local model runtime", () => {
     expect(result.metadata.attempted_models).toEqual(["cloud-fallback"]);
     expect(result.metadata.failure_class).toBe("policy_blocked");
     expect(cloudCalls).toEqual([]);
+  });
+
+  it("blocks DeepSeek V4 cloud execution by default while preserving exact configured model ids", async () => {
+    const deepseek = createRecordingProvider({
+      providerId: "deepseek-provider",
+      providerKind: "deepseek",
+      runtimeClass: "cloud",
+    });
+    const registry = createModelRegistryFromYaml(`
+schema_version: 1
+models:
+  - id: deepseek-v4-flash
+    provider: deepseek
+    tier: T2
+    runtime_class: cloud
+    capabilities: [chat, summarize, classify, tool_reasoning]
+    context_window: 128000
+    visibility: disabled
+    priority: 90
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+    metadata:
+      display_name: DeepSeek V4 Flash
+      description: Disabled DeepSeek V4 cloud metadata.
+      approximate_memory_mb: null
+      cost_class: cloud_metered_unverified
+      governance_notes: Disabled by default; pricing requires official verification.
+`);
+    const runtime = createModelRuntime({
+      registry,
+      providers: {
+        "deepseek:deepseek-v4-flash": deepseek.provider,
+      },
+    });
+
+    const result = await runtime.execute(
+      runtimeRequest({
+        resolver_options: {
+          allow_cloud: true,
+          allow_disabled: true,
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.metadata).toMatchObject({
+      selected_model_id: "deepseek-v4-flash",
+      attempted_models: ["deepseek-v4-flash"],
+      failed_models: [
+        {
+          model_id: "deepseek-v4-flash",
+          failure_class: "policy_blocked",
+        },
+      ],
+      failure_class: "policy_blocked",
+      execution_summary: {
+        selected_model_id: "deepseek-v4-flash",
+        attempted_models: ["deepseek-v4-flash"],
+        provider_kind: "deepseek",
+        runtime_class: "cloud",
+      },
+    });
+    expect(deepseek.calls).toEqual([]);
+    expect(deepseek.streamCalls).toEqual([]);
+  });
+
+  it("executes intentionally enabled DeepSeek V4 models only with explicit runtime cloud policy", async () => {
+    const deepseek = createRecordingProvider({
+      providerId: "deepseek-provider",
+      providerKind: "deepseek",
+      runtimeClass: "cloud",
+    });
+    const registry = createModelRegistryFromYaml(`
+schema_version: 1
+models:
+  - id: deepseek-v4-pro
+    provider: deepseek
+    tier: T3
+    runtime_class: cloud
+    capabilities: [chat, summarize, classify, tool_reasoning]
+    context_window: 128000
+    visibility: enabled
+    priority: 90
+    supports_streaming: false
+    supports_tools: true
+    supports_vision: false
+    metadata:
+      display_name: DeepSeek V4 Pro
+      description: Intentionally enabled DeepSeek V4 cloud metadata.
+      approximate_memory_mb: null
+      cost_class: cloud_metered_unverified
+      governance_notes: Explicit smoke-only runtime policy required.
+`);
+    const runtime = createModelRuntime({
+      registry,
+      providers: {
+        "deepseek:deepseek-v4-pro": deepseek.provider,
+      },
+      cloudExecutionPolicy: {
+        enabled_provider_kinds: ["deepseek"],
+        enabled_model_ids: ["deepseek-v4-pro"],
+      },
+    });
+
+    const result = await runtime.execute(
+      runtimeRequest({
+        resolver_options: {
+          allow_cloud: true,
+          excluded_model_ids: [
+            "local-primary",
+            "local-fallback",
+            "disabled-local",
+          ],
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.metadata).toMatchObject({
+      selected_model_id: "deepseek-v4-pro",
+      attempted_models: ["deepseek-v4-pro"],
+      successful_model: "deepseek-v4-pro",
+      execution_summary: {
+        selected_model_id: "deepseek-v4-pro",
+        successful_model: "deepseek-v4-pro",
+        provider_kind: "deepseek",
+        runtime_class: "cloud",
+        redaction_status: "metadata_only",
+      },
+    });
+    expect(deepseek.calls).toHaveLength(1);
+    expect(deepseek.calls[0]).toMatchObject({
+      model_id: "deepseek-v4-pro",
+      provenance: {
+        metadata_only: true,
+      },
+    });
+    expect(JSON.stringify(result.metadata)).not.toContain("Runtime check");
+    expect(JSON.stringify(result.metadata)).not.toContain(
+      "runtime:deepseek-v4-pro",
+    );
   });
 
   it("fails closed on malformed execution requests", async () => {

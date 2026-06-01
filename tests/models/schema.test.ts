@@ -109,17 +109,17 @@ describe("Phase 13A.1 model registry schema", () => {
     const registry = validRegistry({
       models: [
         validEntry({
-          id: "claude-haiku",
-          provider: "anthropic",
-          tier: "T3",
+          id: "deepseek-v4-flash",
+          provider: "deepseek",
+          tier: "T2",
           runtime_class: "cloud",
           visibility: "disabled",
           priority: 100,
           metadata: {
-            display_name: "Claude Haiku",
-            description: "Disabled cloud metadata.",
+            display_name: "DeepSeek V4 Flash",
+            description: "Disabled DeepSeek cloud metadata.",
             approximate_memory_mb: null,
-            cost_class: "cloud_metered",
+            cost_class: "cloud_metered_unverified",
             governance_notes: "Disabled by default.",
           },
         }),
@@ -127,13 +127,33 @@ describe("Phase 13A.1 model registry schema", () => {
     });
 
     expect(registry.models[0]).toMatchObject({
-      provider: "anthropic",
+      provider: "deepseek",
       runtime_class: "cloud",
       visibility: "disabled",
     });
   });
 
-  it("rejects enabled cloud providers by default", () => {
+  it("allows intentionally enabled cloud entries while default registry entries stay disabled", () => {
+    expect(
+      validateModelRegistry({
+        schema_version: 1,
+        models: [
+          validEntry({
+            id: "deepseek-v4-pro",
+            provider: "deepseek",
+            runtime_class: "cloud",
+            visibility: "enabled",
+            metadata: {
+              display_name: "DeepSeek V4 Pro",
+              description: "Intentionally enabled smoke metadata.",
+              approximate_memory_mb: null,
+              cost_class: "cloud_metered_unverified",
+              governance_notes: "Explicit runtime cloud policy required.",
+            },
+          }),
+        ],
+      }).success,
+    ).toBe(true);
     expect(
       validateModelRegistry({
         schema_version: 1,

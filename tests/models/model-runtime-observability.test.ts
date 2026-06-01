@@ -174,6 +174,41 @@ describe("Phase 13E.5 model runtime observability adapter", () => {
     });
   });
 
+  it("preserves exact DeepSeek V4 model ids in the observability view", () => {
+    const response = createModelRuntimeObservabilityView({
+      recentCalls: recentProjection({
+        calls: [
+          {
+            ...recentProjection().calls[0]!,
+            model_id: "deepseek-v4-flash",
+            provider_kind: "deepseek",
+          },
+        ],
+      }),
+      rollup: rollupProjection({
+        calls_by_model: [
+          { key: "deepseek-v4-flash", count: 1 },
+          { key: "deepseek-v4-pro", count: 1 },
+        ],
+        calls_by_provider_kind: [{ key: "deepseek", count: 2 }],
+      }),
+    });
+
+    expect(response.data).toMatchObject({
+      recent_calls: [
+        {
+          model_id: "deepseek-v4-flash",
+          provider_kind: "deepseek",
+        },
+      ],
+      model_mix: [
+        { key: "deepseek-v4-flash", count: 1 },
+        { key: "deepseek-v4-pro", count: 1 },
+      ],
+      provider_mix: [{ key: "deepseek", count: 2 }],
+    });
+  });
+
   it("preserves degraded projection state and withheld-row metadata safely", () => {
     const response = createModelRuntimeObservabilityView({
       recentCalls: recentProjection({

@@ -16,9 +16,40 @@ describe("Phase 13A.1 model registry loader", () => {
       "mock-local-model",
       "llama3.2:3b",
       "qwen2.5:7b",
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
     ]);
+  });
+
+  it("registers DeepSeek V4 cloud entries as disabled metadata only", () => {
+    const registry = loadDefaultModelRegistry();
+    const flash = registry.getModel("deepseek-v4-flash");
+    const pro = registry.getModel("deepseek-v4-pro");
+
+    expect(flash).toMatchObject({
+      id: "deepseek-v4-flash",
+      provider: "deepseek",
+      tier: "T2",
+      runtime_class: "cloud",
+      visibility: "disabled",
+      supports_tools: true,
+    });
+    expect(pro).toMatchObject({
+      id: "deepseek-v4-pro",
+      provider: "deepseek",
+      tier: "T3",
+      runtime_class: "cloud",
+      visibility: "disabled",
+      supports_tools: true,
+    });
+    expect(registry.listEnabledModels().map((entry) => entry.id)).not.toEqual(
+      expect.arrayContaining(["deepseek-v4-flash", "deepseek-v4-pro"]),
+    );
+    expect(registry.listModels().map((entry) => entry.id)).not.toEqual(
+      expect.arrayContaining(["deepseek-chat", "deepseek-reasoner"]),
+    );
   });
 
   it("rejects malformed YAML", () => {
