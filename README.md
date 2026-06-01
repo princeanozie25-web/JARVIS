@@ -16,12 +16,12 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 
 | Built / Frozen / In Progress                                    | Deliberately Not Enabled                                                       |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Governance architecture                                         | Wake word                                                                      |
-| Runtime governance                                              | Always-listening                                                               |
+| Governance architecture                                         | Cloud wake word or pre-wake audio buffering/storage                            |
+| Runtime governance                                              | Always-listening or background capture                                         |
 | Safety enforcement                                              | Autonomous execution                                                           |
 | Tool orchestration contracts                                    | Background camera                                                              |
 | Persistent memory architecture                                  | Auto-approval of any action                                                    |
-| Project continuity and registry layers                          | Voice-only approval                                                            |
+| Project continuity and registry layers                          | T2/T3 voice-only approval                                                      |
 | Voice orchestration and streaming boundaries                    | Unapproved device actions                                                      |
 | STT/TTS provider contracts and queues                           | Cloud providers by default                                                     |
 | Runtime command governance                                      | Remote/public dashboard                                                        |
@@ -33,7 +33,7 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 19 architecture graph contracts and static registry       | Database/telemetry-backed graph ingestion                                      |
 | Phase 20 final integration, hardening, packaging, and readiness | Packaging/install automation, authority expansion, or expansion-era completion |
 
-The disabled list is not a gap. It is the architecture. Governance first, capability second.
+The disabled list is not a gap. It is the architecture. Governance first, capability second. Expansion Era voice work may add local-only wake/conversation mode and tiered voice authority, but cloud wake word, pre-wake audio storage, auto-approval, destructive voice approval, public dashboards, and unapproved device actions remain forbidden.
 
 ## Phase Status
 
@@ -69,21 +69,23 @@ Key decisions:
 - Read-only observability: Command Center and architecture graph surfaces can inspect, replay, and explain, but cannot mutate.
 - Local-first by default, with cloud routes explicitly opt-in, budget-gated, consent-gated, and audited.
 - Redaction-first telemetry/UI: raw frames, transcripts, prompts, model outputs, project bodies, memory contents, and secrets remain forbidden from observability surfaces.
+- Expansion Era voice authority is tier-bound: T0 read-only voice actions may run without approval, T1 low-risk reversible actions require standing consent, T2 may be initiated by voice but needs UI confirmation, and T3 remains manual-only.
+- Wake/conversation mode is planned as local-only: no cloud wake word, no pre-wake audio buffering or storage, timeout-based conversation sessions, and explicit sleep commands.
 
 ## Tech Stack
 
-| Layer                    | Choice                             | Why                                                                                                         |
-| ------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Frontend                 | Next.js 16 + React 19 + TypeScript | Current app runtime and UI layer, with strict typed contracts across client and server.                     |
-| Styling                  | Tailwind CSS 4                     | Current styling layer for fast UI iteration without a separate component framework.                         |
-| Testing                  | Vitest                             | Current test runner for colocated unit, boundary, contract, and closeout tests.                             |
-| Providers                | OpenAI SDK + Anthropic SDK         | Cloud provider wrappers behind a shared provider interface, disabled unless explicitly routed.              |
-| Database                 | SQLite via `better-sqlite3`        | Local persistence foundation and operationalization store substrate.                                        |
-| Validation               | Zod                                | Runtime contract schemas for governance, graph, approval, runtime, voice, vision, and project metadata.     |
-| Desktop shell            | Tauri                              | Planned/contracted local desktop packaging with loopback-only exposure and OS permissions under governance. |
-| Voice operationalization | `whisper.cpp` for STT, Piper TTS   | Planned offline push-to-talk voice without wake word or cloud audio by default.                             |
-| Local models             | Ollama                             | Planned local model runtime behind the existing registry/router pattern.                                    |
-| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19 graph work is contracts and static registry only.                                |
+| Layer                    | Choice                             | Why                                                                                                                                                                              |
+| ------------------------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend                 | Next.js 16 + React 19 + TypeScript | Current app runtime and UI layer, with strict typed contracts across client and server.                                                                                          |
+| Styling                  | Tailwind CSS 4                     | Current styling layer for fast UI iteration without a separate component framework.                                                                                              |
+| Testing                  | Vitest                             | Current test runner for colocated unit, boundary, contract, and closeout tests.                                                                                                  |
+| Providers                | OpenAI SDK + Anthropic SDK         | Cloud provider wrappers behind a shared provider interface, disabled unless explicitly routed.                                                                                   |
+| Database                 | SQLite via `better-sqlite3`        | Local persistence foundation and operationalization store substrate.                                                                                                             |
+| Validation               | Zod                                | Runtime contract schemas for governance, graph, approval, runtime, voice, vision, and project metadata.                                                                          |
+| Desktop shell            | Tauri                              | Planned/contracted local desktop packaging with loopback-only exposure and OS permissions under governance.                                                                      |
+| Voice operationalization | Local STT/TTS stack                | Current voice remains local-first. Expansion Era target: Chatterbox-TTS-Server as primary local TTS, Kokoro/Piper as local fallbacks, and cloud STT/TTS only as opt-in fallback. |
+| Local models             | Ollama                             | Planned local model runtime behind the existing registry/router pattern.                                                                                                         |
+| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19 graph work is contracts and static registry only.                                                                                                     |
 
 ## Project Structure
 
@@ -195,6 +197,21 @@ The only bounded runtime added in Phase 20 is the safe local doctor path, which 
 
 Expansion-era work remains future-only: Obsidian integration, Graphify overlay, LLM Council, HITNEXUS integration, LLM Wiki, future research systems, and real CAI execution enablement are not shipped capabilities.
 
+## Expansion Era Direction
+
+The Expansion Era is the post-Phase-20 execution era. It turns frozen scaffolds into real integrations without reopening the Phase 1-20 governance substrate.
+
+Planned voice changes are no longer described as outside the roadmap forever. The intended voice overhaul keeps voice local-first: local-only wake word, no pre-wake audio buffering or storage, conversation mode with timeout, and explicit sleep commands such as "Jarvis sleep" or "Goodnight Jarvis." Cloud wake word remains forbidden.
+
+Voice authority moves to a T0-T3 model:
+
+- T0: read-only voice actions need no approval.
+- T1: low-risk reversible actions may be voice-authorised with standing consent.
+- T2: voice may initiate the proposal, but UI confirmation finalises it.
+- T3: manual-only actions cannot be approved by voice.
+
+Still forbidden: T2/T3 voice-only approval, destructive voice approval, governance changes by voice, self-elevating trust classes, auto-approval, public/remote dashboards, unapproved device actions, cloud wake word, pre-wake audio storage, and raw audio/transcript telemetry.
+
 ## Getting Started
 
 Prerequisites: Node.js 20+ and pnpm. The repo currently also includes an npm lockfile, so npm equivalents work.
@@ -234,7 +251,7 @@ Every phase has closeout gates before it is frozen. A feature is not considered 
 
 JARVIS demonstrates architecture-before-features discipline. The builder put safety gates, approval flows, privacy boundaries, telemetry rules, redaction, replay safety, and cost controls in place before chasing impressive demos.
 
-The disabled list matters because most AI projects add features as fast as possible. JARVIS deliberately leaves out wake word, always-listening, autonomous execution, background camera access, auto-approval, voice-only approval, graph-driven execution, and unapproved device control. That reflects production-grade thinking about trust, safety, and blast radius.
+The disabled list matters because most AI projects add features as fast as possible. JARVIS deliberately keeps autonomous execution, background capture, auto-approval, graph-driven execution, public dashboards, unapproved device control, raw telemetry, and destructive voice approval out of the shipped system. Expansion Era voice work is planned, but only through local-only wake/conversation mode and the T0-T3 authority model.
 
 Most student AI projects are prompt in, response out, call it a day. JARVIS has a governance layer, approval lifecycle, cost guards, redaction pipeline, read-only observability, adapter contracts, project continuity, voice boundaries, an architecture graph foundation, and thousands of tests. What separates a good CV from a great one is the discipline behind the code, not the feature count.
 
