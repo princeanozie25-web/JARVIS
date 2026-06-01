@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, statfsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, statfsSync, statSync } from "node:fs";
 import { freemem, platform } from "node:os";
+import { resolve } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 import {
   createBootstrapContract,
@@ -14,6 +15,15 @@ import {
   type BootstrapProviderId,
   type BootstrapValidationReason,
 } from "./bootstrap-contract";
+import {
+  runDoctorCliAdapter,
+  runSafeLocalDoctorRuntime,
+  type DoctorCliAdapterResult,
+  type DoctorRuntimeAdapters,
+  type DoctorRuntimePathRequest,
+  type DoctorRuntimeVersionProbeRequest,
+  type DoctorRuntimeVersionProbeResult,
+} from "../src/lib/bootstrap-readiness";
 
 export type DoctorStatus = "pass" | "warn" | "fail";
 
@@ -172,11 +182,15 @@ export function renderDoctorSummary(report: DoctorInspectionReport): string {
     lines.push(
       "",
       "Failures",
-      ...report.validationReasons.map((r) => `- ${r}`),
+      ...report.validationReasons.map((reason) => `- ${reason}`),
     );
   }
   if (report.warnings.length > 0) {
-    lines.push("", "Warnings", ...report.warnings.map((r) => `- ${r}`));
+    lines.push(
+      "",
+      "Warnings",
+      ...report.warnings.map((reason) => `- ${reason}`),
+    );
   }
 
   return lines.join("\n");
@@ -200,11 +214,99 @@ export function mapNodePlatform(value: NodeJS.Platform): BootstrapOsFamily {
   return "unknown";
 }
 
-export function runDoctorCli(): DoctorInspectionReport {
-  const report = inspectDoctorEnvironment();
-  console.log(renderDoctorSummary(report));
-  process.exitCode = report.status === "fail" ? 1 : 0;
-  return report;
+export function createNodeDoctorRuntimeAdapters(
+  projectRoot = process.cwd(),
+): DoctorRuntimeAdapters {
+  return {
+    pathExists: (request) => nodePathExists(projectRoot, request),
+    nodeVersion: () => process.version,
+    platform: () => platform(),
+    packageManagerVersionProbe: nodePackageManagerVersionProbe,
+  };
+}
+
+export function runDoctorCli(
+  argv: readonly string[] = process.argv.slice(2),
+): DoctorCliAdapterResult {
+  const result = runDoctorCliAdapter({
+    argv,
+    runRuntime: () =>
+      runSafeLocalDoctorRuntime({
+        adapters: createNodeDoctorRuntimeAdapters(),
+        observed_at: null,
+      }),
+  });
+
+  console.log(result.output);
+  process.exitCode = result.exit_code;
+
+  return result;
+}
+
+function nodePathExists(
+  projectRoot: string,
+  request: DoctorRuntimePathRequest,
+): boolean {
+  try {
+    const target = resolve(projectRoot, request.relative_path);
+    const stats = statSync(target);
+
+    return request.path_kind === "directory"
+      ? stats.isDirectory()
+      : stats.isFile();
+  } catch {
+    return false;
+  }
+}
+
+function nodePackageManagerVersionProbe(
+  request: DoctorRuntimeVersionProbeRequest,
+): DoctorRuntimeVersionProbeResult {
+  for (const packageManager of request.package_manager_ids) {
+    const version = readVersion(packageManager, request.timeout_ms);
+
+    if (version) {
+      return {
+        available: true,
+        detected_package_manager: packageManager,
+        version_label: version,
+        metadata_only: true,
+        read_only: true,
+        bounded: true,
+        shell_execution_enabled: false,
+        network_call_enabled: false,
+        provider_call_enabled: false,
+        install_action_enabled: false,
+        mutation_enabled: false,
+      };
+    }
+  }
+
+  return {
+    available: false,
+    detected_package_manager: null,
+    version_label: null,
+    metadata_only: true,
+    read_only: true,
+    bounded: true,
+    shell_execution_enabled: false,
+    network_call_enabled: false,
+    provider_call_enabled: false,
+    install_action_enabled: false,
+    mutation_enabled: false,
+  };
+}
+
+function readVersion(binary: string, timeoutMs: number): string | null {
+  try {
+    return execFileSync(binary, ["--version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: timeoutMs,
+    }).trim();
+  } catch {
+    return null;
+  }
 }
 
 function providerStatuses(
@@ -219,15 +321,7 @@ function providerStatuses(
 }
 
 function readPnpmVersion(): string | null {
-  try {
-    return execFileSync("pnpm", ["--version"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-      timeout: 1000,
-    }).trim();
-  } catch {
-    return null;
-  }
+  return readVersion("pnpm", 1000);
 }
 
 function readAvailableDiskBytes(): number | null {
@@ -244,10 +338,20 @@ function formatGib(bytes: number): string {
 }
 
 function isDirectCliInvocation(): boolean {
-  if (!process.argv[1]) return false;
+  if (!process.argv[1]) {
+    return false;
+  }
+
   const currentFile = fileURLToPath(import.meta.url);
-  if (process.argv[1] === currentFile) return true;
-  if (!existsSync(process.argv[1])) return false;
+
+  if (process.argv[1] === currentFile) {
+    return true;
+  }
+
+  if (!existsSync(process.argv[1])) {
+    return false;
+  }
+
   return process.argv[1].endsWith("doctor.ts");
 }
 

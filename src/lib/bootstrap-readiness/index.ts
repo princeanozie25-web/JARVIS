@@ -106,3 +106,81 @@ export type {
   DoctorDryRunObservation,
   DoctorDryRunObservedPostureInput,
 } from "./doctor-dry-run";
+
+export {
+  DOCTOR_REPORT_CONTRACT_VERSION,
+  DOCTOR_REPORT_SECTION_IDS,
+  DOCTOR_REPORT_VERDICTS,
+  DoctorReportCategoryBreakdownSchema,
+  DoctorReportSchema,
+  DoctorReportSectionIdSchema,
+  DoctorReportSectionSchema,
+  DoctorReportVerdictSchema,
+  buildDoctorReportFromDryRun,
+  buildDoctorReportFromResults,
+} from "./doctor-report";
+
+export type {
+  DoctorReport,
+  DoctorReportCategoryBreakdown,
+  DoctorReportSection,
+  DoctorReportSectionId,
+  DoctorReportVerdict,
+} from "./doctor-report";
+
+export {
+  DOCTOR_RUNTIME_VERSION,
+  SAFE_LOCAL_RUNTIME_SUPPORTED_CHECK_IDS,
+  DoctorRuntimeEvaluationSchema,
+  DoctorRuntimePackageManagerIdSchema,
+  DoctorRuntimePathKindSchema,
+  DoctorRuntimePathRequestSchema,
+  DoctorRuntimeVersionProbeRequestSchema,
+  DoctorRuntimeVersionProbeResultSchema,
+  runSafeLocalDoctorRuntime,
+} from "./doctor-runtime";
+
+export type {
+  DoctorRuntimeAdapters,
+  DoctorRuntimeEvaluation,
+  DoctorRuntimeOptions,
+  DoctorRuntimePathKind,
+  DoctorRuntimePathRequest,
+  DoctorRuntimeVersionProbeRequest,
+  DoctorRuntimeVersionProbeResult,
+} from "./doctor-runtime";
+
+export {
+  DOCTOR_CLI_ADAPTER_VERSION,
+  DOCTOR_CLI_FORMATS,
+  DoctorCliAdapterResultSchema,
+  DoctorCliFormatSchema,
+  getDoctorCliExitCode,
+  renderDoctorReportText,
+  runDoctorCliAdapter,
+  serializeDoctorReportJson,
+} from "./doctor-cli";
+
+export type {
+  DoctorCliAdapterOptions,
+  DoctorCliAdapterResult,
+  DoctorCliFormat,
+} from "./doctor-cli";
+
+export {
+  PHASE_20B_CLOSEOUT_CHECK_IDS,
+  PHASE_20B_CLOSEOUT_VERSION,
+  PHASE_20B_MODULE_IDS,
+  Phase20BCloseoutCheckIdSchema,
+  Phase20BCloseoutCheckSchema,
+  Phase20BCloseoutReportSchema,
+  Phase20BModuleIdSchema,
+  buildPhase20BCloseoutReport,
+} from "./phase-20b-closeout";
+
+export type {
+  Phase20BCloseoutCheck,
+  Phase20BCloseoutCheckId,
+  Phase20BCloseoutReport,
+  Phase20BModuleId,
+} from "./phase-20b-closeout";

@@ -28,7 +28,11 @@ export type DoctorCheckStatus = (typeof DOCTOR_CHECK_STATUSES)[number];
 export const DoctorCheckStatusSchema = z.enum(DOCTOR_CHECK_STATUSES);
 
 export const DoctorObservedPostureSchema = z.strictObject({
-  observation_status: z.enum(["not_observed", "supplied_dry_run_observation"]),
+  observation_status: z.enum([
+    "not_observed",
+    "supplied_dry_run_observation",
+    "safe_local_runtime_observation",
+  ]),
   local_first: z.boolean().nullable(),
   cloud_gated: z.boolean().nullable(),
   disabled_by_default: z.boolean().nullable(),
@@ -50,6 +54,7 @@ export const DoctorResultSourceSchema = z.strictObject({
   source_kind: z.enum([
     "doctor-check-registry-placeholder",
     "doctor-dry-run-input",
+    "safe-local-runtime",
   ]),
   source_registry_version: z.literal(DOCTOR_CHECK_REGISTRY_VERSION),
   observed_at: z.string().trim().min(1).max(80).nullable(),
@@ -96,7 +101,7 @@ export const DoctorCheckResultSchema = z.strictObject({
   metadata_only: z.literal(true),
   read_only: z.literal(true),
   deterministic: z.literal(true),
-  check_executed: z.literal(false),
+  check_executed: z.boolean(),
   filesystem_inspection_enabled: z.literal(false),
   shell_execution_enabled: z.literal(false),
   process_spawn_enabled: z.literal(false),
@@ -134,7 +139,7 @@ export const DoctorRunSummarySchema = z.strictObject({
   metadata_only: z.literal(true),
   read_only: z.literal(true),
   deterministic: z.literal(true),
-  checks_executed: z.literal(false),
+  checks_executed: z.boolean(),
   filesystem_inspection_enabled: z.literal(false),
   shell_execution_enabled: z.literal(false),
   process_spawn_enabled: z.literal(false),
@@ -309,7 +314,7 @@ export function summarizeDoctorResults(
     metadata_only: true,
     read_only: true,
     deterministic: true,
-    checks_executed: false,
+    checks_executed: parsedResults.some((result) => result.check_executed),
     filesystem_inspection_enabled: false,
     shell_execution_enabled: false,
     process_spawn_enabled: false,

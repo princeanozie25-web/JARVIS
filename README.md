@@ -2,7 +2,7 @@
 
 A governed, local-first AI operating environment. Built in phases. Architecture-first.
 
-![Tests](https://img.shields.io/badge/tests-3500%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-4200%2B%20passing-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 
@@ -14,33 +14,24 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 
 ## Current Status
 
-| Built / Frozen / In Progress                               | Deliberately Not Enabled                         |
-| ---------------------------------------------------------- | ------------------------------------------------ |
-| Governance architecture                                    | Wake word                                        |
-| Runtime governance                                         | Always-listening                                 |
-| Safety enforcement                                         | Autonomous execution                             |
-| Tool orchestration contracts                               | Background camera                                |
-| Persistent memory architecture                             | Auto-approval of any action                      |
-| Project continuity and registry layers                     | Voice-only approval                              |
-| Voice orchestration and streaming boundaries               | Unapproved device actions                        |
-| STT/TTS provider contracts and queues                      | Cloud providers by default                       |
-| Runtime command governance                                 | Remote/public dashboard                          |
-| Environmental/smart-room scaffolding                       | Graph-driven execution                           |
-| Vision layer contracts                                     | Architecture graph UI                            |
-| Scheduled self-audit contracts                             | React Flow/D3 graph rendering                    |
-| Observability Command Center contracts                     | Runtime dependency observers                     |
-| Phase 18 Approval Runtime foundation                       | Source import parsing for graph                  |
-| Phase 19A architecture graph contracts and static registry | Database/telemetry-backed graph ingestion        |
-| Phase 20A.1 final system status registry                   | Phase 20 packaging automation                    |
-| Phase 20A.2 final readiness report generator               | Runtime final-readiness generation               |
-| Phase 20A.3 final disabled-feature matrix                  | Enabling disabled features from prior phases     |
-| Phase 20A.4 final authority surface inventory              | Reclassifying or enabling authority surfaces     |
-| Phase 20A.5 final governance readiness summary             | Treating Phase 20A metadata as runtime authority |
-| Phase 20A.6 final readiness layer closeout                 | Starting Phase 20B packaging/onboarding work     |
-| Phase 20B.1 bootstrap readiness contract                   | Bootstrap execution or installation automation   |
-| Phase 20B.2 doctor check registry                          | Runtime doctor check execution                   |
-| Phase 20B.3 doctor result contract                         | Filesystem-backed doctor observations            |
-| Phase 20B.4 doctor dry-run evaluator                       | Real machine/environment inspection              |
+| Built / Frozen / In Progress                                    | Deliberately Not Enabled                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Governance architecture                                         | Wake word                                                                      |
+| Runtime governance                                              | Always-listening                                                               |
+| Safety enforcement                                              | Autonomous execution                                                           |
+| Tool orchestration contracts                                    | Background camera                                                              |
+| Persistent memory architecture                                  | Auto-approval of any action                                                    |
+| Project continuity and registry layers                          | Voice-only approval                                                            |
+| Voice orchestration and streaming boundaries                    | Unapproved device actions                                                      |
+| STT/TTS provider contracts and queues                           | Cloud providers by default                                                     |
+| Runtime command governance                                      | Remote/public dashboard                                                        |
+| Environmental/smart-room scaffolding                            | Graph-driven execution                                                         |
+| Vision layer contracts                                          | Architecture graph UI                                                          |
+| Scheduled self-audit contracts                                  | React Flow/D3 graph rendering                                                  |
+| Observability Command Center contracts                          | Runtime dependency observers                                                   |
+| Phase 18 Approval Runtime foundation                            | Source import parsing for graph                                                |
+| Phase 19 architecture graph contracts and static registry       | Database/telemetry-backed graph ingestion                                      |
+| Phase 20 final integration, hardening, packaging, and readiness | Packaging/install automation, authority expansion, or expansion-era completion |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second.
 
@@ -53,18 +44,16 @@ Completed or contract-frozen highlights:
 - Phases 1-9: governance, providers, streaming, memory, project continuity, runtime safety, terminal governance, voice scaffolding, and Command Center contracts.
 - Phases 10-17: Room OS substrate, local persistence/event-store contracts, Command Center realization contracts, model runtime, voice runtime, vision runtime, room adapter runtime, and scheduled assistance runtime foundations.
 - Phase 18: Approval-Gated Execution Layer. This is metadata-only and frozen as the governed lifecycle foundation: proposal, review, decision record, inert authority token metadata, execution plan metadata, verification metadata, compensation metadata, and integrated lifecycle closeout. It proves there is no unapproved execution path.
-- Phase 19A.1: Architecture Graph Foundation. Typed, read-only graph contracts for nodes, edges, layers, health, discrepancies, governance boundaries, and validation.
-- Phase 19A.2: Static Architecture Graph Registry. Deterministic registry describing the designed JARVIS subsystem graph and inert forbidden/tripwire edges.
-- Phase 20A.1: Final System Status Registry. Typed, read-only Phase 20 integration registry summarizing Phase 10-19 operational status, evidence, authority posture, disabled-feature posture, and packaging relevance without adding routes, provider calls, execution hooks, or authority.
-- Phase 20A.2: Final Readiness Report Generator. Deterministic metadata-only report builder over the final-system-status registry, summarizing readiness, phase coverage, authority surfaces, disabled features, packaging, move-in, portfolio/demo relevance, and final governance posture.
-- Phase 20A.3: Final Disabled-Feature Matrix. Static, typed, metadata-only matrix consolidating intentionally disabled risky surfaces across Phases 10-19 and Phase 20 hardening, including wake word, hidden capture, auto-approval, graph-driven execution, unapproved device actions, scheduler side effects, and ungoverned provider escalation.
-- Phase 20A.4: Final Authority Surface Inventory. Static, typed, metadata-only inventory of authority-bearing and authority-adjacent surfaces across Phases 10-19, including model/runtime/provider, voice, vision, room adapter, scheduler, approval, tool, UI, graph, telemetry, governance, red-team, persistence, project, and memory surfaces.
-- Phase 20A.5: Final Governance Readiness Summary. Deterministic metadata-only rollup over the Phase 20A registry, report, disabled-feature matrix, and authority inventory answering whether governance is ready for Phase 20 hardening while preserving capability neutrality.
-- Phase 20A.6: Final Readiness Layer Closeout. Typed deterministic closeout guard proving the Phase 20A readiness/governance layer is complete, capability-neutral, and ready for Phase 20B packaging, bootstrap, and onboarding hardening.
-- Phase 20B.1: Bootstrap Readiness Contract. Typed metadata-only contract describing fresh-machine prerequisites across environment, runtime, project, and validation categories without executing installation, shell commands, network calls, provider calls, filesystem mutation, or bootstrap automation.
-- Phase 20B.2: Doctor Check Registry. Typed metadata-only registry of future doctor checks derived from the bootstrap readiness contract, covering environment, project, runtime, local-first/cloud-gated posture, and disabled-provider posture without executing checks.
-- Phase 20B.3: Doctor Result Contract. Typed metadata-only result and summary contracts for future doctor checks, including pending placeholders, expected and unobserved posture, remediation hints, blocking status, deterministic source metadata, and aggregation helpers without executing checks.
-- Phase 20B.4: Doctor Dry-Run Evaluator. Deterministic input-driven evaluator that maps supplied mock observations onto doctor check results, leaves missing observations pending, and summarizes output without inspecting the real machine.
+- Phase 19 architecture graph foundation and static registry: typed, read-only graph contracts for nodes, edges, layers, health, discrepancies, governance boundaries, validation, designed subsystem relationships, and inert forbidden/tripwire edges.
+- Phase 20 — Final Integration, Hardening, Packaging & Readiness. This is one public phase made up of implementation slices, not separate public phases. It closes the roadmap with typed, deterministic, metadata-only readiness contracts, audits, reports, and closeout declarations.
+  - Final system status registry, final readiness report, final disabled-feature matrix, final authority surface inventory, final governance readiness summary, and final readiness closeout.
+  - Bootstrap readiness contract, doctor check registry, doctor result contract, doctor dry-run evaluator, doctor report generator, safe local doctor runtime, doctor CLI adapter, and bootstrap readiness closeout.
+  - Onboarding readiness contract, onboarding step registry, onboarding progress model, onboarding report generator, move-in readiness checklist, and onboarding readiness closeout.
+  - Portfolio readiness contract, recruiter narrative registry, demo surface registry, demo flow registry, portfolio report generator, and portfolio readiness closeout.
+  - Cross-phase audit contract, evidence registry, result model, evaluator, governance audit, disabled-feature audit, authority-surface audit, audit report, and audit closeout.
+  - Final hardening contract, failure mode registry, hardening result model, hardening evaluator, recovery/fallback audit, authority regression audit, governance integrity audit, demo/portfolio readiness audit, system completion audit, and final hardening closeout.
+  - Final documentation readiness, onboarding/runbook readiness, documentation closeout, final project readiness audit, master roadmap closeout report, and final project declaration.
+  - All Phase 20 slices preserve read-only, metadata-only, deterministic boundaries unless explicitly documented as the safe local doctor runtime/CLI adapter; they do not create new authority surfaces, bypass approvals, enable disabled features, expose raw/source material, or add expansion-era capabilities.
 
 ## Architecture
 
@@ -94,7 +83,7 @@ Key decisions:
 | Desktop shell            | Tauri                              | Planned/contracted local desktop packaging with loopback-only exposure and OS permissions under governance. |
 | Voice operationalization | `whisper.cpp` for STT, Piper TTS   | Planned offline push-to-talk voice without wake word or cloud audio by default.                             |
 | Local models             | Ollama                             | Planned local model runtime behind the existing registry/router pattern.                                    |
-| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19A slices are contracts and static registry only.                                  |
+| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19 graph work is contracts and static registry only.                                |
 
 ## Project Structure
 
@@ -105,9 +94,11 @@ jarvis/
     components/                React panels for approvals, voice, memory, projects, review queues
     lib/
       approval-runtime/        Phase 18 approval lifecycle metadata contracts and closeout guards
-      architecture-graph/      Phase 19A read-only architecture graph contracts and static registry
-      bootstrap-readiness/     Phase 20B metadata-only bootstrap prerequisite contract and doctor check registry
-      final-system-status/     Phase 20A metadata-only status, readiness, disabled-feature, authority, governance, and closeout summaries
+      architecture-graph/      Phase 19 read-only architecture graph contracts and static registry
+      bootstrap-readiness/     Phase 20 bootstrap prerequisite, doctor, report, runtime, and closeout metadata
+      final-system-status/     Phase 20 status, readiness, disabled-feature, authority, governance, and closeout metadata
+      onboarding-readiness/    Phase 20 onboarding and move-in readiness metadata
+      portfolio-readiness/     Phase 20 portfolio and demo readiness metadata
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
@@ -149,18 +140,18 @@ Proposal
 
 The final closeout proves Phase 18 remains approval-gated, metadata-safe, replay-safe, redaction-safe, non-authoritative, non-executing, non-dispatching, non-persistent, and has no unapproved execution path.
 
-## Phase 19A Architecture Graph
+## Phase 19 Architecture Graph
 
-Phase 19A begins the Fortress Upgrades with read-only architecture visibility.
+Phase 19 adds the Fortress architecture-visibility layer as read-only metadata.
 
 Implemented so far:
 
 - `src/lib/architecture-graph/contracts.ts`: graph/node/edge/layer/kind/health/activity/discrepancy/governance-boundary schemas and metadata-only validation.
-- `src/lib/architecture-graph/fixtures.ts`: deterministic Phase 19A.1 sample graph fixture.
+- `src/lib/architecture-graph/fixtures.ts`: deterministic sample graph fixture.
 - `src/lib/architecture-graph/static-registry.ts`: deterministic static registry for completed JARVIS subsystems and designed dependency edges.
 - `src/lib/architecture-graph/index.ts`: safe exports for read-only graph contracts and registry helpers.
 
-The static registry includes Phase 10 through Phase 19A nodes, core runtime/module nodes, designed dependency edges, and forbidden/tripwire edges such as "Voice Runtime must not approve actions" and "Architecture Graph must not execute traces." These are metadata tripwires only, not executable behavior.
+The static registry includes Phase 10 through Phase 19 nodes, core runtime/module nodes, designed dependency edges, and forbidden/tripwire edges such as "Voice Runtime must not approve actions" and "Architecture Graph must not execute traces." These are metadata tripwires only, not executable behavior.
 
 Deferred:
 
@@ -173,50 +164,36 @@ Deferred:
 - No runtime observers.
 - No graph-driven execution.
 
-## Phase 20A Final Integration
+## Phase 20 — Final Integration, Hardening, Packaging & Readiness
 
-Phase 20A starts final integration without introducing a new subsystem. The first slices add `src/lib/final-system-status`, a static, typed, read-only registry, report layer, disabled-feature matrix, authority surface inventory, governance readiness summary, and final closeout guard for completed core phases 10-19.
+Phase 20 is one unified public phase. Internally it was delivered as implementation slices, but those slice labels are not separate product phases. The goal was to make the completed JARVIS OS reproducible, auditable, demo-ready, move-in-ready, and safe to hand off without adding new runtime authority.
 
-The registry records:
+Completed Phase 20 implementation slices include:
 
-- Phase id, phase name, and current status.
-- Metadata-only evidence references.
-- Readiness categories for final audit, packaging, move-in, onboarding, portfolio, and disabled-feature matrix work.
-- Authority posture for authority-bearing phases.
-- Disabled-feature posture for risky surfaces.
-- Packaging relevance for later Phase 20 slices.
+- Final system status registry
+- Final readiness report
+- Final disabled-feature matrix
+- Final authority surface inventory
+- Final governance readiness summary
+- Final readiness closeout
+- Bootstrap readiness contract
+- Doctor check registry
+- Doctor result contract
+- Doctor dry-run evaluator
+- Doctor report generator
+- Safe local doctor runtime and CLI adapter
+- Bootstrap readiness closeout
+- Onboarding readiness contract, step registry, progress model, report generator, move-in checklist, and onboarding closeout
+- Portfolio readiness contract, recruiter narrative registry, demo surface registry, demo flow registry, portfolio report, and portfolio closeout
+- Cross-phase audit contract, evidence registry, result model, evaluator, governance audit, disabled-feature audit, authority-surface audit, audit report, and audit closeout
+- Final hardening contract, failure mode registry, hardening result model, evaluator, recovery/fallback audit, authority regression audit, governance integrity audit, demo/portfolio audit, system completion audit, and hardening closeout
+- Final documentation readiness, onboarding/runbook readiness, documentation closeout, final project readiness audit, master roadmap closeout report, and final project declaration
 
-Query helpers return all phase statuses, final readiness summary, blocked/missing items, authority-bearing surfaces, and disabled-feature surfaces. Phase 20A.2 adds `buildFinalReadinessReport()`, which produces deterministic sections for summary, phase coverage, readiness categories, authority surfaces, disabled features, packaging readiness, move-in readiness, portfolio readiness, and governance verdict.
+Phase 20 preserves the architecture boundaries: read-only where required, metadata-only where required, deterministic reports, local-first posture, approval-gated execution, redaction-aware evidence, no approval bypass, no new authority surface, no raw/source-material exposure, and no disabled capability quietly becoming active.
 
-Phase 20A.3 adds `getFinalDisabledFeatureMatrix()`, `getDisabledFeaturesByCategory()`, `getCriticalDisabledFeatures()`, and `summarizeDisabledFeaturePosture()` for final hardening audits. The matrix pins wake word, always-listening, background/hidden capture, autonomous device execution, public dashboards, voice-only approval, auto-approval, graph-driven execution, unredacted telemetry/UI exposure, remote/cloud defaults, whole-home control, CAI non-whitelisted targets, UI run/retry/mutate controls, scheduler side effects, routine chaining, unapproved room actions, and ungoverned provider escalation as still disabled.
+The only bounded runtime added in Phase 20 is the safe local doctor path, which checks local readiness through constrained adapters and never installs, auto-fixes, calls providers, calls the network, executes Ollama/Tauri/voice/vision runtimes, or performs room/device actions.
 
-Phase 20A.4 adds `getFinalAuthoritySurfaceInventory()`, `getAuthoritySurfacesRequiringApproval()`, `getExecutableAuthoritySurfaces()`, `getNetworkCapableAuthoritySurfaces()`, and `summarizeAuthoritySurfacePosture()`. The inventory records read/write/execute posture, approval requirements, network posture, raw payload posture, disabled-feature dependencies, governance notes, and final Phase 20 posture for every authority-bearing or authority-adjacent surface without reclassifying or enabling any surface.
-
-Phase 20A.5 adds `buildFinalGovernanceReadinessSummary()`, a deterministic rollup over the Phase 20A metadata artifacts. It answers whether phases 10-19 are represented, whether blocked/missing items exist, whether critical disabled features remain disabled, whether authority and execution-capable surfaces are governed, whether network surfaces remain local-first/cloud-gated/whitelisted, whether auto-approval or source-material exposure exists, and whether Phase 20 remains capability-neutral.
-
-Phase 20A.6 adds `buildPhase20ACloseoutReport()`, a typed deterministic closeout guard proving the registry, readiness report, disabled-feature matrix, authority inventory, and governance readiness summary are integrated. The closeout declares Phase 20A complete and ready for Phase 20B packaging/bootstrap/onboarding hardening without starting that work.
-
-Phase 20A adds no UI route, provider call, network call, filesystem mutation, routine execution, room/device control, raw payload exposure, approval bypass, runtime report generation surface, or new authority surface.
-
-## Phase 20B Bootstrap Readiness
-
-Phase 20B begins Packaging & Bootstrap Hardening. Phase 20B.1 adds `src/lib/bootstrap-readiness`, a typed, deterministic, metadata-only contract for the prerequisites required to bootstrap and run JARVIS OS v1 on a fresh machine.
-
-The contract covers environment prerequisites such as Node.js, npm/pnpm, TypeScript, and supported platforms; runtime prerequisites such as Ollama, local model runtime, SQLite, Tauri, voice, and vision; project prerequisites such as required directories, config files, env defaults, and registries; and validation targets for doctor integration and future verification.
-
-Helpers return the contract, requirements, validation targets, and summary counts. Phase 20B.1 does not execute bootstrap, install dependencies, run shell commands, mutate files or environment, call providers, call the network, add runtime hooks, create authority surfaces, or add capabilities.
-
-Phase 20B.2 adds a deterministic doctor check registry derived from the bootstrap readiness contract. It defines metadata for future checks covering Node.js, npm/pnpm, TypeScript tooling, OS/platform support, required project directories, config files, env defaults, registries, SQLite, Tauri, Ollama/local model runtime, voice prerequisites, vision prerequisites, local-first/cloud-gated posture, and disabled-by-default provider posture.
-
-The doctor registry helpers return all checks, checks by category, required checks, and summary counts. Phase 20B.2 does not execute checks, inspect the filesystem, spawn processes, run shell commands, install dependencies, mutate state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
-
-Phase 20B.3 adds typed result contracts for future doctor output. `createPendingDoctorResults()` derives deterministic pending placeholders from the doctor check registry, while `summarizeDoctorResults()`, `getBlockingDoctorResults()`, and `getDoctorResultsByStatus()` aggregate supplied metadata-only result objects. Observed posture remains explicitly unobserved, timestamps remain null placeholders, and remediation hints are descriptive only.
-
-Phase 20B.3 does not execute doctor checks, inspect files, spawn processes, run shell commands, install dependencies, mutate runtime state, call providers, call the network, add UI routes, create authority surfaces, or add capabilities.
-
-Phase 20B.4 adds `evaluateDoctorDryRun()`, a deterministic dry-run evaluator for supplied mock observations. It loads the doctor check registry, matches observations by check id, emits pending results for missing observations, classifies blocking checks from registry metadata, and reuses the existing doctor result summary helper.
-
-Phase 20B.4 remains input-driven only. It does not inspect the real environment, read the filesystem, spawn processes, run shell commands, install dependencies, mutate runtime state, call providers, call the network, bypass approvals, add UI routes, create authority surfaces, or add capabilities.
+Expansion-era work remains future-only: Obsidian integration, Graphify overlay, LLM Council, HITNEXUS integration, LLM Wiki, future research systems, and real CAI execution enablement are not shipped capabilities.
 
 ## Getting Started
 
@@ -235,7 +212,7 @@ Open `http://localhost:3000` for the current local app surface. There is no stan
 
 ## Testing
 
-Current posture: 3,500+ passing tests, TypeScript strict, lint passing, and closeout guards across governance, voice, runtime, project intelligence, environment, vision, scheduled assistance, approval lifecycle, and architecture graph contracts.
+Current posture: 4,200+ passing tests, TypeScript strict, lint passing, and closeout guards across governance, voice, runtime, project intelligence, environment, vision, scheduled assistance, approval lifecycle, architecture graph, final hardening, final documentation, and final project declaration contracts.
 
 ```bash
 pnpm test
@@ -261,7 +238,7 @@ The disabled list matters because most AI projects add features as fast as possi
 
 Most student AI projects are prompt in, response out, call it a day. JARVIS has a governance layer, approval lifecycle, cost guards, redaction pipeline, read-only observability, adapter contracts, project continuity, voice boundaries, an architecture graph foundation, and thousands of tests. What separates a good CV from a great one is the discipline behind the code, not the feature count.
 
-The current Phase 19A work makes the architecture itself visible. The graph contracts and static registry show how subsystems are designed to relate, where governance gates sit, and which connections are forbidden, without giving the graph any power to execute.
+The Phase 19 architecture work makes the architecture itself visible. The graph contracts and static registry show how subsystems are designed to relate, where governance gates sit, and which connections are forbidden, without giving the graph any power to execute.
 
 ## Related Documents
 
