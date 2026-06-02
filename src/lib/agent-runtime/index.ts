@@ -54,6 +54,33 @@ export {
 } from "./registry";
 
 export {
+  DEADLINE_AGENT_PREVIEW_VERSION,
+  DEADLINE_AGENT_SOURCES,
+  DEADLINE_ESCALATION_LEVELS,
+  DEADLINE_PREVIEW_CAVEATS,
+  DEADLINE_PROGRESS_STATUSES,
+  DEADLINE_SUGGESTED_ACTIONS,
+  DeadlineAgentPreviewGovernanceSchema,
+  DeadlineAgentPreviewInputSchema,
+  DeadlineAgentPreviewSchema,
+  DeadlineAgentSourceSchema,
+  DeadlineAlertSchema,
+  DeadlineEscalationLevelSchema,
+  DeadlineMetadataSchema,
+  DeadlinePreviewCaveatSchema,
+  DeadlineProgressStatusSchema,
+  DeadlineSourceSummarySchema,
+  DeadlineSuggestedActionSchema,
+  previewDeadlineAgent,
+  type DeadlineAgentPreview,
+  type DeadlineAgentPreviewInput,
+  type DeadlineAlert,
+  type DeadlineEscalationLevel,
+  type DeadlineMetadata,
+  type DeadlineSuggestedAction,
+} from "./deadline-agent-preview";
+
+export {
   APPLICATION_TRACKER_ACTIONS,
   APPLICATION_TRACKER_AGENT_PREVIEW_VERSION,
   APPLICATION_TRACKER_OUTREACH_PURPOSES,
