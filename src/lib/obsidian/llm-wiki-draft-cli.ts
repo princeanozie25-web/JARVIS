@@ -28,6 +28,7 @@ import {
   createDeepSeekModelProvider,
   createModelRuntime,
   createModelRuntimeProviderKey,
+  applyDeepSeekLiveRegistryOverride,
   loadDefaultModelRegistry,
   type DeepSeekClient,
   type ModelProvider,
@@ -503,7 +504,11 @@ export function createConfiguredLlmWikiDraftRuntime(
     return unavailableRuntime("missing_deepseek_api_key");
   }
 
-  const registry = (dependencies.loadRegistry ?? loadDefaultModelRegistry)();
+  const registryOverride = applyDeepSeekLiveRegistryOverride(
+    (dependencies.loadRegistry ?? loadDefaultModelRegistry)(),
+    env,
+  );
+  const registry = registryOverride.registry;
   const entry = registry.getModel(LLM_WIKI_DRAFT_MODEL_ID);
   if (!entry) return unavailableRuntime("registry_entry_missing");
   if (entry.provider !== "deepseek" || entry.runtime_class !== "cloud") {

@@ -42,6 +42,17 @@ export type {
 } from "./registry";
 
 export {
+  DEEPSEEK_LIVE_MODEL_IDS,
+  DEEPSEEK_LIVE_OVERRIDE_ENV,
+  applyDeepSeekLiveRegistryOverride,
+  isDeepSeekLiveOverrideEnabled,
+} from "./local-dev-overrides";
+export type {
+  DeepSeekLiveModelId,
+  DeepSeekLiveOverrideResult,
+} from "./local-dev-overrides";
+
+export {
   MODEL_FALLBACK_GOVERNANCE_FLAGS,
   MODEL_RESOLVER_FAILURE_REASONS,
   MODEL_RESOLVER_REJECTION_REASONS,

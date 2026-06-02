@@ -7,6 +7,8 @@ import {
   createDeepSeekModelProvider,
   createModelRuntime,
   createModelRuntimeProviderKey,
+  applyDeepSeekLiveRegistryOverride,
+  DEEPSEEK_LIVE_OVERRIDE_ENV,
   loadDefaultModelRegistry,
   type DeepSeekClient,
   type ModelProvider,
@@ -69,7 +71,7 @@ export async function runDeepSeekSmoke(
     writeLine("status: skipped");
     writeLine(`reason: ${config.reason}`);
     writeLine(
-      "enablement: set DEEPSEEK_API_KEY in .env.local and intentionally enable deepseek-v4-flash and deepseek-v4-pro in config/models/registry.yaml",
+      `enablement: set DEEPSEEK_API_KEY in .env.local and run with ${DEEPSEEK_LIVE_OVERRIDE_ENV}=true for local live tests`,
     );
     return {
       status: "skipped",
@@ -95,7 +97,8 @@ export async function runDeepSeekSmoke(
   const makeRuntime = dependencies.createRuntime ?? createModelRuntime;
   const now = dependencies.now ?? Date.now;
 
-  const registry = loadRegistry();
+  const override = applyDeepSeekLiveRegistryOverride(loadRegistry(), env);
+  const registry = override.registry;
   const entries = resolveEnabledDeepSeekEntries(registry);
   const client = createClient(config);
   const provider = createProvider(client);
@@ -210,7 +213,7 @@ function resolveEnabledDeepSeekEntries(
     }
     if (entry.visibility !== "enabled") {
       throw new DeepSeekSmokeError(
-        `${modelId} is disabled. Set visibility: enabled intentionally before running the DeepSeek smoke, then restore visibility: disabled after verification.`,
+        `${modelId} is disabled. Keep config/models/registry.yaml disabled and run local live tests with ${DEEPSEEK_LIVE_OVERRIDE_ENV}=true.`,
       );
     }
     return entry;

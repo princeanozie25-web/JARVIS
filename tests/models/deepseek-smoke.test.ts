@@ -6,6 +6,7 @@ import {
   createDeepSeekModelProvider,
   createModelRegistryFromYaml,
   createModelRuntime,
+  DEEPSEEK_LIVE_OVERRIDE_ENV,
   type DeepSeekClient,
   type ModelRuntimeOptions,
 } from "../../src/models";
@@ -126,7 +127,7 @@ describe("DeepSeek smoke harness", () => {
       "JARVIS DeepSeek smoke",
       "status: skipped",
       "reason: missing DEEPSEEK_API_KEY",
-      expect.stringContaining("set DEEPSEEK_API_KEY"),
+      expect.stringContaining(DEEPSEEK_LIVE_OVERRIDE_ENV),
     ]);
     expect(lines.join("\n")).not.toContain("sk-test");
   });
@@ -145,8 +146,33 @@ describe("DeepSeek smoke harness", () => {
         },
         writeLine: () => {},
       }),
-    ).rejects.toThrow(/visibility: enabled/);
+    ).rejects.toThrow(new RegExp(DEEPSEEK_LIVE_OVERRIDE_ENV));
     expect(clientCreated).toBe(false);
+  });
+
+  it("applies the local live override without requiring committed registry changes", async () => {
+    const { runDeepSeekSmoke } = await import("../../scripts/deepseek-smoke");
+    const lines: string[] = [];
+    const calls: string[] = [];
+
+    const report = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_API_KEY: "sk-test",
+        [DEEPSEEK_LIVE_OVERRIDE_ENV]: "true",
+      },
+      loadRegistry: () => deepseekRegistry("disabled"),
+      createClient: () => fakeClient(calls),
+      createProvider: (client) => createDeepSeekModelProvider({ client }),
+      now: createClock(100, 125, 200, 250),
+      writeLine: (line) => lines.push(line),
+    });
+
+    expect(report.status).toBe("ok");
+    expect(calls).toEqual(["deepseek-v4-flash", "deepseek-v4-pro"]);
+    expect(lines).toContain("model_id: deepseek-v4-flash");
+    expect(lines).toContain("model_id: deepseek-v4-pro");
+    expect(lines.join("\n")).not.toContain("sk-test");
+    expect(lines.join("\n")).not.toContain(DEEPSEEK_LIVE_OVERRIDE_ENV);
   });
 
   it("executes both V4 models through createModelRuntime with explicit DeepSeek cloud policy", async () => {

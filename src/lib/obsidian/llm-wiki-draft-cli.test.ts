@@ -13,7 +13,10 @@ import {
   printLlmWikiDraftCliReport,
   runLlmWikiDraftCli,
 } from "./index";
-import { createModelRegistryFromYaml } from "../../models";
+import {
+  createModelRegistryFromYaml,
+  DEEPSEEK_LIVE_OVERRIDE_ENV,
+} from "../../models";
 import type {
   DeepSeekClient,
   DeepSeekCompleteRequest,
@@ -372,6 +375,70 @@ models:
         reason: "registry_entry_disabled",
       },
     });
+  });
+
+  it("builds the DeepSeek runtime from disabled defaults when the local live override is enabled", async () => {
+    const calls: string[] = [];
+    const activation = createConfiguredLlmWikiDraftRuntime({
+      env: {
+        DEEPSEEK_API_KEY: "sk-test",
+        [DEEPSEEK_LIVE_OVERRIDE_ENV]: "true",
+      },
+      loadRegistry: () =>
+        createModelRegistryFromYaml(`
+schema_version: 1
+models:
+  - id: deepseek-v4-flash
+    provider: deepseek
+    tier: T2
+    runtime_class: cloud
+    capabilities: [chat, tool_reasoning]
+    context_window: 128000
+    visibility: disabled
+    priority: 90
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+    metadata:
+      display_name: DeepSeek V4 Flash
+      description: Test DeepSeek metadata.
+      approximate_memory_mb: null
+      cost_class: cloud_metered_unverified
+      governance_notes: Test only.
+`),
+      createClient: () => fakeDeepSeekClient(calls),
+      now: () => 100,
+    });
+
+    expect(activation.diagnostic).toMatchObject({
+      status: "ready",
+      reason: "configured",
+      model_id: LLM_WIKI_DRAFT_MODEL_ID,
+    });
+
+    const result = await activation.runtime?.execute({
+      request_id: "wiki-draft-runtime-override-test",
+      capability: "chat",
+      input: {
+        kind: "text",
+        content: "metadata-only runtime verification",
+      },
+      resolver_options: {
+        allow_cloud: true,
+        allow_disabled: false,
+        runtime_class: "cloud",
+      },
+      timeout_ms: 1_000,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      response: {
+        model_id: LLM_WIKI_DRAFT_MODEL_ID,
+        provider_id: "deepseek",
+      },
+    });
+    expect(calls).toEqual([LLM_WIKI_DRAFT_MODEL_ID]);
   });
 });
 

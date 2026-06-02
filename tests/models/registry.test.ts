@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  applyDeepSeekLiveRegistryOverride,
   createModelRegistryFromYaml,
+  DEEPSEEK_LIVE_OVERRIDE_ENV,
   loadDefaultModelRegistry,
-} from "../../src/models/registry";
+} from "../../src/models";
 
 describe("Phase 13A.1 model registry loader", () => {
   it("loads config/models/registry.yaml successfully", () => {
@@ -49,6 +51,44 @@ describe("Phase 13A.1 model registry loader", () => {
     );
     expect(registry.listModels().map((entry) => entry.id)).not.toEqual(
       expect.arrayContaining(["deepseek-chat", "deepseek-reasoner"]),
+    );
+  });
+
+  it("keeps the committed DeepSeek defaults disabled without the local live override", () => {
+    const registry = loadDefaultModelRegistry();
+    const override = applyDeepSeekLiveRegistryOverride(registry, {});
+
+    expect(override.override_applied).toBe(false);
+    expect(override.enabled_model_ids).toEqual([]);
+    expect(override.registry.getModel("deepseek-v4-flash")?.visibility).toBe(
+      "disabled",
+    );
+    expect(override.registry.getModel("deepseek-v4-pro")?.visibility).toBe(
+      "disabled",
+    );
+  });
+
+  it("enables only DeepSeek V4 entries in an in-memory local live override", () => {
+    const registry = loadDefaultModelRegistry();
+    const override = applyDeepSeekLiveRegistryOverride(registry, {
+      [DEEPSEEK_LIVE_OVERRIDE_ENV]: "true",
+    });
+
+    expect(override.override_applied).toBe(true);
+    expect(override.enabled_model_ids).toEqual([
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
+    ]);
+    expect(override.registry.getModel("deepseek-v4-flash")?.visibility).toBe(
+      "enabled",
+    );
+    expect(override.registry.getModel("deepseek-v4-pro")?.visibility).toBe(
+      "enabled",
+    );
+    expect(registry.getModel("deepseek-v4-flash")?.visibility).toBe("disabled");
+    expect(registry.getModel("deepseek-v4-pro")?.visibility).toBe("disabled");
+    expect(override.registry.getModel("claude-haiku")?.visibility).toBe(
+      "disabled",
     );
   });
 
