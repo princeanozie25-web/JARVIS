@@ -201,6 +201,73 @@ export {
 } from "./compounding-wiki-bridge";
 
 export {
+  KNOWLEDGE_DETECT_CLI_VERSION,
+  planKnowledgeDetectionFromIndex,
+  printKnowledgeDetectReport,
+  runKnowledgeDetectCli,
+  type KnowledgeDetectBridgeRecommendationReport,
+  type KnowledgeDetectCandidateReport,
+  type KnowledgeDetectCliDependencies,
+  type KnowledgeDetectCliReport,
+} from "./knowledge-detect-cli";
+
+export {
+  LLM_WIKI_GENERATION_PLANNER_REASONS,
+  LLM_WIKI_GENERATION_PLANNER_VERSION,
+  LLM_WIKI_GENERATION_PLANNER_WARNINGS,
+  LLM_WIKI_GENERATION_SCOPES,
+  LlmWikiGenerationGatewayCompatibilitySchema,
+  LlmWikiGenerationPlanSchema,
+  LlmWikiGenerationPlannerInputSchema,
+  LlmWikiGenerationScopeSchema,
+  LlmWikiGenerationSourceCoverageSchema,
+  LlmWikiPageDraftPlanSchema,
+  planLlmWikiGeneration,
+  type LlmWikiGenerationGatewayCompatibility,
+  type LlmWikiGenerationPlan,
+  type LlmWikiGenerationPlannerInput,
+  type LlmWikiGenerationPlannerReason,
+  type LlmWikiGenerationPlannerWarning,
+  type LlmWikiGenerationScope,
+  type LlmWikiGenerationSourceCoverage,
+  type LlmWikiPageDraftPlan,
+} from "./llm-wiki-generation-planner";
+
+export {
+  LLM_WIKI_DRAFT_GENERATOR_REASONS,
+  LLM_WIKI_DRAFT_GENERATOR_VERSION,
+  LLM_WIKI_DRAFT_GENERATOR_WARNINGS,
+  LLM_WIKI_DRAFT_MODEL_ID,
+  LlmWikiDraftGeneratorInputSchema,
+  LlmWikiDraftGeneratorRuntimeOptionsSchema,
+  LlmWikiDraftResultSchema,
+  LlmWikiDraftSourceAttributionSchema,
+  generateLlmWikiDraft,
+  type GenerateLlmWikiDraftDependencies,
+  type LlmWikiDraftGeneratorInput,
+  type LlmWikiDraftGeneratorReason,
+  type LlmWikiDraftGeneratorRuntimeOptions,
+  type LlmWikiDraftGeneratorWarning,
+  type LlmWikiDraftResult,
+  type LlmWikiDraftSourceAttribution,
+} from "./llm-wiki-draft-generator";
+
+export {
+  LLM_WIKI_DRAFT_CLI_VERSION,
+  LLM_WIKI_DRAFT_RUNTIME_DIAGNOSTIC_REASONS,
+  createConfiguredLlmWikiDraftRuntime,
+  createLlmWikiDraftPreviewFromIndex,
+  printLlmWikiDraftCliReport,
+  runLlmWikiDraftCli,
+  type ConfiguredLlmWikiDraftRuntime,
+  type CreateConfiguredLlmWikiDraftRuntimeDependencies,
+  type LlmWikiDraftCliDependencies,
+  type LlmWikiDraftCliReport,
+  type LlmWikiDraftRuntimeDiagnostic,
+  type LlmWikiDraftRuntimeDiagnosticReason,
+} from "./llm-wiki-draft-cli";
+
+export {
   VAULT_FRONTMATTER_SCHEMA_VERSION,
   VaultAgentAttributionSchema,
   VaultApprovalStatusSchema,
