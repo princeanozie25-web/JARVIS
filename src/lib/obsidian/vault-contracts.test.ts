@@ -103,9 +103,18 @@ describe("Phase 21 vault taxonomy contracts", () => {
       "project",
       "source",
       "decision",
+      "comparison",
+      "synthesis",
       "agent_run",
       "git_commit",
       "git_slice",
+      "repo_graph",
+      "dependency_cluster",
+      "call_chain",
+      "execution_flow",
+      "code_wiki_page",
+      "blast_radius_report",
+      "stale_index_report",
       "review",
       "inbox_item",
     ]);
@@ -192,6 +201,8 @@ describe("Phase 21 vault routing contracts", () => {
     ["project", "10-wiki/projects"],
     ["source", "10-wiki/sources"],
     ["decision", "10-wiki/decisions"],
+    ["comparison", "10-wiki/concepts"],
+    ["synthesis", "10-wiki/concepts"],
   ] as const)("routes %s notes to the wiki taxonomy", (noteType, folder) => {
     expect(routeVaultNote(note({ note_type: noteType }))).toMatchObject({
       status: "routed",
@@ -226,6 +237,58 @@ describe("Phase 21 vault routing contracts", () => {
       ),
     ).toMatchObject({
       folder: "20-projects/jarvis/gitnexus/slices",
+      route_kind: "derived_project",
+    });
+
+    expect(
+      routeVaultNote(
+        note({
+          note_type: "repo_graph",
+          domain: "project",
+          project: "jarvis",
+        }),
+      ),
+    ).toMatchObject({
+      folder: "20-projects/jarvis/gitnexus/graphs",
+      route_kind: "derived_project",
+    });
+
+    expect(
+      routeVaultNote(
+        note({
+          note_type: "code_wiki_page",
+          domain: "project",
+          project: "jarvis",
+        }),
+      ),
+    ).toMatchObject({
+      folder: "20-projects/jarvis/gitnexus/wiki",
+      route_kind: "derived_project",
+    });
+
+    expect(
+      routeVaultNote(
+        note({
+          note_type: "blast_radius_report",
+          domain: "project",
+          project: "jarvis",
+        }),
+      ),
+    ).toMatchObject({
+      folder: "20-projects/jarvis/gitnexus/blast-radius",
+      route_kind: "derived_project",
+    });
+
+    expect(
+      routeVaultNote(
+        note({
+          note_type: "stale_index_report",
+          domain: "project",
+          project: "jarvis",
+        }),
+      ),
+    ).toMatchObject({
+      folder: "20-projects/jarvis/gitnexus/stale-index",
       route_kind: "derived_project",
     });
   });

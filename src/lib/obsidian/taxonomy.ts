@@ -23,7 +23,7 @@ export const LLM_WIKI_FOLDERS = [
   "decisions",
 ] as const;
 
-export const VAULT_NOTE_TYPES = [
+export const VAULT_LLM_WIKI_NOTE_TYPES = [
   "hub",
   "concept",
   "system",
@@ -31,9 +31,54 @@ export const VAULT_NOTE_TYPES = [
   "project",
   "source",
   "decision",
-  "agent_run",
+  "comparison",
+  "synthesis",
+] as const;
+
+export const VAULT_LLM_WIKI_ROUTE_SUBFOLDERS = {
+  hub: "hubs",
+  concept: "concepts",
+  system: "systems",
+  person: "people",
+  project: "projects",
+  source: "sources",
+  decision: "decisions",
+  comparison: "concepts",
+  synthesis: "concepts",
+} as const;
+
+export const VAULT_GITNEXUS_ARTIFACT_TYPES = [
+  "repo_graph",
+  "dependency_cluster",
+  "call_chain",
+  "execution_flow",
+  "code_wiki_page",
+  "blast_radius_report",
+  "stale_index_report",
+] as const;
+
+export const VAULT_GITNEXUS_NOTE_TYPES = [
   "git_commit",
   "git_slice",
+  ...VAULT_GITNEXUS_ARTIFACT_TYPES,
+] as const;
+
+export const VAULT_GITNEXUS_ROUTE_SUBFOLDERS = {
+  git_commit: "commits",
+  git_slice: "slices",
+  repo_graph: "graphs",
+  dependency_cluster: "graphs",
+  call_chain: "graphs",
+  execution_flow: "graphs",
+  code_wiki_page: "wiki",
+  blast_radius_report: "blast-radius",
+  stale_index_report: "stale-index",
+} as const;
+
+export const VAULT_NOTE_TYPES = [
+  ...VAULT_LLM_WIKI_NOTE_TYPES,
+  "agent_run",
+  ...VAULT_GITNEXUS_NOTE_TYPES,
   "review",
   "inbox_item",
 ] as const;
@@ -107,6 +152,12 @@ export const VAULT_CANONICAL_SOURCE_POLICY = {
 
 export type VaultRootFolder = (typeof VAULT_ROOT_FOLDERS)[number];
 export type LlmWikiFolder = (typeof LLM_WIKI_FOLDERS)[number];
+export type VaultLlmWikiNoteType =
+  (typeof VAULT_LLM_WIKI_NOTE_TYPES)[number];
+export type VaultGitNexusArtifactType =
+  (typeof VAULT_GITNEXUS_ARTIFACT_TYPES)[number];
+export type VaultGitNexusNoteType =
+  (typeof VAULT_GITNEXUS_NOTE_TYPES)[number];
 export type VaultNoteType = (typeof VAULT_NOTE_TYPES)[number];
 export type VaultDomain = (typeof VAULT_DOMAINS)[number];
 export type VaultNoteStatus = (typeof VAULT_NOTE_STATUSES)[number];

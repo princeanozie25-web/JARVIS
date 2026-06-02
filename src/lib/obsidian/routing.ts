@@ -2,7 +2,13 @@ import {
   VaultFrontmatterSchema,
   type VaultFrontmatter,
 } from "./frontmatter";
-import { VAULT_CANONICAL_SOURCE_POLICY } from "./taxonomy";
+import {
+  VAULT_CANONICAL_SOURCE_POLICY,
+  VAULT_GITNEXUS_NOTE_TYPES,
+  VAULT_GITNEXUS_ROUTE_SUBFOLDERS,
+  VAULT_LLM_WIKI_ROUTE_SUBFOLDERS,
+  type VaultGitNexusNoteType,
+} from "./taxonomy";
 
 export type VaultRoutingGovernanceReason =
   | "durable_agent_note_requires_human_approval"
@@ -41,15 +47,11 @@ export interface VaultRouteDecision {
 }
 
 const WIKI_ROUTE_BY_TYPE: Partial<Record<VaultFrontmatter["note_type"], string>> =
-  {
-    hub: "10-wiki/hubs",
-    concept: "10-wiki/concepts",
-    system: "10-wiki/systems",
-    person: "10-wiki/people",
-    project: "10-wiki/projects",
-    source: "10-wiki/sources",
-    decision: "10-wiki/decisions",
-  };
+  Object.fromEntries(
+    Object.entries(VAULT_LLM_WIKI_ROUTE_SUBFOLDERS).map(
+      ([noteType, folder]) => [noteType, `10-wiki/${folder}`],
+    ),
+  );
 
 export function routeVaultNote(input: unknown): VaultRouteDecision {
   const frontmatter = VaultFrontmatterSchema.parse(input);
@@ -126,11 +128,12 @@ function selectRoute(
   if (governance.transientAgentOutput) {
     return { folder: "01-inbox/agent", kind: "inbox" };
   }
-  if (frontmatter.note_type === "git_commit") {
-    return gitnexusRoute(frontmatter, "commits", governance.reasons);
-  }
-  if (frontmatter.note_type === "git_slice") {
-    return gitnexusRoute(frontmatter, "slices", governance.reasons);
+  if (isGitNexusNoteType(frontmatter.note_type)) {
+    return gitnexusRoute(
+      frontmatter,
+      VAULT_GITNEXUS_ROUTE_SUBFOLDERS[frontmatter.note_type],
+      governance.reasons,
+    );
   }
   if (governance.requiresApproval) {
     return { folder: "01-inbox/pending-approval", kind: "pending_approval" };
@@ -184,7 +187,7 @@ function selectRoute(
 
 function gitnexusRoute(
   frontmatter: VaultFrontmatter,
-  collection: "commits" | "slices",
+  collection: (typeof VAULT_GITNEXUS_ROUTE_SUBFOLDERS)[VaultGitNexusNoteType],
   reasons: VaultRoutingGovernanceReason[],
 ): { readonly folder: string; readonly kind: VaultRouteKind } {
   if (!frontmatter.project) {
@@ -194,6 +197,12 @@ function gitnexusRoute(
     folder: `20-projects/${projectSlug(frontmatter)}/gitnexus/${collection}`,
     kind: "derived_project",
   };
+}
+
+function isGitNexusNoteType(
+  noteType: VaultFrontmatter["note_type"],
+): noteType is VaultGitNexusNoteType {
+  return (VAULT_GITNEXUS_NOTE_TYPES as readonly string[]).includes(noteType);
 }
 
 function isDurableNote(frontmatter: VaultFrontmatter): boolean {

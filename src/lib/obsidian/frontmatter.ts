@@ -3,6 +3,7 @@ import { ApprovalIdSchema } from "../approval-runtime/types";
 import {
   VAULT_APPROVAL_STATUSES,
   VAULT_DOMAINS,
+  VAULT_GITNEXUS_NOTE_TYPES,
   VAULT_NOTE_STATUSES,
   VAULT_NOTE_TYPES,
   VAULT_PROMOTION_STATUSES,
@@ -126,10 +127,7 @@ export const VaultFrontmatterSchema = z
       });
     }
 
-    if (
-      (note.note_type === "git_commit" || note.note_type === "git_slice") &&
-      !note.project
-    ) {
+    if (isGitNexusNoteType(note.note_type) && !note.project) {
       ctx.addIssue({
         code: "custom",
         path: ["project"],
@@ -139,6 +137,10 @@ export const VaultFrontmatterSchema = z
   });
 
 export type VaultFrontmatter = z.infer<typeof VaultFrontmatterSchema>;
+
+function isGitNexusNoteType(noteType: string): boolean {
+  return (VAULT_GITNEXUS_NOTE_TYPES as readonly string[]).includes(noteType);
+}
 
 export function parseVaultFrontmatter(input: unknown): VaultFrontmatter {
   return VaultFrontmatterSchema.parse(input);
