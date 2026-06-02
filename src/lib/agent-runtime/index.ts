@@ -66,6 +66,19 @@ export {
 } from "./agent-suite-summary";
 
 export {
+  PHASE21H_PREVIEW_CLOSEOUT_AGENT_IDS,
+  PHASE21H_PREVIEW_CLOSEOUT_STATUSES,
+  PHASE21H_PREVIEW_CLOSEOUT_VERSION,
+  Phase21HPreviewAgentCloseoutSchema,
+  Phase21HPreviewCloseoutFutureBoundarySchema,
+  Phase21HPreviewCloseoutGovernanceSchema,
+  Phase21HPreviewCloseoutReportSchema,
+  Phase21HPreviewCloseoutStatusSchema,
+  buildPhase21HPreviewCloseoutReport,
+  type Phase21HPreviewCloseoutReport,
+} from "./phase-21h-preview-closeout";
+
+export {
   COST_BUDGET_POSTURES,
   COST_MONITOR_CAVEATS,
   COST_MONITOR_PREVIEW_VERSION,

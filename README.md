@@ -206,7 +206,7 @@ Current Phase 21 implementation status:
 - Verification Agent exists as an advisory foundation with confidence, caveats, risk flags, metadata-only telemetry rules, and a UI confidence surface.
 - Google adapter work is a readiness foundation: Gmail, Calendar, and Drive contracts, read-only planners, OAuth readiness checks, and a setup runbook exist, but live MCP/OAuth integration is not enabled.
 - Morning Brief has a metadata-only preview foundation. It does not schedule delivery, send notifications, or read live Gmail/Calendar data.
-- Agent Runtime has a shared contract, registry, planner, dry-run executor, output factory, unified preview-suite summary, and preview agents for Life Coach, Build Monitor, Research Agent, CV Maintenance, Application Tracker, Deadline Agent, Cost Monitor, and Health Agent. These previews target future Suggestion Inbox compatibility but do not write inbox entries.
+- Agent Runtime has a shared contract, registry, planner, dry-run executor, output factory, unified preview-suite summary, closeout report, and preview agents for Life Coach, Build Monitor, Research Agent, CV Maintenance, Application Tracker, Deadline Agent, Cost Monitor, and Health Agent. The preview suite is foundation-complete; real scheduling, live reads, and Suggestion Inbox writes remain future work.
 - GitNexus is modeled as a read-only/local verification foundation. It is not governance truth, does not mutate the repo or vault, and is not yet a Graphify overlay.
 
 Still future/not started in Phase 21: Telegram inlet, social media extraction, LLM Council, Job Scout, Graphify overlay, and pipeline visualization style upgrade. MacBook-only Phases 22-26 remain future planned capability openings.
