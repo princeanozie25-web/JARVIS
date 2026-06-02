@@ -204,8 +204,8 @@ Current Phase 21 implementation status:
 - Vault taxonomy, routing, frontmatter, Vault Write Gateway proposal/execution boundaries, and Librarian contracts exist as approval-aware foundations. Durable vault writes remain approval-gated and explicit.
 - LLM Wiki and Knowledge Compounding have preview/draft foundations: detection, planning, draft generation, and CLI preview surfaces exist, but they do not persist wiki pages or execute gateway writes.
 - Verification Agent exists as an advisory foundation with confidence, caveats, risk flags, metadata-only telemetry rules, and a UI confidence surface.
-- Google adapter work is a readiness foundation: Gmail, Calendar, and Drive contracts, read-only planners, OAuth readiness checks, and a setup runbook exist, but live MCP/OAuth integration is not enabled.
-- Morning Brief has a metadata-only preview foundation. It does not schedule delivery, send notifications, or read live Gmail/Calendar data.
+- Google adapter work has opened a narrow Gmail T0 read integration: OAuth configuration/connection helpers and authenticated read-only Gmail metadata retrieval exist for recent, unread, and single-message metadata reads. Calendar and Drive remain readiness-only. Gmail send, draft, label mutation, archive/delete, background sync, and live MCP wiring remain disabled.
+- Morning Brief has a metadata-only preview foundation. It does not schedule delivery, send notifications, or read live Calendar data; Gmail data may only enter through the governed T0 read adapter, not through background sync.
 - Agent Runtime has a shared contract, registry, planner, dry-run executor, output factory, unified preview-suite summary, closeout report, and preview agents for Life Coach, Build Monitor, Research Agent, CV Maintenance, Application Tracker, Deadline Agent, Cost Monitor, and Health Agent. The preview suite is foundation-complete; real scheduling, live reads, and Suggestion Inbox writes remain future work.
 - GitNexus is modeled as a read-only/local verification foundation. It is not governance truth, does not mutate the repo or vault, and is not yet a Graphify overlay.
 
