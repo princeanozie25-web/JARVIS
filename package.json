@@ -18,6 +18,7 @@
     "knowledge:detect": "node --env-file=.env.local --import tsx scripts/knowledge-detect.ts",
     "wiki:draft": "node --env-file=.env.local --import tsx scripts/wiki-draft.ts",
     "google:readiness": "node --env-file=.env.local --import tsx scripts/google-readiness.ts",
+    "morning:brief": "node --env-file=.env.local --import tsx scripts/morning-brief.ts",
     "smoke:model-runtime": "tsx scripts/model-runtime-smoke.ts",
     "smoke:model-runtime:stream": "tsx scripts/model-runtime-smoke.ts --stream",
     "smoke:deepseek": "node --env-file=.env.local --import tsx scripts/deepseek-smoke.ts",

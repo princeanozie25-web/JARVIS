@@ -294,6 +294,24 @@ export type MorningBriefSectionType = z.infer<
   typeof MorningBriefSectionTypeSchema
 >;
 export type MorningBriefPriority = z.infer<typeof MorningBriefPrioritySchema>;
+export type MorningBriefSourceReference = z.infer<
+  typeof MorningBriefSourceReferenceSchema
+>;
+export type MorningBriefCalendarMetadata = z.infer<
+  typeof MorningBriefCalendarMetadataSchema
+>;
+export type MorningBriefEmailMetadata = z.infer<
+  typeof MorningBriefEmailMetadataSchema
+>;
+export type MorningBriefProjectMetadata = z.infer<
+  typeof MorningBriefProjectMetadataSchema
+>;
+export type MorningBriefKnowledgeMetadata = z.infer<
+  typeof MorningBriefKnowledgeMetadataSchema
+>;
+export type MorningBriefReminderMetadata = z.infer<
+  typeof MorningBriefReminderMetadataSchema
+>;
 export type MorningBriefRequest = z.infer<typeof MorningBriefRequestSchema>;
 export type MorningBriefSection = z.infer<typeof MorningBriefSectionSchema>;
 export type MorningBriefVerificationMetadata = z.infer<
