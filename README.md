@@ -195,7 +195,21 @@ Phase 20 preserves the architecture boundaries: read-only where required, metada
 
 The only bounded runtime added in Phase 20 is the safe local doctor path, which checks local readiness through constrained adapters and never installs, auto-fixes, calls providers, calls the network, executes Ollama/Tauri/voice/vision runtimes, or performs room/device actions.
 
-Expansion Era is active as the post-Phase-20 roadmap, but its runtime openings are not shipped by default. Obsidian integration, Graphify overlay, LLM Council, HITNEXUS integration, LLM Wiki, future research systems, and real CAI execution enablement remain future planned capabilities until explicitly opened under Expansion Era governance.
+Expansion Era is active as the post-Phase-20 roadmap. Phase 21 has opened governed foundation and preview surfaces without changing the Phase 1-20 execution doctrine: no silent writes, no raw payload telemetry, no cloud providers by default, no auto-apply, no auto-send, and no auto-execution.
+
+Current Phase 21 implementation status:
+
+- DeepSeek V4 migration and live draft paths have been tested through governed local-dev activation. The committed registry defaults keep DeepSeek cloud models disabled; local live testing uses an in-memory override only.
+- Obsidian now has a pull-only indexing foundation and local semantic retrieval path. It can scan a configured vault, retrieve metadata and bounded snippets, and populate local vectors without watching files, mutating the vault, or using cloud embeddings.
+- Vault taxonomy, routing, frontmatter, Vault Write Gateway proposal/execution boundaries, and Librarian contracts exist as approval-aware foundations. Durable vault writes remain approval-gated and explicit.
+- LLM Wiki and Knowledge Compounding have preview/draft foundations: detection, planning, draft generation, and CLI preview surfaces exist, but they do not persist wiki pages or execute gateway writes.
+- Verification Agent exists as an advisory foundation with confidence, caveats, risk flags, metadata-only telemetry rules, and a UI confidence surface.
+- Google adapter work is a readiness foundation: Gmail, Calendar, and Drive contracts, read-only planners, OAuth readiness checks, and a setup runbook exist, but live MCP/OAuth integration is not enabled.
+- Morning Brief has a metadata-only preview foundation. It does not schedule delivery, send notifications, or read live Gmail/Calendar data.
+- Agent Runtime has a shared contract, registry, planner, dry-run executor, output factory, and preview agents for Life Coach, Build Monitor, Research Agent, CV Maintenance, and Application Tracker. These previews target future Suggestion Inbox compatibility but do not write inbox entries.
+- GitNexus is modeled as a read-only/local verification foundation. It is not governance truth, does not mutate the repo or vault, and is not yet a Graphify overlay.
+
+Still future/not started in Phase 21: Telegram inlet, social media extraction, LLM Council, Job Scout, Graphify overlay, and pipeline visualization style upgrade. MacBook-only Phases 22-26 remain future planned capability openings.
 
 CAI status is governed and integrated, but execution-blocked: Phase 19D includes the red-team sandbox contracts, provider manifest, mock dry-run provider, approval binding, localhost execution gate, and visible sandbox route. CAI is not installed, imported, called, sidecar-backed, subprocess-backed, network-scanning, approval-creating, or authority-token-creating. Real CAI execution requires an explicit future opening.
 
@@ -240,8 +254,9 @@ Optional provider environment:
 - Put local secrets in `.env.local`; do not commit that file.
 - `DEEPSEEK_API_KEY` is required only for the manual DeepSeek smoke path.
 - `DEEPSEEK_BASE_URL` is optional and defaults to the OpenAI-compatible DeepSeek endpoint `https://api.deepseek.com`.
-- Setting these variables does not enable cloud routing. DeepSeek remains disabled until the `deepseek-v4-flash` and `deepseek-v4-pro` registry entries are intentionally enabled and the smoke command applies its explicit DeepSeek-only runtime cloud policy.
-- To verify DeepSeek, set `DEEPSEEK_API_KEY`, temporarily change both DeepSeek registry entries in `config/models/registry.yaml` to `visibility: enabled`, run `npm run smoke:deepseek`, then restore both entries to `visibility: disabled`.
+- Committed registry defaults keep `deepseek-v4-flash` and `deepseek-v4-pro` at `visibility: disabled`; never commit cloud-enabled defaults.
+- For local live DeepSeek tests only, add `JARVIS_ENABLE_DEEPSEEK_LIVE=true` to `.env.local`, run `npm run smoke:deepseek` or `npm run wiki:draft`, then remove that flag or set it to `false`.
+- The local live override creates an in-memory registry view for DeepSeek V4 only. It does not mutate `config/models/registry.yaml`, does not enable other cloud providers, and does not print API keys.
 
 Optional Obsidian pull-only index:
 
