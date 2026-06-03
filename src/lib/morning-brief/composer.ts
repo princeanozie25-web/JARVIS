@@ -4,6 +4,7 @@ import {
   MorningBriefRealInputSchema,
   buildMorningBriefInputReadiness,
   type MorningBriefInputReadiness,
+  type MorningBriefParsedRealInput,
   type MorningBriefRealInput,
 } from "./real-input-contract";
 
@@ -22,6 +23,7 @@ export const MORNING_BRIEF_COMPOSED_SECTION_TYPES = [
   "drive",
   "jarvis_status",
   "agent_preview",
+  "job_scout",
 ] as const;
 
 export const MORNING_BRIEF_COMPOSER_GOVERNANCE = {
@@ -196,6 +198,7 @@ export function composeMorningBrief(
     driveSection(parsedInput, readiness, parsedOptions),
     jarvisStatusSection(parsedInput),
     agentPreviewSection(parsedInput),
+    jobScoutSection(parsedInput),
   ].filter((section): section is MorningBriefComposedSection =>
     Boolean(
       section &&
@@ -211,7 +214,7 @@ export function composeMorningBrief(
 }
 
 function gmailSection(
-  input: MorningBriefRealInput,
+  input: MorningBriefParsedRealInput,
   readiness: MorningBriefInputReadiness,
   options: MorningBriefComposerOptions,
 ): MorningBriefComposedSection | null {
@@ -273,7 +276,7 @@ function gmailSection(
 }
 
 function calendarSection(
-  input: MorningBriefRealInput,
+  input: MorningBriefParsedRealInput,
   readiness: MorningBriefInputReadiness,
   options: MorningBriefComposerOptions,
 ): MorningBriefComposedSection | null {
@@ -333,7 +336,7 @@ function calendarSection(
 }
 
 function driveSection(
-  input: MorningBriefRealInput,
+  input: MorningBriefParsedRealInput,
   readiness: MorningBriefInputReadiness,
   options: MorningBriefComposerOptions,
 ): MorningBriefComposedSection | null {
@@ -386,7 +389,7 @@ function driveSection(
 }
 
 function jarvisStatusSection(
-  input: MorningBriefRealInput,
+  input: MorningBriefParsedRealInput,
 ): MorningBriefComposedSection | null {
   if (!input.jarvis_status_metadata) return null;
   const keys = Object.keys(input.jarvis_status_metadata).sort();
@@ -400,7 +403,7 @@ function jarvisStatusSection(
 }
 
 function agentPreviewSection(
-  input: MorningBriefRealInput,
+  input: MorningBriefParsedRealInput,
 ): MorningBriefComposedSection | null {
   if (!input.agent_preview_metadata) return null;
   const keys = Object.keys(input.agent_preview_metadata).sort();
@@ -410,6 +413,67 @@ function agentPreviewSection(
     title: "Agent preview metadata",
     source_ref: "jarvis://agents/preview-metadata",
     keys,
+  });
+}
+
+function jobScoutSection(
+  input: MorningBriefParsedRealInput,
+): MorningBriefComposedSection | null {
+  const digest = input.job_scout_digest;
+  if (!digest) return null;
+  const topOpportunity = digest.top_opportunities[0] ?? null;
+  const missingSkills = digest.missing_skill_summary
+    .map((skill) => skill.skill_tag)
+    .sort();
+  const nextAction =
+    digest.recommended_next_actions[0] ??
+    "No Job Scout recommendation supplied.";
+
+  return MorningBriefComposedSectionSchema.parse({
+    section_type: "job_scout",
+    title: "Job Scout digest metadata",
+    status: "present",
+    item_count: digest.top_opportunities.length,
+    summary: `${digest.top_opportunities.length} ranked opportunities supplied; no applications were submitted.`,
+    items: digest.top_opportunities.slice(0, 5).map((opportunity) => ({
+      item_id: `job_scout:${opportunity.posting_id}`,
+      source: "job_scout",
+      title: `${opportunity.title} at ${opportunity.company}`,
+      summary: `${opportunity.fit_score}/100 fit score with ${opportunity.confidence} confidence.`,
+      metadata_flags: [
+        opportunity.recommended_action,
+        ...(opportunity.application_submission_attempted
+          ? ["submission_attempted"]
+          : ["no_application_submitted"]),
+      ],
+      source_ref: `job-scout://digest/${digest.digest_id}/opportunities/${opportunity.posting_id}`,
+      metadata: {
+        rank: opportunity.rank,
+        fit_score: opportunity.fit_score,
+        confidence: opportunity.confidence,
+        recommended_action: opportunity.recommended_action,
+        missing_skills: opportunity.missing_skills,
+        application_submission_attempted:
+          opportunity.application_submission_attempted,
+      },
+      metadata_only: true,
+      raw_body_included: false,
+    })),
+    metadata: {
+      digest_id: digest.digest_id,
+      top_opportunity_count: digest.top_opportunities.length,
+      highest_fit_role: topOpportunity
+        ? `${topOpportunity.title} at ${topOpportunity.company}`
+        : null,
+      highest_fit_score: topOpportunity?.fit_score ?? null,
+      missing_skill_tags: missingSkills,
+      recommended_next_action: nextAction,
+      application_submission_attempted:
+        digest.governance.application_submission_attempted,
+      auto_apply_attempted: digest.governance.auto_apply_attempted,
+    },
+    metadata_only: true,
+    raw_body_included: false,
   });
 }
 

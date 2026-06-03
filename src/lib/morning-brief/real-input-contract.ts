@@ -5,6 +5,7 @@ import {
   GmailReadMessageMetadataSchema,
   GoogleConnectionSummarySchema,
 } from "../google-adapters";
+import { JobScoutDigestSchema } from "../job-scout";
 
 export const MORNING_BRIEF_REAL_INPUT_VERSION =
   "phase21c.morning-brief-real-input.v1" as const;
@@ -99,6 +100,7 @@ export const MorningBriefRealInputSchema = z.strictObject({
     .record(z.string(), z.unknown())
     .nullable()
     .default(null),
+  job_scout_digest: JobScoutDigestSchema.nullable().default(null),
   metadata_only: z.literal(true),
   generation_requested: z.literal(false),
   scheduling_requested: z.literal(false),
@@ -158,7 +160,10 @@ export type MorningBriefDriveInput = z.infer<
 export type MorningBriefGoogleInput = z.infer<
   typeof MorningBriefGoogleInputSchema
 >;
-export type MorningBriefRealInput = z.infer<typeof MorningBriefRealInputSchema>;
+export type MorningBriefRealInput = z.input<typeof MorningBriefRealInputSchema>;
+export type MorningBriefParsedRealInput = z.infer<
+  typeof MorningBriefRealInputSchema
+>;
 export type MorningBriefSourceReadiness = z.infer<
   typeof MorningBriefSourceReadinessSchema
 >;

@@ -155,6 +155,7 @@ export {
   type MorningBriefGoogleInput,
   type MorningBriefInputReadiness,
   type MorningBriefInputReadinessStatus,
+  type MorningBriefParsedRealInput,
   type MorningBriefRealInput,
   type MorningBriefSourceReadiness,
   type MorningBriefSourceStatus,
