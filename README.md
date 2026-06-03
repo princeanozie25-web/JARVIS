@@ -102,6 +102,7 @@ jarvis/
       onboarding-readiness/    Phase 20 onboarding and move-in readiness metadata
       portfolio-readiness/     Phase 20 portfolio and demo readiness metadata
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
+      pipeline-visualization/  Phase 21K read-only governed pipeline visualization model
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
       stt/ and tts/            Local voice provider contracts, disabled providers, queues, safety policy
       tools/                   Tool registry, read/write guards, approvals, local path safety
@@ -212,8 +213,9 @@ Current Phase 21 implementation status:
 - Agent Runtime has a shared contract, registry, planner, dry-run executor, output factory, unified preview-suite summary, closeout report, and preview agents for Life Coach, Build Monitor, Research Agent, CV Maintenance, Application Tracker, Deadline Agent, Cost Monitor, and Health Agent. The preview suite is foundation-complete; real scheduling, live reads, and Suggestion Inbox writes remain future work.
 - GitNexus is modeled as a read-only/local verification foundation. It is not governance truth, does not mutate the repo or vault, and remains separate from the Graphify architecture overlay.
 - Graphify overlay is complete as a read-only architecture data source. JARVIS can accept supplied Graphify-compatible `graph.json` / NetworkX node-link metadata, normalize nodes and edges, compare Graphify-derived code graph metadata against the designed architecture graph, and summarize discrepancies such as design-only nodes, Graphify-only nodes/edges, and missing supplied test/doc coverage. Graphify does not become governance truth, execute checks, run hooks, crawl the repo, write files, write telemetry, add UI routes, or drive runtime behavior. Automated Graphify execution, git hook generation, live telemetry overlay, UI rendering polish, and graph-driven execution remain future/forbidden outside a separately governed opening.
+- Pipeline visualization is complete as a read-only governance surface. It now supports stage-by-stage governance flow, approval boundary visibility, authority surface visibility, Graphify overlay integration, and discrepancy reporting across the Capture -> Classify -> Route -> Human Gate -> Execute -> Audit path. It does not add execution buttons, approval buttons, mutating controls, provider calls, network calls, filesystem writes, telemetry writes, scheduler execution, governance replacement, Graphify execution, or new authority surfaces.
 
-Still future/not started in Phase 21: social media extraction and pipeline visualization style upgrade. MacBook-only Phases 22-26 remain future planned capability openings.
+Still future/not started in Phase 21: social media extraction, UI refurbishment pass, cinematic redesign, recruiter screenshots, and Three.js enhancements. MacBook-only Phases 22-26 remain future planned capability openings.
 
 CAI status is governed and integrated, but execution-blocked: Phase 19D includes the red-team sandbox contracts, provider manifest, mock dry-run provider, approval binding, localhost execution gate, and visible sandbox route. CAI is not installed, imported, called, sidecar-backed, subprocess-backed, network-scanning, approval-creating, or authority-token-creating. Real CAI execution requires an explicit future opening.
 
