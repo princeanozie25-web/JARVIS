@@ -5,7 +5,7 @@ import {
   GmailReadMessageMetadataSchema,
   GoogleConnectionSummarySchema,
 } from "../google-adapters";
-import { JobScoutDigestSchema } from "../job-scout";
+import { JobScoutDigestSchema } from "../job-scout/digest";
 
 export const MORNING_BRIEF_REAL_INPUT_VERSION =
   "phase21c.morning-brief-real-input.v1" as const;

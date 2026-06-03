@@ -74,6 +74,37 @@ export {
 } from "./fixtures";
 
 export {
+  JOB_FEED_IMPORT_FORMATS,
+  JOB_SCOUT_FEED_VERSION,
+  JobFeedImportFormatSchema,
+  JobFeedMetadataSchema,
+  JobFeedRecordSchema,
+  JobFeedSchema,
+  JobFeedSourceSchema,
+  JobFeedSummarySchema,
+  JobFeedValidationResultSchema,
+  importJobFeed,
+  summarizeJobFeed,
+  validateJobFeed,
+  type JobFeed,
+  type JobFeedImportFormat,
+  type JobFeedMetadata,
+  type JobFeedRecord,
+  type JobFeedSource,
+  type JobFeedSummary,
+  type JobFeedValidationResult,
+} from "./feed";
+
+export {
+  JOB_SCOUT_NORMALIZATION_VERSION,
+  JobFeedNormalizationResultSchema,
+  deduplicateJobPostings,
+  normalizeJobFeed,
+  normalizeJobRecord,
+  type JobFeedNormalizationResult,
+} from "./normalization";
+
+export {
   JOB_SCOUT_SUGGESTION_OUTPUT_KIND,
   JOB_SCOUT_SUGGESTION_PAYLOAD_VERSION,
   JOB_SCOUT_SUGGESTION_PLAN_STATUSES,
@@ -91,3 +122,14 @@ export {
   type JobScoutSuggestionWriter,
   type JobScoutSuggestionWriterResult,
 } from "./suggestion";
+
+export {
+  JOB_SCOUT_FOUNDATION_CLOSEOUT_VERSION,
+  JobScoutFoundationCloseoutGovernanceSchema,
+  JobScoutFoundationCloseoutReportSchema,
+  JobScoutFoundationComponentSchema,
+  buildJobScoutFoundationCloseoutReport,
+  type JobScoutFoundationCloseoutGovernance,
+  type JobScoutFoundationCloseoutReport,
+  type JobScoutFoundationComponent,
+} from "./phase-21i-closeout";
