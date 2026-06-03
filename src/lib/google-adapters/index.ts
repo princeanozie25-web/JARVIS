@@ -289,3 +289,10 @@ export {
   type GoogleConnectionSummary,
   type GoogleScopeStatus,
 } from "./google-account-runtime";
+
+export {
+  PHASE_21B_GOOGLE_CLOSEOUT_VERSION,
+  Phase21BGoogleCloseoutReportSchema,
+  buildPhase21BGoogleIntegrationCloseoutReport,
+  type Phase21BGoogleCloseoutReport,
+} from "./phase-21b-closeout";
