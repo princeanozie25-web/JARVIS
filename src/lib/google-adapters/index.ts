@@ -222,6 +222,38 @@ export {
 } from "./calendar-read";
 
 export {
+  DRIVE_READ_ADAPTER_VERSION,
+  DRIVE_READ_AUTHORITY,
+  DRIVE_READ_FORBIDDEN_OPERATIONS,
+  DRIVE_READ_GOVERNANCE,
+  DRIVE_READ_OAUTH_VERSION,
+  DRIVE_READ_SCOPE,
+  DriveReadFileMetadataSchema,
+  DriveReadListResultSchema,
+  DriveReadMetadataResultSchema,
+  DriveReadOAuthAuthorizationResultSchema,
+  DriveReadOAuthConfigSchema,
+  DriveReadOAuthTokenExchangeResultSchema,
+  DriveReadOAuthTokenSecretSchema,
+  DriveReadTelemetryEventSchema,
+  createDriveReadAdapter,
+  createDriveReadOAuthAuthorizationUrl,
+  exchangeDriveReadOAuthCode,
+  type DriveReadAdapter,
+  type DriveReadAdapterDependencies,
+  type DriveReadFetch,
+  type DriveReadFetchResponse,
+  type DriveReadFileMetadata,
+  type DriveReadListResult,
+  type DriveReadMetadataResult,
+  type DriveReadOAuthAuthorizationResult,
+  type DriveReadOAuthConfig,
+  type DriveReadOAuthTokenExchangeResult,
+  type DriveReadOAuthTokenSecret,
+  type DriveReadTelemetryEvent,
+} from "./drive-read";
+
+export {
   GOOGLE_ACCOUNT_CONNECTION_STATUSES,
   GOOGLE_ACCOUNT_REQUIRED_SCOPES,
   GOOGLE_ACCOUNT_RUNTIME_GOVERNANCE,

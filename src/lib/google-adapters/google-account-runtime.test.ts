@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CALENDAR_READ_SCOPE,
+  DRIVE_READ_SCOPE,
   GMAIL_READ_SCOPE,
   GOOGLE_ACCOUNT_REQUIRED_SCOPES,
   GOOGLE_ACCOUNT_RUNTIME_GOVERNANCE,
@@ -74,7 +75,7 @@ describe("Google account runtime", () => {
     expect(readiness.calendar.reasons).toContain("ready");
   });
 
-  it("keeps Drive as a future placeholder without implementation", () => {
+  it("keeps Drive as a future placeholder when it is not configured", () => {
     const runtime = createGoogleAccountRuntime(connectedInput());
 
     expect(runtime.adapter_readiness.drive).toMatchObject({
@@ -87,6 +88,22 @@ describe("Google account runtime", () => {
     expect(runtime.adapter_readiness.drive.reasons).toContain(
       "drive_future_placeholder",
     );
+  });
+
+  it("reports Drive readiness when configured with the Drive read scope", () => {
+    const runtime = createGoogleAccountRuntime(driveConnectedInput());
+
+    expect(runtime.adapter_readiness.drive).toMatchObject({
+      service: "drive",
+      status: "ready",
+      configured: true,
+      required_scope: DRIVE_READ_SCOPE,
+      scope_granted: true,
+      token_status: "valid",
+      connection_status: "connected",
+    });
+    expect(runtime.adapter_readiness.drive.reasons).toContain("ready");
+    expect(runtime.telemetry.ready_adapter_count).toBe(3);
   });
 
   it("reports granted scopes and missing scopes without exposing token values", () => {
@@ -246,5 +263,17 @@ function connectedInput(): GoogleAccountRuntimeInput {
     },
     observed_latency_ms: 12,
     telemetry_metadata_only: true,
+  };
+}
+
+function driveConnectedInput(): GoogleAccountRuntimeInput {
+  return {
+    ...connectedInput(),
+    granted_scopes: [GMAIL_READ_SCOPE, CALENDAR_READ_SCOPE, DRIVE_READ_SCOPE],
+    adapter_configuration: {
+      gmail_configured: true,
+      calendar_configured: true,
+      drive_configured: true,
+    },
   };
 }

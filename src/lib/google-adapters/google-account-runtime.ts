@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CALENDAR_READ_SCOPE } from "./calendar-read";
+import { DRIVE_READ_SCOPE } from "./drive-read";
 import { GMAIL_READ_SCOPE } from "./gmail-read";
 
 export const GOOGLE_ACCOUNT_RUNTIME_VERSION =
@@ -29,7 +30,7 @@ export const GOOGLE_ADAPTER_READINESS_STATUSES = [
 export const GOOGLE_ACCOUNT_REQUIRED_SCOPES = {
   gmail: GMAIL_READ_SCOPE,
   calendar: CALENDAR_READ_SCOPE,
-  drive: "https://www.googleapis.com/auth/drive.metadata.readonly",
+  drive: DRIVE_READ_SCOPE,
 } as const;
 
 export const GOOGLE_ACCOUNT_RUNTIME_GOVERNANCE = {
@@ -42,7 +43,7 @@ export const GOOGLE_ACCOUNT_RUNTIME_GOVERNANCE = {
   network_call_supported: false,
   gmail_feature_expansion_supported: false,
   calendar_feature_expansion_supported: false,
-  drive_implementation_supported: false,
+  drive_read_integration_supported: true,
   mutation_supported: false,
   scheduler_supported: false,
   background_sync_supported: false,
