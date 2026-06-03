@@ -133,3 +133,71 @@ export {
   type JobScoutFoundationCloseoutReport,
   type JobScoutFoundationComponent,
 } from "./phase-21i-closeout";
+
+export {
+  JOB_APPLICATION_STATUSES,
+  JOB_SCOUT_APPLICATION_TRACKER_VERSION,
+  JobApplicationSchema,
+  JobApplicationSourceSchema,
+  JobApplicationStatusSchema,
+  JobApplicationSummarySchema,
+  JobApplicationTimelineEventSchema,
+  JobApplicationTimelineSchema,
+  buildApplicationTimeline,
+  createJobApplication,
+  summarizeJobApplications,
+  updateJobApplicationStatus,
+  type JobApplication,
+  type JobApplicationSource,
+  type JobApplicationStatus,
+  type JobApplicationSummary,
+  type JobApplicationTimeline,
+  type JobApplicationTimelineEvent,
+} from "./application-tracker";
+
+export {
+  COVER_LETTER_DRAFT_STATUSES,
+  JOB_SCOUT_COVER_LETTER_VERSION,
+  CoverLetterDraftPlanSchema,
+  CoverLetterDraftRequirementsSummarySchema,
+  CoverLetterDraftStatusSchema,
+  CoverLetterInputSchema,
+  CoverLetterTemplateSchema,
+  buildCoverLetterDraftPlan,
+  buildCoverLetterTemplate,
+  summarizeDraftRequirements,
+  type CoverLetterDraft,
+  type CoverLetterDraftRequirementsSummary,
+  type CoverLetterDraftStatus,
+  type CoverLetterInput,
+  type CoverLetterTemplate,
+} from "./cover-letter";
+
+export {
+  JOB_SCOUT_WORKFLOW_STATUSES,
+  JOB_SCOUT_WORKFLOW_STEP_KINDS,
+  JOB_SCOUT_WORKFLOW_VERSION,
+  JobScoutWorkflowPlanSchema,
+  JobScoutWorkflowStatusSchema,
+  JobScoutWorkflowStepKindSchema,
+  JobScoutWorkflowStepSchema,
+  buildJobScoutWorkflow,
+  identifyWorkflowBlockers,
+  summarizeWorkflow,
+  type JobScoutWorkflow,
+  type JobScoutWorkflowPlan,
+  type JobScoutWorkflowStatus,
+  type JobScoutWorkflowStep,
+  type JobScoutWorkflowStepKind,
+} from "./workflow";
+
+export {
+  JOB_SCOUT_WORKFLOW_CLOSEOUT_VERSION,
+  JobScoutWorkflowCloseoutComponentSchema,
+  JobScoutWorkflowCloseoutGovernanceSchema,
+  JobScoutWorkflowCloseoutReportSchema,
+  buildJobScoutWorkflowCloseoutReport,
+  type JobScoutWorkflowCloseoutComponent,
+  type JobScoutWorkflowCloseoutGovernance,
+  type JobScoutWorkflowCloseoutReport,
+} from "./phase-21i-workflow-closeout";
