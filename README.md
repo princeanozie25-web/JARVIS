@@ -39,6 +39,8 @@ The disabled list is not a gap. It is the architecture. Governance first, capabi
 
 JARVIS has completed the Phase 1-20 governance and operationalization substrate described in [docs/ARCHITECTURE_OPERATIONALIZATION.md](docs/ARCHITECTURE_OPERATIONALIZATION.md). The Expansion Era is now the active post-Phase-20 roadmap, with future capability openings governed by the Expansion Era authority model instead of by the historical substrate alone.
 
+Active UI program: the [UI Polish Plan](docs/architecture/UI_POLISH_PLAN.md) is the post-Phase-21, pre-Phase-22 program turning JARVIS into the Governed Orbital Command Room without changing governance, approval lifecycle, or execution paths.
+
 Completed or contract-frozen highlights:
 
 - Phases 1-9: governance, providers, streaming, memory, project continuity, runtime safety, terminal governance, voice scaffolding, and Command Center contracts.

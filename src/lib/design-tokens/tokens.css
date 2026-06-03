@@ -1,0 +1,85 @@
+/*
+ * JARVIS design tokens — UI.2 + UI.3
+ * Authority: DESIGN.md frontmatter. Mirrored in index.ts. Wired through Tailwind v4 @theme in app/globals.css.
+ * Do not consume raw hex/font strings in components — go through tokens or Tailwind utilities resolved to tokens.
+ */
+
+:root {
+  /* Color — base roles */
+  --jarvis-color-void: #0a0a0a;
+  --jarvis-color-ink: #ededed;
+  --jarvis-color-panel: #020617;
+  --jarvis-color-panel-soft: #0f172a;
+  --jarvis-color-border-subtle: #ffffff1a;
+  --jarvis-color-cyan-signal: #22d3ee;
+  --jarvis-color-sky-focus: #38bdf8;
+  --jarvis-color-emerald-local: #6ee7b7;
+  --jarvis-color-amber-review: #fbbf24;
+  --jarvis-color-rose-blocked: #fb7185;
+  --jarvis-color-white: #ffffff;
+  --jarvis-color-black: #000000;
+
+  /* Color — semantic governance aliases */
+  --jarvis-color-signal: var(--jarvis-color-cyan-signal);
+  --jarvis-color-focus: var(--jarvis-color-sky-focus);
+  --jarvis-color-local: var(--jarvis-color-emerald-local);
+  --jarvis-color-review: var(--jarvis-color-amber-review);
+  --jarvis-color-blocked: var(--jarvis-color-rose-blocked);
+
+  /* Font — wired to next/font loaders in app/layout.tsx */
+  --jarvis-font-display: var(--font-jarvis-display, "Syne", system-ui, sans-serif);
+  --jarvis-font-body: var(--font-jarvis-display, "Syne", system-ui, sans-serif);
+  --jarvis-font-mono: var(--font-jarvis-mono, "JetBrains Mono", ui-monospace, monospace);
+
+  /* Radius */
+  --jarvis-radius-sm: 4px;
+  --jarvis-radius-md: 6px;
+  --jarvis-radius-lg: 8px;
+  --jarvis-radius-pill: 9999px;
+
+  /* Space */
+  --jarvis-space-xs: 4px;
+  --jarvis-space-sm: 8px;
+  --jarvis-space-md: 16px;
+  --jarvis-space-lg: 24px;
+  --jarvis-space-xl: 32px;
+
+  /* Shadow — reserved for cinematic depth, not generic card elevation */
+  --jarvis-shadow-orb-atmosphere: 0 0 90px rgba(34, 211, 238, 0.22);
+  --jarvis-shadow-cockpit-depth: 0 20px 80px rgba(2, 6, 23, 0.3);
+
+  /* Typography scale — UI.3 */
+  --jarvis-text-display-font: var(--jarvis-font-display);
+  --jarvis-text-display-size: 3rem;
+  --jarvis-text-display-weight: 600;
+  --jarvis-text-display-line-height: 1.05;
+  --jarvis-text-display-letter-spacing: -0.01em;
+
+  --jarvis-text-headline-font: var(--jarvis-font-display);
+  --jarvis-text-headline-size: 2rem;
+  --jarvis-text-headline-weight: 600;
+  --jarvis-text-headline-line-height: 1.15;
+  --jarvis-text-headline-letter-spacing: -0.005em;
+
+  --jarvis-text-title-font: var(--jarvis-font-display);
+  --jarvis-text-title-size: 1.25rem;
+  --jarvis-text-title-weight: 600;
+  --jarvis-text-title-line-height: 1.3;
+  --jarvis-text-title-letter-spacing: normal;
+
+  --jarvis-text-body-font: var(--jarvis-font-body);
+  --jarvis-text-body-size: 1rem;
+  --jarvis-text-body-weight: 400;
+  --jarvis-text-body-line-height: 1.5;
+  --jarvis-text-body-letter-spacing: normal;
+
+  --jarvis-text-label-font: var(--jarvis-font-mono);
+  --jarvis-text-label-size: 0.75rem;
+  --jarvis-text-label-weight: 600;
+  --jarvis-text-label-line-height: 1.2;
+  --jarvis-text-label-letter-spacing: 0.16em;
+  --jarvis-text-label-text-transform: uppercase;
+
+  /* Motion — RESERVED for UI.5. Do not consume yet. */
+  /* --jarvis-motion-* tokens land in the Motion slice. */
+}

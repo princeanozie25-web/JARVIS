@@ -1,26 +1,60 @@
 @import "tailwindcss";
+@import "../src/lib/design-tokens/tokens.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--jarvis-color-void);
+  --foreground: var(--jarvis-color-ink);
 }
 
 @theme inline {
+  /* Surface */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* JARVIS color roles */
+  --color-void: var(--jarvis-color-void);
+  --color-ink: var(--jarvis-color-ink);
+  --color-panel: var(--jarvis-color-panel);
+  --color-panel-soft: var(--jarvis-color-panel-soft);
+  --color-border-subtle: var(--jarvis-color-border-subtle);
+  --color-cyan-signal: var(--jarvis-color-cyan-signal);
+  --color-sky-focus: var(--jarvis-color-sky-focus);
+  --color-emerald-local: var(--jarvis-color-emerald-local);
+  --color-amber-review: var(--jarvis-color-amber-review);
+  --color-rose-blocked: var(--jarvis-color-rose-blocked);
+
+  /* JARVIS semantic governance aliases */
+  --color-signal: var(--jarvis-color-signal);
+  --color-focus: var(--jarvis-color-focus);
+  --color-local: var(--jarvis-color-local);
+  --color-review: var(--jarvis-color-review);
+  --color-blocked: var(--jarvis-color-blocked);
+
+  /* Fonts */
+  --font-sans: var(--jarvis-font-body);
+  --font-display: var(--jarvis-font-display);
+  --font-mono: var(--jarvis-font-mono);
+
+  /* Radius */
+  --radius-sm: var(--jarvis-radius-sm);
+  --radius-md: var(--jarvis-radius-md);
+  --radius-lg: var(--jarvis-radius-lg);
+  --radius-pill: var(--jarvis-radius-pill);
+
+  /* Space */
+  --spacing-xs: var(--jarvis-space-xs);
+  --spacing-sm: var(--jarvis-space-sm);
+  --spacing-md: var(--jarvis-space-md);
+  --spacing-lg: var(--jarvis-space-lg);
+  --spacing-xl: var(--jarvis-space-xl);
+
+  /* Shadow */
+  --shadow-orb-atmosphere: var(--jarvis-shadow-orb-atmosphere);
+  --shadow-cockpit-depth: var(--jarvis-shadow-cockpit-depth);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--jarvis-font-body);
 }

@@ -1,87 +1,93 @@
-import { describe, expect, it, vi } from "vitest";
-import {
-  canSendTypedChatInput,
-  voiceDraftMarkerAfterInputChange,
-  voiceDraftPayloadToChatInputState,
-  type VoiceDraftInputMarker,
-} from "./page";
-import type { VoiceTranscriptChatPayload } from "@/lib/stt";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const voicePayload: VoiceTranscriptChatPayload = {
-  target: "chat_input",
-  source: "voice",
-  text: "  Reviewed voice draft.  ",
-  sourceDraftId: "draft-1",
-  sourceJobId: "job-1",
-  canApproveRuntimeActions: false,
-};
+import { describe, expect, it } from "vitest";
 
-describe("voice draft chat input bridge", () => {
-  it("populates chat input state without sending a chat request", () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+const ROOT_PAGE_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "page.tsx",
+);
+const rootPageSource = readFileSync(ROOT_PAGE_PATH, "utf8");
 
-    expect(voiceDraftPayloadToChatInputState(voicePayload)).toEqual({
-      input: "Reviewed voice draft.",
-      marker: {
-        source: "voice",
-        sourceDraftId: "draft-1",
-        sourceJobId: "job-1",
-        canApproveRuntimeActions: false,
-      },
-    });
-    expect(fetchSpy).not.toHaveBeenCalledWith("/api/chat", expect.anything());
-
-    fetchSpy.mockRestore();
+describe("UI.4 root surface — command center identity", () => {
+  it("is a server component with no client directive", () => {
+    expect(rootPageSource.startsWith('"use client"')).toBe(false);
+    expect(rootPageSource).not.toContain("'use client'");
   });
 
-  it("preserves the voice source marker while edited text remains non-empty", () => {
-    const marker: VoiceDraftInputMarker = {
-      source: "voice",
-      sourceDraftId: "draft-1",
-      sourceJobId: "job-1",
-      canApproveRuntimeActions: false,
-    };
-
-    expect(voiceDraftMarkerAfterInputChange("edited text", marker)).toBe(
-      marker,
-    );
-    expect(voiceDraftMarkerAfterInputChange("   ", marker)).toBeNull();
+  it("declares the command-center surface marker", () => {
+    expect(rootPageSource).toContain('data-surface="command-center"');
   });
 
-  it("rejects empty voice payload text before it reaches chat input", () => {
-    expect(
-      voiceDraftPayloadToChatInputState({
-        ...voicePayload,
-        text: "   ",
-      }),
-    ).toBeNull();
+  it("renders the Orb as the system presence", () => {
+    expect(rootPageSource).toMatch(/from "@\/components\/orb\/Orb"/);
+    expect(rootPageSource).toMatch(/<Orb\s*\/?>/);
   });
 
-  it("keeps voice drafts unable to approve runtime actions", () => {
-    const state = voiceDraftPayloadToChatInputState(voicePayload);
-
-    expect(state?.marker.source).toBe("voice");
-    expect(state?.marker.canApproveRuntimeActions).toBe(false);
+  it("labels every primary region for accessibility", () => {
+    for (const label of [
+      "System orb",
+      "System status",
+      "Quick navigation",
+      "Recent activity",
+      "Suggestions summary",
+      "Governance posture",
+    ]) {
+      expect(rootPageSource).toContain(`aria-label="${label}"`);
+    }
   });
 
-  it("rejects malformed voice payloads before they reach chat input", () => {
-    expect(
-      voiceDraftPayloadToChatInputState({
-        ...voicePayload,
-        source: "typed",
-      } as unknown as VoiceTranscriptChatPayload),
-    ).toBeNull();
-    expect(
-      voiceDraftPayloadToChatInputState({
-        ...voicePayload,
-        canApproveRuntimeActions: true,
-      } as unknown as VoiceTranscriptChatPayload),
-    ).toBeNull();
+  it("links to /rest, /working, /audit, and /converse from quick navigation", () => {
+    for (const href of ["/rest", "/working", "/audit", "/converse"]) {
+      expect(rootPageSource).toContain(`href: "${href}"`);
+    }
   });
 
-  it("leaves the typed send guard unchanged", () => {
-    expect(canSendTypedChatInput("typed message", false)).toBe(true);
-    expect(canSendTypedChatInput("   ", false)).toBe(false);
-    expect(canSendTypedChatInput("typed message", true)).toBe(false);
+  it("surfaces a governance-posture region with metadata-only rules", () => {
+    expect(rootPageSource).toContain('aria-label="Governance posture"');
+    expect(rootPageSource).toContain("No raw payload telemetry");
+    expect(rootPageSource).toContain("No autonomous execution");
+  });
+
+  it("uses JARVIS semantic tokens, not raw chat-bubble palette", () => {
+    expect(rootPageSource).toContain("bg-void");
+    expect(rootPageSource).toContain("bg-panel");
+    expect(rootPageSource).toContain("border-border-subtle");
+    expect(rootPageSource).not.toContain("bg-blue-600");
+    expect(rootPageSource).not.toContain("bg-gray-900");
+    expect(rootPageSource).not.toContain("bg-gray-950");
+  });
+});
+
+describe("UI.4 root surface — no chatbot composition", () => {
+  it("does not render a chat input or chat placeholder", () => {
+    expect(rootPageSource).not.toMatch(/Message JARVIS/i);
+    expect(rootPageSource).not.toMatch(/<textarea\b/i);
+    expect(rootPageSource).not.toMatch(/placeholder=/i);
+  });
+
+  it("does not render a provider selector", () => {
+    expect(rootPageSource).not.toMatch(/<select\b/i);
+    expect(rootPageSource).not.toContain("SUPPORTED_PROVIDERS");
+    expect(rootPageSource).not.toContain("SupportedProvider");
+  });
+
+  it("does not call /api/chat or stream SSE events", () => {
+    expect(rootPageSource).not.toContain("/api/chat");
+    expect(rootPageSource).not.toContain("parseSseEvents");
+  });
+
+  it("does not import any of the chat-only panels", () => {
+    for (const panel of [
+      "ApprovalCard",
+      "RuntimeCommandPanel",
+      "VoiceControlPanel",
+      "ConversationCuratorPanel",
+      "MemoryCandidateReviewPanel",
+      "HumanReviewQueuePanel",
+    ]) {
+      expect(rootPageSource).not.toContain(`@/components/${panel}`);
+    }
   });
 });

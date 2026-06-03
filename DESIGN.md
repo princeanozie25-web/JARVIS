@@ -15,24 +15,37 @@ colors:
   white: "#ffffff"
   black: "#000000"
 typography:
+  display:
+    fontFamily: "var(--jarvis-font-display)"
+    fontSize: "3rem"
+    fontWeight: 600
+    lineHeight: 1.05
+    letterSpacing: "-0.01em"
+  headline:
+    fontFamily: "var(--jarvis-font-display)"
+    fontSize: "2rem"
+    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: "-0.005em"
   body:
-    fontFamily: "Arial, Helvetica, sans-serif"
+    fontFamily: "var(--jarvis-font-body)"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
   title:
-    fontFamily: "Arial, Helvetica, sans-serif"
+    fontFamily: "var(--jarvis-font-display)"
     fontSize: "1.25rem"
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "normal"
   label:
-    fontFamily: "Arial, Helvetica, sans-serif"
+    fontFamily: "var(--jarvis-font-mono)"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "0.16em"
+    textTransform: "uppercase"
 rounded:
   sm: "4px"
   md: "6px"
@@ -113,11 +126,11 @@ The palette is a near-black command surface with cyan/sky signal energy and sema
 
 ## 3. Typography
 
-**Display Font:** Arial, Helvetica, sans-serif, current implementation.
-**Body Font:** Arial, Helvetica, sans-serif, current implementation.
-**Label/Mono Font:** SFMono-Regular, Consolas, Liberation Mono, monospace, current token.
+**Display Font:** Syne (variable, weights 400-700), loaded via `next/font/google` and exposed as `--jarvis-font-display`.
+**Body Font:** Syne (same loader), exposed as `--jarvis-font-body`.
+**Label/Mono Font:** JetBrains Mono (variable, weights 400-700), loaded via `next/font/google` and exposed as `--jarvis-font-mono`.
 
-**Character:** The current type system is functional but not distinctive. Impeccable's deterministic scan flagged Arial as an overused font at `app/globals.css`. For product UI, familiarity is acceptable, but JARVIS needs a more deliberate technical interface voice once a typography pass is scheduled.
+**Character:** Syne carries the JARVIS identity — geometric, technical, cinematic. JetBrains Mono is the operational instrument voice for labels, metadata strips, and code surfaces. Both fonts replaced the Phase 21 Arial fallback in UI.3; Arial is forbidden going forward. The font decision is recorded in `docs/architecture/UI_POLISH_PLAN.md` §7.
 
 ### Hierarchy
 
