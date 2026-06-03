@@ -42,11 +42,14 @@ describe("Phase 21 realization bundle status report", () => {
       adapter_or_writer_injected: true,
     });
     expect(byId.get("21E")).toMatchObject({
-      classification: "execution_enabled",
+      classification: "operationally_validated",
       execution_enabled: true,
       approval_gated: true,
       adapter_or_writer_injected: true,
     });
+    expect(byId.get("21E")?.status_notes.join(" ")).toContain(
+      "Operational validation passed",
+    );
     expect(byId.get("21F-R")).toMatchObject({
       classification: "execution_enabled",
       execution_enabled: true,

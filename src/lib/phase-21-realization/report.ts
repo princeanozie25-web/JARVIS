@@ -8,6 +8,7 @@ export const PHASE_21_REALIZATION_CLASSIFICATIONS = [
   "workflow",
   "realized",
   "execution_enabled",
+  "operationally_validated",
 ] as const;
 
 const SliceIdSchema = z.enum([
@@ -136,7 +137,7 @@ export function buildPhase21RealizationReport(): Phase21RealizationReport {
     {
       slice_id: "21E",
       name: "Social Media Extraction",
-      classification: "execution_enabled",
+      classification: "operationally_validated",
       execution_enabled: true,
       approval_gated: true,
       adapter_or_writer_injected: true,
@@ -147,6 +148,7 @@ export function buildPhase21RealizationReport(): Phase21RealizationReport {
       status_notes: [
         "User-triggered URL policy classification, extraction planning, injected yt-dlp/ffmpeg/transcription/analysis runner boundaries, multimodal packet assembly, and cleanup-guaranteed workflow exist.",
         "Telemetry is metadata-only and excludes raw URLs, frames, audio, video, transcript text, and raw provider payloads.",
+        "Operational validation passed on a public YouTube smoke URL with yt-dlp 2026.03.17, ffmpeg 8.1.1, faster-whisper:tiny, packet assembly, analysis, and temp workspace cleanup.",
       ],
     },
     {
