@@ -65,6 +65,30 @@ export {
 } from "./generator";
 
 export {
+  MORNING_BRIEF_COMPOSED_SECTION_TYPES,
+  MORNING_BRIEF_COMPOSER_GOVERNANCE,
+  MORNING_BRIEF_COMPOSER_VERSION,
+  MORNING_BRIEF_COMPOSITION_STATUSES,
+  MorningBriefComposedSectionSchema,
+  MorningBriefComposedSectionTypeSchema,
+  MorningBriefComposerInputSchema,
+  MorningBriefComposerOptionsSchema,
+  MorningBriefCompositionStatusSchema,
+  MorningBriefGovernanceSummarySchema as MorningBriefComposerGovernanceSummarySchema,
+  MorningBriefItemSchema,
+  MorningBriefSchema,
+  composeMorningBrief,
+  type MorningBrief,
+  type MorningBriefComposedSection,
+  type MorningBriefComposedSectionType,
+  type MorningBriefComposerInput,
+  type MorningBriefComposerOptions,
+  type MorningBriefCompositionStatus,
+  type MorningBriefGovernanceSummary as MorningBriefComposerGovernanceSummary,
+  type MorningBriefItem,
+} from "./composer";
+
+export {
   MORNING_BRIEF_PREVIEW_CLI_VERSION,
   MorningBriefPreviewCliReportSchema,
   MorningBriefSectionPreviewSchema,
@@ -76,6 +100,18 @@ export {
   type MorningBriefPreviewCliReport,
   type MorningBriefSectionPreview,
 } from "./preview-cli";
+
+export {
+  MORNING_BRIEF_PREVIEW_STATUSES,
+  MORNING_BRIEF_REAL_PREVIEW_VERSION,
+  MorningBriefPreviewOptionsSchema,
+  MorningBriefPreviewSchema,
+  MorningBriefPreviewStatusSchema,
+  buildMorningBriefPreview,
+  type MorningBriefPreview,
+  type MorningBriefPreviewOptions,
+  type MorningBriefPreviewStatus,
+} from "./real-preview";
 
 export {
   MORNING_BRIEF_INCLUSION_ACTIONS,
