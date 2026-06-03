@@ -276,6 +276,14 @@ Optional Obsidian pull-only index:
 - Optional semantic env: `OBSIDIAN_EMBEDDING_MODEL` defaults to `nomic-embed-text`, `OBSIDIAN_EMBEDDING_DIMENSION` defaults to `768`, `OBSIDIAN_EMBEDDING_TIMEOUT_MS` defaults to `30000`, and `JARVIS_OLLAMA_BASE_URL` defaults to `http://127.0.0.1:11434`.
 - `OBSIDIAN_SEMANTIC_QUERY` can be set for the manual embed command to print metadata-only top-k result ids and scores. It never prints the query text, snippets, embeddings, note bodies, or the absolute vault path.
 
+Optional Phase 21E social extraction smoke:
+
+- Install or verify `yt-dlp`, `ffmpeg`, `ffprobe`, Python, and `faster-whisper`.
+- Configure the local STT provider in `.env.local`: `JARVIS_STT_PYTHON_COMMAND`, `JARVIS_STT_MODEL_NAME`, `JARVIS_STT_MODEL_PATH`, `JARVIS_STT_PROVIDER_ID`, and optionally `JARVIS_STT_TIMEOUT_MS`.
+- Run `npm run social:smoke` to exercise the user-triggered URL -> download -> frame extraction -> transcript -> multimodal packet -> analysis -> cleanup path against a public YouTube smoke URL.
+- The smoke path uses injected runner boundaries and keeps workflow telemetry metadata-only. It does not watch URLs, bulk download, persist raw media, store raw transcript/frame/audio/video telemetry, or bypass the explicit user-trigger gate.
+- Full setup notes live in [docs/architecture/phase-21e-social-extraction-operational-validation.md](docs/architecture/phase-21e-social-extraction-operational-validation.md).
+
 ## Testing
 
 Current posture: 4,200+ passing tests, TypeScript strict, lint passing, and closeout guards across governance, voice, runtime, project intelligence, environment, vision, scheduled assistance, approval lifecycle, architecture graph, final hardening, final documentation, and final project declaration contracts.
