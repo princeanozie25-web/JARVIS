@@ -13,8 +13,10 @@ describe("Phase 21C Morning Brief closeout", () => {
     expect(report.closeout_version).toBe(
       PHASE_21C_MORNING_BRIEF_CLOSEOUT_VERSION,
     );
-    expect(report.phase).toBe("21C");
-    expect(report.status).toBe("preview_to_suggestion_workflow_complete");
+    expect(report.phase).toBe("21C-R");
+    expect(report.status).toBe(
+      "Morning Brief realized as scheduled Suggestion Inbox delivery workflow",
+    );
     expect(
       report.components.map((component) => component.component_id),
     ).toEqual([
@@ -23,6 +25,9 @@ describe("Phase 21C Morning Brief closeout", () => {
       "morning-brief-preview-generator",
       "morning-brief-suggestion-payload",
       "morning-brief-scheduler-plan",
+      "morning-brief-inbox-delivery",
+      "morning-brief-scheduler-invocation-boundary",
+      "shared-suggestion-inbox-delivery-bridge",
     ]);
     expect(report.components.every((component) => component.present)).toBe(
       true,
@@ -33,15 +38,23 @@ describe("Phase 21C Morning Brief closeout", () => {
     const report = buildPhase21CMorningBriefCloseoutReport();
 
     expect(report.governance.workflow_status).toBe(
-      "governed_suggestion_only_complete",
+      "Morning Brief realized as scheduled Suggestion Inbox delivery workflow",
     );
     expect(report.governance.suggestion_only).toBe(true);
     expect(report.governance.metadata_only).toBe(true);
     expect(report.governance.read_only_google_inputs_only).toBe(true);
+    expect(report.governance.google_t0_read_stack_present).toBe(true);
     expect(report.governance.minimum_viable_input_rules_present).toBe(true);
     expect(report.governance.degraded_modes_present).toBe(true);
     expect(report.governance.suggestion_payload_builder_present).toBe(true);
+    expect(report.governance.suggestion_inbox_delivery_present).toBe(true);
+    expect(report.governance.injected_delivery_supported).toBe(true);
     expect(report.governance.scheduler_metadata_present).toBe(true);
+    expect(report.governance.scheduler_invocation_boundary_present).toBe(true);
+    expect(report.governance.idempotency_dedupe_present).toBe(true);
+    expect(report.governance.delivery_user_visible_through_inbox_item).toBe(
+      true,
+    );
   });
 
   it("keeps automation, model, network, and mutation paths unavailable", () => {
@@ -50,7 +63,9 @@ describe("Phase 21C Morning Brief closeout", () => {
     expect(report.governance.scheduler_daemon_started).toBe(false);
     expect(report.governance.auto_send_supported).toBe(false);
     expect(report.governance.auto_execute_supported).toBe(false);
+    expect(report.governance.action_execution_attempted).toBe(false);
     expect(report.governance.approval_finalization_supported).toBe(false);
+    expect(report.governance.approval_finalization_attempted).toBe(false);
     expect(report.governance.provider_call_supported).toBe(false);
     expect(report.governance.network_call_supported).toBe(false);
     expect(
@@ -66,10 +81,12 @@ describe("Phase 21C Morning Brief closeout", () => {
     const report = buildPhase21CMorningBriefCloseoutReport();
     const wording = report.readme_safe_wording.join(" ");
 
-    expect(wording).toMatch(/suggestion-only workflow/i);
-    expect(wording).toMatch(/Suggestion Inbox-ready digest payloads/i);
+    expect(wording).toMatch(
+      /Morning Brief realized as scheduled Suggestion Inbox delivery workflow/i,
+    );
+    expect(wording).toMatch(/metadata-only Suggestion Inbox item/i);
     expect(wording).toMatch(/08:00 local scheduling/i);
-    expect(wording).not.toMatch(/send emails|calendar mutation|drive writes/i);
+    expect(wording).not.toMatch(/sends emails|calendar mutation|Drive writes/i);
     expect(report.future_work.join(" ")).toMatch(/approval lifecycle/i);
   });
 
