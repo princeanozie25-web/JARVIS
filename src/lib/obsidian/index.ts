@@ -184,6 +184,7 @@ export {
 } from "./knowledge-compounding-detector";
 
 export {
+  KNOWLEDGE_APPROVED_WRITE_EXECUTION_VERSION,
   KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION,
   KNOWLEDGE_HUB_REASONS,
   KnowledgeCompoundingCloseoutReportSchema,
@@ -202,6 +203,7 @@ export {
   KnowledgeWritePlanSchema,
   KnowledgeWritePlanSummarySchema,
   KnowledgeWriteTargetSchema,
+  buildBoundedKnowledgeReindexPlan,
   buildKnowledgeCompoundingCloseoutReport,
   buildKnowledgeDraft,
   buildKnowledgeReindexPlan,
@@ -212,6 +214,7 @@ export {
   summarizeKnowledgeHubCandidates,
   summarizeKnowledgeWritePlan,
   validateKnowledgeDraftSources,
+  type KnowledgeBoundedReindexRunMetadata,
   type KnowledgeCompoundingCloseoutReport,
   type KnowledgeDraft,
   type KnowledgeDraftSection,
@@ -426,3 +429,27 @@ export {
   type VaultWriteExecutionMetadata,
   type VaultWriteExecutionStatus,
 } from "./write-execution";
+
+export {
+  KNOWLEDGE_COMPOUNDING_REALIZATION_VERSION,
+  KNOWLEDGE_WRITE_APPROVAL_STATUSES,
+  KNOWLEDGE_WRITE_EXECUTION_STATUSES,
+  KnowledgeReindexTriggerSchema,
+  KnowledgeVaultWriterInputSchema,
+  KnowledgeVaultWriterResultSchema,
+  KnowledgeWriteApprovalDecisionSchema,
+  KnowledgeWriteApprovalStatusSchema,
+  KnowledgeWriteExecutionResultSchema,
+  KnowledgeWriteExecutionStatusSchema,
+  KnowledgeWriteTelemetrySchema,
+  executeApprovedKnowledgeWrite,
+  renderKnowledgeDraftMarkdown,
+  resolveKnowledgeVaultTarget,
+  type KnowledgeReindexTrigger,
+  type KnowledgeVaultWriter,
+  type KnowledgeVaultWriterInput,
+  type KnowledgeVaultWriterResult,
+  type KnowledgeWriteApprovalDecision,
+  type KnowledgeWriteExecutionResult,
+  type KnowledgeWriteTelemetry,
+} from "./knowledge-compounding-realization";

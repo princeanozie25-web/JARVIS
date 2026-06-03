@@ -1,7 +1,20 @@
+import { createHash } from "node:crypto";
+import { isAbsolute, relative, resolve } from "node:path";
+
 import { z } from "zod";
+import { ApprovalIdSchema, ProposalIdSchema } from "../approval-runtime/types";
+import { VAULT_FRONTMATTER_SCHEMA_VERSION } from "./frontmatter";
+import {
+  VAULT_WRITE_GATEWAY_CONTRACT_VERSION,
+  planVaultWriteProposalDryRun,
+  type VaultWriteProposal,
+} from "./write-gateway";
 
 export const KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION =
   "phase21g.knowledge-compounding-workflow.v1" as const;
+
+export const KNOWLEDGE_APPROVED_WRITE_EXECUTION_VERSION =
+  "phase21g.knowledge-approved-write-execution.v1" as const;
 
 export const KNOWLEDGE_HUB_REASONS = [
   "concept_cluster_detected",
@@ -9,6 +22,24 @@ export const KNOWLEDGE_HUB_REASONS = [
   "backlink_cluster_detected",
   "sparse_pages_detected",
   "missing_hub_detected",
+] as const;
+
+export const KNOWLEDGE_WRITE_EXECUTION_STATUSES = [
+  "written",
+  "rejected_by_policy",
+  "deferred",
+  "missing_vault_path",
+  "path_escape_rejected",
+  "writer_rejected",
+  "writer_error",
+] as const;
+
+export const KNOWLEDGE_WRITE_APPROVAL_STATUSES = [
+  "approved",
+  "denied",
+  "expired",
+  "pending",
+  "deferred",
 ] as const;
 
 const BoundedTextSchema = z.string().trim().min(1).max(800);
@@ -23,6 +54,12 @@ const RelativeVaultPathSchema = z
   });
 
 export const KnowledgeHubReasonSchema = z.enum(KNOWLEDGE_HUB_REASONS);
+export const KnowledgeWriteExecutionStatusSchema = z.enum(
+  KNOWLEDGE_WRITE_EXECUTION_STATUSES,
+);
+export const KnowledgeWriteExecutionApprovalStatusSchema = z.enum(
+  KNOWLEDGE_WRITE_APPROVAL_STATUSES,
+);
 
 export const KnowledgeVaultPageMetadataSchema = z.strictObject({
   page_id: BoundedIdSchema,
@@ -191,6 +228,73 @@ export const KnowledgeReindexPlanSchema = z.strictObject({
   }),
 });
 
+export const KnowledgeWriteExecutionApprovalSchema = z.strictObject({
+  approval_id: ApprovalIdSchema.nullable(),
+  approval_status: KnowledgeWriteExecutionApprovalStatusSchema,
+  approved_target_path: RelativeVaultPathSchema.nullable().default(null),
+  decided_at: z.string().trim().datetime({ offset: true }).nullable(),
+});
+
+export const KnowledgeApprovedVaultWriterResultSchema = z.strictObject({
+  write_status: z.enum(["written", "rejected"]),
+  target_path: RelativeVaultPathSchema,
+  bytes_written: z.number().int().nonnegative(),
+  content_hash: z
+    .string()
+    .trim()
+    .regex(/^sha256:[a-f0-9]{64}$/),
+  metadata_only: z.literal(true),
+  raw_body_included: z.literal(false),
+});
+
+export const KnowledgeBoundedReindexRunMetadataSchema = z.strictObject({
+  reindex_run_id: BoundedIdSchema,
+  workflow_version: z.literal(KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION),
+  write_plan_id: BoundedIdSchema,
+  reindex_plan_id: BoundedIdSchema,
+  status: z.literal("metadata_emitted_after_approved_write"),
+  bounded: z.literal(true),
+  max_targets: z.number().int().positive().max(20),
+  target_count: z.number().int().nonnegative(),
+  skipped_target_count: z.number().int().nonnegative(),
+  target_paths: z.array(RelativeVaultPathSchema),
+  execution_attempted: z.literal(true),
+  filesystem_write_attempted: z.literal(false),
+  database_write_attempted: z.literal(false),
+  metadata_only: z.literal(true),
+  raw_vault_body_included: z.literal(false),
+});
+
+export const KnowledgeWriteTelemetrySummarySchema = z.strictObject({
+  metadata_only: z.literal(true),
+  raw_draft_body_included: z.literal(false),
+  raw_vault_body_included: z.literal(false),
+  raw_writer_payload_included: z.literal(false),
+  draft_section_count: z.number().int().nonnegative(),
+  source_count: z.number().int().nonnegative(),
+  markdown_body_char_count: z.number().int().nonnegative(),
+});
+
+export const KnowledgeApprovedWriteExecutionResultSchema = z.strictObject({
+  execution_version: z.literal(KNOWLEDGE_APPROVED_WRITE_EXECUTION_VERSION),
+  write_plan_id: BoundedIdSchema,
+  draft_id: BoundedIdSchema,
+  proposal_id: ProposalIdSchema,
+  approval_id: ApprovalIdSchema.nullable(),
+  target_path: RelativeVaultPathSchema.nullable(),
+  write_status: KnowledgeWriteExecutionStatusSchema,
+  writer_invoked: z.boolean(),
+  vault_mutated: z.boolean(),
+  bytes_written: z.number().int().nonnegative(),
+  content_hash: z
+    .string()
+    .trim()
+    .regex(/^sha256:[a-f0-9]{64}$/),
+  reindex_plan: KnowledgeReindexPlanSchema.nullable(),
+  reindex_run: KnowledgeBoundedReindexRunMetadataSchema.nullable(),
+  telemetry: KnowledgeWriteTelemetrySummarySchema,
+});
+
 export const KnowledgeCompoundingCloseoutReportSchema = z.strictObject({
   closeout_version: z.literal(KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION),
   title: z.literal(
@@ -220,6 +324,12 @@ export type KnowledgeVaultPageMetadata = z.infer<
   typeof KnowledgeVaultPageMetadataSchema
 >;
 export type KnowledgeHubReason = z.infer<typeof KnowledgeHubReasonSchema>;
+export type KnowledgeWriteExecutionStatus = z.infer<
+  typeof KnowledgeWriteExecutionStatusSchema
+>;
+export type KnowledgeWriteExecutionApprovalStatus = z.infer<
+  typeof KnowledgeWriteExecutionApprovalStatusSchema
+>;
 export type KnowledgeHubScore = z.infer<typeof KnowledgeHubScoreSchema>;
 export type KnowledgeHubCandidate = z.infer<typeof KnowledgeHubCandidateSchema>;
 export type KnowledgeHubSelectionSummary = z.infer<
@@ -241,9 +351,46 @@ export type KnowledgeReindexTarget = z.infer<
   typeof KnowledgeReindexTargetSchema
 >;
 export type KnowledgeReindexPlan = z.infer<typeof KnowledgeReindexPlanSchema>;
+export type KnowledgeWriteExecutionApproval = z.infer<
+  typeof KnowledgeWriteExecutionApprovalSchema
+>;
+export type KnowledgeApprovedVaultWriterResult = z.infer<
+  typeof KnowledgeApprovedVaultWriterResultSchema
+>;
+export type KnowledgeBoundedReindexRunMetadata = z.infer<
+  typeof KnowledgeBoundedReindexRunMetadataSchema
+>;
+export type KnowledgeWriteTelemetrySummary = z.infer<
+  typeof KnowledgeWriteTelemetrySummarySchema
+>;
+export type KnowledgeApprovedWriteExecutionResult = z.infer<
+  typeof KnowledgeApprovedWriteExecutionResultSchema
+>;
 export type KnowledgeCompoundingCloseoutReport = z.infer<
   typeof KnowledgeCompoundingCloseoutReportSchema
 >;
+
+export interface KnowledgeApprovedVaultWriterInput {
+  readonly proposal: VaultWriteProposal;
+  readonly vault_root: string;
+  readonly target_path: string;
+  readonly resolved_target_path: string;
+  readonly allow_overwrite: false;
+}
+
+export type KnowledgeApprovedVaultWriter = (
+  input: KnowledgeApprovedVaultWriterInput,
+) => Promise<KnowledgeApprovedVaultWriterResult>;
+
+export interface ExecuteApprovedKnowledgeWriteInput {
+  readonly draft: KnowledgeDraft;
+  readonly writePlan: KnowledgeWritePlan;
+  readonly approval: KnowledgeWriteExecutionApproval;
+  readonly vaultRoot: string | null | undefined;
+  readonly writer: KnowledgeApprovedVaultWriter;
+  readonly maxReindexTargets?: number;
+  readonly now?: string;
+}
 
 export function identifyKnowledgeHubCandidates(
   pages: readonly KnowledgeVaultPageMetadata[],
@@ -475,6 +622,265 @@ export function buildKnowledgeReindexPlan(
   });
 }
 
+export function buildBoundedKnowledgeReindexPlan(
+  writePlan: KnowledgeWritePlan,
+  maxTargets = 8,
+): KnowledgeReindexPlan {
+  const parsedMaxTargets = z
+    .number()
+    .int()
+    .positive()
+    .max(20)
+    .parse(maxTargets);
+  const plan = buildKnowledgeReindexPlan(writePlan);
+  const targets = plan.targets.slice(0, parsedMaxTargets);
+
+  return KnowledgeReindexPlanSchema.parse({
+    ...plan,
+    targets,
+    summary: {
+      ...plan.summary,
+      target_count: targets.length,
+    },
+  });
+}
+
+export async function executeApprovedKnowledgeCompoundingWrite(
+  input: ExecuteApprovedKnowledgeWriteInput,
+): Promise<KnowledgeApprovedWriteExecutionResult> {
+  const draft = KnowledgeDraftSchema.parse(input.draft);
+  const writePlan = KnowledgeWritePlanSchema.parse(input.writePlan);
+  const approval = KnowledgeWriteExecutionApprovalSchema.parse(input.approval);
+  const maxReindexTargets = z
+    .number()
+    .int()
+    .positive()
+    .max(20)
+    .parse(input.maxReindexTargets ?? 8);
+  const markdownBody = renderKnowledgeDraftMarkdown(draft);
+  const contentHash = sha256(markdownBody);
+
+  if (draft.draft_id !== writePlan.draft_id) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "rejected_by_policy",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  if (approval.approval_status === "deferred") {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "deferred",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  if (approval.approval_status !== "approved" || !approval.approval_id) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "rejected_by_policy",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  if (
+    approval.approved_target_path &&
+    approval.approved_target_path !== writePlan.target.vault_path
+  ) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "rejected_by_policy",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  const vaultRoot = input.vaultRoot?.trim();
+  if (!vaultRoot) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "missing_vault_path",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  const target = resolveKnowledgeVaultTarget(
+    vaultRoot,
+    writePlan.target.vault_path,
+  );
+  if (!target) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "path_escape_rejected",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  const proposal = buildKnowledgeGatewayProposal({
+    draft,
+    writePlan,
+    approval,
+    markdownBody,
+    contentHash,
+    createdAt: input.now ?? approval.decided_at ?? new Date(0).toISOString(),
+  });
+  const dryRun = planVaultWriteProposalDryRun(proposal);
+  if (
+    !dryRun.accepted ||
+    dryRun.state !== "ready_to_write" ||
+    dryRun.target_path !== writePlan.target.vault_path
+  ) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "rejected_by_policy",
+      writerInvoked: false,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  let writerResult: KnowledgeApprovedVaultWriterResult;
+  try {
+    writerResult = KnowledgeApprovedVaultWriterResultSchema.parse(
+      await input.writer({
+        proposal,
+        vault_root: vaultRoot,
+        target_path: writePlan.target.vault_path,
+        resolved_target_path: target.resolvedTargetPath,
+        allow_overwrite: false,
+      }),
+    );
+  } catch {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "writer_error",
+      writerInvoked: true,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  if (
+    writerResult.write_status !== "written" ||
+    writerResult.target_path !== writePlan.target.vault_path ||
+    writerResult.content_hash !== contentHash
+  ) {
+    return knowledgeWriteExecutionResult({
+      draft,
+      writePlan,
+      approval,
+      status: "writer_rejected",
+      writerInvoked: true,
+      vaultMutated: false,
+      bytesWritten: 0,
+      contentHash,
+      reindexPlan: null,
+      reindexRun: null,
+      markdownBody,
+    });
+  }
+
+  const reindexPlan = buildBoundedKnowledgeReindexPlan(
+    writePlan,
+    maxReindexTargets,
+  );
+  const unboundedPlan = buildKnowledgeReindexPlan(writePlan);
+  const reindexRun = KnowledgeBoundedReindexRunMetadataSchema.parse({
+    reindex_run_id: `knowledge-reindex-run:${slug(writePlan.write_plan_id)}`,
+    workflow_version: KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION,
+    write_plan_id: writePlan.write_plan_id,
+    reindex_plan_id: reindexPlan.reindex_plan_id,
+    status: "metadata_emitted_after_approved_write",
+    bounded: true,
+    max_targets: maxReindexTargets,
+    target_count: reindexPlan.targets.length,
+    skipped_target_count: Math.max(
+      0,
+      unboundedPlan.targets.length - reindexPlan.targets.length,
+    ),
+    target_paths: reindexPlan.targets.map((target) => target.target_path),
+    execution_attempted: true,
+    filesystem_write_attempted: false,
+    database_write_attempted: false,
+    metadata_only: true,
+    raw_vault_body_included: false,
+  });
+
+  return knowledgeWriteExecutionResult({
+    draft,
+    writePlan,
+    approval,
+    status: "written",
+    writerInvoked: true,
+    vaultMutated: true,
+    bytesWritten: writerResult.bytes_written,
+    contentHash,
+    reindexPlan,
+    reindexRun,
+    markdownBody,
+  });
+}
+
 export function buildKnowledgeCompoundingCloseoutReport(): KnowledgeCompoundingCloseoutReport {
   return KnowledgeCompoundingCloseoutReportSchema.parse({
     closeout_version: KNOWLEDGE_COMPOUNDING_WORKFLOW_VERSION,
@@ -560,6 +966,162 @@ function candidateFor(
     model_call_attempted: false,
     vault_write_attempted: false,
   });
+}
+
+function buildKnowledgeGatewayProposal(input: {
+  readonly draft: KnowledgeDraft;
+  readonly writePlan: KnowledgeWritePlan;
+  readonly approval: KnowledgeWriteExecutionApproval;
+  readonly markdownBody: string;
+  readonly contentHash: string;
+  readonly createdAt: string;
+}): VaultWriteProposal {
+  const approvalId = ApprovalIdSchema.parse(input.approval.approval_id);
+  const frontmatter = {
+    schema_version: VAULT_FRONTMATTER_SCHEMA_VERSION,
+    id: `note:${slug(input.draft.draft_id)}`,
+    title: input.draft.title,
+    note_type: "hub" as const,
+    domain: "wiki" as const,
+    status: "active" as const,
+    created_at: input.createdAt,
+    updated_at: input.createdAt,
+    tags: ["knowledge-compounding", "hub"],
+    sensitivity: "private" as const,
+    project: null,
+    provenance: {
+      source_type: "agent" as const,
+      source_id: input.draft.draft_id,
+      source_url: null,
+      content_hash: input.contentHash,
+    },
+    agent: {
+      created_by: "knowledge-compounding",
+      run_id: input.writePlan.write_plan_id,
+      model_id: null,
+      promotion_status: "human_approved" as const,
+    },
+    links: {
+      related: input.draft.candidate.source_page_ids,
+      sources: input.draft.sources.map((source) => source.source_id),
+      decisions: [approvalId],
+    },
+    lifecycle: {
+      durable: true,
+      canonical: false,
+      approval_status: "approved" as const,
+      approval_id: approvalId,
+      review_after: null,
+      supersedes: [],
+      superseded_by: [],
+    },
+  };
+
+  return {
+    contract_version: VAULT_WRITE_GATEWAY_CONTRACT_VERSION,
+    proposal_id: `proposal:${slug(input.writePlan.write_plan_id)}`,
+    note_type: "hub",
+    target_path: input.writePlan.target.vault_path,
+    frontmatter,
+    markdown_body: input.markdownBody,
+    provenance: frontmatter.provenance,
+    proposing_agent: {
+      agent_id: "knowledge-compounding",
+      agent_kind: "knowledge-compounding",
+      run_id: input.writePlan.write_plan_id,
+    },
+    approval_required: true,
+    approval_status: "approved",
+    approval_id: approvalId,
+    sensitivity: "private",
+    content_hash: input.contentHash,
+    created_at: input.createdAt,
+  };
+}
+
+function renderKnowledgeDraftMarkdown(draft: KnowledgeDraft): string {
+  const sections = draft.sections
+    .map((section) => `## ${section.heading}\n\n${section.body.trim()}`)
+    .join("\n\n");
+  const sources = draft.sources
+    .map((source) => `- ${source.title} (${source.path})`)
+    .join("\n");
+
+  return `# ${draft.title}\n\n${sections}\n\n## Sources\n\n${sources}`.trim();
+}
+
+function resolveKnowledgeVaultTarget(
+  vaultRoot: string,
+  targetPath: string,
+): {
+  readonly resolvedVaultRoot: string;
+  readonly resolvedTargetPath: string;
+} | null {
+  if (!isAbsolute(vaultRoot)) return null;
+  if (
+    isAbsolute(targetPath) ||
+    targetPath.includes("\\") ||
+    targetPath.split("/").includes("..") ||
+    !targetPath.endsWith(".md")
+  ) {
+    return null;
+  }
+
+  const resolvedVaultRoot = resolve(vaultRoot);
+  const resolvedTargetPath = resolve(resolvedVaultRoot, targetPath);
+  const relativePath = relative(resolvedVaultRoot, resolvedTargetPath);
+  if (
+    relativePath === "" ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath)
+  ) {
+    return null;
+  }
+
+  return { resolvedVaultRoot, resolvedTargetPath };
+}
+
+function knowledgeWriteExecutionResult(input: {
+  readonly draft: KnowledgeDraft;
+  readonly writePlan: KnowledgeWritePlan;
+  readonly approval: KnowledgeWriteExecutionApproval;
+  readonly status: KnowledgeWriteExecutionStatus;
+  readonly writerInvoked: boolean;
+  readonly vaultMutated: boolean;
+  readonly bytesWritten: number;
+  readonly contentHash: string;
+  readonly reindexPlan: KnowledgeReindexPlan | null;
+  readonly reindexRun: KnowledgeBoundedReindexRunMetadata | null;
+  readonly markdownBody: string;
+}): KnowledgeApprovedWriteExecutionResult {
+  return KnowledgeApprovedWriteExecutionResultSchema.parse({
+    execution_version: KNOWLEDGE_APPROVED_WRITE_EXECUTION_VERSION,
+    write_plan_id: input.writePlan.write_plan_id,
+    draft_id: input.draft.draft_id,
+    proposal_id: `proposal:${slug(input.writePlan.write_plan_id)}`,
+    approval_id: input.approval.approval_id,
+    target_path: input.writePlan.target.vault_path,
+    write_status: input.status,
+    writer_invoked: input.writerInvoked,
+    vault_mutated: input.vaultMutated,
+    bytes_written: input.bytesWritten,
+    content_hash: input.contentHash,
+    reindex_plan: input.reindexPlan,
+    reindex_run: input.reindexRun,
+    telemetry: {
+      metadata_only: true,
+      raw_draft_body_included: false,
+      raw_vault_body_included: false,
+      raw_writer_payload_included: false,
+      draft_section_count: input.draft.sections.length,
+      source_count: input.draft.sources.length,
+      markdown_body_char_count: input.markdownBody.length,
+    },
+  });
+}
+
+function sha256(value: string): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 function slug(value: string): string {

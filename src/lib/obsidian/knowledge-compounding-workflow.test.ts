@@ -1,21 +1,27 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBoundedKnowledgeReindexPlan,
   buildKnowledgeCompoundingCloseoutReport,
   buildKnowledgeDraft,
   buildKnowledgeReindexPlan,
   buildKnowledgeWritePlan,
+  executeApprovedKnowledgeCompoundingWrite,
   identifyKnowledgeHubCandidates,
   rankKnowledgeHubCandidates,
   summarizeKnowledgeDraft,
   summarizeKnowledgeHubCandidates,
   summarizeKnowledgeWritePlan,
   validateKnowledgeDraftSources,
+  type KnowledgeApprovedVaultWriter,
+  type KnowledgeApprovedVaultWriterInput,
   type KnowledgeDraftSource,
   type KnowledgeHubCandidate,
   type KnowledgeVaultPageMetadata,
+  type KnowledgeWriteExecutionApproval,
 } from "./knowledge-compounding-workflow";
 
 const fixturePages: KnowledgeVaultPageMetadata[] = [
@@ -123,6 +129,35 @@ function topCandidate(): KnowledgeHubCandidate {
     throw new Error("Expected fixture hub candidate.");
   }
   return candidate;
+}
+
+function approved(
+  overrides: Partial<KnowledgeWriteExecutionApproval> = {},
+): KnowledgeWriteExecutionApproval {
+  return {
+    approval_id: "approval:knowledge-compounding.write",
+    approval_status: "approved",
+    approved_target_path: "10-wiki/hubs/agent-orchestration.md",
+    decided_at: "2026-06-03T09:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function createDraftWithSentinel(sentinel: string) {
+  const draft = buildKnowledgeDraft({
+    candidate: topCandidate(),
+    sources: fixtureSources,
+  });
+  return {
+    ...draft,
+    sections: [
+      {
+        ...draft.sections[0],
+        body: sentinel,
+      },
+      ...draft.sections.slice(1),
+    ],
+  };
 }
 
 describe("knowledge compounding workflow", () => {
@@ -282,6 +317,230 @@ describe("knowledge compounding workflow", () => {
       database_write_attempted: false,
       metadata_only: true,
     });
+  });
+
+  it("bounds re-index plans for the approved write execution flow", () => {
+    const writePlan = buildKnowledgeWritePlan(
+      buildKnowledgeDraft({
+        candidate: topCandidate(),
+        sources: fixtureSources,
+      }),
+    );
+    const bounded = buildBoundedKnowledgeReindexPlan(writePlan, 2);
+
+    expect(bounded.targets.map((target) => target.target_kind)).toEqual([
+      "planned_hub",
+      "source_page",
+    ]);
+    expect(bounded.summary).toMatchObject({
+      target_count: 2,
+      execution_attempted: false,
+      filesystem_write_attempted: false,
+      database_write_attempted: false,
+      metadata_only: true,
+    });
+  });
+
+  it("executes an approved knowledge write only through the injected gateway writer", async () => {
+    const sentinel = "RAW-DRAFT-SENTINEL-DO-NOT-LEAK";
+    const draft = createDraftWithSentinel(sentinel);
+    const writePlan = buildKnowledgeWritePlan(draft);
+    const writerCalls: KnowledgeApprovedVaultWriterInput[] = [];
+    const writer: KnowledgeApprovedVaultWriter = async (request) => {
+      writerCalls.push(request);
+      return {
+        write_status: "written",
+        target_path: request.target_path,
+        bytes_written: Buffer.byteLength(
+          request.proposal.markdown_body,
+          "utf8",
+        ),
+        content_hash: request.proposal.content_hash,
+        metadata_only: true,
+        raw_body_included: false,
+      };
+    };
+
+    const result = await executeApprovedKnowledgeCompoundingWrite({
+      draft,
+      writePlan,
+      approval: approved(),
+      vaultRoot: join(process.cwd(), "tmp-vault"),
+      writer,
+      maxReindexTargets: 3,
+      now: "2026-06-03T09:00:00.000Z",
+    });
+
+    expect(writerCalls).toHaveLength(1);
+    expect(writerCalls[0]).toMatchObject({
+      vault_root: join(process.cwd(), "tmp-vault"),
+      target_path: "10-wiki/hubs/agent-orchestration.md",
+      allow_overwrite: false,
+    });
+    expect(writerCalls[0]?.resolved_target_path).toBe(
+      join(process.cwd(), "tmp-vault", "10-wiki/hubs/agent-orchestration.md"),
+    );
+    expect(writerCalls[0]?.proposal).toMatchObject({
+      contract_version: "phase21.vault-write-gateway.v1",
+      target_path: "10-wiki/hubs/agent-orchestration.md",
+      approval_status: "approved",
+      approval_id: "approval:knowledge-compounding.write",
+      markdown_body: expect.stringContaining(sentinel),
+      frontmatter: {
+        note_type: "hub",
+        domain: "wiki",
+        lifecycle: {
+          durable: true,
+          approval_status: "approved",
+          approval_id: "approval:knowledge-compounding.write",
+        },
+      },
+    });
+
+    expect(result).toMatchObject({
+      write_plan_id: "knowledge-write-plan:agent-orchestration",
+      draft_id: "knowledge-draft:agent-orchestration",
+      approval_id: "approval:knowledge-compounding.write",
+      target_path: "10-wiki/hubs/agent-orchestration.md",
+      write_status: "written",
+      writer_invoked: true,
+      vault_mutated: true,
+      telemetry: {
+        metadata_only: true,
+        raw_draft_body_included: false,
+        raw_vault_body_included: false,
+        raw_writer_payload_included: false,
+        draft_section_count: 2,
+        source_count: 3,
+      },
+    });
+    expect(result.reindex_plan?.summary).toMatchObject({
+      target_count: 3,
+      execution_attempted: false,
+      filesystem_write_attempted: false,
+      database_write_attempted: false,
+      metadata_only: true,
+    });
+    expect(result.reindex_run).toMatchObject({
+      status: "metadata_emitted_after_approved_write",
+      bounded: true,
+      max_targets: 3,
+      target_count: 3,
+      skipped_target_count: 3,
+      execution_attempted: true,
+      filesystem_write_attempted: false,
+      database_write_attempted: false,
+      metadata_only: true,
+      raw_vault_body_included: false,
+    });
+    expect(JSON.stringify(result)).not.toContain(sentinel);
+    expect(Object.keys(result.telemetry)).not.toEqual(
+      expect.arrayContaining(["markdown_body", "body", "raw_body", "content"]),
+    );
+  });
+
+  it("rejects pending, denied, expired, and deferred approvals without writer calls", async () => {
+    const draft = buildKnowledgeDraft({
+      candidate: topCandidate(),
+      sources: fixtureSources,
+    });
+    const writePlan = buildKnowledgeWritePlan(draft);
+    const writerCalls: KnowledgeApprovedVaultWriterInput[] = [];
+    const writer: KnowledgeApprovedVaultWriter = async (request) => {
+      writerCalls.push(request);
+      return {
+        write_status: "written",
+        target_path: request.target_path,
+        bytes_written: 1,
+        content_hash: request.proposal.content_hash,
+        metadata_only: true,
+        raw_body_included: false,
+      };
+    };
+
+    for (const approval_status of [
+      "pending",
+      "denied",
+      "expired",
+      "deferred",
+    ] as const) {
+      const result = await executeApprovedKnowledgeCompoundingWrite({
+        draft,
+        writePlan,
+        approval: approved({ approval_status }),
+        vaultRoot: join(process.cwd(), "tmp-vault"),
+        writer,
+      });
+
+      expect(result).toMatchObject({
+        write_status:
+          approval_status === "deferred" ? "deferred" : "rejected_by_policy",
+        writer_invoked: false,
+        vault_mutated: false,
+        bytes_written: 0,
+        reindex_plan: null,
+        reindex_run: null,
+      });
+    }
+
+    expect(writerCalls).toEqual([]);
+  });
+
+  it("rejects target traversal and mismatched approved target before writer invocation", async () => {
+    const draft = buildKnowledgeDraft({
+      candidate: topCandidate(),
+      sources: fixtureSources,
+    });
+    const writePlan = buildKnowledgeWritePlan(draft);
+    const writerCalls: KnowledgeApprovedVaultWriterInput[] = [];
+    const writer: KnowledgeApprovedVaultWriter = async (request) => {
+      writerCalls.push(request);
+      return {
+        write_status: "written",
+        target_path: request.target_path,
+        bytes_written: 1,
+        content_hash: request.proposal.content_hash,
+        metadata_only: true,
+        raw_body_included: false,
+      };
+    };
+
+    const traversal = await executeApprovedKnowledgeCompoundingWrite({
+      draft,
+      writePlan: {
+        ...writePlan,
+        target: {
+          ...writePlan.target,
+          vault_path: "10-wiki/hubs/../../outside.md",
+        },
+      },
+      approval: approved({
+        approved_target_path: "10-wiki/hubs/../../outside.md",
+      }),
+      vaultRoot: join(process.cwd(), "tmp-vault"),
+      writer,
+    });
+    const mismatch = await executeApprovedKnowledgeCompoundingWrite({
+      draft,
+      writePlan,
+      approval: approved({
+        approved_target_path: "10-wiki/hubs/other.md",
+      }),
+      vaultRoot: join(process.cwd(), "tmp-vault"),
+      writer,
+    });
+
+    expect(traversal).toMatchObject({
+      write_status: "path_escape_rejected",
+      writer_invoked: false,
+      vault_mutated: false,
+    });
+    expect(mismatch).toMatchObject({
+      write_status: "rejected_by_policy",
+      writer_invoked: false,
+      vault_mutated: false,
+    });
+    expect(writerCalls).toEqual([]);
   });
 
   it("reports closeout through the human approval boundary only", () => {
