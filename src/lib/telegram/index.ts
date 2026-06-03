@@ -36,3 +36,64 @@ export {
   type TelegramTransportMetadata,
   type TelegramTransportSummary,
 } from "./transport";
+
+export {
+  TELEGRAM_BOT_API_MODES,
+  TELEGRAM_BOT_CONFIG_VERSION,
+  TELEGRAM_CHAT_MODES,
+  TelegramBotApiModeSchema,
+  TelegramBotConfigInputSchema,
+  TelegramBotConfigSchema,
+  TelegramBotConfigSummarySchema,
+  TelegramBotConfigValidationSchema,
+  TelegramChatModeSchema,
+  buildTelegramBotConfig,
+  isTelegramSenderAuthorized,
+  summarizeTelegramBotConfig,
+  validateTelegramBotConfig,
+  type TelegramBotConfig,
+  type TelegramBotConfigInput,
+  type TelegramBotConfigSummary,
+  type TelegramBotConfigValidation,
+} from "./config";
+
+export {
+  TELEGRAM_INBOUND_ADAPTER_VERSION,
+  TELEGRAM_INBOUND_REJECTION_REASONS,
+  TelegramBotUpdateParseResultSchema,
+  TelegramInboundAdapterResultSchema,
+  TelegramInboundRejectionReasonSchema,
+  buildTelegramInboundAdapterResult,
+  parseTelegramBotUpdate,
+  routeTelegramUpdateToEnvelope,
+  type TelegramBotUpdateParseResult,
+  type TelegramInboundAdapterResult,
+  type TelegramInboundRejectionReason,
+} from "./inbound-adapter";
+
+export {
+  TELEGRAM_OUTBOUND_REPLY_VERSION,
+  TELEGRAM_REPLY_SEND_STATUSES,
+  TelegramReplyGovernanceSchema,
+  TelegramReplyPlanSchema,
+  TelegramReplySendResultSchema,
+  TelegramReplySendStatusSchema,
+  buildInjectedTelegramSendResult,
+  buildTelegramReplyGovernance,
+  buildTelegramReplyPlan,
+  createDryRunTelegramSender,
+  createInjectedTelegramSender,
+  sendTelegramReplyWithAdapter,
+  type TelegramReplyGovernance,
+  type TelegramReplyPlan,
+  type TelegramReplySendResult,
+  type TelegramReplySendStatus,
+  type TelegramSenderAdapter,
+} from "./outbound-reply";
+
+export {
+  TELEGRAM_REALIZATION_CLOSEOUT_VERSION,
+  TelegramRealizationCloseoutReportSchema,
+  buildTelegramRealizationCloseoutReport,
+  type TelegramRealizationCloseoutReport,
+} from "./phase-21d-realization-closeout";
