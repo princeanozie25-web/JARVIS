@@ -53,6 +53,36 @@ export function GauntletHub({ hub }: GauntletHubProps) {
       aria-label={`Human Gate hub — ${label}`}
       role="img"
     >
+      <g aria-hidden="true" data-human-gate-authority-core="true">
+        <circle
+          cx={x}
+          cy={y}
+          r={radius + 38}
+          fill="none"
+          stroke={color}
+          strokeOpacity={0.18}
+          strokeWidth={1}
+        />
+        <circle
+          cx={x}
+          cy={y}
+          r={radius + 28}
+          fill="none"
+          stroke={color}
+          strokeOpacity={0.24}
+          strokeWidth={1.5}
+          strokeDasharray="12 7"
+        />
+        <circle
+          cx={x}
+          cy={y}
+          r={radius + 8}
+          fill="rgba(250,204,21,0.08)"
+          stroke={color}
+          strokeOpacity={0.34}
+          strokeWidth={1}
+        />
+      </g>
       <circle
         data-gauntlet-hub-ring
         cx={x}

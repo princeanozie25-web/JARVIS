@@ -201,17 +201,34 @@ function PowerNodeMark({ node }: { node: GauntletNode }) {
       role="img"
     >
       {isReactor && (
-        <rect
-          data-power-fortress-frame="true"
-          x={x - radius - 18}
-          y={y - radius - 18}
-          width={(radius + 18) * 2}
-          height={(radius + 18) * 2}
-          fill="none"
-          stroke={POWER_STONE_VAR}
-          strokeOpacity={0.45}
-          strokeWidth={2}
-        />
+        <g aria-hidden="true" data-power-fortress-reactor="true">
+          <rect
+            data-power-fortress-frame="true"
+            x={x - radius - 18}
+            y={y - radius - 18}
+            width={(radius + 18) * 2}
+            height={(radius + 18) * 2}
+            fill="rgba(224,17,95,0.08)"
+            stroke={POWER_STONE_VAR}
+            strokeOpacity={0.45}
+            strokeWidth={2}
+          />
+          <polygon
+            points={`${x},${y - radius - 22} ${x + radius + 22},${y} ${x},${y + radius + 22} ${x - radius - 22},${y}`}
+            fill="none"
+            stroke="var(--jarvis-color-violet)"
+            strokeOpacity={0.52}
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r={radius + 8}
+            fill="none"
+            stroke="var(--jarvis-color-pipeline-forbidden)"
+            strokeOpacity={0.34}
+            strokeDasharray="8 5"
+          />
+        </g>
       )}
       {isGate && (
         <rect

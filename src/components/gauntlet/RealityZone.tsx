@@ -158,14 +158,28 @@ function RealityNodeMark({ node }: { node: GauntletNode }) {
       opacity={opacity}
     >
       {isThemeEngine && (
-        <polygon
-          data-reality-crystal-halo="true"
-          points={`${x},${y - radius - 14} ${x + radius + 14},${y} ${x},${y + radius + 14} ${x - radius - 14},${y}`}
-          fill="none"
-          stroke={REALITY_STONE_VAR}
-          strokeOpacity={0.45}
-          strokeWidth={2}
-        />
+        <g aria-hidden="true" data-reality-electric-crystal="true">
+          <polygon
+            data-reality-crystal-halo="true"
+            points={`${x},${y - radius - 18} ${x + radius + 18},${y} ${x},${y + radius + 18} ${x - radius - 18},${y}`}
+            fill="rgba(34,211,238,0.08)"
+            stroke={REALITY_STONE_VAR}
+            strokeOpacity={0.45}
+            strokeWidth={2}
+          />
+          <polygon
+            points={`${x},${y - radius - 6} ${x + radius * 0.76},${y} ${x},${y + radius + 6} ${x - radius * 0.76},${y}`}
+            fill="none"
+            stroke="var(--jarvis-color-cyan-signal)"
+            strokeOpacity={0.7}
+          />
+          <path
+            d={`M ${x - radius * 0.5} ${y - 4} L ${x - 6} ${y - radius * 0.2} L ${x + 4} ${y + 4} L ${x + radius * 0.45} ${y - 2}`}
+            fill="none"
+            stroke="var(--jarvis-color-cyan-signal)"
+            strokeOpacity={0.72}
+          />
+        </g>
       )}
       <polygon
         points={`${x},${y - radius} ${x + radius},${y} ${x},${y + radius} ${x - radius},${y}`}

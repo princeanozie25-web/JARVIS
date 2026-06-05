@@ -156,16 +156,26 @@ function MindNodeMark({ node }: { node: GauntletNode }) {
       role="img"
     >
       {isChairman && (
-        <circle
-          data-mind-chairman-halo="true"
-          cx={x}
-          cy={y}
-          r={radius + 14}
-          fill="none"
-          stroke={MIND_STONE_VAR}
-          strokeOpacity={0.45}
-          strokeWidth={2}
-        />
+        <g aria-hidden="true" data-mind-cognition-crystal="true">
+          <circle
+            data-mind-chairman-halo="true"
+            cx={x}
+            cy={y}
+            r={radius + 18}
+            fill="none"
+            stroke={MIND_STONE_VAR}
+            strokeOpacity={0.45}
+            strokeWidth={2}
+          />
+          <polygon
+            points={`${x},${y - radius - 12} ${x + radius + 10},${y} ${x},${y + radius + 12} ${x - radius - 10},${y}`}
+            fill="rgba(167,139,250,0.10)"
+            stroke="var(--jarvis-color-violet)"
+            strokeOpacity={0.68}
+          />
+          <line x1={x} y1={y - radius - 12} x2={x} y2={y + radius + 12} stroke="var(--jarvis-color-gold)" strokeOpacity={0.42} />
+          <line x1={x - radius - 10} y1={y} x2={x + radius + 10} y2={y} stroke="var(--jarvis-color-gold)" strokeOpacity={0.42} />
+        </g>
       )}
       <circle
         cx={x}

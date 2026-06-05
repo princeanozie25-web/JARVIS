@@ -55,7 +55,10 @@ describe("DD.0 stone palette tokens", () => {
 
   it("the power stone reuses the existing violet token (no parallel hex)", () => {
     expect(tokensCss).toMatch(
-      /--jarvis-color-stone-power:\s*var\(--jarvis-color-violet\)/,
+      /--jarvis-color-stone-reality:\s*var\(--jarvis-color-cyan-signal\)/,
+    );
+    expect(tokensCss).toMatch(
+      /--jarvis-color-stone-power:\s*var\(--jarvis-color-ruby\)/,
     );
   });
 

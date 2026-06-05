@@ -3,6 +3,7 @@ import {
   buildGauntletViewModel,
   type CouncilStage,
   type GauntletHubState,
+  type GauntletPoint,
   type GauntletViewModel,
   type PowerState,
   type RealityState,
@@ -19,21 +20,6 @@ import { SoulZone } from "./SoulZone";
 import { SpaceZone } from "./SpaceZone";
 import { TimeZone } from "./TimeZone";
 
-/**
- * Living System Map root — DD.2 + DD.3.
- *
- * Composes the Human Gate hub at the visual center and the populated
- * Space zone. The hub is rendered last so it always paints on top —
- * it can never be visually obscured. The root `data-hub-state` is the
- * trigger CSS uses to halt or resume pulses approaching / passing
- * through the gate.
- *
- * Strict read-only contract:
- *   - no <button>, <form>, <input>, <select>, <a>
- *   - no controls, no actions, no execution
- *   - no live telemetry subscription
- */
-
 export interface GauntletPipelineProps {
   viewModel?: GauntletViewModel;
   hubState?: GauntletHubState;
@@ -42,6 +28,7 @@ export interface GauntletPipelineProps {
   soulState?: SoulState;
   realityState?: RealityState;
   powerState?: PowerState;
+  presentation?: "standard" | "cinematic";
 }
 
 export function GauntletPipeline({
@@ -52,8 +39,9 @@ export function GauntletPipeline({
   soulState,
   realityState,
   powerState,
+  presentation = "standard",
 }: GauntletPipelineProps) {
-  const model =
+  const baseModel =
     viewModel ??
     buildGauntletViewModel({
       hubState: hubState ?? "default",
@@ -63,6 +51,13 @@ export function GauntletPipeline({
       realityState: realityState ?? "idle",
       powerState: powerState ?? "idle",
     });
+  const isCinematic = presentation === "cinematic";
+  const model = isCinematic
+    ? toCinematicGauntletViewModel(baseModel)
+    : baseModel;
+  const viewBox = isCinematic ? CINEMATIC_GAUNTLET_VIEWBOX : GAUNTLET_VIEWBOX;
+  const viewBoxX = "x" in viewBox ? viewBox.x : 0;
+  const viewBoxY = "y" in viewBox ? viewBox.y : 0;
   const space = model.zones.find((zone) => zone.zone_id === "space");
   const time = model.zones.find((zone) => zone.zone_id === "time");
   const mind = model.zones.find((zone) => zone.zone_id === "mind");
@@ -95,22 +90,29 @@ export function GauntletPipeline({
       data-voice-enabled={String(model.voice_enabled)}
       data-export-enabled={String(model.export_enabled)}
       data-live-telemetry-subscribed={String(model.live_telemetry_subscribed)}
-      className="grid w-full gap-6 border border-border-subtle bg-panel p-6 shadow-cockpit-depth"
+      data-gauntlet-presentation={presentation}
+      className={
+        isCinematic
+          ? "relative grid w-full gap-3 overflow-hidden rounded-lg border border-cyan-200/10 bg-slate-950/10 p-3 shadow-[0_0_80px_rgba(14,165,233,0.12)]"
+          : "grid w-full gap-6 border border-border-subtle bg-panel p-6 shadow-cockpit-depth"
+      }
     >
-      <header className="grid gap-2">
-        <p className="font-mono text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-signal">
-          Living System Map · read only · demo fixtures
-        </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          {model.title}
-        </h1>
-        <p className="max-w-prose text-sm leading-6 text-ink/70">
-          {model.subtitle}
-        </p>
-      </header>
+      {isCinematic ? null : (
+        <header className="grid gap-2">
+          <p className="font-mono text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-signal">
+            Living System Map - read only - demo fixtures
+          </p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            {model.title}
+          </h1>
+          <p className="max-w-prose text-sm leading-6 text-ink/70">
+            {model.subtitle}
+          </p>
+        </header>
+      )}
 
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden rounded-md"
         data-gauntlet-atmosphere-shell="optional"
       >
         <GauntletAtmosphere presentationalMode={atmosphereMode} />
@@ -125,11 +127,11 @@ export function GauntletPipeline({
           data-reality-state={model.reality_state}
           data-power-state={model.power_state}
           data-populated-zones={populatedZones}
-          viewBox={`0 0 ${GAUNTLET_VIEWBOX.width} ${GAUNTLET_VIEWBOX.height}`}
+          data-gauntlet-cinematic-canvas={String(isCinematic)}
+          viewBox={`${viewBoxX} ${viewBoxY} ${viewBox.width} ${viewBox.height}`}
           className="relative z-10 w-full"
-          style={{ minHeight: "320px" }}
+          style={{ minHeight: isCinematic ? "min(70vw, 820px)" : "320px" }}
         >
-          {/* Backdrop: deep navy field, atmospheric vignette, then grid. */}
           <defs>
             <pattern
               id="gauntlet-grid"
@@ -152,24 +154,32 @@ export function GauntletPipeline({
           </defs>
           <rect
             data-gauntlet-backdrop="panel"
-            width={GAUNTLET_VIEWBOX.width}
-            height={GAUNTLET_VIEWBOX.height}
-            fill="var(--jarvis-color-panel)"
+            x={viewBoxX}
+            y={viewBoxY}
+            width={viewBox.width}
+            height={viewBox.height}
+            fill={
+              isCinematic ? "rgba(2,6,23,0.18)" : "var(--jarvis-color-panel)"
+            }
           />
           <rect
             data-gauntlet-backdrop="grid"
-            width={GAUNTLET_VIEWBOX.width}
-            height={GAUNTLET_VIEWBOX.height}
+            x={viewBoxX}
+            y={viewBoxY}
+            width={viewBox.width}
+            height={viewBox.height}
             fill="url(#gauntlet-grid)"
+            opacity={isCinematic ? 0.28 : 1}
           />
           <rect
             data-gauntlet-backdrop="atmosphere"
-            width={GAUNTLET_VIEWBOX.width}
-            height={GAUNTLET_VIEWBOX.height}
+            x={viewBoxX}
+            y={viewBoxY}
+            width={viewBox.width}
+            height={viewBox.height}
             fill="url(#gauntlet-atmosphere)"
           />
 
-          {/* Zones paint first; hub overlays last so it is never obscured. */}
           {space ? <SpaceZone zone={space} /> : null}
           {time ? (
             <TimeZone zone={time} state={model.time_state} hub={model.hub} />
@@ -195,15 +205,100 @@ export function GauntletPipeline({
             <PowerZone zone={power} state={model.power_state} hub={model.hub} />
           ) : null}
 
-          {/* Hub — always visible. */}
           <GauntletHub hub={model.hub} />
         </svg>
       </div>
 
-      <footer className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45">
-        Read-only governance surface · no execute · no approve · no mutate · no
-        recording · no voice · no exports
-      </footer>
+      {isCinematic ? null : (
+        <footer className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45">
+          Read-only governance surface - no execute - no approve - no mutate -
+          no recording - no voice - no exports
+        </footer>
+      )}
     </section>
   );
+}
+
+const CINEMATIC_GAUNTLET_VIEWBOX = {
+  x: 0,
+  y: 54,
+  width: 1500,
+  height: 866,
+} as const;
+const CINEMATIC_HUB_POSITION = { x: 870, y: 495 } as const;
+
+const CINEMATIC_SPACE_POSITIONS: Readonly<Record<string, GauntletPoint>> = {
+  input_gateway: { x: 90, y: 520 },
+  intent_classifier: { x: 235, y: 455 },
+  safety_classifier: { x: 235, y: 585 },
+  router: { x: 455, y: 520 },
+  tier_t0: { x: 620, y: 360 },
+  tier_t1: { x: 620, y: 430 },
+  tier_t2: { x: 620, y: 520 },
+  tier_t3: { x: 620, y: 610 },
+  tier_t4: { x: 620, y: 690 },
+  tool_runtime: { x: 1215, y: 500 },
+  audit_store: { x: 1400, y: 500 },
+};
+
+const CINEMATIC_ZONE_PROFILES = {
+  time: { from: { x: 400, y: 1250 }, to: { x: 555, y: 210 }, scale: 0.62 },
+  mind: { from: { x: 1100, y: 1250 }, to: { x: 1040, y: 220 }, scale: 0.58 },
+  soul: { from: { x: 400, y: 1900 }, to: { x: 555, y: 735 }, scale: 0.62 },
+  reality: {
+    from: { x: 1200, y: 1900 },
+    to: { x: 1245, y: 730 },
+    scale: 0.62,
+  },
+  power: { from: { x: 800, y: 2400 }, to: { x: 905, y: 765 }, scale: 0.58 },
+} as const;
+
+function toCinematicGauntletViewModel(
+  model: GauntletViewModel,
+): GauntletViewModel {
+  return {
+    ...model,
+    hub: {
+      ...model.hub,
+      position: { ...CINEMATIC_HUB_POSITION },
+    },
+    zones: model.zones.map((zone) => {
+      if (zone.zone_id === "space") {
+        return {
+          ...zone,
+          nodes: zone.nodes.map((node) => ({
+            ...node,
+            position: CINEMATIC_SPACE_POSITIONS[node.node_id] ?? node.position,
+          })),
+        };
+      }
+
+      const profile =
+        zone.zone_id in CINEMATIC_ZONE_PROFILES
+          ? CINEMATIC_ZONE_PROFILES[
+              zone.zone_id as keyof typeof CINEMATIC_ZONE_PROFILES
+            ]
+          : null;
+
+      if (!profile) return zone;
+
+      return {
+        ...zone,
+        nodes: zone.nodes.map((node) => ({
+          ...node,
+          position: remapPoint(node.position, profile),
+        })),
+      };
+    }),
+  };
+}
+
+function remapPoint(
+  point: GauntletPoint,
+  profile: { from: GauntletPoint; to: GauntletPoint; scale: number },
+): GauntletPoint {
+  return {
+    x: Math.round(profile.to.x + (point.x - profile.from.x) * profile.scale),
+    y: Math.round(profile.to.y + (point.y - profile.from.y) * profile.scale),
+  };
 }

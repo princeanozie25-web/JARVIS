@@ -114,6 +114,7 @@ interface NodeMarkProps {
 
 function SpaceNodeMark({ node, stoneColor }: NodeMarkProps) {
   const { x, y } = node.position;
+  const isTesseractCore = node.node_id === "router";
   return (
     <g
       data-gauntlet-node-id={node.node_id}
@@ -122,6 +123,44 @@ function SpaceNodeMark({ node, stoneColor }: NodeMarkProps) {
       aria-label={node.label}
       role="img"
     >
+      {isTesseractCore ? (
+        <g
+          aria-hidden="true"
+          data-space-tesseract-core="true"
+          data-space-pipeline-core="true"
+        >
+          <circle
+            cx={x}
+            cy={y}
+            r={122}
+            fill="rgba(14,165,233,0.08)"
+            stroke={stoneColor}
+            strokeOpacity={0.16}
+            strokeWidth={1}
+          />
+          <polygon
+            points={`${x},${y - 96} ${x + 98},${y - 38} ${x + 98},${y + 62} ${x},${y + 116} ${x - 98},${y + 62} ${x - 98},${y - 38}`}
+            fill="rgba(30,144,255,0.13)"
+            stroke={stoneColor}
+            strokeOpacity={0.72}
+            strokeWidth={2.5}
+          />
+          <polygon
+            points={`${x},${y - 60} ${x + 60},${y - 22} ${x + 60},${y + 42} ${x},${y + 78} ${x - 60},${y + 42} ${x - 60},${y - 22}`}
+            fill="rgba(186,230,253,0.08)"
+            stroke={stoneColor}
+            strokeOpacity={0.88}
+            strokeWidth={1.5}
+          />
+          <line x1={x - 98} y1={y - 38} x2={x - 60} y2={y - 22} stroke={stoneColor} strokeOpacity={0.5} />
+          <line x1={x + 98} y1={y - 38} x2={x + 60} y2={y - 22} stroke={stoneColor} strokeOpacity={0.5} />
+          <line x1={x - 98} y1={y + 62} x2={x - 60} y2={y + 42} stroke={stoneColor} strokeOpacity={0.5} />
+          <line x1={x + 98} y1={y + 62} x2={x + 60} y2={y + 42} stroke={stoneColor} strokeOpacity={0.5} />
+          <line x1={x} y1={y - 96} x2={x} y2={y + 116} stroke={stoneColor} strokeOpacity={0.38} />
+          <line x1={x - 98} y1={y + 62} x2={x + 98} y2={y - 38} stroke={stoneColor} strokeOpacity={0.26} />
+          <line x1={x - 98} y1={y - 38} x2={x + 98} y2={y + 62} stroke={stoneColor} strokeOpacity={0.26} />
+        </g>
+      ) : null}
       <circle
         cx={x}
         cy={y}

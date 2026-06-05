@@ -156,14 +156,30 @@ function TimeNodeMark({ node }: { node: GauntletNode }) {
       role="img"
     >
       {isCoordinator && (
-        <circle
-          cx={x}
-          cy={y}
-          r={radius + 12}
-          fill="none"
-          stroke={ringColor}
-          strokeOpacity={0.3}
-        />
+        <g aria-hidden="true" data-time-gravity-orbit-core="true">
+          <circle
+            cx={x}
+            cy={y}
+            r={radius + 18}
+            fill="none"
+            stroke={ringColor}
+            strokeOpacity={0.24}
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r={radius + 12}
+            fill="none"
+            stroke={ringColor}
+            strokeOpacity={0.3}
+          />
+          <polygon
+            points={`${x},${y - radius - 4} ${x + radius * 0.78},${y} ${x},${y + radius + 4} ${x - radius * 0.78},${y}`}
+            fill="rgba(52,211,153,0.08)"
+            stroke={ringColor}
+            strokeOpacity={0.62}
+          />
+        </g>
       )}
       <circle
         cx={x}

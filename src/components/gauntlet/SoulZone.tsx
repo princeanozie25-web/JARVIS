@@ -154,16 +154,30 @@ function SoulNodeMark({ node }: { node: GauntletNode }) {
       role="img"
     >
       {isVault && (
-        <circle
-          data-soul-vault-heartbeat="true"
-          cx={x}
-          cy={y}
-          r={radius + 14}
-          fill="none"
-          stroke={SOUL_STONE_VAR}
-          strokeOpacity={0.4}
-          strokeWidth={2}
-        />
+        <g aria-hidden="true" data-soul-molten-crystal="true">
+          <circle
+            data-soul-vault-heartbeat="true"
+            cx={x}
+            cy={y}
+            r={radius + 16}
+            fill="none"
+            stroke={SOUL_STONE_VAR}
+            strokeOpacity={0.4}
+            strokeWidth={2}
+          />
+          <polygon
+            points={`${x},${y - radius - 10} ${x + radius * 0.82},${y - 8} ${x + radius * 0.52},${y + radius + 12} ${x - radius * 0.5},${y + radius + 8} ${x - radius * 0.86},${y - 6}`}
+            fill="rgba(251,146,60,0.12)"
+            stroke={SOUL_STONE_VAR}
+            strokeOpacity={0.68}
+          />
+          <path
+            d={`M ${x - 16} ${y - radius + 2} C ${x - 4} ${y - 12}, ${x + 18} ${y - 2}, ${x + 6} ${y + radius - 4}`}
+            fill="none"
+            stroke="var(--jarvis-color-flame)"
+            strokeOpacity={0.62}
+          />
+        </g>
       )}
       <circle
         cx={x}

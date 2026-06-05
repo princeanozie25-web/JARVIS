@@ -23,6 +23,13 @@ export default function AuditPage() {
         <p className="mb-4 text-xs uppercase tracking-[0.22em] text-cyan-200/70">
           {SYNTHETIC_OBSERVABILITY_MARKER}
         </p>
+        <a
+          href="/audit/gauntlet"
+          data-audit-gauntlet-nav-link="cinematic-gauntlet"
+          className="mb-4 inline-flex border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-2 text-xs uppercase tracking-[0.18em] text-cyan-100/80"
+        >
+          Open Infinity Gauntlet
+        </a>
         <AuditShell projectionPanels={syntheticAuditPanels()} />
       </div>
     </main>

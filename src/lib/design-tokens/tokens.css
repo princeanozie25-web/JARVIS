@@ -52,8 +52,8 @@
   --jarvis-color-stone-time: #34d399;
   --jarvis-color-stone-mind: #fbbf24;
   --jarvis-color-stone-soul: #fb923c;
-  --jarvis-color-stone-reality: #ef4444;
-  --jarvis-color-stone-power: var(--jarvis-color-violet);
+  --jarvis-color-stone-reality: var(--jarvis-color-cyan-signal);
+  --jarvis-color-stone-power: var(--jarvis-color-ruby);
   --jarvis-color-gold: #facc15;
   --jarvis-color-flame: #f97316;
   --jarvis-color-ruby: #e0115f;
