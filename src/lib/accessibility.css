@@ -1,0 +1,58 @@
+/*
+ * JARVIS accessibility primitives — UI.9.
+ *
+ * Global `:focus-visible` ring driven by the focus-ring tokens in
+ * `tokens.css`. Components do not need to declare per-element focus
+ * styles — the global rule covers every keyboard-reachable element
+ * unless they intentionally opt out with `.jarvis-no-focus-ring`.
+ *
+ * Reduced-motion: motion-driven focus indicators do not exist; the
+ * focus ring is purely color/outline and does not animate, so it is
+ * always reduced-motion safe.
+ */
+
+:where(:focus-visible) {
+  outline: var(--jarvis-focus-ring-width) solid
+    var(--jarvis-focus-ring-color);
+  outline-offset: var(--jarvis-focus-ring-offset);
+  border-radius: var(--jarvis-radius-sm);
+}
+
+:where(.jarvis-no-focus-ring):focus-visible {
+  outline: none;
+}
+
+/* Skip link — semantic landmark assist. Hidden until focused. */
+.jarvis-skip-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-200%);
+  padding: var(--jarvis-space-sm) var(--jarvis-space-md);
+  background: var(--jarvis-color-panel);
+  color: var(--jarvis-color-ink);
+  border: 1px solid var(--jarvis-color-border-subtle);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  z-index: 1000;
+}
+
+.jarvis-skip-link:focus,
+.jarvis-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Screen-reader-only helper — used by icon-led status indicators. */
+.jarvis-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

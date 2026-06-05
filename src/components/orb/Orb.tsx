@@ -1,10 +1,19 @@
 import type { OrbVisualState, RestOrbStateTokens } from "./types";
 import { IDLE_ORB_STATE, restOrbTokensToViewModel } from "./state-tokens";
+import {
+  type OrbActivityState,
+  resolveOrbActivityState,
+} from "./activity-states";
 
 export interface OrbProps {
   state?: OrbVisualState;
   projectionTokens?: RestOrbStateTokens;
   projectionState?: OrbVisualState;
+  /**
+   * UI.6 activity state. Drives a CSS-only animation layer via
+   * `data-orb-activity-state`. Unknown values fall back to `idle`.
+   */
+  activityState?: OrbActivityState | string;
 }
 
 const toneClasses = {
@@ -38,6 +47,7 @@ export function Orb({
   state = IDLE_ORB_STATE,
   projectionTokens,
   projectionState,
+  activityState,
 }: OrbProps) {
   const renderedState = resolveVisualState(
     state,
@@ -45,12 +55,14 @@ export function Orb({
     projectionState,
   );
   const tone = toneClasses[renderedState.tone];
+  const activity = resolveOrbActivityState(activityState);
   const metadata = [
     ["Mode", renderedState.mode],
     ["Load", renderedState.loadBand],
     ["Governance", renderedState.governancePosture],
     ["Heartbeat", renderedState.heartbeat],
     ["Event", renderedState.lastEventClass],
+    ["Activity", activity.label],
   ] as const;
 
   return (
@@ -64,15 +76,20 @@ export function Orb({
       data-authority={renderedState.authority}
       data-metadata-only={String(renderedState.metadataOnly)}
       data-withheld={String(renderedState.withheld)}
+      data-orb-activity-state={activity.state}
+      data-orb-activity-tone={activity.semantic}
+      data-orb-activity-animation={activity.animation}
       className="flex min-h-[560px] w-full flex-col items-center justify-center gap-9 text-center"
     >
       <div className="relative grid h-[21rem] w-[21rem] place-items-center sm:h-[26rem] sm:w-[26rem]">
         <div
           aria-hidden="true"
+          data-orb-layer="ring"
           className={`absolute h-full w-full rounded-full border ${tone.accent} opacity-55 motion-safe:animate-pulse`}
         />
         <div
           aria-hidden="true"
+          data-orb-layer="sweep"
           className="absolute h-[82%] w-[82%] rounded-full border border-white/10"
         />
         <div
@@ -82,6 +99,7 @@ export function Orb({
 
         <div
           aria-hidden="true"
+          data-orb-layer="core"
           className={`relative grid h-60 w-60 place-items-center rounded-full border bg-[radial-gradient(circle_at_50%_42%,var(--tw-gradient-stops))] ${tone.core} ${tone.shell} sm:h-72 sm:w-72`}
         >
           <div className="h-36 w-36 rounded-full border border-white/20 bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(34,211,238,0.12)_42%,rgba(3,7,18,0.78)_72%)] sm:h-44 sm:w-44" />

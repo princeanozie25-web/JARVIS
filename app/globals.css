@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "../src/lib/design-tokens/tokens.css";
+@import "../src/lib/accessibility.css";
+@import "../src/components/orb/orb-states.css";
+@import "../src/components/gauntlet/gauntlet.css";
 
 :root {
   --background: var(--jarvis-color-void);

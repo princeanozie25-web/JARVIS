@@ -1,0 +1,188 @@
+/*
+ * Orb activity-state animations — UI.6.
+ *
+ * Animations are driven purely by `data-orb-activity-state` on the orb
+ * <section>. Every animation references JARVIS motion tokens
+ * (`--jarvis-motion-*`) and semantic governance color tokens
+ * (`--jarvis-color-*`) — no raw hex, no parallel timing.
+ *
+ * Reduced motion: a single @media (prefers-reduced-motion: reduce)
+ * override neutralizes every keyframe driven layer. CSS variable
+ * collapse in tokens.css further guarantees zero-duration transitions
+ * for components that read durations directly.
+ */
+
+@keyframes jarvis-orb-breathing {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.015);
+  }
+}
+
+@keyframes jarvis-orb-pulse-fast {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes jarvis-orb-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jarvis-orb-rhythmic {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes jarvis-orb-scan {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.5;
+  }
+}
+
+@keyframes jarvis-orb-pulse-orange {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.035);
+  }
+}
+
+@keyframes jarvis-orb-pulse-red {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.045);
+  }
+}
+
+[data-orb-activity-state] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-signal);
+  transition:
+    border-color var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth),
+    box-shadow var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth);
+}
+
+[data-orb-activity-state="idle"] [data-orb-layer="core"] {
+  animation: jarvis-orb-breathing var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow: 0 0 90px var(--jarvis-color-signal);
+}
+[data-orb-activity-state="idle"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-signal);
+}
+
+[data-orb-activity-state="listening"] [data-orb-layer="core"] {
+  animation: jarvis-orb-pulse-fast var(--jarvis-motion-duration-fast)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow: 0 0 100px var(--jarvis-color-focus);
+}
+[data-orb-activity-state="listening"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-focus);
+}
+
+[data-orb-activity-state="processing"] [data-orb-layer="sweep"] {
+  animation: jarvis-orb-sweep var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-orbit) infinite;
+  border-color: var(--jarvis-color-focus);
+}
+[data-orb-activity-state="processing"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-focus);
+}
+
+[data-orb-activity-state="speaking"] [data-orb-layer="core"] {
+  animation: jarvis-orb-rhythmic var(--jarvis-motion-duration-slow)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow: 0 0 96px var(--jarvis-color-focus);
+}
+[data-orb-activity-state="speaking"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-focus);
+}
+
+[data-orb-activity-state="systems_healthy"] [data-orb-layer="sweep"] {
+  animation: jarvis-orb-scan var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-orbit) infinite;
+  border-color: var(--jarvis-color-local);
+}
+[data-orb-activity-state="systems_healthy"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-local);
+}
+[data-orb-activity-state="systems_healthy"] [data-orb-layer="core"] {
+  box-shadow: 0 0 90px var(--jarvis-color-local);
+}
+
+[data-orb-activity-state="approval_needed"] [data-orb-layer="core"] {
+  animation: jarvis-orb-pulse-orange var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow: 0 0 96px var(--jarvis-color-review);
+}
+[data-orb-activity-state="approval_needed"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-review);
+}
+
+[data-orb-activity-state="alert"] [data-orb-layer="core"] {
+  animation: jarvis-orb-pulse-red var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-sharp) infinite;
+  box-shadow: 0 0 96px var(--jarvis-color-blocked);
+}
+[data-orb-activity-state="alert"] [data-orb-layer="ring"] {
+  border-color: var(--jarvis-color-blocked);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-orb-activity-state] [data-orb-layer="core"],
+  [data-orb-activity-state] [data-orb-layer="sweep"],
+  [data-orb-activity-state] [data-orb-layer="ring"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}

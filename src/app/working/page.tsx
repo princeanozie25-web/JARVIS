@@ -1,4 +1,4 @@
-import { WorkingShell } from "@/components/working/WorkingShell";
+import { WorkingCockpit } from "@/components/working/WorkingCockpit";
 import {
   SYNTHETIC_OBSERVABILITY_MARKER,
   syntheticWorkingPanels,
@@ -7,8 +7,10 @@ import {
 export default function WorkingPage() {
   return (
     <main
+      aria-label="JARVIS Working cockpit"
       data-working-layout="read-only-cockpit"
-      className="min-h-screen overflow-hidden bg-[#02040a] px-6 py-8 text-white"
+      data-working-layout-style="mission-control"
+      className="min-h-screen overflow-hidden bg-void px-6 py-8 text-ink sm:px-10"
     >
       <div
         aria-hidden="true"
@@ -16,14 +18,14 @@ export default function WorkingPage() {
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.12),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(20,184,166,0.1),transparent_28%),linear-gradient(180deg,rgba(2,6,23,0.16),rgba(2,4,10,0.98)_72%)]"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,var(--color-theme-glow),transparent_38%),radial-gradient(circle_at_80%_10%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,rgba(2,6,23,0.16),rgba(2,4,10,0.98)_72%)]"
       />
 
-      <div className="relative mx-auto min-h-[calc(100vh-4rem)] max-w-7xl">
-        <p className="mb-4 text-xs uppercase tracking-[0.22em] text-cyan-200/70">
+      <div className="relative w-full min-h-[calc(100vh-4rem)]">
+        <p className="mb-4 font-mono text-xs uppercase tracking-[0.22em] text-signal">
           {SYNTHETIC_OBSERVABILITY_MARKER}
         </p>
-        <WorkingShell projectionPanels={syntheticWorkingPanels()} />
+        <WorkingCockpit projectionPanels={syntheticWorkingPanels()} />
       </div>
     </main>
   );

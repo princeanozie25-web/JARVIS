@@ -18,6 +18,7 @@
   --jarvis-color-rose-blocked: #fb7185;
   --jarvis-color-white: #ffffff;
   --jarvis-color-black: #000000;
+  --jarvis-color-violet: #a78bfa;
 
   /* Color — semantic governance aliases */
   --jarvis-color-signal: var(--jarvis-color-cyan-signal);
@@ -25,6 +26,46 @@
   --jarvis-color-local: var(--jarvis-color-emerald-local);
   --jarvis-color-review: var(--jarvis-color-amber-review);
   --jarvis-color-blocked: var(--jarvis-color-rose-blocked);
+
+  /* Theme — UI.7 default (blue). ThemeProvider overrides these on the root. */
+  --color-theme-primary: var(--jarvis-color-sky-focus);
+  --color-theme-glow: rgba(56, 189, 248, 0.32);
+
+  /* Focus ring — UI.9 */
+  --jarvis-focus-ring-color: var(--jarvis-color-signal);
+  --jarvis-focus-ring-width: 2px;
+  --jarvis-focus-ring-offset: 2px;
+
+  /* Pipeline stage palette — UI.10. Stage tokens compose the existing
+     semantic governance roles so a theme retune cascades automatically. */
+  --jarvis-color-pipeline-capture: var(--jarvis-color-signal);
+  --jarvis-color-pipeline-classify: var(--jarvis-color-focus);
+  --jarvis-color-pipeline-route: var(--jarvis-color-violet);
+  --jarvis-color-pipeline-human-gate: var(--jarvis-color-review);
+  --jarvis-color-pipeline-execute: var(--jarvis-color-local);
+  --jarvis-color-pipeline-audit: var(--jarvis-color-ink);
+  --jarvis-color-pipeline-forbidden: var(--jarvis-color-blocked);
+
+  /* Stones + accent palette — DD.0. Pure tokens; components consume
+     these through CSS variables — no raw hex in component code. */
+  --jarvis-color-stone-space: #1e90ff;
+  --jarvis-color-stone-time: #34d399;
+  --jarvis-color-stone-mind: #fbbf24;
+  --jarvis-color-stone-soul: #fb923c;
+  --jarvis-color-stone-reality: #ef4444;
+  --jarvis-color-stone-power: var(--jarvis-color-violet);
+  --jarvis-color-gold: #facc15;
+  --jarvis-color-flame: #f97316;
+  --jarvis-color-ruby: #e0115f;
+
+  /* Pulse timing — DD.0. Pulse durations are governed independently of
+     the motion-system durations so the gauntlet can dwell at the gate
+     longer than a normal interaction. */
+  --jarvis-pulse-duration-short: 800ms;
+  --jarvis-pulse-duration-normal: 1600ms;
+  --jarvis-pulse-duration-long: 3200ms;
+  --jarvis-pulse-duration-dwell: 1200ms;
+  --jarvis-pulse-easing: var(--jarvis-motion-easing-orbit);
 
   /* Font — wired to next/font loaders in app/layout.tsx */
   --jarvis-font-display: var(--font-jarvis-display, "Syne", system-ui, sans-serif);
@@ -80,6 +121,30 @@
   --jarvis-text-label-letter-spacing: 0.16em;
   --jarvis-text-label-text-transform: uppercase;
 
-  /* Motion — RESERVED for UI.5. Do not consume yet. */
-  /* --jarvis-motion-* tokens land in the Motion slice. */
+  /* Motion — UI.5 */
+  --jarvis-motion-duration-instant: 0ms;
+  --jarvis-motion-duration-fast: 120ms;
+  --jarvis-motion-duration-normal: 240ms;
+  --jarvis-motion-duration-slow: 480ms;
+  --jarvis-motion-duration-cinematic: 960ms;
+
+  --jarvis-motion-easing-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+  --jarvis-motion-easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --jarvis-motion-easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --jarvis-motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+  --jarvis-motion-easing-orbit: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --jarvis-motion-duration-instant: 0ms;
+    --jarvis-motion-duration-fast: 0ms;
+    --jarvis-motion-duration-normal: 0ms;
+    --jarvis-motion-duration-slow: 0ms;
+    --jarvis-motion-duration-cinematic: 0ms;
+    --jarvis-pulse-duration-short: 0ms;
+    --jarvis-pulse-duration-normal: 0ms;
+    --jarvis-pulse-duration-long: 0ms;
+    --jarvis-pulse-duration-dwell: 0ms;
+  }
 }

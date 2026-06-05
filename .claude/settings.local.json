@@ -1,4 +1,23 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__dual-graph__graph_retrieve",
+      "Bash(mkdir -p .tmp-docx-extract)",
+      "Bash(unzip -o \"../docs/UI Polish Plan.docx\" -d ui-polish)",
+      "Bash(python -c ' *)",
+      "Bash(sed -n '1,200p' ui-polish.txt)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npm test *)",
+      "Bash(mkdir -p app/converse)",
+      "Bash(git mv *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\(require\\('framer-motion/package.json'\\).version\\)\")"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -33,8 +52,5 @@
         ]
       }
     ]
-  },
-  "permissions": {
-    "allow": ["mcp__dual-graph__graph_retrieve"]
   }
 }

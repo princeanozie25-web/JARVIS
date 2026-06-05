@@ -173,7 +173,7 @@ export function WorkingShell({
   );
 }
 
-function createProjectionBackedPanels(
+export function createProjectionBackedPanels(
   fallbackPanels: readonly WorkingPanelViewModel[],
   suppliedPanels: readonly WorkingPanelViewModel[],
 ): readonly WorkingPanelViewModel[] {

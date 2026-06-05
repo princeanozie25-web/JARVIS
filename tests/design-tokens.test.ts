@@ -38,6 +38,7 @@ const REQUIRED_BASE_COLOR_ROLES: readonly JarvisColorRole[] = [
   "rose-blocked",
   "white",
   "black",
+  "violet",
 ];
 
 const REQUIRED_SEMANTIC_ALIASES = [
@@ -87,7 +88,7 @@ describe("UI.2 design tokens — registry", () => {
     }
   });
 
-  it("matches the DESIGN.md frontmatter palette exactly", () => {
+  it("matches the DESIGN.md frontmatter palette plus the UI.10 violet extension", () => {
     expect(jarvisColors).toStrictEqual({
       void: "#0a0a0a",
       ink: "#ededed",
@@ -101,6 +102,7 @@ describe("UI.2 design tokens — registry", () => {
       "rose-blocked": "#fb7185",
       white: "#ffffff",
       black: "#000000",
+      violet: "#a78bfa",
     });
   });
 });
@@ -145,8 +147,23 @@ describe("UI.2 design tokens — tokens.css mirror", () => {
     expect(tokensCss).toContain("--jarvis-font-mono:");
   });
 
-  it("reserves motion tokens for UI.5 without exposing live values", () => {
-    expect(tokensCss).toMatch(/RESERVED for UI\.5/i);
-    expect(tokensCss).not.toMatch(/^\s*--jarvis-motion-/m);
+  it("declares motion duration and easing tokens (UI.5)", () => {
+    for (const name of ["instant", "fast", "normal", "slow", "cinematic"]) {
+      expect(tokensCss).toMatch(
+        new RegExp(`--jarvis-motion-duration-${name}:\\s*\\d+ms`),
+      );
+    }
+    for (const name of ["sharp", "smooth", "enter", "exit", "orbit"]) {
+      expect(tokensCss).toMatch(
+        new RegExp(`--jarvis-motion-easing-${name}:\\s*cubic-bezier`),
+      );
+    }
+  });
+
+  it("collapses motion durations to zero under prefers-reduced-motion", () => {
+    expect(tokensCss).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
+    expect(tokensCss).toMatch(
+      /--jarvis-motion-duration-cinematic:\s*0ms;[\s\S]*?\}/,
+    );
   });
 });

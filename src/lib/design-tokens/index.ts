@@ -23,6 +23,7 @@ export const jarvisColors = {
   "rose-blocked": "#fb7185",
   white: "#ffffff",
   black: "#000000",
+  violet: "#a78bfa",
 } as const;
 
 export type JarvisColorRole = keyof typeof jarvisColors;
@@ -126,6 +127,85 @@ export const jarvisTypography = {
 
 export type JarvisTextRole = keyof typeof jarvisTypography;
 
+export const jarvisMotionDurations = {
+  instant: "0ms",
+  fast: "120ms",
+  normal: "240ms",
+  slow: "480ms",
+  cinematic: "960ms",
+} as const;
+
+export type JarvisMotionDuration = keyof typeof jarvisMotionDurations;
+
+export const jarvisMotionEasings = {
+  sharp: "cubic-bezier(0.4, 0, 0.6, 1)",
+  smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
+  enter: "cubic-bezier(0, 0, 0.2, 1)",
+  exit: "cubic-bezier(0.4, 0, 1, 1)",
+  orbit: "cubic-bezier(0.45, 0, 0.55, 1)",
+} as const;
+
+export type JarvisMotionEasing = keyof typeof jarvisMotionEasings;
+
+export const jarvisMotion = {
+  duration: jarvisMotionDurations,
+  easing: jarvisMotionEasings,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Stones — DD.0
+// ---------------------------------------------------------------------------
+
+export const jarvisStones = {
+  space: "#1e90ff",
+  time: "#34d399",
+  mind: "#fbbf24",
+  soul: "#fb923c",
+  reality: "#ef4444",
+  power: jarvisColors.violet,
+  gold: "#facc15",
+  flame: "#f97316",
+  ruby: "#e0115f",
+} as const;
+
+export type JarvisStone = keyof typeof jarvisStones;
+
+export const JARVIS_STONE_IDS = [
+  "space",
+  "time",
+  "mind",
+  "soul",
+  "reality",
+  "power",
+] as const satisfies readonly JarvisStone[];
+
+export type JarvisStoneZone = (typeof JARVIS_STONE_IDS)[number];
+
+/** Returns the CSS variable expression for the stone token. */
+export function stoneColorVar(stone: JarvisStone): string {
+  if ((JARVIS_STONE_IDS as readonly string[]).includes(stone)) {
+    return `var(--jarvis-color-stone-${stone})`;
+  }
+  return `var(--jarvis-color-${stone})`;
+}
+
+// ---------------------------------------------------------------------------
+// Pulse timing — DD.0
+// ---------------------------------------------------------------------------
+
+export const jarvisPulseDurations = {
+  short: "800ms",
+  normal: "1600ms",
+  long: "3200ms",
+  dwell: "1200ms",
+} as const;
+
+export type JarvisPulseDuration = keyof typeof jarvisPulseDurations;
+
+export const jarvisPulse = {
+  duration: jarvisPulseDurations,
+} as const;
+
 export const jarvisTokens = {
   colors: jarvisColors,
   semanticColors: jarvisSemanticColors,
@@ -134,6 +214,9 @@ export const jarvisTokens = {
   shadows: jarvisShadows,
   fonts: jarvisFonts,
   typography: jarvisTypography,
+  motion: jarvisMotion,
+  stones: jarvisStones,
+  pulse: jarvisPulse,
 } as const;
 
 export type JarvisTokens = typeof jarvisTokens;
