@@ -1,0 +1,142 @@
+/*
+ * Demo Director playback — DD.10.
+ *
+ * Assembly law: stones do not fade or slide in. They materialise with
+ * weight. The Human Gate ignition is the climax of the assembly. The
+ * first pulse seals the awakening.
+ *
+ * Every animation:
+ *   - routes timing through --jarvis-motion-* / --jarvis-pulse-*
+ *   - is one-shot (no infinite loops) for materialisation cues
+ *   - is neutralised by prefers-reduced-motion
+ */
+
+@keyframes jarvis-demo-materialise {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+    filter: brightness(0.45);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: brightness(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes jarvis-demo-ignition {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.9);
+    filter: brightness(0.55);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.12);
+    filter: brightness(1.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1.05);
+  }
+}
+
+@keyframes jarvis-demo-first-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-demo-playback="read-only"] {
+  /* Hard black field — JARVIS starts dormant before the orb appears. */
+  background-color: var(--jarvis-color-panel);
+}
+
+[data-demo-playback="read-only"][data-demo-stage="black"] [data-demo-stage-target] {
+  opacity: 0;
+}
+
+[data-demo-playback="read-only"][data-demo-stage="orb"]
+  [data-demo-stage-target="orb"],
+[data-demo-playback="read-only"][data-demo-stage="space"]
+  [data-demo-stage-target="space"],
+[data-demo-playback="read-only"][data-demo-stage="time"]
+  [data-demo-stage-target="time"],
+[data-demo-playback="read-only"][data-demo-stage="mind"]
+  [data-demo-stage-target="mind"],
+[data-demo-playback="read-only"][data-demo-stage="soul"]
+  [data-demo-stage-target="soul"],
+[data-demo-playback="read-only"][data-demo-stage="reality"]
+  [data-demo-stage-target="reality"],
+[data-demo-playback="read-only"][data-demo-stage="power"]
+  [data-demo-stage-target="power"] {
+  animation: jarvis-demo-materialise var(--jarvis-pulse-duration-dwell)
+    var(--jarvis-pulse-easing) 1 both;
+  transform-origin: center;
+}
+
+[data-demo-playback="read-only"][data-demo-stage="human_gate"]
+  [data-demo-stage-target="human-gate"],
+[data-demo-playback="read-only"][data-demo-climax="true"]
+  [data-demo-stage-target="human-gate"] {
+  animation: jarvis-demo-ignition var(--jarvis-pulse-duration-long)
+    var(--jarvis-pulse-easing) 1 both;
+  transform-origin: center;
+}
+
+[data-demo-playback="read-only"][data-demo-stage="first_pulse"]
+  [data-demo-stage-target="first-pulse"],
+[data-demo-playback="read-only"][data-demo-stage="complete"]
+  [data-demo-stage-target="first-pulse"] {
+  animation: jarvis-demo-first-pulse var(--jarvis-pulse-duration-normal)
+    var(--jarvis-pulse-easing) 1 both;
+}
+
+/*
+ * Materialised set — once a stone has assembled, it stays present for
+ * the remainder of the demo. We express that with cumulative attribute
+ * selectors so we never need to track per-stone state in the renderer.
+ */
+[data-demo-playback="read-only"][data-demo-materialised~="orb"]
+  [data-demo-stage-target="orb"],
+[data-demo-playback="read-only"][data-demo-materialised~="space"]
+  [data-demo-stage-target="space"],
+[data-demo-playback="read-only"][data-demo-materialised~="time"]
+  [data-demo-stage-target="time"],
+[data-demo-playback="read-only"][data-demo-materialised~="mind"]
+  [data-demo-stage-target="mind"],
+[data-demo-playback="read-only"][data-demo-materialised~="soul"]
+  [data-demo-stage-target="soul"],
+[data-demo-playback="read-only"][data-demo-materialised~="reality"]
+  [data-demo-stage-target="reality"],
+[data-demo-playback="read-only"][data-demo-materialised~="power"]
+  [data-demo-stage-target="power"],
+[data-demo-playback="read-only"][data-demo-materialised~="human-gate"]
+  [data-demo-stage-target="human-gate"] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-demo-playback="read-only"] [data-demo-stage-target] {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
