@@ -11,7 +11,6 @@ import {
   type TimeActivationState,
 } from "@/lib/gauntlet-visualization";
 
-import { GauntletAtmosphere } from "./GauntletAtmosphere";
 import { GauntletHub } from "./GauntletHub";
 import { MindZone } from "./MindZone";
 import { PowerZone } from "./PowerZone";
@@ -65,16 +64,6 @@ export function GauntletPipeline({
   const reality = model.zones.find((zone) => zone.zone_id === "reality");
   const power = model.zones.find((zone) => zone.zone_id === "power");
   const populatedZones = model.populated_zones.join(",");
-  const atmosphereMode =
-    model.hub.state === "proposal_pending" || model.hub.state === "denied"
-      ? "warning"
-      : model.time_state !== "idle" ||
-          model.mind_council_stage !== "idle" ||
-          model.soul_state !== "idle" ||
-          model.reality_state !== "idle" ||
-          model.power_state !== "idle"
-        ? "focused"
-        : "stable";
 
   return (
     <section
@@ -115,7 +104,6 @@ export function GauntletPipeline({
         className="relative overflow-hidden rounded-md"
         data-gauntlet-atmosphere-shell="optional"
       >
-        <GauntletAtmosphere presentationalMode={atmosphereMode} />
         <svg
           role="img"
           aria-label="Living System Map governance flow"
@@ -130,7 +118,7 @@ export function GauntletPipeline({
           data-gauntlet-cinematic-canvas={String(isCinematic)}
           viewBox={`${viewBoxX} ${viewBoxY} ${viewBox.width} ${viewBox.height}`}
           className="relative z-10 w-full"
-          style={{ minHeight: isCinematic ? "min(70vw, 820px)" : "320px" }}
+          style={{ minHeight: isCinematic ? "min(43vw, 620px)" : "320px" }}
         >
           <defs>
             <pattern
@@ -149,6 +137,46 @@ export function GauntletPipeline({
             <radialGradient id="gauntlet-atmosphere" cx="50%" cy="28%" r="65%">
               <stop offset="0%" stopColor="rgba(56,189,248,0.10)" />
               <stop offset="55%" stopColor="rgba(8,47,73,0.04)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-space" cx="50%" cy="50%" r="62%">
+              <stop offset="0%" stopColor="rgba(56,189,248,0.34)" />
+              <stop offset="42%" stopColor="rgba(14,165,233,0.12)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-time" cx="50%" cy="50%" r="64%">
+              <stop offset="0%" stopColor="rgba(74,222,128,0.30)" />
+              <stop offset="46%" stopColor="rgba(34,197,94,0.10)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-mind" cx="50%" cy="50%" r="64%">
+              <stop offset="0%" stopColor="rgba(192,132,252,0.32)" />
+              <stop offset="46%" stopColor="rgba(147,51,234,0.11)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-soul" cx="50%" cy="50%" r="64%">
+              <stop offset="0%" stopColor="rgba(251,146,60,0.32)" />
+              <stop offset="48%" stopColor="rgba(245,158,11,0.11)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient
+              id="gauntlet-field-reality"
+              cx="50%"
+              cy="50%"
+              r="64%"
+            >
+              <stop offset="0%" stopColor="rgba(34,211,238,0.30)" />
+              <stop offset="46%" stopColor="rgba(6,182,212,0.10)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-power" cx="50%" cy="50%" r="64%">
+              <stop offset="0%" stopColor="rgba(244,63,94,0.32)" />
+              <stop offset="48%" stopColor="rgba(190,24,93,0.12)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+            <radialGradient id="gauntlet-field-human" cx="50%" cy="50%" r="64%">
+              <stop offset="0%" stopColor="rgba(251,191,36,0.36)" />
+              <stop offset="50%" stopColor="rgba(245,158,11,0.10)" />
               <stop offset="100%" stopColor="rgba(2,6,23,0)" />
             </radialGradient>
           </defs>
@@ -179,6 +207,8 @@ export function GauntletPipeline({
             height={viewBox.height}
             fill="url(#gauntlet-atmosphere)"
           />
+
+          {isCinematic ? <CosmicTerritoryFields /> : null}
 
           {space ? <SpaceZone zone={space} /> : null}
           {time ? (
@@ -252,6 +282,114 @@ const CINEMATIC_ZONE_PROFILES = {
   },
   power: { from: { x: 800, y: 2400 }, to: { x: 905, y: 765 }, scale: 0.58 },
 } as const;
+
+function CosmicTerritoryFields() {
+  return (
+    <g aria-hidden="true" data-gauntlet-cosmic-territories="true">
+      <g data-gauntlet-convergence-streams="human-gate">
+        <path
+          d="M555 320 C650 370 760 404 870 495"
+          stroke="rgba(74,222,128,0.74)"
+          strokeWidth={10}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M1040 320 C990 375 940 420 870 495"
+          stroke="rgba(192,132,252,0.78)"
+          strokeWidth={10}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M455 520 C585 510 725 502 870 495"
+          stroke="rgba(56,189,248,0.80)"
+          strokeWidth={11}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M555 735 C655 656 750 574 870 495"
+          stroke="rgba(251,146,60,0.74)"
+          strokeWidth={10}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M1245 730 C1120 642 1005 566 870 495"
+          stroke="rgba(34,211,238,0.72)"
+          strokeWidth={10}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M905 765 C892 660 880 570 870 495"
+          stroke="rgba(244,63,94,0.76)"
+          strokeWidth={10}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </g>
+
+      <ellipse
+        data-gauntlet-cosmic-territory="time"
+        cx={555}
+        cy={220}
+        rx={330}
+        ry={190}
+        fill="url(#gauntlet-field-time)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="mind"
+        cx={1040}
+        cy={225}
+        rx={320}
+        ry={190}
+        fill="url(#gauntlet-field-mind)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="space"
+        cx={430}
+        cy={520}
+        rx={310}
+        ry={170}
+        fill="url(#gauntlet-field-space)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="human_gate"
+        cx={870}
+        cy={495}
+        rx={260}
+        ry={240}
+        fill="url(#gauntlet-field-human)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="soul"
+        cx={555}
+        cy={735}
+        rx={315}
+        ry={185}
+        fill="url(#gauntlet-field-soul)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="reality"
+        cx={1245}
+        cy={730}
+        rx={315}
+        ry={185}
+        fill="url(#gauntlet-field-reality)"
+      />
+      <ellipse
+        data-gauntlet-cosmic-territory="power"
+        cx={905}
+        cy={765}
+        rx={320}
+        ry={185}
+        fill="url(#gauntlet-field-power)"
+      />
+    </g>
+  );
+}
 
 function toCinematicGauntletViewModel(
   model: GauntletViewModel,

@@ -683,6 +683,37 @@
   opacity: 0.72;
 }
 
+.jarvis-gauntlet-cosmic-asset-backdrop {
+  background:
+    linear-gradient(90deg, rgba(2, 6, 23, 0.94), rgba(2, 6, 23, 0.58) 46%, rgba(2, 6, 23, 0.9)),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.42), rgba(2, 6, 23, 0.9)),
+    url("/assets/cosmic-gauntlet/nasa-webb-carina-cosmic-cliffs.webp");
+  background-position: center;
+  background-size: cover;
+  filter: saturate(1.35) contrast(1.08);
+  opacity: 0.42;
+}
+
+.jarvis-gauntlet-stage {
+  background:
+    radial-gradient(circle at 52% 48%, rgba(14, 165, 233, 0.08), transparent 40%),
+    rgba(2, 6, 23, 0.16) !important;
+  backdrop-filter: saturate(1.08);
+}
+
+.jarvis-gauntlet-canvas-layer {
+  top: 1.25rem;
+  right: 1.25rem;
+  bottom: 6.4rem;
+  left: calc(320px + 2rem);
+  z-index: 1;
+  border-radius: 0.65rem;
+  opacity: 0.98;
+  mix-blend-mode: screen;
+  overflow: hidden;
+  mask-image: radial-gradient(circle at 50% 48%, #000 0 68%, transparent 96%);
+}
+
 .jarvis-gauntlet-hud-panel,
 .jarvis-gauntlet-stage {
   backdrop-filter: blur(18px);
@@ -739,8 +770,200 @@
   mask-image: linear-gradient(180deg, #000 0 82%, transparent 100%);
 }
 
+.jarvis-gauntlet-cosmic-viewport {
+  position: relative;
+  overflow: hidden;
+}
+
+.jarvis-gauntlet-camera-controls {
+  position: absolute;
+  inset-inline: 1rem;
+  bottom: 0.75rem;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  pointer-events: auto;
+}
+
+.jarvis-gauntlet-camera-controls button {
+  border: 1px solid rgba(186, 230, 253, 0.14);
+  background: rgba(2, 6, 23, 0.58);
+  color: rgba(226, 232, 240, 0.78);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  padding: 0.46rem 0.62rem;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+}
+
+.jarvis-gauntlet-camera-controls button[aria-pressed="true"],
+.jarvis-gauntlet-camera-controls button:focus-visible {
+  border-color: rgba(251, 191, 36, 0.58);
+  color: rgba(253, 230, 138, 0.95);
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.18);
+  outline: none;
+}
+
+.jarvis-gauntlet-camera-controls [data-gauntlet-focus-controls] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.jarvis-gauntlet-drag-surface {
+  cursor: grab;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.jarvis-gauntlet-drag-surface:active {
+  cursor: grabbing;
+}
+
+.jarvis-gauntlet-camera-plane {
+  position: relative;
+  transform: translate3d(
+      var(--gauntlet-camera-x, 0),
+      var(--gauntlet-camera-y, 0),
+      0
+    )
+    scale(var(--gauntlet-camera-scale, 1));
+  transform-origin: center;
+  transition: transform var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth);
+  will-change: transform;
+}
+
+.jarvis-gauntlet-territory-artifact-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.jarvis-gauntlet-territory-artifact {
+  position: absolute;
+  width: 18rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  opacity: 0.82;
+  mix-blend-mode: screen;
+  filter: saturate(1.2);
+}
+
+.jarvis-gauntlet-territory-artifact::before,
+.jarvis-gauntlet-territory-artifact::after {
+  position: absolute;
+  inset: 12%;
+  content: "";
+  border-radius: inherit;
+}
+
+.jarvis-gauntlet-territory-artifact::before {
+  border: 1px solid currentColor;
+  box-shadow:
+    0 0 28px currentColor,
+    inset 0 0 42px currentColor;
+  opacity: 0.34;
+}
+
+.jarvis-gauntlet-territory-artifact::after {
+  inset: 30%;
+  border-radius: 28% 72% 36% 64% / 58% 32% 68% 42%;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.72), transparent 13%),
+    radial-gradient(circle, currentColor 0 10%, transparent 48%);
+  box-shadow:
+    0 0 34px currentColor,
+    0 0 82px currentColor;
+  opacity: 0.76;
+}
+
+[data-gauntlet-territory-artifact="space"] {
+  left: 30%;
+  top: 48%;
+  color: #38bdf8;
+  background:
+    radial-gradient(circle, rgba(56, 189, 248, 0.24), transparent 54%),
+    conic-gradient(from 30deg, transparent, rgba(56, 189, 248, 0.46), transparent 34%, rgba(147, 197, 253, 0.38), transparent 64%);
+}
+
+[data-gauntlet-territory-artifact="space"]::after {
+  border-radius: 18%;
+  transform: rotate(45deg);
+}
+
+[data-gauntlet-territory-artifact="time"] {
+  left: 46%;
+  top: 25%;
+  color: #4ade80;
+  background:
+    repeating-radial-gradient(circle, rgba(74, 222, 128, 0.18) 0 1px, transparent 1px 22px),
+    radial-gradient(circle, rgba(74, 222, 128, 0.2), transparent 60%);
+}
+
+[data-gauntlet-territory-artifact="mind"] {
+  left: 77%;
+  top: 23%;
+  color: #c084fc;
+  background:
+    conic-gradient(from 70deg, rgba(192, 132, 252, 0.38), transparent 22%, rgba(217, 70, 239, 0.3), transparent 64%),
+    radial-gradient(circle, rgba(147, 51, 234, 0.2), transparent 58%);
+}
+
+[data-gauntlet-territory-artifact="soul"] {
+  left: 45%;
+  top: 73%;
+  color: #fb923c;
+  background:
+    radial-gradient(circle at 44% 42%, rgba(253, 186, 116, 0.4), transparent 21%),
+    repeating-conic-gradient(from 12deg, rgba(251, 146, 60, 0.28) 0 8deg, transparent 8deg 22deg),
+    radial-gradient(circle, rgba(249, 115, 22, 0.22), transparent 62%);
+}
+
+[data-gauntlet-territory-artifact="reality"] {
+  left: 82%;
+  top: 64%;
+  color: #22d3ee;
+  background:
+    repeating-conic-gradient(from 90deg, transparent 0 16deg, rgba(34, 211, 238, 0.32) 16deg 18deg),
+    radial-gradient(circle, rgba(34, 211, 238, 0.2), transparent 58%);
+}
+
+[data-gauntlet-territory-artifact="power"] {
+  left: 68%;
+  top: 75%;
+  color: #f43f5e;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.28), transparent 32%),
+    conic-gradient(from 120deg, rgba(244, 63, 94, 0.36), transparent 28%, rgba(168, 85, 247, 0.32), transparent 70%);
+}
+
+[data-gauntlet-territory-artifact="human_gate"] {
+  left: 60%;
+  top: 49%;
+  width: 20rem;
+  color: #fbbf24;
+  background:
+    repeating-radial-gradient(circle, rgba(251, 191, 36, 0.18) 0 1px, transparent 1px 18px),
+    conic-gradient(from 0deg, rgba(251, 191, 36, 0.45), transparent 18%, rgba(245, 158, 11, 0.5), transparent 48%, rgba(251, 191, 36, 0.42), transparent 78%),
+    radial-gradient(circle, rgba(251, 191, 36, 0.32), transparent 60%);
+  opacity: 0.9;
+}
+
+[data-gauntlet-territory-artifact="human_gate"]::after {
+  border-radius: 34% 66% 38% 62% / 58% 36% 64% 42%;
+}
+
 [data-gauntlet-presentation="cinematic"] {
   isolation: isolate;
+  background: transparent !important;
 }
 
 [data-gauntlet-presentation="cinematic"] [data-gauntlet-atmosphere="threejs"] {
@@ -749,14 +972,30 @@
 
 [data-gauntlet-presentation="cinematic"] [data-gauntlet-edge-id] {
   filter: drop-shadow(0 0 7px currentColor);
+  opacity: 0.46;
   animation: jarvis-gauntlet-energy-run var(--jarvis-pulse-duration-long)
     var(--jarvis-pulse-easing) infinite;
 }
 
 [data-gauntlet-presentation="cinematic"] [data-gauntlet-pulse] {
+  opacity: 0.62;
   filter:
     drop-shadow(0 0 8px currentColor)
     drop-shadow(0 0 18px currentColor);
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-zone] circle {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.66;
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-zone] rect {
+  fill-opacity: 0.34;
+  stroke-opacity: 0.58;
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-zone] line {
+  stroke-opacity: 0.44;
 }
 
 [data-gauntlet-presentation="cinematic"] [data-gauntlet-zone] text {
@@ -822,11 +1061,30 @@
 }
 
 [data-gauntlet-presentation="cinematic"] [data-gauntlet-backdrop="grid"] {
-  opacity: 0.18;
+  opacity: 0.06;
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-backdrop="panel"] {
+  opacity: 0.16;
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-cosmic-territory] {
+  mix-blend-mode: screen;
+  opacity: 0.86;
+  filter: blur(2px);
+}
+
+[data-gauntlet-presentation="cinematic"] [data-gauntlet-convergence-streams] path {
+  mix-blend-mode: screen;
+  opacity: 0.28;
+  filter:
+    blur(4px)
+    drop-shadow(0 0 20px currentColor);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .jarvis-gauntlet-galaxy-backdrop,
+  .jarvis-gauntlet-camera-plane,
   [data-gauntlet-presentation="cinematic"] [data-gauntlet-edge-id],
   [data-gauntlet-presentation="cinematic"] [data-space-tesseract-core="true"],
   [data-gauntlet-presentation="cinematic"] [data-time-gravity-orbit-core="true"],
@@ -845,5 +1103,16 @@
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
+  }
+
+  .jarvis-gauntlet-camera-plane {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .jarvis-gauntlet-canvas-layer {
+    inset: 0.75rem;
+    bottom: 5.2rem;
   }
 }

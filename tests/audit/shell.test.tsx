@@ -36,6 +36,14 @@ function sourceText() {
   );
 }
 
+function assertOnlySafeNavigationLinks(html: string) {
+  const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
+  expect(anchors).toEqual([expect.stringContaining('href="/audit/gauntlet"')]);
+  expect(anchors[0]).toContain(
+    'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
+  );
+}
+
 describe("Phase 12C.1 Audit screen shell", () => {
   it("/audit page renders the read-only forensics shell", () => {
     const html = renderAuditPage();
@@ -96,7 +104,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(html).not.toMatch(/<button\b/i);
     expect(html).not.toMatch(/<form\b/i);
     expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
-    expect(html).not.toMatch(/<a\b/i);
+    assertOnlySafeNavigationLinks(html);
     expect(html).not.toMatch(/\brole="button"/i);
     expect(html).not.toMatch(
       /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,

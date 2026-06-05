@@ -28,7 +28,7 @@ export default function AuditPage() {
           data-audit-gauntlet-nav-link="cinematic-gauntlet"
           className="mb-4 inline-flex border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-2 text-xs uppercase tracking-[0.18em] text-cyan-100/80"
         >
-          Open Infinity Gauntlet
+          Open Living System Map
         </a>
         <AuditShell projectionPanels={syntheticAuditPanels()} />
       </div>

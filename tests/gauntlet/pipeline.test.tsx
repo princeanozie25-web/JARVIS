@@ -111,10 +111,14 @@ describe("DD.3 /audit/gauntlet route", () => {
     }
   });
 
-  it("the route exposes no buttons / forms / inputs at the page level", () => {
+  it("the route exposes no execution, approval, or mutation controls", () => {
     const markup = renderToStaticMarkup(<GauntletPage />);
-    expect(markup).not.toMatch(/<button\b/i);
     expect(markup).not.toMatch(/<form\b/i);
     expect(markup).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+    expect(markup).toContain(
+      'data-gauntlet-navigation-affordance="pan-zoom-focus"',
+    );
+    expect(markup).not.toMatch(/data-(execute|approve|mutation)-control/i);
+    expect(markup).not.toMatch(/>\s*(Run|Send|Execute|Approve|Mutate)\s*</i);
   });
 });

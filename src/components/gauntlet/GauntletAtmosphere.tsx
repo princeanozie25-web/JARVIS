@@ -2,7 +2,7 @@
 
 import { Float, Sphere, Torus } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type GauntletStone =
   | "space"
@@ -85,6 +85,7 @@ function GauntletAtmosphereScene({
         intensity={profile.light}
         position={[0, 0, 4]}
       />
+      <CosmicParticleField mode={mode} />
       {stones.map((stone, index) => {
         const position = STONE_POSITIONS[stone];
         const color = STONE_COLORS[stone];
@@ -97,6 +98,18 @@ function GauntletAtmosphereScene({
             floatIntensity={0.18}
           >
             <group position={[position[0], position[1], position[2]]}>
+              <mesh rotation={[index * 0.22, index * 0.34, index * 0.18]}>
+                <octahedronGeometry
+                  args={[stone === "human_gate" ? 0.42 : 0.28, 2]}
+                />
+                <meshBasicMaterial
+                  transparent
+                  color={color}
+                  opacity={stone === "human_gate" ? 0.42 : 0.28}
+                  wireframe
+                  depthWrite={false}
+                />
+              </mesh>
               <Sphere args={[stone === "human_gate" ? 0.28 : 0.2, 32, 20]}>
                 <meshBasicMaterial
                   transparent
@@ -124,6 +137,38 @@ function GauntletAtmosphereScene({
   );
 }
 
+function CosmicParticleField({ mode }: { mode: GauntletAtmosphereMode }) {
+  const profile = GAUNTLET_ATMOSPHERE_PROFILE[mode];
+  const positions = useMemo(() => {
+    const values = new Float32Array(420 * 3);
+    for (let i = 0; i < 420; i += 1) {
+      const radius = 2.2 + ((i * 37) % 100) / 26;
+      const angle = i * 0.61803398875;
+      const layer = ((i * 19) % 60) / 60;
+      values[i * 3] = Math.cos(angle) * radius;
+      values[i * 3 + 1] = Math.sin(angle * 1.23) * (1.3 + layer * 1.2);
+      values[i * 3 + 2] = -2.2 - layer * 2.6;
+    }
+    return values;
+  }, []);
+
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        transparent
+        color={profile.color}
+        opacity={profile.starOpacity}
+        size={0.018}
+        sizeAttenuation
+        depthWrite={false}
+      />
+    </points>
+  );
+}
+
 function normalizeMode(value: string): GauntletAtmosphereMode {
   return value === "focused" || value === "warning" ? value : "stable";
 }
@@ -134,29 +179,32 @@ const GAUNTLET_ATMOSPHERE_PROFILE = {
     light: 0.56,
     floatSpeed: 0.45,
     ringOpacity: 0.22,
+    starOpacity: 0.28,
   },
   focused: {
     color: "#67e8f9",
     light: 0.75,
     floatSpeed: 0.7,
     ringOpacity: 0.32,
+    starOpacity: 0.38,
   },
   warning: {
     color: "#fbbf24",
     light: 0.72,
     floatSpeed: 0.62,
     ringOpacity: 0.36,
+    starOpacity: 0.34,
   },
 } as const;
 
 const STONE_COLORS: Readonly<Record<GauntletStone, string>> = {
   space: "#38bdf8",
-  time: "#a78bfa",
-  mind: "#818cf8",
-  soul: "#34d399",
-  reality: "#f472b6",
-  power: "#fbbf24",
-  human_gate: "#e0f2fe",
+  time: "#4ade80",
+  mind: "#c084fc",
+  soul: "#fb923c",
+  reality: "#22d3ee",
+  power: "#f43f5e",
+  human_gate: "#fbbf24",
 };
 
 const STONE_POSITIONS: Readonly<

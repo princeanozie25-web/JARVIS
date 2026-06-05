@@ -44,11 +44,22 @@ function assertNoControls(html: string) {
   expect(html).not.toMatch(/<button\b/i);
   expect(html).not.toMatch(/<form\b/i);
   expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
-  expect(html).not.toMatch(/<a\b/i);
+  assertOnlySafeNavigationLinks(html);
   expect(html).not.toMatch(/\brole="button"/i);
   expect(html).not.toMatch(
     /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
   );
+}
+
+function assertOnlySafeNavigationLinks(html: string) {
+  const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
+  expect(anchors.length).toBeLessThanOrEqual(1);
+  if (anchors.length === 1) {
+    expect(anchors[0]).toContain('href="/audit/gauntlet"');
+    expect(anchors[0]).toContain(
+      'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
+    );
+  }
 }
 
 describe("Phase 12F.3 synthetic demo closeout guards", () => {

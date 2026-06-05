@@ -97,10 +97,46 @@ export function GauntletHub({ hub }: GauntletHubProps) {
         cx={x}
         cy={y}
         r={radius}
-        fill="var(--jarvis-color-panel)"
+        fill="rgba(251,191,36,0.18)"
         stroke={color}
         strokeWidth={3}
       />
+      <g aria-hidden="true" data-human-gate-authority-crystal="true">
+        <polygon
+          points={`${x},${y - 58} ${x + 42},${y - 22} ${x + 34},${y + 44} ${x},${y + 66} ${x - 34},${y + 44} ${x - 42},${y - 22}`}
+          fill="rgba(251,191,36,0.46)"
+          stroke={color}
+          strokeOpacity={0.88}
+          strokeWidth={1.5}
+        />
+        <polygon
+          points={`${x},${y - 36} ${x + 24},${y - 8} ${x + 18},${y + 30} ${x},${y + 44} ${x - 18},${y + 30} ${x - 24},${y - 8}`}
+          fill="rgba(255,255,255,0.18)"
+          stroke="rgba(255,255,255,0.42)"
+          strokeWidth={1}
+        />
+        <line
+          x1={x}
+          y1={y - 58}
+          x2={x}
+          y2={y + 66}
+          stroke="rgba(255,255,255,0.38)"
+        />
+        <line
+          x1={x - 42}
+          y1={y - 22}
+          x2={x + 34}
+          y2={y + 44}
+          stroke="rgba(255,255,255,0.22)"
+        />
+        <line
+          x1={x + 42}
+          y1={y - 22}
+          x2={x - 34}
+          y2={y + 44}
+          stroke="rgba(255,255,255,0.22)"
+        />
+      </g>
       <circle
         cx={x}
         cy={y}
