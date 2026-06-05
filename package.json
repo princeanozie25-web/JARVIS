@@ -34,6 +34,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "better-sqlite3": "^12.10.0",
     "fast-xml-parser": "^5.8.0",
     "framer-motion": "^12.40.0",
@@ -45,6 +47,7 @@
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
     "sqlite-vec": "^0.1.9",
+    "three": "^0.184.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },

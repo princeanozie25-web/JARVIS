@@ -10,11 +10,11 @@
  *   - a CSS animation name driven by `orb-states.css`,
  *   - a human-readable label.
  *
- * The renderer is CSS-only (no Three.js, no canvas). The Orb component
- * applies `data-orb-activity-state` and the stylesheet picks up the
- * animation. `resolveOrbActivityState` is the only safe entry point: it
- * deny-falls-back to `idle` for any unknown input so the surface never
- * crashes.
+ * The SVG/CSS renderer remains the truth layer. The optional Three.js
+ * atmosphere can observe the resolved presentational state, but it never
+ * owns routing, metadata, or authority. `resolveOrbActivityState` is the
+ * only safe entry point: it deny-falls-back to `idle` for any unknown input
+ * so the surface never crashes.
  */
 
 import type { OrbVisualState } from "./types";

@@ -4,13 +4,14 @@ import {
   type OrbActivityState,
   resolveOrbActivityState,
 } from "./activity-states";
+import { OrbReactorAtmosphere } from "./OrbReactorAtmosphere";
 
 export interface OrbProps {
   state?: OrbVisualState;
   projectionTokens?: RestOrbStateTokens;
   projectionState?: OrbVisualState;
   /**
-   * UI.6 activity state. Drives a CSS-only animation layer via
+   * UI.6 activity state. Drives the SVG/CSS truth layer via
    * `data-orb-activity-state`. Unknown values fall back to `idle`.
    */
   activityState?: OrbActivityState | string;
@@ -81,33 +82,54 @@ export function Orb({
       data-orb-activity-animation={activity.animation}
       className="flex min-h-[560px] w-full flex-col items-center justify-center gap-9 text-center"
     >
-      <div className="relative grid h-[21rem] w-[21rem] place-items-center sm:h-[26rem] sm:w-[26rem]">
+      <div className="relative grid h-[21rem] w-[21rem] place-items-center rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.12),rgba(8,47,73,0.08)_38%,rgba(2,6,23,0)_72%)] sm:h-[26rem] sm:w-[26rem]">
+        <OrbReactorAtmosphere presentationalState={activity.state} />
         {/* Atmospheric outer halo — reactor exhaust. */}
         <div
           aria-hidden="true"
           data-orb-layer="atmosphere"
+          data-orb-reactor-layer="atmospheric_halo"
+          data-orb-layer-purpose="environment illumination"
+          data-orb-layer-identity="navy reactor exhaust halo"
+          data-orb-layer-motion="slow atmospheric breathing"
           className="absolute h-[112%] w-[112%] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.18)_0%,rgba(8,47,73,0.08)_45%,transparent_72%)] blur-2xl"
         />
         {/* Outer containment ring. */}
         <div
           aria-hidden="true"
           data-orb-layer="ring"
+          data-orb-reactor-layer="outer_containment_ring"
+          data-orb-layer-purpose="primary containment"
+          data-orb-layer-identity="engineered pressure shell"
+          data-orb-layer-motion="restrained containment pulse"
           className={`absolute h-full w-full rounded-full border ${tone.accent} opacity-55 motion-safe:animate-pulse`}
         />
         {/* Mid containment ring — counter-rotates with the turbine. */}
         <div
           aria-hidden="true"
           data-orb-layer="sweep"
+          data-orb-reactor-layer="compression_ring"
+          data-orb-layer-purpose="plasma compression"
+          data-orb-layer-identity="focused pressure band"
+          data-orb-layer-motion="state-driven compression"
           className="absolute h-[82%] w-[82%] rounded-full border border-white/10"
         />
         {/* Inner containment ring — reactor lattice. */}
         <div
           aria-hidden="true"
           data-orb-layer="containment"
+          data-orb-reactor-layer="counter_rotating_containment_lattice"
+          data-orb-layer-purpose="field stabilization"
+          data-orb-layer-identity="counter-rotating lattice"
+          data-orb-layer-motion="reverse containment rotation"
           className="absolute h-[72%] w-[72%] rounded-full border border-cyan-100/15"
         />
         <div
           aria-hidden="true"
+          data-orb-reactor-layer="plasma_compression_chamber"
+          data-orb-layer-purpose="energy pressure vessel"
+          data-orb-layer-identity="compressed plasma chamber"
+          data-orb-layer-motion="contained pressure breathing"
           className="absolute h-[64%] w-[64%] rounded-full border border-cyan-100/10"
         />
 
@@ -115,6 +137,10 @@ export function Orb({
         <svg
           aria-hidden="true"
           data-orb-layer="turbine"
+          data-orb-reactor-layer="turbine_ring"
+          data-orb-layer-purpose="reactor turbine"
+          data-orb-layer-identity="jet-engine blade ring"
+          data-orb-layer-motion="state-paced turbine rotation"
           viewBox="-100 -100 200 200"
           className="absolute h-[58%] w-[58%]"
         >
@@ -150,12 +176,20 @@ export function Orb({
         <div
           aria-hidden="true"
           data-orb-layer="core"
+          data-orb-reactor-layer="fusion_core"
+          data-orb-layer-purpose="central power source"
+          data-orb-layer-identity="contained fusion heart"
+          data-orb-layer-motion="plasma heartbeat"
           className={`relative grid h-60 w-60 place-items-center rounded-full border bg-[radial-gradient(circle_at_50%_42%,var(--tw-gradient-stops))] ${tone.core} ${tone.shell} sm:h-72 sm:w-72`}
         >
           {/* Plasma flame — bright reactor center. */}
           <div
             aria-hidden="true"
             data-orb-layer="plasma"
+            data-orb-reactor-layer="fusion_flame"
+            data-orb-layer-purpose="visible fusion pressure"
+            data-orb-layer-identity="compressed blue plasma"
+            data-orb-layer-motion="contained flame compression"
             className="absolute h-40 w-40 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.92)_0%,rgba(125,211,252,0.55)_22%,rgba(14,165,233,0.35)_48%,rgba(8,47,73,0)_78%)] sm:h-48 sm:w-48"
           />
           <div className="h-36 w-36 rounded-full border border-white/20 bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(34,211,238,0.12)_42%,rgba(3,7,18,0.78)_72%)] sm:h-44 sm:w-44" />

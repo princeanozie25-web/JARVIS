@@ -255,11 +255,152 @@
   }
 }
 
+@keyframes jarvis-orb-compression-tighten {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: rotate(1.6deg) scale(0.985);
+  }
+}
+
+@keyframes jarvis-orb-lattice-counterspin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    transform: rotate(-360deg) scale(1);
+  }
+}
+
+@keyframes jarvis-orb-fusion-heartbeat {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.9);
+    filter: saturate(1.1) contrast(1.05);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: saturate(1.45) contrast(1.18);
+  }
+  72% {
+    opacity: 0.86;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes jarvis-orb-overload-flicker {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  62% {
+    opacity: 0.86;
+    transform: scale(0.98);
+  }
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer] {
+  transform-origin: center;
+  transition:
+    border-color var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth),
+    box-shadow var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth),
+    filter var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth),
+    opacity var(--jarvis-motion-duration-normal)
+      var(--jarvis-motion-easing-smooth);
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="atmospheric_halo"] {
+  box-shadow: 0 0 140px rgba(14, 165, 233, 0.12);
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="outer_containment_ring"] {
+  box-shadow:
+    0 0 40px rgba(14, 165, 233, 0.16),
+    inset 0 0 34px rgba(125, 211, 252, 0.12);
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="compression_ring"] {
+  animation: jarvis-orb-compression-tighten
+    var(--jarvis-motion-duration-cinematic) var(--jarvis-motion-easing-smooth)
+    infinite;
+  background:
+    repeating-conic-gradient(
+      from 8deg,
+      rgba(186, 230, 253, 0.22) 0deg,
+      rgba(186, 230, 253, 0.22) 2deg,
+      transparent 2deg,
+      transparent 18deg
+    ),
+    radial-gradient(circle, transparent 62%, rgba(14, 165, 233, 0.08) 70%);
+}
+
+[data-orb-activity-state]
+  [data-orb-reactor-layer="counter_rotating_containment_lattice"] {
+  animation: jarvis-orb-lattice-counterspin var(--jarvis-pulse-duration-long)
+    var(--jarvis-motion-easing-orbit) infinite;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(34, 211, 238, 0.2) 0deg,
+    rgba(34, 211, 238, 0.2) 1deg,
+    transparent 1deg,
+    transparent 14deg
+  );
+  box-shadow: inset 0 0 28px rgba(125, 211, 252, 0.08);
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="turbine_ring"] {
+  filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.32));
+}
+
+[data-orb-activity-state]
+  [data-orb-reactor-layer="plasma_compression_chamber"] {
+  animation: jarvis-orb-plasma-compress var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-smooth) infinite;
+  background:
+    radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 54%),
+    repeating-conic-gradient(
+      from 12deg,
+      rgba(125, 211, 252, 0.14) 0deg,
+      rgba(125, 211, 252, 0.14) 3deg,
+      transparent 3deg,
+      transparent 24deg
+    );
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="fusion_core"] {
+  box-shadow:
+    0 0 90px var(--jarvis-color-signal),
+    inset 0 0 48px rgba(8, 47, 73, 0.78);
+  overflow: hidden;
+}
+
+[data-orb-activity-state] [data-orb-reactor-layer="fusion_flame"] {
+  animation: jarvis-orb-fusion-heartbeat var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow:
+    0 0 52px rgba(125, 211, 252, 0.42),
+    inset 0 0 28px rgba(255, 255, 255, 0.26);
+}
+
 /* Atmosphere baseline — every state. */
 [data-orb-activity-state] [data-orb-layer="atmosphere"] {
   animation: jarvis-orb-atmosphere-breath
-    var(--jarvis-motion-duration-cinematic)
-    var(--jarvis-motion-easing-smooth) infinite;
+    var(--jarvis-motion-duration-cinematic) var(--jarvis-motion-easing-smooth)
+    infinite;
   transform-origin: center;
 }
 
@@ -272,21 +413,23 @@
 
 /* Inner containment lattice — counter-rotates for engine feel. */
 [data-orb-activity-state] [data-orb-layer="containment"] {
-  animation: jarvis-orb-containment-counter
-    var(--jarvis-pulse-duration-long)
+  animation: jarvis-orb-containment-counter var(--jarvis-pulse-duration-long)
     var(--jarvis-motion-easing-orbit) infinite;
   transform-origin: center;
 }
 
 /* Plasma core baseline — restrained compression. */
 [data-orb-activity-state] [data-orb-layer="plasma"] {
-  animation: jarvis-orb-plasma-compress
-    var(--jarvis-motion-duration-cinematic)
+  animation: jarvis-orb-plasma-compress var(--jarvis-motion-duration-cinematic)
     var(--jarvis-motion-easing-smooth) infinite;
   transform-origin: center;
 }
 
 /* Idle — slow, deep, contained. */
+[data-orb-activity-state="idle"] [data-orb-reactor-layer="compression_ring"] {
+  animation-duration: var(--jarvis-motion-duration-cinematic);
+  opacity: 0.6;
+}
 [data-orb-activity-state="idle"] [data-orb-layer="turbine"] {
   animation-duration: var(--jarvis-pulse-duration-long);
   opacity: 0.7;
@@ -296,6 +439,13 @@
 }
 
 /* Listening — tighter compression, brighter core, faster turbine. */
+[data-orb-activity-state="listening"]
+  [data-orb-reactor-layer="compression_ring"] {
+  animation-duration: var(--jarvis-motion-duration-slow);
+  border-color: var(--jarvis-color-focus);
+  box-shadow: 0 0 42px var(--jarvis-color-focus);
+  opacity: 0.92;
+}
 [data-orb-activity-state="listening"] [data-orb-layer="turbine"] {
   animation-duration: var(--jarvis-pulse-duration-normal);
 }
@@ -307,6 +457,15 @@
 }
 
 /* Processing — reactor acceleration, full turbine cycle. */
+[data-orb-activity-state="processing"]
+  [data-orb-reactor-layer="outer_containment_ring"],
+[data-orb-activity-state="processing"]
+  [data-orb-reactor-layer="counter_rotating_containment_lattice"] {
+  border-color: var(--jarvis-color-focus);
+  box-shadow:
+    0 0 52px var(--jarvis-color-focus),
+    inset 0 0 30px rgba(125, 211, 252, 0.2);
+}
 [data-orb-activity-state="processing"] [data-orb-layer="turbine"] {
   animation-duration: var(--jarvis-pulse-duration-short);
   opacity: 0.95;
@@ -316,6 +475,13 @@
 }
 
 /* Speaking — rhythmic plasma release. */
+[data-orb-activity-state="speaking"] [data-orb-reactor-layer="fusion_flame"] {
+  animation: jarvis-orb-plasma-release var(--jarvis-motion-duration-slow)
+    var(--jarvis-motion-easing-smooth) infinite;
+  box-shadow:
+    0 0 78px var(--jarvis-color-focus),
+    inset 0 0 36px rgba(255, 255, 255, 0.32);
+}
 [data-orb-activity-state="speaking"] [data-orb-layer="plasma"] {
   animation: jarvis-orb-plasma-release var(--jarvis-motion-duration-slow)
     var(--jarvis-motion-easing-smooth) infinite;
@@ -327,6 +493,20 @@
 }
 
 /* Approval needed — warning compression, amber haze. */
+[data-orb-activity-state="approval_needed"]
+  [data-orb-reactor-layer="outer_containment_ring"],
+[data-orb-activity-state="approval_needed"]
+  [data-orb-reactor-layer="compression_ring"] {
+  border-color: var(--jarvis-color-review);
+  box-shadow:
+    0 0 58px var(--jarvis-color-review),
+    inset 0 0 26px rgba(251, 191, 36, 0.18);
+}
+[data-orb-activity-state="approval_needed"]
+  [data-orb-reactor-layer="fusion_flame"] {
+  animation: jarvis-orb-plasma-warning var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth) infinite;
+}
 [data-orb-activity-state="approval_needed"] [data-orb-layer="plasma"] {
   animation: jarvis-orb-plasma-warning var(--jarvis-motion-duration-normal)
     var(--jarvis-motion-easing-smooth) infinite;
@@ -336,9 +516,24 @@
 }
 
 /* Alert — overload posture: turbine tightens, plasma flickers. */
+[data-orb-activity-state="alert"]
+  [data-orb-reactor-layer="outer_containment_ring"],
+[data-orb-activity-state="alert"] [data-orb-reactor-layer="compression_ring"],
+[data-orb-activity-state="alert"]
+  [data-orb-reactor-layer="counter_rotating_containment_lattice"] {
+  border-color: var(--jarvis-color-blocked);
+  box-shadow:
+    0 0 70px var(--jarvis-color-blocked),
+    inset 0 0 36px rgba(239, 68, 68, 0.2);
+  filter: saturate(1.35) contrast(1.15);
+}
 [data-orb-activity-state="alert"] [data-orb-layer="turbine"] {
   animation-duration: var(--jarvis-pulse-duration-short);
   opacity: 1;
+}
+[data-orb-activity-state="alert"] [data-orb-reactor-layer="fusion_flame"] {
+  animation: jarvis-orb-overload-flicker var(--jarvis-motion-duration-fast)
+    var(--jarvis-motion-easing-sharp) infinite;
 }
 [data-orb-activity-state="alert"] [data-orb-layer="plasma"] {
   animation: jarvis-orb-plasma-warning var(--jarvis-motion-duration-fast)
@@ -352,7 +547,8 @@
   [data-orb-activity-state] [data-orb-layer="atmosphere"],
   [data-orb-activity-state] [data-orb-layer="containment"],
   [data-orb-activity-state] [data-orb-layer="turbine"],
-  [data-orb-activity-state] [data-orb-layer="plasma"] {
+  [data-orb-activity-state] [data-orb-layer="plasma"],
+  [data-orb-activity-state] [data-orb-reactor-layer] {
     animation: none !important;
     transition: none !important;
   }

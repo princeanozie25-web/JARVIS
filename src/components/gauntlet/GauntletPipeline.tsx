@@ -10,6 +10,7 @@ import {
   type TimeActivationState,
 } from "@/lib/gauntlet-visualization";
 
+import { GauntletAtmosphere } from "./GauntletAtmosphere";
 import { GauntletHub } from "./GauntletHub";
 import { MindZone } from "./MindZone";
 import { PowerZone } from "./PowerZone";
@@ -69,6 +70,16 @@ export function GauntletPipeline({
   const reality = model.zones.find((zone) => zone.zone_id === "reality");
   const power = model.zones.find((zone) => zone.zone_id === "power");
   const populatedZones = model.populated_zones.join(",");
+  const atmosphereMode =
+    model.hub.state === "proposal_pending" || model.hub.state === "denied"
+      ? "warning"
+      : model.time_state !== "idle" ||
+          model.mind_council_stage !== "idle" ||
+          model.soul_state !== "idle" ||
+          model.reality_state !== "idle" ||
+          model.power_state !== "idle"
+        ? "focused"
+        : "stable";
 
   return (
     <section
@@ -98,90 +109,96 @@ export function GauntletPipeline({
         </p>
       </header>
 
-      <svg
-        role="img"
-        aria-label="Living System Map governance flow"
-        data-gauntlet-pipeline="read-only"
-        data-hub-state={model.hub.state}
-        data-time-state={model.time_state}
-        data-mind-council-stage={model.mind_council_stage}
-        data-soul-state={model.soul_state}
-        data-reality-state={model.reality_state}
-        data-power-state={model.power_state}
-        data-populated-zones={populatedZones}
-        viewBox={`0 0 ${GAUNTLET_VIEWBOX.width} ${GAUNTLET_VIEWBOX.height}`}
-        className="w-full"
-        style={{ minHeight: "320px" }}
+      <div
+        className="relative overflow-hidden"
+        data-gauntlet-atmosphere-shell="optional"
       >
-        {/* Backdrop: deep navy field, atmospheric vignette, then grid. */}
-        <defs>
-          <pattern
-            id="gauntlet-grid"
-            width={64}
-            height={64}
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M64 0 L0 0 0 64"
-              fill="none"
-              stroke="var(--jarvis-color-border-subtle)"
-              strokeWidth={1}
+        <GauntletAtmosphere presentationalMode={atmosphereMode} />
+        <svg
+          role="img"
+          aria-label="Living System Map governance flow"
+          data-gauntlet-pipeline="read-only"
+          data-hub-state={model.hub.state}
+          data-time-state={model.time_state}
+          data-mind-council-stage={model.mind_council_stage}
+          data-soul-state={model.soul_state}
+          data-reality-state={model.reality_state}
+          data-power-state={model.power_state}
+          data-populated-zones={populatedZones}
+          viewBox={`0 0 ${GAUNTLET_VIEWBOX.width} ${GAUNTLET_VIEWBOX.height}`}
+          className="relative z-10 w-full"
+          style={{ minHeight: "320px" }}
+        >
+          {/* Backdrop: deep navy field, atmospheric vignette, then grid. */}
+          <defs>
+            <pattern
+              id="gauntlet-grid"
+              width={64}
+              height={64}
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M64 0 L0 0 0 64"
+                fill="none"
+                stroke="var(--jarvis-color-border-subtle)"
+                strokeWidth={1}
+              />
+            </pattern>
+            <radialGradient id="gauntlet-atmosphere" cx="50%" cy="28%" r="65%">
+              <stop offset="0%" stopColor="rgba(56,189,248,0.10)" />
+              <stop offset="55%" stopColor="rgba(8,47,73,0.04)" />
+              <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            </radialGradient>
+          </defs>
+          <rect
+            data-gauntlet-backdrop="panel"
+            width={GAUNTLET_VIEWBOX.width}
+            height={GAUNTLET_VIEWBOX.height}
+            fill="var(--jarvis-color-panel)"
+          />
+          <rect
+            data-gauntlet-backdrop="grid"
+            width={GAUNTLET_VIEWBOX.width}
+            height={GAUNTLET_VIEWBOX.height}
+            fill="url(#gauntlet-grid)"
+          />
+          <rect
+            data-gauntlet-backdrop="atmosphere"
+            width={GAUNTLET_VIEWBOX.width}
+            height={GAUNTLET_VIEWBOX.height}
+            fill="url(#gauntlet-atmosphere)"
+          />
+
+          {/* Zones paint first; hub overlays last so it is never obscured. */}
+          {space ? <SpaceZone zone={space} /> : null}
+          {time ? (
+            <TimeZone zone={time} state={model.time_state} hub={model.hub} />
+          ) : null}
+          {mind ? (
+            <MindZone
+              zone={mind}
+              councilStage={model.mind_council_stage}
+              hub={model.hub}
             />
-          </pattern>
-          <radialGradient id="gauntlet-atmosphere" cx="50%" cy="28%" r="65%">
-            <stop offset="0%" stopColor="rgba(56,189,248,0.10)" />
-            <stop offset="55%" stopColor="rgba(8,47,73,0.04)" />
-            <stop offset="100%" stopColor="rgba(2,6,23,0)" />
-          </radialGradient>
-        </defs>
-        <rect
-          data-gauntlet-backdrop="panel"
-          width={GAUNTLET_VIEWBOX.width}
-          height={GAUNTLET_VIEWBOX.height}
-          fill="var(--jarvis-color-panel)"
-        />
-        <rect
-          data-gauntlet-backdrop="grid"
-          width={GAUNTLET_VIEWBOX.width}
-          height={GAUNTLET_VIEWBOX.height}
-          fill="url(#gauntlet-grid)"
-        />
-        <rect
-          data-gauntlet-backdrop="atmosphere"
-          width={GAUNTLET_VIEWBOX.width}
-          height={GAUNTLET_VIEWBOX.height}
-          fill="url(#gauntlet-atmosphere)"
-        />
+          ) : null}
+          {soul ? (
+            <SoulZone zone={soul} state={model.soul_state} hub={model.hub} />
+          ) : null}
+          {reality ? (
+            <RealityZone
+              zone={reality}
+              state={model.reality_state}
+              hub={model.hub}
+            />
+          ) : null}
+          {power ? (
+            <PowerZone zone={power} state={model.power_state} hub={model.hub} />
+          ) : null}
 
-        {/* Zones paint first; hub overlays last so it is never obscured. */}
-        {space ? <SpaceZone zone={space} /> : null}
-        {time ? (
-          <TimeZone zone={time} state={model.time_state} hub={model.hub} />
-        ) : null}
-        {mind ? (
-          <MindZone
-            zone={mind}
-            councilStage={model.mind_council_stage}
-            hub={model.hub}
-          />
-        ) : null}
-        {soul ? (
-          <SoulZone zone={soul} state={model.soul_state} hub={model.hub} />
-        ) : null}
-        {reality ? (
-          <RealityZone
-            zone={reality}
-            state={model.reality_state}
-            hub={model.hub}
-          />
-        ) : null}
-        {power ? (
-          <PowerZone zone={power} state={model.power_state} hub={model.hub} />
-        ) : null}
-
-        {/* Hub — always visible. */}
-        <GauntletHub hub={model.hub} />
-      </svg>
+          {/* Hub — always visible. */}
+          <GauntletHub hub={model.hub} />
+        </svg>
+      </div>
 
       <footer className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45">
         Read-only governance surface · no execute · no approve · no mutate · no
