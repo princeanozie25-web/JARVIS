@@ -113,7 +113,7 @@ export function GauntletPipeline({
         className="w-full"
         style={{ minHeight: "320px" }}
       >
-        {/* Backdrop grid for the cockpit feel. */}
+        {/* Backdrop: deep navy field, atmospheric vignette, then grid. */}
         <defs>
           <pattern
             id="gauntlet-grid"
@@ -128,11 +128,29 @@ export function GauntletPipeline({
               strokeWidth={1}
             />
           </pattern>
+          <radialGradient id="gauntlet-atmosphere" cx="50%" cy="28%" r="65%">
+            <stop offset="0%" stopColor="rgba(56,189,248,0.10)" />
+            <stop offset="55%" stopColor="rgba(8,47,73,0.04)" />
+            <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+          </radialGradient>
         </defs>
         <rect
+          data-gauntlet-backdrop="panel"
+          width={GAUNTLET_VIEWBOX.width}
+          height={GAUNTLET_VIEWBOX.height}
+          fill="var(--jarvis-color-panel)"
+        />
+        <rect
+          data-gauntlet-backdrop="grid"
           width={GAUNTLET_VIEWBOX.width}
           height={GAUNTLET_VIEWBOX.height}
           fill="url(#gauntlet-grid)"
+        />
+        <rect
+          data-gauntlet-backdrop="atmosphere"
+          width={GAUNTLET_VIEWBOX.width}
+          height={GAUNTLET_VIEWBOX.height}
+          fill="url(#gauntlet-atmosphere)"
         />
 
         {/* Zones paint first; hub overlays last so it is never obscured. */}

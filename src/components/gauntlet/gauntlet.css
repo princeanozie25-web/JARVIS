@@ -440,6 +440,157 @@
   stroke-opacity: 0.7;
 }
 
+/*
+ * Stone identity refinements — visual law.
+ *
+ * Each stone earns its identity from behaviour, not labels. We hold the
+ * existing topology and add subtle, deterministic effects that make every
+ * stone read as contained power rather than a generic graph node.
+ *
+ * No new nodes, no new edges. Only presentational polish driven by data
+ * attributes that already exist.
+ */
+
+/* Space — mechanical, exact. Pulses tighten subtly to suggest a routing
+ * spine rather than a magical glow. */
+[data-gauntlet-pipeline] [data-gauntlet-pulse-stone]:not([data-gauntlet-pulse-stone]),
+[data-gauntlet-zone="space"] [data-gauntlet-pulse] {
+  /* Reserved hook — kept here so future polish can extend Space without
+   * impacting other zones. */
+}
+
+/* Time — orbital coordinator gains a slow inward gravity glow. The
+ * coordinator's outer ring already exists; we strengthen its presence
+ * via a soft breathing stroke. */
+@keyframes jarvis-gauntlet-coordinator-gravity {
+  0%,
+  100% {
+    stroke-opacity: 0.3;
+  }
+  50% {
+    stroke-opacity: 0.55;
+  }
+}
+
+[data-gauntlet-zone="time"]
+  [data-time-node-id="agent_coordinator"]
+  > circle:first-of-type {
+  animation: jarvis-gauntlet-coordinator-gravity
+    var(--jarvis-pulse-duration-long) var(--jarvis-pulse-easing) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Mind — chairman halo slowly rotates to suggest contained cognition.
+ * The chairman_synthesis stage already accumulates; idle keeps a subtle
+ * thought drift on the halo. */
+@keyframes jarvis-gauntlet-chairman-drift {
+  0% {
+    transform: rotate(0deg);
+    stroke-opacity: 0.45;
+  }
+  50% {
+    stroke-opacity: 0.65;
+  }
+  100% {
+    transform: rotate(360deg);
+    stroke-opacity: 0.45;
+  }
+}
+
+[data-gauntlet-zone="mind"] [data-mind-chairman-halo="true"] {
+  animation: jarvis-gauntlet-chairman-drift var(--jarvis-pulse-duration-long)
+    linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Soul — vault heartbeat already pulses; layer a low-frequency
+ * inward draw so molten amber feels under pressure. The compounding
+ * exit node gains a subtle gold breath. */
+@keyframes jarvis-gauntlet-soul-pressure {
+  0%,
+  100% {
+    stroke-opacity: 0.4;
+  }
+  50% {
+    stroke-opacity: 0.7;
+  }
+}
+
+[data-gauntlet-zone="soul"]
+  [data-soul-node-id="obsidian_vault"]
+  > circle:first-of-type {
+  animation: jarvis-gauntlet-soul-pressure var(--jarvis-pulse-duration-long)
+    var(--jarvis-pulse-easing) infinite;
+}
+
+[data-gauntlet-zone="soul"]
+  [data-soul-node-id="knowledge_compounding"]
+  > circle:first-of-type {
+  animation: jarvis-gauntlet-soul-pressure var(--jarvis-pulse-duration-dwell)
+    var(--jarvis-pulse-easing) infinite;
+}
+
+/* Reality — theme engine crystal halo gains a slow facet rotation so
+ * the diamond reads as contained lightning rather than a static shape. */
+@keyframes jarvis-gauntlet-crystal-rotate {
+  0% {
+    transform: rotate(0deg);
+    stroke-opacity: 0.45;
+  }
+  50% {
+    stroke-opacity: 0.75;
+  }
+  100% {
+    transform: rotate(360deg);
+    stroke-opacity: 0.45;
+  }
+}
+
+[data-gauntlet-zone="reality"] [data-reality-crystal-halo="true"] {
+  animation: jarvis-gauntlet-crystal-rotate var(--jarvis-pulse-duration-long)
+    linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Power — fortress frame keeps an idle audit watch beat so the reactor
+ * never feels asleep, even before audit_cycle is engaged. The reactor
+ * core itself draws a slow inward breath. */
+@keyframes jarvis-gauntlet-fortress-watch {
+  0%,
+  100% {
+    stroke-opacity: 0.42;
+  }
+  50% {
+    stroke-opacity: 0.78;
+  }
+}
+
+[data-gauntlet-zone="power"] [data-power-fortress-frame="true"] {
+  animation: jarvis-gauntlet-fortress-watch
+    var(--jarvis-pulse-duration-long) var(--jarvis-pulse-easing) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+[data-gauntlet-zone="power"]
+  [data-power-node-id="reactor_core"]
+  > circle:first-of-type {
+  animation: jarvis-gauntlet-fortress-watch
+    var(--jarvis-pulse-duration-dwell)
+    var(--jarvis-pulse-easing) infinite;
+}
+
+[data-gauntlet-zone="power"] [data-power-gate-lock="true"] {
+  animation: jarvis-gauntlet-fortress-watch
+    var(--jarvis-pulse-duration-dwell)
+    var(--jarvis-pulse-easing) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-gauntlet-pipeline] [data-gauntlet-pulse],
   [data-gauntlet-hub] [data-gauntlet-hub-ring],

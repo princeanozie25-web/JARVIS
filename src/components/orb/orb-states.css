@@ -178,10 +178,181 @@
   border-color: var(--jarvis-color-blocked);
 }
 
+/*
+ * Reactor refinement layers — atmosphere, containment, turbine, plasma.
+ *
+ * Stone Principle: contained power. Idle is restrained. Energy expressed
+ * here always implies more underneath. All durations and easings route
+ * through JARVIS motion tokens; no parallel timing.
+ */
+
+@keyframes jarvis-orb-atmosphere-breath {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes jarvis-orb-containment-counter {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes jarvis-orb-turbine-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jarvis-orb-plasma-compress {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes jarvis-orb-plasma-release {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.96);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0.82;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes jarvis-orb-plasma-warning {
+  0%,
+  100% {
+    opacity: 0.75;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    filter: hue-rotate(-30deg);
+  }
+}
+
+/* Atmosphere baseline — every state. */
+[data-orb-activity-state] [data-orb-layer="atmosphere"] {
+  animation: jarvis-orb-atmosphere-breath
+    var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-smooth) infinite;
+  transform-origin: center;
+}
+
+/* Turbine baseline — slow grind in idle, accelerated by states below. */
+[data-orb-activity-state] [data-orb-layer="turbine"] {
+  animation: jarvis-orb-turbine-spin var(--jarvis-pulse-duration-long) linear
+    infinite;
+  transform-origin: center;
+}
+
+/* Inner containment lattice — counter-rotates for engine feel. */
+[data-orb-activity-state] [data-orb-layer="containment"] {
+  animation: jarvis-orb-containment-counter
+    var(--jarvis-pulse-duration-long)
+    var(--jarvis-motion-easing-orbit) infinite;
+  transform-origin: center;
+}
+
+/* Plasma core baseline — restrained compression. */
+[data-orb-activity-state] [data-orb-layer="plasma"] {
+  animation: jarvis-orb-plasma-compress
+    var(--jarvis-motion-duration-cinematic)
+    var(--jarvis-motion-easing-smooth) infinite;
+  transform-origin: center;
+}
+
+/* Idle — slow, deep, contained. */
+[data-orb-activity-state="idle"] [data-orb-layer="turbine"] {
+  animation-duration: var(--jarvis-pulse-duration-long);
+  opacity: 0.7;
+}
+[data-orb-activity-state="idle"] [data-orb-layer="plasma"] {
+  animation-duration: var(--jarvis-motion-duration-cinematic);
+}
+
+/* Listening — tighter compression, brighter core, faster turbine. */
+[data-orb-activity-state="listening"] [data-orb-layer="turbine"] {
+  animation-duration: var(--jarvis-pulse-duration-normal);
+}
+[data-orb-activity-state="listening"] [data-orb-layer="plasma"] {
+  animation-duration: var(--jarvis-motion-duration-slow);
+}
+[data-orb-activity-state="listening"] [data-orb-layer="atmosphere"] {
+  animation-duration: var(--jarvis-motion-duration-slow);
+}
+
+/* Processing — reactor acceleration, full turbine cycle. */
+[data-orb-activity-state="processing"] [data-orb-layer="turbine"] {
+  animation-duration: var(--jarvis-pulse-duration-short);
+  opacity: 0.95;
+}
+[data-orb-activity-state="processing"] [data-orb-layer="containment"] {
+  animation-duration: var(--jarvis-pulse-duration-normal);
+}
+
+/* Speaking — rhythmic plasma release. */
+[data-orb-activity-state="speaking"] [data-orb-layer="plasma"] {
+  animation: jarvis-orb-plasma-release var(--jarvis-motion-duration-slow)
+    var(--jarvis-motion-easing-smooth) infinite;
+}
+
+/* Systems healthy — calm grind, green atmosphere. */
+[data-orb-activity-state="systems_healthy"] [data-orb-layer="atmosphere"] {
+  opacity: 0.7;
+}
+
+/* Approval needed — warning compression, amber haze. */
+[data-orb-activity-state="approval_needed"] [data-orb-layer="plasma"] {
+  animation: jarvis-orb-plasma-warning var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth) infinite;
+}
+[data-orb-activity-state="approval_needed"] [data-orb-layer="turbine"] {
+  animation-duration: var(--jarvis-pulse-duration-normal);
+}
+
+/* Alert — overload posture: turbine tightens, plasma flickers. */
+[data-orb-activity-state="alert"] [data-orb-layer="turbine"] {
+  animation-duration: var(--jarvis-pulse-duration-short);
+  opacity: 1;
+}
+[data-orb-activity-state="alert"] [data-orb-layer="plasma"] {
+  animation: jarvis-orb-plasma-warning var(--jarvis-motion-duration-fast)
+    var(--jarvis-motion-easing-sharp) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-orb-activity-state] [data-orb-layer="core"],
   [data-orb-activity-state] [data-orb-layer="sweep"],
-  [data-orb-activity-state] [data-orb-layer="ring"] {
+  [data-orb-activity-state] [data-orb-layer="ring"],
+  [data-orb-activity-state] [data-orb-layer="atmosphere"],
+  [data-orb-activity-state] [data-orb-layer="containment"],
+  [data-orb-activity-state] [data-orb-layer="turbine"],
+  [data-orb-activity-state] [data-orb-layer="plasma"] {
     animation: none !important;
     transition: none !important;
   }
