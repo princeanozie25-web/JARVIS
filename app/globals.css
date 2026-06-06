@@ -2,6 +2,7 @@
 @import "../src/lib/design-tokens/tokens.css";
 @import "../src/lib/accessibility.css";
 @import "../src/components/command-center/command-center.css";
+@import "../src/components/command-center/liquid-command-center.css";
 @import "../src/components/orb/orb-states.css";
 
 :root {

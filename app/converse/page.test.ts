@@ -4,7 +4,7 @@ import {
   voiceDraftMarkerAfterInputChange,
   voiceDraftPayloadToChatInputState,
   type VoiceDraftInputMarker,
-} from "./page";
+} from "./voice-draft-input";
 import type { VoiceTranscriptChatPayload } from "@/lib/stt";
 
 const voicePayload: VoiceTranscriptChatPayload = {

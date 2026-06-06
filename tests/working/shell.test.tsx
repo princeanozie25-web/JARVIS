@@ -109,8 +109,8 @@ describe("Phase 12B.1 Working screen shell", () => {
     const html = renderWorkingPage();
 
     expect(html).toContain('data-human-gate-panel="true"');
-    expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
-    expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+    expect(html.match(/wc-gate-approve/g)).toHaveLength(1);
+    expect(html.match(/wc-gate-deny/g)).toHaveLength(1);
     expect(buttonLabels(html).join(" ")).not.toMatch(
       /\b(run|retry|execute|schedule)\b/i,
     );

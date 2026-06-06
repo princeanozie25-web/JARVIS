@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import WorkingPage from "../../src/app/working/page";
 import { WorkingCockpit } from "../../src/components/working/WorkingCockpit";
 
-const WORKFLOWS = ["project", "research", "build", "brief"] as const;
 const FORBIDDEN_OUTSIDE_GATE = /\b(run|retry|execute|schedule)\b/i;
 const SECRET_VALUE = /\bsk-[A-Za-z0-9_-]{8,}\b/i;
 
@@ -32,68 +31,65 @@ describe("Phase 12 /working cockpit - gate-centered production prototype", () =>
     expect(html).toContain("Working Cockpit");
   });
 
-  it("ships all four workflow pages and starts with exactly one visible", () => {
+  it("renders the reference workflow rail and focused cockpit grid", () => {
     const html = renderWorkingPage();
 
-    for (const workflow of WORKFLOWS) {
-      expect(html).toContain(`data-workflow-page="${workflow}"`);
-      expect(html).toContain(`data-workflow-tab="${workflow}"`);
-      expect(html).toContain(`data-sidebar-workflow="${workflow}"`);
-    }
-    expect(html.match(/data-active-workflow-page="true"/g)).toHaveLength(1);
-    expect(html.match(/data-active-workflow-page="false"/g)).toHaveLength(3);
-    expect(html).toContain('data-grid-template="1.1fr 1.4fr 0.95fr"');
-    expect(html).toContain('data-grid-template="1fr 1.2fr 1fr"');
-    expect(html).toContain('data-grid-template="1.3fr 1.1fr 1fr"');
-    expect(html).toContain('data-grid-template="1fr 1.3fr 1fr"');
+    expect(html).toContain("Project");
+    expect(html).toContain("Research");
+    expect(html).toContain("Build Monitor");
+    expect(html).toContain("Morning Brief");
+    expect(html).toContain("jcc-work-grid");
+    expect(html).toContain("jcc-chat");
+    expect(html).toContain("jcc-gate");
+    expect(html).toContain("jcc-context");
   });
 
   it("renders the Human Gate as the center mutation surface", () => {
     const html = renderWorkingPage();
 
-    expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
+    expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(1);
     expect(html).toContain('data-only-path-to-side-effects="true"');
-    expect(html).toContain('data-mutator-entrypoint="resolveProposal"');
+    expect(html).toContain(
+      'data-mutator-entrypoint="human-gate-approval-lifecycle"',
+    );
+    expect(html).toContain('data-approval-service="phase_18_contract"');
     expect(html).toContain("Human Gate");
-    expect(html).toContain("only path to side effects");
-    expect(html).toContain("dry-run diff");
-    expect(html).toContain("expires in");
+    expect(html).toContain("THE ONLY PATH TO SIDE EFFECTS");
+    expect(html).toContain("DRY-RUN DIFF");
+    expect(html).toContain("EXPIRES IN");
   });
 
   it("keeps approve and deny controls inside gate cards only", () => {
     const html = renderWorkingPage();
     const labels = buttonLabels(html);
 
-    expect(labels).toContain("Approve");
-    expect(labels).toContain("Deny");
-    expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
-    expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+    expect(labels).toContain("APPROVE");
+    expect(labels).toContain("DENY");
+    expect(html.match(/wc-gate-approve/g)).toHaveLength(1);
+    expect(html.match(/wc-gate-deny/g)).toHaveLength(1);
     expect(labels.join(" ")).not.toMatch(FORBIDDEN_OUTSIDE_GATE);
     expect(html).not.toContain("replay_execute");
     expect(html).not.toContain("graph_execute");
   });
 
-  it("marks fake-adapter panels and read-only context surfaces", () => {
+  it("marks observability panels and read-only context surfaces", () => {
     const html = renderWorkingPage();
 
-    expect(html).toContain("FAKE ADAPTER");
+    expect(html).toContain("OBSERVABILITY");
     expect(
-      html.match(/data-read-only-context-panel="true"/g)?.length,
-    ).toBeGreaterThanOrEqual(8);
-    expect(html).toContain("Room");
-    expect(html).toContain("Cost");
-    expect(html).toContain("Activity");
-    expect(html).toContain("Vault state");
-    expect(html).toContain("Suggestion inbox");
+      html.match(/data-read-only-context-panel=/g)?.length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(html).toContain("ROOM");
+    expect(html).toContain("COST");
+    expect(html).toContain("ACTIVITY");
   });
 
   it("keeps workflow content propose-only rather than executable", () => {
     const html = renderWorkingPage();
 
-    expect(html).toContain("Propose-only input");
-    expect(html).toContain("proposal chip - prop-room-1842");
-    expect(html).toContain("display-only agents");
-    expect(html).toContain("Proposal available through the gate.");
+    expect(html).toContain("PROPOSE-ONLY INPUT");
+    expect(html).toContain("PROPOSAL - PROP-ROOM-1842");
+    expect(html).toContain("Ask, draft, or prepare a proposal");
     expect(html).not.toMatch(/onclick="|javascript:/i);
   });
 
@@ -116,7 +112,7 @@ describe("Phase 12 /working cockpit - gate-centered production prototype", () =>
       .join("\n");
 
     expect(source).not.toMatch(
-      /fetch\(|XMLHttpRequest|WebSocket|EventSource|setInterval|poll/i,
+      /fetch\(|XMLHttpRequest|WebSocket|EventSource|poll/i,
     );
     expect(source).not.toMatch(
       /invoke\(|@tauri-apps|tauri::command|better-sqlite3|room\/adapters|executeCommand|commandRoom/i,

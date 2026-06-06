@@ -1,27 +1,40 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Orbitron, Rajdhani } from "next/font/google";
+import localFont from "next/font/local";
 
 import "./globals.css";
 
-const orbitron = Orbitron({
-  subsets: ["latin"],
-  display: "swap",
+const fraunces = localFont({
+  src: [
+    {
+      path: "./fonts/Fraunces-Regular-300.ttf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Fraunces-Regular-400.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Fraunces-Regular-500.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    { path: "./fonts/Fraunces-Italic-300.ttf", weight: "300", style: "italic" },
+    { path: "./fonts/Fraunces-Italic-400.ttf", weight: "400", style: "italic" },
+  ],
   variable: "--font-jarvis-display",
-  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-const rajdhani = Rajdhani({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-jarvis-body",
-  weight: ["400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  display: "swap",
+const jetbrainsMono = localFont({
+  src: [
+    { path: "./fonts/JetBrainsMono-300.ttf", weight: "300", style: "normal" },
+    { path: "./fonts/JetBrainsMono-400.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/JetBrainsMono-500.ttf", weight: "500", style: "normal" },
+  ],
   variable: "--font-jarvis-mono",
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +50,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

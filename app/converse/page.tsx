@@ -61,6 +61,13 @@ import type {
 } from "@/lib/memory-weighting";
 import type { Message } from "@/lib/types";
 
+import {
+  canSendTypedChatInput,
+  type VoiceDraftInputMarker,
+  voiceDraftMarkerAfterInputChange,
+  voiceDraftPayloadToChatInputState,
+} from "./voice-draft-input";
+
 const MAX_MESSAGES_TO_SEND = 50;
 
 type UiMessage = Message & {
@@ -73,18 +80,6 @@ type UiMessage = Message & {
 type ApiMessage = Message & {
   id: string;
 };
-
-export interface VoiceDraftInputMarker {
-  source: "voice";
-  sourceDraftId: string;
-  sourceJobId: string;
-  canApproveRuntimeActions: false;
-}
-
-export interface VoiceDraftInputState {
-  input: string;
-  marker: VoiceDraftInputMarker;
-}
 
 function createMessage(role: Message["role"], content: string): UiMessage {
   return {
@@ -100,43 +95,6 @@ function toApiMessage(message: UiMessage): ApiMessage {
     role: message.role,
     content: message.content,
   };
-}
-
-export function voiceDraftPayloadToChatInputState(
-  payload: VoiceTranscriptChatPayload,
-): VoiceDraftInputState | null {
-  const text = payload.text.trim();
-  if (
-    payload.target !== "chat_input" ||
-    payload.source !== "voice" ||
-    payload.canApproveRuntimeActions !== false ||
-    !text
-  ) {
-    return null;
-  }
-  return {
-    input: text,
-    marker: {
-      source: "voice",
-      sourceDraftId: payload.sourceDraftId,
-      sourceJobId: payload.sourceJobId,
-      canApproveRuntimeActions: false,
-    },
-  };
-}
-
-export function voiceDraftMarkerAfterInputChange(
-  value: string,
-  current: VoiceDraftInputMarker | null,
-): VoiceDraftInputMarker | null {
-  return value.trim() ? current : null;
-}
-
-export function canSendTypedChatInput(
-  input: string,
-  loading: boolean,
-): boolean {
-  return Boolean(input.trim()) && !loading;
 }
 
 function surfacedMemoriesFromToolData(data: unknown): SurfacedMemory[] {

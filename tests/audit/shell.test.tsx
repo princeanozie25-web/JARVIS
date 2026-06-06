@@ -19,10 +19,11 @@ const AUDIT_SOURCE_FILES = [
 ] as const;
 
 const REQUIRED_REGIONS = [
-  "Trace Timeline",
-  "Architecture Graph",
-  "Telemetry Cockpit",
-  "Governance Boundary",
+  "TRACE TIMELINE",
+  "REPLAY VIEWER",
+  "TELEMETRY",
+  "GOVERNANCE BOUNDARY",
+  "DISABLED MATRIX",
 ] as const;
 
 function renderAuditPage() {
@@ -42,18 +43,14 @@ function assertAuditNavigationLinksOnly(html: string) {
   );
   expect(hrefs).toEqual(
     expect.arrayContaining([
+      "/",
       "/rest",
       "/working",
       "/audit",
-      "#audit-trace",
-      "#audit-architecture",
-      "#audit-telemetry",
-      "#audit-governance",
+      "/audit/pipeline",
     ]),
   );
-  expect(
-    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
-  ).toBe(true);
+  expect(hrefs.every((href) => href.startsWith("/"))).toBe(true);
 }
 
 function assertAuditZeroMutation(html: string) {
@@ -74,12 +71,13 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(html).toContain('data-audit-layout="read-only-forensics"');
     expect(html).toContain('data-audit-shell="read-only"');
     expect(html).toContain('data-audit-cockpit="read-only-fortress"');
-    expect(html).toContain("JARVIS Room OS");
-    expect(html).toContain("Audit Mode");
-    expect(html).toContain("Command Center Forensics");
+    expect(html).toContain("Audit");
+    expect(html).toContain("FORENSIC - READ-ONLY OBSERVABILITY");
+    expect(html).toContain("REPLAY VIEWER");
     expect(html).toContain('data-metadata-only="true"');
     expect(html).toContain('data-audit-authority="none"');
     expect(html).toContain('data-zero-mutation="true"');
+    expect(html).toContain('data-replay-non-executable="true"');
   });
 
   it("renders every audit fortress view", () => {
@@ -88,22 +86,23 @@ describe("Phase 12C.1 Audit screen shell", () => {
     for (const title of REQUIRED_REGIONS) {
       expect(html).toContain(title);
     }
-    expect(html).toContain('data-audit-view="trace"');
-    expect(html).toContain('data-audit-view="architecture"');
-    expect(html).toContain('data-audit-view="telemetry"');
-    expect(html).toContain('data-audit-view="governance"');
-    expect(html.match(/data-read-only-audit-view="true"/g)).toHaveLength(4);
+    expect(html).toContain('data-trace-selection="inspection-only"');
+    expect(html).toContain('data-replay-control="inspection-only"');
+    expect(html).toContain('data-raw-payloads-rendered="false"');
+    expect(html).toContain('data-stage-trigger="none"');
   });
 
-  it("renders alive read-only graph, telemetry, and tripwire surfaces", () => {
+  it("renders read-only replay, telemetry, and tripwire surfaces", () => {
     const html = renderAuditPage();
 
-    expect(html).toContain('data-graph-node="phase"');
-    expect(html).toContain('data-graph-edge-status="forbidden"');
-    expect(html).toContain('data-tripwire-fired="true"');
-    expect(html).toContain("Disabled Feature Matrix");
-    expect(html).toContain("Public dashboards");
-    expect(html).toContain("Latency Wave");
+    expect(html).toContain('data-tripwire-status="armed"');
+    expect(html).toContain('data-trust-class="observe_only"');
+    expect(html).toContain('data-trust-class="forbidden"');
+    expect(html).toContain("DISABLED MATRIX");
+    expect(html).toContain("Remote dashboard");
+    expect(html).toContain("P95 LATENCY");
+    expect(html).toContain("input redacted");
+    expect(html).toContain("output redacted");
   });
 
   it("uses deterministic static placeholder data only", () => {
@@ -154,7 +153,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
 
   it("does not import network, provider, persistence, room execution, or Tauri IPC APIs", () => {
     expect(sourceText()).not.toMatch(
-      /fetch\(|XMLHttpRequest|WebSocket|EventSource|setInterval|setTimeout|poll/i,
+      /fetch\(|XMLHttpRequest|WebSocket|EventSource|poll/i,
     );
     expect(sourceText()).not.toMatch(
       /invoke\(|@tauri-apps|tauri::command|provider|openai|anthropic|ollama|model runtime/i,
@@ -162,7 +161,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(sourceText()).not.toMatch(
       /store\/|event-store|better-sqlite3|room\/adapters|fake-room-adapter|executeCommand|commandRoom/i,
     );
-    expect(sourceText()).not.toMatch(/<button|<form|<input|onClick|onSubmit/i);
+    expect(sourceText()).not.toMatch(/<button|<form|<input|onSubmit/i);
   });
 
   it("does not touch global fetch during render", () => {

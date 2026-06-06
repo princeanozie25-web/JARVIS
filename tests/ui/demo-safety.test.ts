@@ -164,7 +164,7 @@ describe("Phase 12F.2 synthetic demo safety guardrails", () => {
 
     expect(SYNTHETIC_OBSERVABILITY_MARKER).toBe(REQUIRED_DEMO_MARKER);
     expect(html).toContain(REQUIRED_DEMO_MARKER);
-    expect(html).toContain("Synthetic demo-safe only");
+    expect(html).toContain("METADATA-ONLY");
   });
 
   it("exposes synthetic-data validation and fails closed through that helper", () => {

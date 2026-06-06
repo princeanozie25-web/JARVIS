@@ -41,18 +41,20 @@ describe("UI.3 typography — registry", () => {
     }
   });
 
-  it("routes display, headline, and title through the Quincy-first display font", () => {
+  it("routes display, headline, and title through the bundled Fraunces display font", () => {
     for (const role of ["display", "headline", "title"] as const) {
       expect(jarvisTypography[role].fontFamily).toBe(jarvisFonts.display);
     }
-    expect(jarvisFonts.display).toContain('"Quincy"');
+    expect(jarvisFonts.display).toContain("--font-jarvis-display");
+    expect(jarvisFonts.display).toContain('"Fraunces"');
   });
 
-  it("routes body through the Quincy-first body alias and label through JetBrains Mono", () => {
+  it("routes body through the bundled display serif and label through JetBrains Mono", () => {
     expect(jarvisTypography.body.fontFamily).toBe(jarvisFonts.body);
     expect(jarvisTypography.label.fontFamily).toBe(jarvisFonts.mono);
     expect(jarvisTypography.label.textTransform).toBe("uppercase");
-    expect(jarvisFonts.body).toContain('"Quincy"');
+    expect(jarvisFonts.body).toContain("--font-jarvis-display");
+    expect(jarvisFonts.body).toContain('"Fraunces"');
   });
 
   it("never falls back to Arial anywhere in the scale", () => {
@@ -72,23 +74,27 @@ describe("UI.3 typography — registry", () => {
 });
 
 describe("UI.3 typography — wiring", () => {
-  it("declares Quincy-first UI fonts and JetBrains Mono in tokens.css", () => {
-    expect(tokensCss).toMatch(/--jarvis-font-display:\s*"Quincy",\s*var/);
-    expect(tokensCss).toMatch(/--jarvis-font-body:\s*"Quincy",\s*var/);
+  it("declares local-first Fraunces and JetBrains Mono in tokens.css", () => {
+    expect(tokensCss).toMatch(
+      /--jarvis-font-display:\s*var\(\s*--font-jarvis-display/,
+    );
+    expect(tokensCss).toMatch(
+      /--jarvis-font-body:\s*var\(\s*--font-jarvis-display/,
+    );
     expect(tokensCss).toMatch(
       /--jarvis-font-mono:\s*var\(\s*--font-jarvis-mono/,
     );
-    expect(tokensCss).toContain("Quincy");
+    expect(tokensCss).toContain("Fraunces");
     expect(tokensCss).toContain("JetBrains Mono");
   });
 
-  it("loads the fallback display/body faces and JetBrains Mono through next/font/google in app/layout.tsx", () => {
-    expect(layoutTsx).toMatch(/from "next\/font\/google"/);
-    expect(layoutTsx).toMatch(/\bOrbitron\b/);
-    expect(layoutTsx).toMatch(/\bRajdhani\b/);
-    expect(layoutTsx).toMatch(/\bJetBrains_Mono\b/);
+  it("loads Fraunces and JetBrains Mono through bundled next/font/local assets", () => {
+    expect(layoutTsx).toMatch(/from "next\/font\/local"/);
+    expect(layoutTsx).not.toMatch(/from "next\/font\/google"/);
+    expect(layoutTsx).toMatch(/Fraunces-Regular-400\.ttf/);
+    expect(layoutTsx).toMatch(/Fraunces-Italic-400\.ttf/);
+    expect(layoutTsx).toMatch(/JetBrainsMono-400\.ttf/);
     expect(layoutTsx).toContain("--font-jarvis-display");
-    expect(layoutTsx).toContain("--font-jarvis-body");
     expect(layoutTsx).toContain("--font-jarvis-mono");
   });
 

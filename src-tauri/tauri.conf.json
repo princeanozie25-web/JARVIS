@@ -29,7 +29,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' http://127.0.0.1:3000 http://localhost:3000; connect-src 'self' http://127.0.0.1:3000 http://localhost:3000 ws://127.0.0.1:3000 ws://localhost:3000; img-src 'self' data: blob: http://127.0.0.1:3000 http://localhost:3000; style-src 'self' 'unsafe-inline' http://127.0.0.1:3000 http://localhost:3000; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://127.0.0.1:3000 http://localhost:3000",
+      "csp": "default-src 'self' http://127.0.0.1:3000; connect-src 'self' http://127.0.0.1:3000 ws://127.0.0.1:3000; img-src 'self' data: blob: http://127.0.0.1:3000; style-src 'self' 'unsafe-inline' http://127.0.0.1:3000; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://127.0.0.1:3000",
       "capabilities": ["default"],
       "assetProtocol": {
         "enable": false,

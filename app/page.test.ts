@@ -29,7 +29,7 @@ describe("UI.4 root surface — command center identity", () => {
   });
 
   it("delegates route navigation and suggestion inbox to the shared shell", () => {
-    expect(rootPageSource).toContain("SYNTHETIC_OBSERVABILITY_MARKER");
+    expect(rootPageSource).toContain("buildRestCommandCenterModel");
     expect(rootPageSource).not.toMatch(/<button\b|<form\b|<input\b/i);
   });
 
@@ -38,7 +38,7 @@ describe("UI.4 root surface — command center identity", () => {
   });
 
   it("surfaces a governance-posture region with metadata-only rules", () => {
-    expect(rootPageSource).toContain("SYNTHETIC_OBSERVABILITY_MARKER");
+    expect(rootPageSource).toContain("buildRestCommandCenterModel");
     expect(rootPageSource).not.toContain("SYNTHETIC_REST_ORB_TOKENS");
   });
 

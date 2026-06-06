@@ -32,21 +32,19 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
   it("/rest page renders the polished local Rest Mode layout", () => {
     const html = renderRestPage();
 
-    expect(html).toContain('data-rest-layout="pipeline-command-center"');
-    expect(html).toContain('data-command-center-shell="pipeline-rest"');
-    expect(html).toContain('data-rest-pipeline-surface="standing-by"');
-    expect(html).toContain('data-pipeline-diagram="read-only"');
-    expect(html).toContain("Governed Pipeline");
-    expect(html).toContain("Metadata-only visual layer");
-    expect(html).toContain("Synthetic demo-safe only");
-    expect(html).toContain("No execution authority");
-    expect(html).toContain('data-suggestion-inbox="pipeline-hud"');
-    expect(html.match(/data-suggestion-card=/g)).toHaveLength(6);
-    expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(6);
-    expect(html).toContain('data-command-center-nav="unified"');
-    expect(html).toContain('data-execute-affordance-present="false"');
-    expect(html).toContain('data-approve-affordance-present="false"');
-    expect(html).toContain('data-mutation-affordance-present="false"');
+    expect(html).toContain('data-command-center-shell="rest-liquid-glass"');
+    expect(html).toContain('data-rest-authority="none"');
+    expect(html).toContain('data-rest-mutating-affordances="0"');
+    expect(html).toContain('data-voice-authorizes-actions="false"');
+    expect(html).toContain("rest mode");
+    expect(html).toContain("SYSTEM STANDBY");
+    expect(html).toContain("Awaiting you");
+    expect(html).toContain("TAP ONCE TO ENABLE VOICE");
+    expect(html).toContain("NO ACTION AUTHORITY");
+    expect(html.match(/data-suggestion-card=/g)).toHaveLength(4);
+    expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(4);
+    expect(html).toContain("JOB SCOUT");
+    expect(html).toContain("LIFE COACH");
   });
 
   it("orb component renders the deterministic idle state", () => {
@@ -144,17 +142,8 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     expect(html).not.toMatch(/<form\b/i);
     expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
     expect(html).not.toMatch(/\brole="button"/i);
-    expect(html).toContain('data-execute-affordance-present="false"');
-    expect(html).toContain('data-approve-affordance-present="false"');
-    for (const href of [
-      "/",
-      "/rest",
-      "/working",
-      "/audit",
-      "/audit/pipeline",
-    ]) {
-      expect(html).toContain(`href="${href}"`);
-    }
+    expect(html).toContain('data-rest-mutating-affordances="0"');
+    expect(html).toContain('data-voice-authorizes-actions="false"');
   });
 
   it("does not reference capture, room, provider, persistence, network, or Tauri IPC APIs", () => {

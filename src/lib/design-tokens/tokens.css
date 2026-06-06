@@ -67,19 +67,19 @@
   --jarvis-pulse-duration-dwell: 1200ms;
   --jarvis-pulse-easing: var(--jarvis-motion-easing-orbit);
 
-  /* Font — wired to next/font loaders in app/layout.tsx */
-  --jarvis-font-display: "Quincy", var(
-      --font-jarvis-display,
-      "Orbitron",
-      system-ui,
-      sans-serif
-    );
-  --jarvis-font-body: "Quincy", var(
-      --font-jarvis-body,
-      "Rajdhani",
-      system-ui,
-      sans-serif
-    );
+  /* Font - local-first. Fraunces is the bundled Quincy stand-in. */
+  --jarvis-font-display: var(
+    --font-jarvis-display,
+    "Fraunces",
+    Georgia,
+    serif
+  );
+  --jarvis-font-body: var(
+    --font-jarvis-display,
+    "Fraunces",
+    Georgia,
+    serif
+  );
   --jarvis-font-mono: var(
     --font-jarvis-mono,
     "JetBrains Mono",

@@ -18,6 +18,7 @@ const COMMAND_CENTER_FILES = [
   "src/components/command-center/CommandCenterNav.tsx",
   "src/components/command-center/RestCommandCenter.tsx",
   "src/components/command-center/command-center.css",
+  "src/components/command-center/liquid-command-center.css",
   "src/components/orb/orb-states.css",
 ] as const;
 
@@ -41,11 +42,12 @@ describe("Command Center unification pass", () => {
     const rest = renderToStaticMarkup(<RestPage />);
 
     for (const html of [home, rest]) {
-      expect(html).toContain('data-command-center-shell="pipeline-rest"');
-      expect(html).toContain('data-command-center-nav="unified"');
-      expect(html).toContain('data-rest-pipeline-surface="standing-by"');
-      expect(html).toContain('data-pipeline-diagram="read-only"');
-      expect(html).toContain('data-suggestion-inbox="pipeline-hud"');
+      expect(html).toContain('data-command-center-shell="rest-liquid-glass"');
+      expect(html).toContain('data-rest-authority="none"');
+      expect(html).toContain('data-rest-mutating-affordances="0"');
+      expect(html).toContain('data-voice-authorizes-actions="false"');
+      expect(html).toContain("JARVIS");
+      expect(html).toContain("SYSTEM STANDBY");
     }
   });
 
@@ -57,49 +59,49 @@ describe("Command Center unification pass", () => {
       />,
     );
 
-    expect(html.match(/data-suggestion-card=/g)).toHaveLength(6);
-    expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(6);
-    expect(html).toContain("AI Daily Newsletter");
-    expect(html).toContain("Job Scout Report");
-    expect(html).toContain("Resume Jarvis UI work");
-    expect(html).not.toMatch(/<button\b|<form\b|<input\b|onClick|onSubmit/i);
-    expect(html).toContain('data-execute-affordance-present="false"');
-    expect(html).toContain('data-approve-affordance-present="false"');
-    expect(html).toContain('data-mutation-affordance-present="false"');
+    expect(html.match(/data-suggestion-card=/g)).toHaveLength(4);
+    expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(4);
+    expect(html).toContain("JOB SCOUT");
+    expect(html).toContain("COUNCIL - OVERNIGHT");
+    expect(html).toContain("LIFE COACH");
+    expect(html).toContain("WORKFLOW");
+    expect(html).not.toMatch(/<button\b|<form\b|<input\b|onSubmit/i);
   });
 
   it("keeps working controls inside the Human Gate context only", () => {
     const html = renderToStaticMarkup(<WorkingPage />);
 
-    expect(html).toContain('data-command-center-shell="working"');
-    expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
-    expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
-    expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+    expect(html).toContain('data-command-center-shell="working-liquid-glass"');
+    expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(1);
+    expect(html.match(/wc-gate-approve/g)).toHaveLength(1);
+    expect(html.match(/wc-gate-deny/g)).toHaveLength(1);
     expect(html).toContain('data-command-center-nav="unified"');
   });
 
   it("keeps audit read-only while sharing command center chrome", () => {
     const html = renderToStaticMarkup(<AuditPage />);
 
-    expect(html).toContain('data-command-center-shell="audit"');
+    expect(html).toContain('data-command-center-shell="audit-liquid-glass"');
     expect(html).toContain('data-command-center-nav="unified"');
     expect(html).not.toMatch(
       /<button\b|<form\b|<input\b|<textarea\b|<select\b/i,
     );
+    expect(html).not.toMatch(/\brole="button"/i);
+    expect(html).toContain('data-replay-non-executable="true"');
   });
 
-  it("uses Quincy-first UI tokens with Orbitron, Rajdhani, and JetBrains Mono fallbacks", () => {
+  it("uses local-first Fraunces and JetBrains Mono tokens", () => {
     const source = sourceText();
 
-    expect(source).toContain("Quincy");
-    expect(source).toContain("Orbitron");
-    expect(source).toContain("Rajdhani");
-    expect(source).toContain("JetBrains_Mono");
+    expect(source).toContain("Fraunces");
+    expect(source).toContain("JetBrains Mono");
+    expect(source).toContain("next/font/local");
+    expect(source).not.toContain("next/font/google");
     expect(source).toMatch(
-      /--jarvis-font-display:\s*"Quincy",\s*var\(\s*--font-jarvis-display,\s*"Orbitron"/,
+      /--jarvis-font-display:\s*var\(\s*--font-jarvis-display/,
     );
     expect(source).toMatch(
-      /--jarvis-font-body:\s*"Quincy",\s*var\(\s*--font-jarvis-body,\s*"Rajdhani"/,
+      /--jarvis-font-body:\s*var\(\s*--font-jarvis-display/,
     );
     expect(source).not.toMatch(/--jarvis-font-(display|body):[^;]*Arial/i);
   });
@@ -107,11 +109,12 @@ describe("Command Center unification pass", () => {
   it("declares reduced-motion fallbacks for reactor and command center motion", () => {
     const source = sourceText([
       "src/components/command-center/command-center.css",
+      "src/components/command-center/liquid-command-center.css",
       "src/components/orb/orb-states.css",
     ]);
 
     expect(source).toContain("@media (prefers-reduced-motion: reduce)");
-    expect(source).toContain(".cc-suggestion-card");
+    expect(source).toContain(".jcc-card");
     expect(source).toContain("data-orb-reactor-layer");
   });
 });

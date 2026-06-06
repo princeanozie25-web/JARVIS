@@ -1,192 +1,362 @@
-import { PipelineDiagram } from "@/components/pipeline/PipelineDiagram";
+"use client";
 
-import {
-  CommandCenterNav,
-  type CommandCenterRouteId,
-} from "./CommandCenterNav";
+import type { CSSProperties, MutableRefObject, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 
-type Suggestion = Readonly<{
-  id: string;
-  label: string;
-  title: string;
-  body: string;
-  signal: "cyan" | "emerald" | "amber" | "violet";
-}>;
+import type {
+  RestAmbientCard,
+  RestCommandCenterModel,
+} from "@/lib/command-center/liquid-command-center-data";
+import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
 
-const REST_SUGGESTIONS: readonly Suggestion[] = Object.freeze([
+import type { CommandCenterRouteId } from "./CommandCenterNav";
+
+const FALLBACK_CARDS: readonly RestAmbientCard[] = Object.freeze([
   {
-    id: "suggest-newsletter",
-    label: "AI Daily Newsletter",
-    title: "Compile today's model + agent shifts",
-    body: "Prepared as a read-only prompt for future gate review.",
-    signal: "cyan",
+    slot: "scout",
+    source: "JOB SCOUT",
+    body: "3 R&D roles matched overnight",
+    meta: "suggestion only - nothing actioned",
   },
   {
-    id: "suggest-job-scout",
-    label: "Job Scout Report",
-    title: "Surface new AI systems roles",
-    body: "Can become a proposal later; this card does not act.",
-    signal: "emerald",
+    slot: "council",
+    source: "COUNCIL - OVERNIGHT",
+    body: "Consensus reached on the turbovec migration",
+    meta: "ready when you want to review",
   },
   {
-    id: "suggest-resume-workflow",
-    label: "Resume Jarvis UI work",
-    title: "Pick up command-center polish",
-    body: "Route context is visible; execution remains absent.",
-    signal: "violet",
+    slot: "coach",
+    source: "LIFE COACH",
+    body: "Two items from this week's CV goal",
+    meta: "a gentle nudge, no pressure",
   },
   {
-    id: "suggest-morning-brief",
-    label: "Morning Brief",
-    title: "Review scheduler digest",
-    body: "Digest preview only. No reminder is created here.",
-    signal: "amber",
-  },
-  {
-    id: "suggest-knowledge",
-    label: "Knowledge Compounding Draft",
-    title: "Prepare vault enrichment outline",
-    body: "Metadata-safe draft signal for the working gate.",
-    signal: "cyan",
-  },
-  {
-    id: "suggest-cost",
-    label: "Cost/Telemetry Check",
-    title: "Inspect today's spend posture",
-    body: "Navigates attention only; no telemetry row changes.",
-    signal: "emerald",
+    slot: "flow",
+    source: "WORKFLOW",
+    body: "Resume: Command Center polish",
+    meta: "paused 21h ago - tap to pick up",
   },
 ]);
 
-const STATUS_READOUTS = [
-  { label: "Mode", value: "standing pipeline" },
-  { label: "Authority", value: "none" },
-  { label: "Wake word", value: "visual state only" },
-  { label: "Suggestions", value: "proposal seeds" },
-] as const;
-
-const SIGNAL_CLASS = {
-  cyan: "border-cyan-200/30 bg-cyan-300/[0.06] text-cyan-100",
-  emerald: "border-emerald-200/30 bg-emerald-300/[0.06] text-emerald-100",
-  amber: "border-amber-200/35 bg-amber-300/[0.07] text-amber-100",
-  violet: "border-violet-200/30 bg-violet-300/[0.06] text-violet-100",
-} satisfies Record<Suggestion["signal"], string>;
+const FALLBACK_MODEL: RestCommandCenterModel = {
+  marker: SYNTHETIC_OBSERVABILITY_MARKER,
+  cards: FALLBACK_CARDS,
+  orb: {
+    mode: "working",
+    load_band: "active",
+    last_event_class: "routine_completed",
+    governance_posture: "all_green",
+    heartbeat: "stable",
+  },
+  health: "OPTIMAL",
+  security: "FORTRESS LOCK",
+  voice: {
+    micIndicatorRequired: true,
+    explicitPermissionGate: true,
+    authorizesActions: false,
+    wakeMode: "explicit_local_visual_wake",
+  },
+};
 
 export interface RestCommandCenterProps {
-  activeRoute: CommandCenterRouteId;
-  marker: string;
+  activeRoute?: CommandCenterRouteId;
+  marker?: string;
+  model?: RestCommandCenterModel;
 }
 
 export function RestCommandCenter({
-  activeRoute,
   marker,
+  model = FALLBACK_MODEL,
 }: RestCommandCenterProps) {
+  const clock = useClock();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const orbRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const depthRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Array<HTMLElement | null>>([]);
+  const [listening, setListening] = useState(false);
+  const [caption, setCaption] = useState("Awaiting you");
+  const [surging, setSurging] = useState(false);
+  const [ripples, setRipples] = useState<readonly number[]>([]);
+  const [waveHeights, setWaveHeights] = useState([30, 65, 100, 55, 80, 35]);
+  const visibleMarker = marker ?? model.marker;
+
+  useEffect(() => {
+    if (!listening) return;
+    const interval = window.setInterval(() => {
+      setWaveHeights((current) =>
+        current.map(() => Math.round(25 + Math.random() * 75)),
+      );
+    }, 130);
+    return () => window.clearInterval(interval);
+  }, [listening]);
+
+  useRestPointerLighting(rootRef, orbRef, wrapRef, depthRef, cardRefs);
+
+  function wakeOrb() {
+    const rippleId = Date.now();
+    setRipples((current) => [...current, rippleId]);
+    window.setTimeout(() => {
+      setRipples((current) => current.filter((id) => id !== rippleId));
+    }, 1200);
+
+    setSurging(false);
+    window.requestAnimationFrame(() => {
+      setSurging(true);
+      window.setTimeout(() => setSurging(false), 900);
+    });
+
+    setListening((current) => {
+      const next = !current;
+      setCaption(next ? "Listening..." : "Awaiting you");
+      return next;
+    });
+  }
+
   return (
-    <div
-      data-command-center-shell="pipeline-rest"
-      data-rest-layout="pipeline-command-center"
-      className="cc-shell min-h-screen overflow-hidden bg-void p-4 text-ink"
+    <section
+      ref={rootRef}
+      aria-label="JARVIS rest command center"
+      className="jcc jcc-rest"
+      data-command-center-shell="rest-liquid-glass"
+      data-command-center-route="rest"
+      data-rest-authority="none"
+      data-rest-mutating-affordances="0"
+      data-voice-authorizes-actions={String(model.voice.authorizesActions)}
+      data-observability-marker={visibleMarker}
     >
-      <div className="cc-atmosphere" aria-hidden="true" />
-      <div className="relative mx-auto grid h-[calc(100vh-2rem)] min-h-[720px] max-w-[1720px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border border-cyan-100/14 bg-slate-950/64 shadow-[0_32px_130px_rgba(2,8,23,0.72)]">
-        <header className="cc-shell-header grid min-h-16 grid-cols-[220px_minmax(0,1fr)_360px] items-center gap-4 border-b border-cyan-100/12 px-4">
-          <div>
-            <p className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-cyan-200/62">
-              Jarvis
-            </p>
-            <h1 className="font-display text-lg font-semibold uppercase tracking-[0.12em] text-white">
-              Pipeline Core
-            </h1>
+      <CommandCenterField depthRef={depthRef} includeFourthBlob />
+
+      <main className="jcc-stage">
+        <header className="jcc-rest-header">
+          <div className="jcc-wordmark">
+            JARVIS<span>rest mode</span>
           </div>
-          <CommandCenterNav active={activeRoute} />
-          <div className="grid grid-cols-2 gap-2 text-[0.65rem] uppercase tracking-[0.14em]">
-            <Readout label="Marker" value={marker} />
-            <Readout label="Posture" value="standing by" />
+          <div className="jcc-clock">
+            <div className="jcc-clock-time">{clock}</div>
+            <div className="jcc-clock-state">
+              <span className="jcc-pulse-dot" />
+              SYSTEM STANDBY
+            </div>
           </div>
         </header>
 
-        <section className="relative grid min-h-0 grid-cols-[minmax(240px,0.78fr)_minmax(560px,1.44fr)_minmax(260px,0.82fr)] gap-4 overflow-hidden px-4 py-5">
-          <aside
-            aria-label="Suggestion inbox"
-            data-suggestion-inbox="pipeline-hud"
-            className="cc-hud-column cc-hud-left"
-          >
-            {REST_SUGGESTIONS.slice(0, 3).map((suggestion) => (
-              <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-            ))}
-          </aside>
-
+        <div ref={wrapRef} className="jcc-orb-wrap">
           <div
-            aria-label="Standing-by governed pipeline"
-            data-rest-pipeline-surface="standing-by"
-            className="relative min-h-0 overflow-auto"
+            ref={orbRef}
+            className={`jcc-orb ${listening ? "listening" : ""} ${
+              surging ? "surge-on" : ""
+            }`}
+            data-rest-voice-wake="explicit-local-visual"
+            data-voice-permission-gate="required"
+            data-mic-indicator="visible"
+            tabIndex={0}
+            aria-pressed={listening}
+            aria-label="Wake JARVIS voice orb"
+            onClick={wakeOrb}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                wakeOrb();
+              }
+            }}
           >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-[-8%] bg-[radial-gradient(circle_at_50%_38%,rgba(125,211,252,0.18),transparent_34%),linear-gradient(rgba(125,211,252,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(125,211,252,0.028)_1px,transparent_1px)] bg-[length:auto,36px_36px,36px_36px]"
-            />
-            <div className="relative">
-              <PipelineDiagram />
+            <div className="jcc-ring" />
+            <div className="jcc-ring two" />
+            <div className="jcc-sphere">
+              <div className="jcc-caustic jcc-c1" />
+              <div className="jcc-caustic jcc-c2" />
+              <div className="jcc-sweep" />
             </div>
+            <div className="jcc-surge" />
+            <div className="jcc-core" />
+            <div className="jcc-mic" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#eef6ff"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              >
+                <rect x="9" y="2" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0" />
+                <line x1="12" y1="18" x2="12" y2="22" />
+              </svg>
+            </div>
+            <div className="jcc-wave" aria-hidden="true">
+              {waveHeights.map((height, index) => (
+                <span key={index} style={{ height: `${height}%` }} />
+              ))}
+            </div>
+            {ripples.map((id) => (
+              <span key={id} className="jcc-ripple" style={rippleStyle} />
+            ))}
           </div>
+          <div className="jcc-orb-caption">
+            <div className="lead">{caption}</div>
+            <div className="hint">TAP ONCE TO ENABLE VOICE</div>
+          </div>
+        </div>
 
-          <aside
-            aria-label="Suggestion status"
-            data-suggestion-inbox="pipeline-hud-secondary"
-            className="cc-hud-column cc-hud-right"
+        {model.cards.map((card, index) => (
+          <article
+            key={card.slot}
+            ref={(node) => {
+              cardRefs.current[index] = node;
+            }}
+            className={`jcc-card ${card.slot}`}
+            data-suggestion-card={card.slot}
+            data-suggestion-executable="false"
+            data-authority="none"
           >
-            {REST_SUGGESTIONS.slice(3).map((suggestion) => (
-              <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-            ))}
-          </aside>
-        </section>
+            <div className="src">
+              <span className="dot" />
+              {card.source}
+            </div>
+            <div className="body">{card.body}</div>
+            <div className="meta">{card.meta}</div>
+          </article>
+        ))}
 
-        <footer className="grid min-h-12 grid-cols-[1fr_1.2fr_1fr] items-center border-t border-cyan-100/12 px-4 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-slate-400">
-          <span>Synthetic demo-safe only - Metadata-only visual layer</span>
-          <dl className="grid grid-cols-4 gap-2">
-            {STATUS_READOUTS.map((entry) => (
-              <div key={entry.label} className="min-w-0">
-                <dt className="truncate text-slate-600">{entry.label}</dt>
-                <dd className="truncate text-cyan-100/78">{entry.value}</dd>
-              </div>
-            ))}
-          </dl>
-          <span className="text-right">No execution authority</span>
+        <footer className="jcc-rest-footer">
+          <div>SYNTHETIC - METADATA-ONLY - NO ACTION AUTHORITY</div>
+          <div className="right">
+            <span>
+              HEALTH <b>{model.health}</b>
+            </span>
+            <span>
+              SECURITY <b>{model.security}</b>
+            </span>
+          </div>
         </footer>
+      </main>
+    </section>
+  );
+}
+
+function CommandCenterField({
+  depthRef,
+  includeFourthBlob = false,
+}: Readonly<{
+  depthRef?: RefObject<HTMLDivElement | null>;
+  includeFourthBlob?: boolean;
+}>) {
+  return (
+    <>
+      <div className="jcc-field" />
+      <div ref={depthRef} className="jcc-depth">
+        <div className="jcc-blob jcc-b1" />
+        <div className="jcc-blob jcc-b2" />
+        <div className="jcc-blob jcc-b3" />
+        {includeFourthBlob ? <div className="jcc-blob jcc-b4" /> : null}
       </div>
-    </div>
+      <div className="jcc-grain" />
+    </>
   );
 }
 
-function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
-  return (
-    <article
-      data-suggestion-card={suggestion.id}
-      data-suggestion-executable="false"
-      data-authority="none"
-      className={`cc-suggestion-card ${SIGNAL_CLASS[suggestion.signal]}`}
-    >
-      <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] opacity-70">
-        {suggestion.label}
-      </p>
-      <h2 className="mt-2 font-display text-base font-semibold text-white">
-        {suggestion.title}
-      </h2>
-      <p className="mt-2 text-sm leading-5 text-slate-300/78">
-        {suggestion.body}
-      </p>
-      <p className="mt-4 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-slate-500">
-        suggestion only - no hidden write
-      </p>
-    </article>
-  );
+function useClock() {
+  const [clock, setClock] = useState("00:00");
+
+  useEffect(() => {
+    function update() {
+      const date = new Date();
+      setClock(
+        `${String(date.getHours()).padStart(2, "0")}:${String(
+          date.getMinutes(),
+        ).padStart(2, "0")}`,
+      );
+    }
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return clock;
 }
 
-function Readout({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 border border-cyan-100/12 bg-cyan-300/[0.04] px-3 py-2">
-      <p className="truncate text-slate-500">{label}</p>
-      <p className="truncate text-cyan-100">{value}</p>
-    </div>
-  );
+function useRestPointerLighting(
+  rootRef: RefObject<HTMLDivElement | null>,
+  orbRef: RefObject<HTMLDivElement | null>,
+  wrapRef: RefObject<HTMLDivElement | null>,
+  depthRef: RefObject<HTMLDivElement | null>,
+  cardRefs: MutableRefObject<Array<HTMLElement | null>>,
+) {
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let pointerLightX = 32;
+    let pointerLightY = 26;
+    let targetLightX = 32;
+    let targetLightY = 26;
+    let parallaxX = 0;
+    let parallaxY = 0;
+    let targetParallaxX = 0;
+    let targetParallaxY = 0;
+    let frameId = 0;
+
+    function onMouseMove(event: MouseEvent) {
+      const orb = orbRef.current;
+      if (!orb) return;
+      const rect = orb.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      targetLightX =
+        50 +
+        Math.max(-1, Math.min(1, (event.clientX - centerX) / rect.width)) * 36;
+      targetLightY =
+        50 +
+        Math.max(-1, Math.min(1, (event.clientY - centerY) / rect.height)) * 36;
+      targetParallaxX = event.clientX / window.innerWidth - 0.5;
+      targetParallaxY = event.clientY / window.innerHeight - 0.5;
+    }
+
+    function frame() {
+      pointerLightX += (targetLightX - pointerLightX) * 0.08;
+      pointerLightY += (targetLightY - pointerLightY) * 0.08;
+      rootRef.current?.style.setProperty(
+        "--gx",
+        `${pointerLightX.toFixed(1)}%`,
+      );
+      rootRef.current?.style.setProperty(
+        "--gy",
+        `${pointerLightY.toFixed(1)}%`,
+      );
+
+      parallaxX += (targetParallaxX - parallaxX) * 0.06;
+      parallaxY += (targetParallaxY - parallaxY) * 0.06;
+      if (depthRef.current) {
+        depthRef.current.style.transform = `translate(${parallaxX * 7}px, ${
+          parallaxY * 7
+        }px)`;
+      }
+      if (wrapRef.current) {
+        wrapRef.current.style.transform = `translate(calc(-50% + ${
+          parallaxX * 17
+        }px), calc(-50% + ${parallaxY * 17}px))`;
+      }
+      cardRefs.current.forEach((card, index) => {
+        if (!card) return;
+        const multiplier = (index % 2 ? -1 : 1) * 10;
+        card.style.translate = `${parallaxX * multiplier}px ${
+          parallaxY * multiplier
+        }px`;
+      });
+
+      frameId = window.requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    frameId = window.requestAnimationFrame(frame);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [cardRefs, depthRef, orbRef, rootRef, wrapRef]);
 }
+
+const rippleStyle: CSSProperties = {
+  inset: 0,
+  width: "100%",
+  height: "100%",
+};
