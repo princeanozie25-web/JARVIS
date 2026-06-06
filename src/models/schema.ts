@@ -41,6 +41,14 @@ export const ModelRegistryEntrySchema = z
     supports_streaming: z.boolean(),
     supports_tools: z.boolean(),
     supports_vision: z.boolean(),
+    params_b: z.number().positive().max(1000).optional(),
+    quant: z
+      .string()
+      .trim()
+      .min(1)
+      .max(40)
+      .regex(/^[A-Za-z0-9._-]+$/)
+      .optional(),
     eol_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)

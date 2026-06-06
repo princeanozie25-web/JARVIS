@@ -14,7 +14,11 @@ import {
   type DoctorRuntimePathRequest,
   type DoctorRuntimeVersionProbeResult,
 } from "./index";
-import type { ModelRegistryEntry } from "../../models";
+import {
+  buildHardwareProfile,
+  type HardwareProfile,
+  type ModelRegistryEntry,
+} from "../../models";
 
 const REQUIRED_DIRECTORIES = [
   "app",
@@ -110,14 +114,25 @@ function fakeAdapters(input?: {
 function runtime(input?: {
   missing?: readonly string[];
   packageManagerAvailable?: boolean;
+  hardwareProfile?: HardwareProfile;
   modelRegistryEntries?: readonly ModelRegistryEntry[];
   modelRegistryNow?: Date | string;
 }) {
   return runSafeLocalDoctorRuntime({
     adapters: fakeAdapters(input),
+    hardwareProfile: input?.hardwareProfile,
     modelRegistryEntries: input?.modelRegistryEntries,
     modelRegistryNow: input?.modelRegistryNow,
     observed_at: "cli-fixture",
+  });
+}
+
+function fixtureHardwareProfile(): HardwareProfile {
+  return buildHardwareProfile({
+    totalRamBytes: 16 * 1024 ** 3,
+    freeRamBytes: 14 * 1024 ** 3,
+    platform: "darwin",
+    arch: "arm64",
   });
 }
 
@@ -212,6 +227,15 @@ describe("Phase 20B.7 doctor CLI adapter", () => {
       exit_code: 0,
       evaluation: {
         runtime_version: "20B.6",
+        hardware_profile: {
+          reservedRamGb: 6,
+        },
+        local_model_fit: {
+          advisory_only: true,
+          model_download_enabled: false,
+          registry_mutation_enabled: false,
+          network_call_enabled: false,
+        },
         model_registry_staleness: {
           metadata_only: true,
           read_only: true,
@@ -314,6 +338,53 @@ describe("Phase 20B.7 doctor CLI adapter", () => {
     );
     expect(result.output).toContain(
       "deepseek-v3 | deepseek-v3 | T2 | 2026-07-24 | 30 | EOL_SOON | deepseek-v4-flash",
+    );
+  });
+
+  it("renders local model hardware-fit recommendations without authority", () => {
+    const result = runDoctorCliAdapter({
+      argv: [],
+      runRuntime: () =>
+        runtime({
+          hardwareProfile: fixtureHardwareProfile(),
+          modelRegistryEntries: [
+            {
+              id: "llama3.2:3b",
+              provider: "ollama",
+              tier: "T1",
+              runtime_class: "local",
+              capabilities: ["chat", "summarize", "classify"],
+              context_window: 8192,
+              visibility: "enabled",
+              priority: 10,
+              supports_streaming: true,
+              supports_tools: false,
+              supports_vision: false,
+              params_b: 3,
+              quant: "q4_K_M",
+              metadata: {
+                display_name: "Llama 3.2 3B",
+                description: "Fixture local model metadata.",
+                approximate_memory_mb: 3072,
+                cost_class: "local_free",
+                governance_notes: "Fixture only; no model execution.",
+              },
+            },
+          ],
+        }),
+    });
+
+    expect(result.output).toContain("Local model hardware fit");
+    expect(result.output).toContain(
+      "profile: darwin/arm64, total=16 GB, free=14 GB, unified=true, metal=true",
+    );
+    expect(result.output).toContain(
+      "tier | id | params_b | quant | footprintGb | budgetGb | ratio | bucket",
+    );
+    expect(result.output).toContain("T1 | llama3.2:3b | 3 | q4_K_M");
+    expect(JSON.stringify(result)).toContain('"model_download_enabled":false');
+    expect(JSON.stringify(result)).toContain(
+      '"registry_mutation_enabled":false',
     );
   });
 

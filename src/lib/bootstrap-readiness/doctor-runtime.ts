@@ -26,8 +26,13 @@ import {
   type DoctorResultSource,
 } from "./doctor-results";
 import {
+  HardwareProfileSchema,
   ModelRegistryStalenessReportSchema,
+  ModelHardwareFitReportSchema,
+  evaluateLocalModelHardwareFit,
   evaluateModelRegistryStaleness,
+  type HardwareProfile,
+  type ModelHardwareFitReport,
   type ModelRegistryEntry,
   type ModelRegistryStalenessReport,
 } from "../../models";
@@ -90,6 +95,8 @@ export const DoctorRuntimeEvaluationSchema = z.strictObject({
   supported_check_ids: z.array(DoctorCheckIdSchema),
   results: z.array(DoctorCheckResultSchema),
   report: DoctorReportSchema,
+  hardware_profile: HardwareProfileSchema,
+  local_model_fit: ModelHardwareFitReportSchema,
   model_registry_staleness: ModelRegistryStalenessReportSchema,
   observed_at: z.string().trim().min(1).max(80).nullable(),
   metadata_only: z.literal(true),
@@ -141,9 +148,21 @@ export type DoctorRuntimeAdapters = {
 export type DoctorRuntimeOptions = {
   adapters: DoctorRuntimeAdapters;
   observed_at?: string | null;
+  hardwareProfile?: HardwareProfile;
   modelRegistryEntries?: readonly ModelRegistryEntry[];
   modelRegistryNow?: Date | string;
 };
+
+const FALLBACK_HARDWARE_PROFILE: HardwareProfile = HardwareProfileSchema.parse({
+  totalRamGb: 0,
+  freeRamGb: 0,
+  platform: "linux",
+  arch: "x64",
+  unifiedMemory: false,
+  metal: false,
+  vramGb: null,
+  reservedRamGb: 6,
+});
 
 const REQUIRED_DIRECTORIES = [
   "app",
@@ -510,6 +529,11 @@ export function runSafeLocalDoctorRuntime(
     evaluateCheck(check, options, observedAt),
   );
   const report: DoctorReport = buildDoctorReportFromResults(results);
+  const hardwareProfile = options.hardwareProfile ?? FALLBACK_HARDWARE_PROFILE;
+  const localModelFit: ModelHardwareFitReport = evaluateLocalModelHardwareFit(
+    options.modelRegistryEntries ?? [],
+    hardwareProfile,
+  );
   const modelRegistryStaleness: ModelRegistryStalenessReport =
     evaluateModelRegistryStaleness(
       options.modelRegistryEntries ?? [],
@@ -524,6 +548,8 @@ export function runSafeLocalDoctorRuntime(
     supported_check_ids: [...SAFE_LOCAL_RUNTIME_SUPPORTED_CHECK_IDS],
     results,
     report,
+    hardware_profile: hardwareProfile,
+    local_model_fit: localModelFit,
     model_registry_staleness: modelRegistryStaleness,
     observed_at: observedAt,
     metadata_only: true,

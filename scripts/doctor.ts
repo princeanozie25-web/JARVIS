@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, statfsSync, statSync } from "node:fs";
-import { freemem, platform } from "node:os";
+import { existsSync, readFileSync, statfsSync, statSync } from "node:fs";
+import { arch, freemem, platform, totalmem } from "node:os";
 import { resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -24,7 +24,13 @@ import {
   type DoctorRuntimeVersionProbeRequest,
   type DoctorRuntimeVersionProbeResult,
 } from "../src/lib/bootstrap-readiness";
-import { loadDefaultModelRegistry } from "../src/models";
+import {
+  buildHardwareProfile,
+  loadDefaultModelRegistry,
+  parseHardwareConfigYaml,
+  type HardwareOverride,
+  type HardwareProfile,
+} from "../src/models";
 
 export type DoctorStatus = "pass" | "warn" | "fail";
 
@@ -60,12 +66,16 @@ export interface DoctorHostProbe {
   readonly osFamily: () => BootstrapOsFamily;
   readonly nodeVersion: () => string;
   readonly pnpmVersion: () => string | null;
+  readonly platform: () => NodeJS.Platform;
+  readonly arch: () => string;
+  readonly totalMemoryBytes: () => number;
   readonly availableMemoryBytes: () => number;
   readonly availableDiskBytes: () => number | null;
   readonly env: () => Readonly<Record<string, string | undefined>>;
 }
 
 const UNKNOWN_DISK_BYTES = Number.MAX_SAFE_INTEGER;
+const HARDWARE_CONFIG_PATH = resolve(process.cwd(), "config/hardware.yaml");
 
 export const DOCTOR_READ_ONLY_EFFECTS: DoctorInspectionReport["effects"] = {
   installed: false,
@@ -202,10 +212,26 @@ export function createNodeDoctorHostProbe(): DoctorHostProbe {
     osFamily: () => mapNodePlatform(platform()),
     nodeVersion: () => process.version,
     pnpmVersion: readPnpmVersion,
+    platform: () => platform(),
+    arch: () => arch(),
+    totalMemoryBytes: () => totalmem(),
     availableMemoryBytes: () => freemem(),
     availableDiskBytes: readAvailableDiskBytes,
     env: () => process.env,
   };
+}
+
+export function inspectDoctorHardwareProfile(
+  probe: DoctorHostProbe = createNodeDoctorHostProbe(),
+  overrides: HardwareOverride = readHardwareOverrides(),
+): HardwareProfile {
+  return buildHardwareProfile({
+    totalRamBytes: probe.totalMemoryBytes(),
+    freeRamBytes: probe.availableMemoryBytes(),
+    platform: probe.platform(),
+    arch: probe.arch(),
+    overrides,
+  });
 }
 
 export function mapNodePlatform(value: NodeJS.Platform): BootstrapOsFamily {
@@ -234,6 +260,7 @@ export function runDoctorCli(
     runRuntime: () =>
       runSafeLocalDoctorRuntime({
         adapters: createNodeDoctorRuntimeAdapters(),
+        hardwareProfile: inspectDoctorHardwareProfile(),
         modelRegistryEntries: loadDefaultModelRegistry().listModels(),
         modelRegistryNow: new Date(),
         observed_at: null,
@@ -334,6 +361,14 @@ function readAvailableDiskBytes(): number | null {
   } catch {
     return null;
   }
+}
+
+function readHardwareOverrides(): HardwareOverride {
+  if (!existsSync(HARDWARE_CONFIG_PATH)) {
+    return {};
+  }
+
+  return parseHardwareConfigYaml(readFileSync(HARDWARE_CONFIG_PATH, "utf8"));
 }
 
 function formatGib(bytes: number): string {

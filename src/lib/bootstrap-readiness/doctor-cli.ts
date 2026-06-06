@@ -107,6 +107,9 @@ export function renderDoctorReportText(
     `- provider calls: ${evaluation.provider_call_enabled}`,
     `- UI route: ${evaluation.ui_route_created}`,
     "",
+    "Local model hardware fit",
+    ...renderHardwareFitLines(evaluation),
+    "",
     "Model registry EOL",
     `- ${evaluation.model_registry_staleness.summary}`,
     ...renderModelRegistryStalenessRows(evaluation),
@@ -164,6 +167,39 @@ export function runDoctorCliAdapter(
     capability_created: false,
     raw_payload_included: false,
   });
+}
+
+function renderHardwareFitLines(evaluation: DoctorRuntimeEvaluation): string[] {
+  const profile = evaluation.hardware_profile;
+  const fit = evaluation.local_model_fit;
+  const vramLabel =
+    profile.vramGb === null ? "unknown" : `${profile.vramGb} GB`;
+  const lines = [
+    `- profile: ${profile.platform}/${profile.arch}, total=${profile.totalRamGb} GB, free=${profile.freeRamGb} GB, unified=${profile.unifiedMemory}, metal=${profile.metal}, vram=${vramLabel}, reserve=${profile.reservedRamGb} GB`,
+    `- ${fit.summary}`,
+  ];
+
+  if (fit.recommendations.length > 0) {
+    lines.push(
+      "- recommendations:",
+      "  tier | id | params_b | quant | footprintGb | budgetGb | ratio | bucket",
+      ...fit.recommendations.map(
+        (row) =>
+          `  ${row.tier} | ${row.id} | ${row.params_b} | ${row.quant} | ${row.footprintGb} | ${row.budgetGb} | ${row.ratio} | ${row.bucket}`,
+      ),
+    );
+  } else {
+    lines.push("- recommendations: none");
+  }
+
+  if (fit.skipped.length > 0) {
+    lines.push(
+      "- skipped:",
+      ...fit.skipped.map((row) => `  ${row.id} | ${row.tier} | ${row.note}`),
+    );
+  }
+
+  return lines;
 }
 
 function renderResultLines(

@@ -212,6 +212,28 @@ describe("Phase 13A.1 model registry schema", () => {
     });
   });
 
+  it("accepts optional hardware-fit metadata on local model entries", () => {
+    const result = validateModelRegistry({
+      schema_version: 1,
+      models: [
+        validEntry({ id: "without-fit-metadata" }),
+        validEntry({
+          id: "llama-fit-metadata",
+          params_b: 3,
+          quant: "q4_K_M",
+        }),
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("expected valid registry");
+    expect(result.data.models[0].params_b).toBeUndefined();
+    expect(result.data.models[1]).toMatchObject({
+      params_b: 3,
+      quant: "q4_K_M",
+    });
+  });
+
   it("supports an explicitly empty registry", () => {
     expect(parseModelRegistry({ schema_version: 1, models: [] })).toEqual({
       schema_version: 1,

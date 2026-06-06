@@ -68,6 +68,40 @@ export type {
 } from "./staleness";
 
 export {
+  DEFAULT_RESERVED_RAM_GB,
+  HARDWARE_ARCHITECTURES,
+  HARDWARE_FIT_BUCKETS,
+  HARDWARE_PLATFORMS,
+  HardwareArchitectureSchema,
+  HardwareConfigSchema,
+  HardwareFitBucketSchema,
+  HardwareFitScoreSchema,
+  HardwareOverrideSchema,
+  HardwarePlatformSchema,
+  HardwareProfileSchema,
+  ModelHardwareFitRecommendationSchema,
+  ModelHardwareFitReportSchema,
+  ModelHardwareFitSkippedSchema,
+  ModelHardwareFitTierGroupSchema,
+  buildHardwareProfile,
+  estimateFootprintGb,
+  evaluateLocalModelHardwareFit,
+  parseHardwareConfigYaml,
+  scoreFit,
+} from "./hardware-fit";
+export type {
+  HardwareArchitecture,
+  HardwareFitBucket,
+  HardwareFitScore,
+  HardwareOverride,
+  HardwarePlatform,
+  HardwareProfile,
+  ModelHardwareFitRecommendation,
+  ModelHardwareFitReport,
+  ModelHardwareFitSkipped,
+} from "./hardware-fit";
+
+export {
   MODEL_FALLBACK_GOVERNANCE_FLAGS,
   MODEL_RESOLVER_FAILURE_REASONS,
   MODEL_RESOLVER_REJECTION_REASONS,
