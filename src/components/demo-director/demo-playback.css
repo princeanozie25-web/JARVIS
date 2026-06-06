@@ -1,13 +1,13 @@
 /*
- * Demo Director playback — DD.10.
+ * Demo Director playback - DD.11/DD.12.
  *
- * Assembly law: stones do not fade or slide in. They materialise with
- * weight. The Human Gate ignition is the climax of the assembly. The
- * first pulse seals the awakening.
+ * Assembly law: command center surfaces do not fade or slide in. They
+ * materialise with weight. The Human Gate ignition is the climax of the
+ * assembly. The first pulse seals the awakening.
  *
  * Every animation:
  *   - routes timing through --jarvis-motion-* / --jarvis-pulse-*
- *   - is one-shot (no infinite loops) for materialisation cues
+ *   - is one-shot for materialisation cues
  *   - is neutralised by prefers-reduced-motion
  */
 
@@ -63,28 +63,27 @@
 }
 
 [data-demo-playback="read-only"] {
-  /* Hard black field — JARVIS starts dormant before the orb appears. */
+  /* Hard black field: JARVIS starts dormant before the reactor appears. */
   background-color: var(--jarvis-color-panel);
 }
 
-[data-demo-playback="read-only"][data-demo-stage="black"] [data-demo-stage-target] {
+[data-demo-playback="read-only"][data-demo-stage="black"]
+  [data-demo-stage-target] {
   opacity: 0;
 }
 
-[data-demo-playback="read-only"][data-demo-stage="orb"]
-  [data-demo-stage-target="orb"],
-[data-demo-playback="read-only"][data-demo-stage="space"]
-  [data-demo-stage-target="space"],
-[data-demo-playback="read-only"][data-demo-stage="time"]
-  [data-demo-stage-target="time"],
-[data-demo-playback="read-only"][data-demo-stage="mind"]
-  [data-demo-stage-target="mind"],
-[data-demo-playback="read-only"][data-demo-stage="soul"]
-  [data-demo-stage-target="soul"],
-[data-demo-playback="read-only"][data-demo-stage="reality"]
-  [data-demo-stage-target="reality"],
-[data-demo-playback="read-only"][data-demo-stage="power"]
-  [data-demo-stage-target="power"] {
+[data-demo-playback="read-only"][data-demo-stage="reactor"]
+  [data-demo-stage-target="reactor"],
+[data-demo-playback="read-only"][data-demo-stage="rest"]
+  [data-demo-stage-target="rest"],
+[data-demo-playback="read-only"][data-demo-stage="suggestion_inbox"]
+  [data-demo-stage-target="suggestion_inbox"],
+[data-demo-playback="read-only"][data-demo-stage="pipeline"]
+  [data-demo-stage-target="pipeline"],
+[data-demo-playback="read-only"][data-demo-stage="working"]
+  [data-demo-stage-target="working"],
+[data-demo-playback="read-only"][data-demo-stage="audit"]
+  [data-demo-stage-target="audit"] {
   animation: jarvis-demo-materialise var(--jarvis-pulse-duration-dwell)
     var(--jarvis-pulse-easing) 1 both;
   transform-origin: center;
@@ -108,24 +107,22 @@
 }
 
 /*
- * Materialised set — once a stone has assembled, it stays present for
+ * Materialised set: once a surface has assembled, it stays present for
  * the remainder of the demo. We express that with cumulative attribute
- * selectors so we never need to track per-stone state in the renderer.
+ * selectors so we never need to track per-surface state in the renderer.
  */
-[data-demo-playback="read-only"][data-demo-materialised~="orb"]
-  [data-demo-stage-target="orb"],
-[data-demo-playback="read-only"][data-demo-materialised~="space"]
-  [data-demo-stage-target="space"],
-[data-demo-playback="read-only"][data-demo-materialised~="time"]
-  [data-demo-stage-target="time"],
-[data-demo-playback="read-only"][data-demo-materialised~="mind"]
-  [data-demo-stage-target="mind"],
-[data-demo-playback="read-only"][data-demo-materialised~="soul"]
-  [data-demo-stage-target="soul"],
-[data-demo-playback="read-only"][data-demo-materialised~="reality"]
-  [data-demo-stage-target="reality"],
-[data-demo-playback="read-only"][data-demo-materialised~="power"]
-  [data-demo-stage-target="power"],
+[data-demo-playback="read-only"][data-demo-materialised~="reactor"]
+  [data-demo-stage-target="reactor"],
+[data-demo-playback="read-only"][data-demo-materialised~="rest"]
+  [data-demo-stage-target="rest"],
+[data-demo-playback="read-only"][data-demo-materialised~="suggestion_inbox"]
+  [data-demo-stage-target="suggestion_inbox"],
+[data-demo-playback="read-only"][data-demo-materialised~="pipeline"]
+  [data-demo-stage-target="pipeline"],
+[data-demo-playback="read-only"][data-demo-materialised~="working"]
+  [data-demo-stage-target="working"],
+[data-demo-playback="read-only"][data-demo-materialised~="audit"]
+  [data-demo-stage-target="audit"],
 [data-demo-playback="read-only"][data-demo-materialised~="human-gate"]
   [data-demo-stage-target="human-gate"] {
   opacity: 1;

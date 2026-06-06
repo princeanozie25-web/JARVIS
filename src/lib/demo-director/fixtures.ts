@@ -1,116 +1,94 @@
 /**
- * Demo Director audience fixtures — DD.9.
+ * Demo Director audience fixtures - DD.11/DD.12 closeout.
  *
- * Four deterministic, hand-authored scripts. No LLM generation, no
- * randomness, no dynamic timing. Every script:
- *   - opens with the Pipeline Assembly sequence (DD.10)
- *   - walks a curated path through the populated stones
- *   - climaxes at the Human Gate
- *
- * Fixtures are pure data; loaders rebuild them through the schema to
- * guarantee the read-only contract is intact.
+ * Pipeline is the sole UI direction. These deterministic scripts drive
+ * Rest, Working, Audit, and the Pipeline Command Center. The old gauntlet
+ * language is intentionally absent from the official product path.
  */
 
 import { type DemoCue, type DemoScript, type DemoSegment } from "./contracts";
 import { parseDemoScript, sumSegmentDurations } from "./schemas";
 
-// ---------------------------------------------------------------------------
-// Shared assembly segment — every script opens here
-// ---------------------------------------------------------------------------
+function cue(input: Omit<DemoCue, "metadata_only" | "read_only">): DemoCue {
+  return {
+    ...input,
+    metadata_only: true,
+    read_only: true,
+  };
+}
 
 function makeAssemblySegment(): DemoSegment {
   const cues: DemoCue[] = [
-    {
+    cue({
       cue_id: "assembly:black",
       at_ms: 0,
       kind: "show_label",
       note: "JARVIS dormant",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:orb",
+    }),
+    cue({
+      cue_id: "assembly:reactor",
       at_ms: 600,
-      kind: "assemble_stone",
-      target: "orb",
-      note: "Reactor ignition",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:space",
+      kind: "ignite_reactor",
+      target: "rest",
+      note: "Rest reactor ignition",
+    }),
+    cue({
+      cue_id: "assembly:rest",
       at_ms: 1400,
-      kind: "assemble_stone",
-      target: "space",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:time",
-      at_ms: 2000,
-      kind: "assemble_stone",
-      target: "time",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:mind",
-      at_ms: 2600,
-      kind: "assemble_stone",
-      target: "mind",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:soul",
-      at_ms: 3200,
-      kind: "assemble_stone",
-      target: "soul",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:reality",
+      kind: "enter_route",
+      target: "/rest",
+      note: "Rest surface comes online",
+    }),
+    cue({
+      cue_id: "assembly:suggestion_inbox",
+      at_ms: 2200,
+      kind: "highlight_surface",
+      target: "suggestion_inbox",
+      note: "Suggestions appear without executing",
+    }),
+    cue({
+      cue_id: "assembly:pipeline",
+      at_ms: 3000,
+      kind: "enter_route",
+      target: "/audit/pipeline",
+      note: "Pipeline becomes the visual authority",
+    }),
+    cue({
+      cue_id: "assembly:working",
       at_ms: 3800,
-      kind: "assemble_stone",
-      target: "reality",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
-      cue_id: "assembly:power",
-      at_ms: 4400,
-      kind: "assemble_stone",
-      target: "power",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
+      kind: "enter_route",
+      target: "/working",
+      note: "Working cockpit prepares gated proposals",
+    }),
+    cue({
+      cue_id: "assembly:audit",
+      at_ms: 4600,
+      kind: "enter_route",
+      target: "/audit",
+      note: "Audit fortress proves the boundary held",
+    }),
+    cue({
       cue_id: "assembly:human_gate",
       at_ms: 5200,
       kind: "ignite_human_gate",
-      target: "human-gate",
-      note: "Assembly climax",
-      metadata_only: true,
-      read_only: true,
-    },
-    {
+      target: "human_gate",
+      note: "Approval boundary visible",
+    }),
+    cue({
       cue_id: "assembly:first_pulse",
       at_ms: 5800,
       kind: "pulse",
-      target: "space-edge:input-to-intent",
+      target: "pipeline-transition:route-to-human-gate",
       note: "First governed pulse",
-      metadata_only: true,
-      read_only: true,
-    },
+    }),
   ];
 
   return {
     segment_id: "segment:assembly",
     kind: "assembly",
-    label: "Assembly",
+    label: "Command Center Assembly",
     description:
-      "JARVIS awakens. Reactor first, then the six stones, then the Human Gate.",
+      "JARVIS wakes as a single pipeline command center: Rest, Working, Audit, and the Human Gate.",
     duration_ms: 6000,
     cues,
     metadata_only: true,
@@ -118,410 +96,389 @@ function makeAssemblySegment(): DemoSegment {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Recruiter — full six-stone walk, governance emphasis, gate climax
-// ---------------------------------------------------------------------------
-
-function makeRecruiterScript(): DemoScript {
-  const assembly = makeAssemblySegment();
-
-  const walk: DemoSegment = {
-    segment_id: "segment:recruiter:walk",
-    kind: "pipeline_walk",
-    label: "Six-stone walk",
-    description:
-      "Traverse Space, Time, Mind, Soul, Reality, and Power — every flow held by the Human Gate.",
-    duration_ms: 7200,
-    cues: [
-      {
-        cue_id: "recruiter:walk:space",
-        at_ms: 0,
-        kind: "highlight_zone",
-        target: "space",
-        note: "Routing spine",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:walk:time",
-        at_ms: 1200,
-        kind: "highlight_zone",
-        target: "time",
-        note: "Agent constellation",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:walk:mind",
-        at_ms: 2400,
-        kind: "highlight_zone",
-        target: "mind",
-        note: "Council synthesis",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:walk:soul",
-        at_ms: 3600,
-        kind: "highlight_zone",
-        target: "soul",
-        note: "Memory under pressure",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:walk:reality",
-        at_ms: 4800,
-        kind: "highlight_zone",
-        target: "reality",
-        note: "Physical world, governed",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:walk:power",
-        at_ms: 6000,
-        kind: "highlight_zone",
-        target: "power",
-        note: "Fortress reactor",
-        metadata_only: true,
-        read_only: true,
-      },
-    ],
-    metadata_only: true,
-    read_only: true,
-  };
-
-  const climax: DemoSegment = {
-    segment_id: "segment:recruiter:climax",
-    kind: "human_gate_climax",
-    label: "Human Gate",
-    description: "Every flow terminates at the gate. Approval is human.",
-    duration_ms: 3000,
-    cues: [
-      {
-        cue_id: "recruiter:climax:halt",
-        at_ms: 0,
-        kind: "halt",
-        target: "human-gate",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "recruiter:climax:approve",
-        at_ms: 2200,
-        kind: "approve",
-        target: "human-gate",
-        note: "Governance, visibility, sophistication",
-        metadata_only: true,
-        read_only: true,
-      },
-    ],
-    metadata_only: true,
-    read_only: true,
-  };
-
-  const segments = [assembly, walk, climax];
+function makeScript(input: {
+  audience: DemoScript["audience"];
+  title: string;
+  subtitle: string;
+  segments: readonly DemoSegment[];
+  showcased_zones: DemoScript["showcased_zones"];
+}): DemoScript {
   const script: DemoScript = {
-    script_id: "demo:recruiter",
-    audience: "recruiter",
-    title: "Recruiter walkthrough",
-    subtitle:
-      "Six stones, one human gate. Read-only governance from input to audit.",
-    total_duration_ms: sumSegmentDurations(segments),
-    segments,
-    showcased_zones: ["space", "time", "mind", "soul", "reality", "power"],
+    script_id: `demo:${input.audience}`,
+    audience: input.audience,
+    title: input.title,
+    subtitle: input.subtitle,
+    total_duration_ms: sumSegmentDurations(input.segments),
+    segments: input.segments,
+    showcased_zones: input.showcased_zones,
     metadata_only: true,
     read_only: true,
-    recording_enabled: false,
-    voice_enabled: false,
-    export_enabled: false,
-    narration_enabled: false,
+    recording_enabled: true,
+    voice_enabled: true,
+    export_enabled: true,
+    narration_enabled: true,
     ffmpeg_enabled: false,
   };
   return parseDemoScript(script);
 }
 
-// ---------------------------------------------------------------------------
-// Security — Power + forbidden edge + CAI lock + Human Gate
-// ---------------------------------------------------------------------------
-
-function makeSecurityScript(): DemoScript {
+function makeRecruiterScript(): DemoScript {
   const assembly = makeAssemblySegment();
-
-  const fortress: DemoSegment = {
-    segment_id: "segment:security:fortress",
-    kind: "pipeline_walk",
-    label: "Fortress focus",
+  const tour: DemoSegment = {
+    segment_id: "segment:recruiter:tour",
+    kind: "route_showcase",
+    label: "Recruiter Tour",
     description:
-      "Power reactor stays in frame. Forbidden edge highlights; CAI execution gate stays locked.",
-    duration_ms: 6000,
+      "Rest reactor, suggestion inbox, pipeline flow, aux routing, council, knowledge, agent coordinator, Working, and Audit.",
+    duration_ms: 8600,
     cues: [
-      {
-        cue_id: "security:fortress:power",
+      cue({
+        cue_id: "recruiter:rest",
         at_ms: 0,
-        kind: "highlight_zone",
-        target: "power",
-        note: "Reactor watch",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "security:fortress:forbidden",
+        kind: "highlight_surface",
+        target: "rest",
+        note: "JARVIS is present before it acts",
+      }),
+      cue({
+        cue_id: "recruiter:inbox",
+        at_ms: 1100,
+        kind: "highlight_surface",
+        target: "suggestion_inbox",
+        note: "Create a recruiter demo of yourself",
+      }),
+      cue({
+        cue_id: "recruiter:pipeline",
+        at_ms: 2200,
+        kind: "highlight_surface",
+        target: "pipeline",
+        note: "Pipeline is the sole official UI direction",
+      }),
+      cue({
+        cue_id: "recruiter:aux",
+        at_ms: 3300,
+        kind: "highlight_pipeline_stage",
+        target: "aux_routing",
+        note: "Auxiliary model slots choose the cheapest capable model",
+      }),
+      cue({
+        cue_id: "recruiter:council",
+        at_ms: 4400,
+        kind: "highlight_surface",
+        target: "council",
+        note: "Council reasoning stays observable",
+      }),
+      cue({
+        cue_id: "recruiter:knowledge",
+        at_ms: 5500,
+        kind: "highlight_surface",
+        target: "knowledge",
+        note: "Knowledge compounding feeds the system",
+      }),
+      cue({
+        cue_id: "recruiter:agent_coordinator",
+        at_ms: 6600,
+        kind: "highlight_surface",
+        target: "agent_coordinator",
+        note: "Agent coordinator proposes, never silently acts",
+      }),
+      cue({
+        cue_id: "recruiter:working",
+        at_ms: 7600,
+        kind: "enter_route",
+        target: "/working",
+        note: "Working cockpit shows governed work",
+      }),
+    ],
+    metadata_only: true,
+    read_only: true,
+  };
+  const climax: DemoSegment = {
+    segment_id: "segment:recruiter:climax",
+    kind: "human_gate_climax",
+    label: "Gate And Proof",
+    description:
+      "The proposal halts at the Human Gate, then the audit surface proves the decision path.",
+    duration_ms: 3600,
+    cues: [
+      cue({
+        cue_id: "recruiter:climax:halt",
+        at_ms: 0,
+        kind: "halt",
+        target: "human_gate",
+      }),
+      cue({
+        cue_id: "recruiter:climax:approve",
         at_ms: 1800,
-        kind: "highlight_zone",
-        target: "power-edge:sandbox-to-governance",
-        note: "Forbidden edge surfaced",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "security:fortress:cai_lock",
-        at_ms: 3600,
-        kind: "highlight_zone",
-        target: "cai_execution_gate",
-        note: "CAI execution gate locked",
-        metadata_only: true,
-        read_only: true,
-      },
+        kind: "approve",
+        target: "human_gate",
+        note: "Human-approved demo playback",
+      }),
+      cue({
+        cue_id: "recruiter:climax:audit",
+        at_ms: 2800,
+        kind: "enter_route",
+        target: "/audit",
+        note: "Audit fortress closes the story",
+      }),
     ],
     metadata_only: true,
     read_only: true,
   };
 
+  return makeScript({
+    audience: "recruiter",
+    title: "Recruiter Demo",
+    subtitle:
+      "JARVIS creates, narrates, plays, records, and packages a governed pipeline demo.",
+    segments: [assembly, tour, climax],
+    showcased_zones: [
+      "rest",
+      "suggestion_inbox",
+      "pipeline",
+      "aux_routing",
+      "council",
+      "knowledge",
+      "agent_coordinator",
+      "human_gate",
+      "working",
+      "audit",
+    ],
+  });
+}
+
+function makeSecurityScript(): DemoScript {
+  const assembly = makeAssemblySegment();
+  const fortress: DemoSegment = {
+    segment_id: "segment:security:fortress",
+    kind: "audit_replay",
+    label: "Security Fortress",
+    description:
+      "Approval gate, governance overlay, forbidden-edge alert, and audit trail remain read-only and visible.",
+    duration_ms: 7200,
+    cues: [
+      cue({
+        cue_id: "security:approval_gate",
+        at_ms: 0,
+        kind: "highlight_surface",
+        target: "human_gate",
+        note: "Only the gate can approve side effects",
+      }),
+      cue({
+        cue_id: "security:governance",
+        at_ms: 1800,
+        kind: "highlight_surface",
+        target: "governance",
+        note: "Governance boundaries are inspectable",
+      }),
+      cue({
+        cue_id: "security:forbidden_edge",
+        at_ms: 3600,
+        kind: "highlight_pipeline_stage",
+        target: "pipeline-transition:route-to-execute-forbidden",
+        note: "Forbidden bypass turns visible",
+      }),
+      cue({
+        cue_id: "security:audit_trail",
+        at_ms: 5400,
+        kind: "enter_route",
+        target: "/audit",
+        note: "Replay is data, not execution",
+      }),
+    ],
+    metadata_only: true,
+    read_only: true,
+  };
   const climax: DemoSegment = {
     segment_id: "segment:security:climax",
     kind: "human_gate_climax",
     label: "Containment",
-    description: "Human Gate denies the forbidden proposal. No execution.",
+    description: "A forbidden path is denied. Nothing executes from the demo.",
     duration_ms: 3000,
     cues: [
-      {
+      cue({
         cue_id: "security:climax:halt",
         at_ms: 0,
         kind: "halt",
-        target: "human-gate",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+        target: "human_gate",
+      }),
+      cue({
         cue_id: "security:climax:deny",
         at_ms: 2000,
         kind: "deny",
-        target: "human-gate",
-        note: "Control. Containment. Auditability.",
-        metadata_only: true,
-        read_only: true,
-      },
+        target: "human_gate",
+        note: "No execution bypass",
+      }),
     ],
     metadata_only: true,
     read_only: true,
   };
 
-  const segments = [assembly, fortress, climax];
-  const script: DemoScript = {
-    script_id: "demo:security",
+  return makeScript({
     audience: "security",
-    title: "Security containment",
+    title: "Security Demo",
     subtitle:
-      "Fortress reactor and CAI lock — a forbidden proposal stopped at the gate.",
-    total_duration_ms: sumSegmentDurations(segments),
-    segments,
-    showcased_zones: ["space", "power"],
-    metadata_only: true,
-    read_only: true,
-    recording_enabled: false,
-    voice_enabled: false,
-    export_enabled: false,
-    narration_enabled: false,
-    ffmpeg_enabled: false,
-  };
-  return parseDemoScript(script);
+      "Approval boundaries, forbidden-edge alerts, and the audit trail demonstrate containment.",
+    segments: [assembly, fortress, climax],
+    showcased_zones: ["pipeline", "human_gate", "audit", "governance"],
+  });
 }
-
-// ---------------------------------------------------------------------------
-// Technical — Council, routing, model tiers, telemetry
-// ---------------------------------------------------------------------------
 
 function makeTechnicalScript(): DemoScript {
   const assembly = makeAssemblySegment();
-
   const architecture: DemoSegment = {
     segment_id: "segment:technical:architecture",
     kind: "pipeline_walk",
-    label: "Architecture",
+    label: "Technical Pipeline",
     description:
-      "Council deliberates. Space routes through tiers. Power telemetry watches.",
-    duration_ms: 7200,
+      "Routing, auxiliary slots, council synthesis, telemetry, approval lifecycle, and architecture are inspected in sequence.",
+    duration_ms: 8400,
     cues: [
-      {
-        cue_id: "technical:council",
-        at_ms: 0,
-        kind: "highlight_zone",
-        target: "mind",
-        note: "Six-member council",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+      cue({
         cue_id: "technical:routing",
-        at_ms: 1800,
-        kind: "highlight_zone",
-        target: "space",
-        note: "Router → tiers",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "technical:tier_t2",
-        at_ms: 3400,
-        kind: "highlight_zone",
-        target: "tier_t2",
-        note: "Tier T2 — voice + UI confirm",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+        at_ms: 0,
+        kind: "highlight_pipeline_stage",
+        target: "route",
+        note: "Intent, safety, capability, and cost stay ordered",
+      }),
+      cue({
+        cue_id: "technical:aux_slots",
+        at_ms: 1400,
+        kind: "highlight_pipeline_stage",
+        target: "aux_routing",
+        note: "Auxiliary slots resolve independently within tier caps",
+      }),
+      cue({
+        cue_id: "technical:council",
+        at_ms: 2800,
+        kind: "highlight_surface",
+        target: "council",
+        note: "Council output remains observable",
+      }),
+      cue({
         cue_id: "technical:telemetry",
-        at_ms: 5000,
-        kind: "highlight_zone",
-        target: "telemetry_cockpit",
-        note: "Telemetry observe-only",
-        metadata_only: true,
-        read_only: true,
-      },
+        at_ms: 4200,
+        kind: "highlight_surface",
+        target: "telemetry",
+        note: "Model calls and cost are visible",
+      }),
+      cue({
+        cue_id: "technical:lifecycle",
+        at_ms: 5600,
+        kind: "highlight_surface",
+        target: "human_gate",
+        note: "Approval lifecycle gates the side effect",
+      }),
+      cue({
+        cue_id: "technical:architecture",
+        at_ms: 7000,
+        kind: "enter_route",
+        target: "/audit/pipeline",
+        note: "Architecture becomes a living pipeline map",
+      }),
     ],
     metadata_only: true,
     read_only: true,
   };
-
   const climax: DemoSegment = {
     segment_id: "segment:technical:climax",
     kind: "human_gate_climax",
-    label: "Approval",
-    description: "Council recommendation reaches the Human Gate. Approved.",
+    label: "Approval Lifecycle",
+    description:
+      "The technical path reaches the Human Gate and records an audit explanation.",
     duration_ms: 3000,
     cues: [
-      {
+      cue({
         cue_id: "technical:climax:halt",
         at_ms: 0,
         kind: "halt",
-        target: "human-gate",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+        target: "human_gate",
+      }),
+      cue({
         cue_id: "technical:climax:approve",
         at_ms: 2000,
         kind: "approve",
-        target: "human-gate",
-        note: "Architecture. Reasoning. Orchestration.",
-        metadata_only: true,
-        read_only: true,
-      },
+        target: "human_gate",
+        note: "Approved demo package generation",
+      }),
     ],
     metadata_only: true,
     read_only: true,
   };
 
-  const segments = [assembly, architecture, climax];
-  const script: DemoScript = {
-    script_id: "demo:technical",
+  return makeScript({
     audience: "technical",
-    title: "Technical deep dive",
+    title: "Technical Demo",
     subtitle:
-      "Mind council, Space routing, model tiers, and Power telemetry — under one gate.",
-    total_duration_ms: sumSegmentDurations(segments),
-    segments,
-    showcased_zones: ["space", "mind", "power"],
-    metadata_only: true,
-    read_only: true,
-    recording_enabled: false,
-    voice_enabled: false,
-    export_enabled: false,
-    narration_enabled: false,
-    ffmpeg_enabled: false,
-  };
-  return parseDemoScript(script);
+      "Router, aux slots, council, telemetry, approval lifecycle, and architecture in one pipeline.",
+    segments: [assembly, architecture, climax],
+    showcased_zones: [
+      "pipeline",
+      "aux_routing",
+      "council",
+      "telemetry",
+      "human_gate",
+      "audit",
+    ],
+  });
 }
-
-// ---------------------------------------------------------------------------
-// General — simple request → Human Gate → Reality
-// ---------------------------------------------------------------------------
 
 function makeGeneralScript(): DemoScript {
   const assembly = makeAssemblySegment();
-
   const flow: DemoSegment = {
     segment_id: "segment:general:flow",
     kind: "narrative",
-    label: "Simple request",
+    label: "Simple Request",
     description:
-      "One request enters Space, halts at the gate, then touches Reality.",
-    duration_ms: 4800,
+      "A simple request travels through the pipeline, pauses for approval, then returns a result.",
+    duration_ms: 5600,
     cues: [
-      {
+      cue({
         cue_id: "general:request",
         at_ms: 0,
         kind: "pulse",
-        target: "space-edge:input-to-intent",
-        note: '"JARVIS, set the room to focus."',
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+        target: "pipeline-transition:capture-to-classify",
+        note: "A simple request enters JARVIS",
+      }),
+      cue({
+        cue_id: "general:pipeline",
+        at_ms: 1200,
+        kind: "highlight_surface",
+        target: "pipeline",
+        note: "The request travels visibly",
+      }),
+      cue({
         cue_id: "general:gate_halt",
-        at_ms: 1600,
+        at_ms: 2600,
         kind: "halt",
-        target: "human-gate",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
+        target: "human_gate",
+      }),
+      cue({
         cue_id: "general:approve",
-        at_ms: 2800,
+        at_ms: 3800,
         kind: "approve",
-        target: "human-gate",
-        metadata_only: true,
-        read_only: true,
-      },
-      {
-        cue_id: "general:reality",
-        at_ms: 3600,
-        kind: "highlight_zone",
-        target: "reality",
-        note: "Theme engine syncs the room",
-        metadata_only: true,
-        read_only: true,
-      },
+        target: "human_gate",
+      }),
+      cue({
+        cue_id: "general:result",
+        at_ms: 4800,
+        kind: "enter_route",
+        target: "/working",
+        note: "The result appears in the governed work surface",
+      }),
     ],
     metadata_only: true,
     read_only: true,
   };
 
-  const segments = [assembly, flow];
-  const script: DemoScript = {
-    script_id: "demo:general",
+  return makeScript({
     audience: "general",
-    title: "Plain-language walkthrough",
-    subtitle: "Ask a question. The gate decides. The room responds.",
-    total_duration_ms: sumSegmentDurations(segments),
-    segments,
-    showcased_zones: ["space", "reality"],
-    metadata_only: true,
-    read_only: true,
-    recording_enabled: false,
-    voice_enabled: false,
-    export_enabled: false,
-    narration_enabled: false,
-    ffmpeg_enabled: false,
-  };
-  return parseDemoScript(script);
+    title: "General Demo",
+    subtitle:
+      "A plain request becomes a visible, approved, auditable pipeline journey.",
+    segments: [assembly, flow],
+    showcased_zones: ["rest", "pipeline", "human_gate", "working"],
+  });
 }
-
-// ---------------------------------------------------------------------------
-// Registry
-// ---------------------------------------------------------------------------
 
 export const DEMO_SCRIPT_RECRUITER = Object.freeze(makeRecruiterScript());
 export const DEMO_SCRIPT_SECURITY = Object.freeze(makeSecurityScript());
@@ -537,7 +494,7 @@ export const DEMO_SCRIPTS = Object.freeze({
 
 export type DemoScriptName = keyof typeof DEMO_SCRIPTS;
 
-/** Deny-by-default loader — unknown name falls back to `recruiter`. */
+/** Deny-by-default loader - unknown name falls back to `recruiter`. */
 export function loadDemoScript(name?: string): DemoScript {
   if (
     typeof name === "string" &&

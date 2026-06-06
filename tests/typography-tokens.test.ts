@@ -41,16 +41,18 @@ describe("UI.3 typography — registry", () => {
     }
   });
 
-  it("routes display, headline, and title through the Syne display font", () => {
+  it("routes display, headline, and title through the Quincy-first display font", () => {
     for (const role of ["display", "headline", "title"] as const) {
       expect(jarvisTypography[role].fontFamily).toBe(jarvisFonts.display);
     }
+    expect(jarvisFonts.display).toContain('"Quincy"');
   });
 
-  it("routes body through the Syne body alias and label through JetBrains Mono", () => {
+  it("routes body through the Quincy-first body alias and label through JetBrains Mono", () => {
     expect(jarvisTypography.body.fontFamily).toBe(jarvisFonts.body);
     expect(jarvisTypography.label.fontFamily).toBe(jarvisFonts.mono);
     expect(jarvisTypography.label.textTransform).toBe("uppercase");
+    expect(jarvisFonts.body).toContain('"Quincy"');
   });
 
   it("never falls back to Arial anywhere in the scale", () => {
@@ -70,20 +72,23 @@ describe("UI.3 typography — registry", () => {
 });
 
 describe("UI.3 typography — wiring", () => {
-  it("declares the Syne and JetBrains Mono CSS variables in tokens.css", () => {
+  it("declares Quincy-first UI fonts and JetBrains Mono in tokens.css", () => {
+    expect(tokensCss).toMatch(/--jarvis-font-display:\s*"Quincy",\s*var/);
+    expect(tokensCss).toMatch(/--jarvis-font-body:\s*"Quincy",\s*var/);
     expect(tokensCss).toMatch(
-      /--jarvis-font-display:\s*var\(--font-jarvis-display/,
+      /--jarvis-font-mono:\s*var\(\s*--font-jarvis-mono/,
     );
-    expect(tokensCss).toMatch(/--jarvis-font-mono:\s*var\(--font-jarvis-mono/);
-    expect(tokensCss).toContain("Syne");
+    expect(tokensCss).toContain("Quincy");
     expect(tokensCss).toContain("JetBrains Mono");
   });
 
-  it("loads Syne and JetBrains Mono through next/font/google in app/layout.tsx", () => {
+  it("loads the fallback display/body faces and JetBrains Mono through next/font/google in app/layout.tsx", () => {
     expect(layoutTsx).toMatch(/from "next\/font\/google"/);
-    expect(layoutTsx).toMatch(/\bSyne\b/);
+    expect(layoutTsx).toMatch(/\bOrbitron\b/);
+    expect(layoutTsx).toMatch(/\bRajdhani\b/);
     expect(layoutTsx).toMatch(/\bJetBrains_Mono\b/);
     expect(layoutTsx).toContain("--font-jarvis-display");
+    expect(layoutTsx).toContain("--font-jarvis-body");
     expect(layoutTsx).toContain("--font-jarvis-mono");
   });
 

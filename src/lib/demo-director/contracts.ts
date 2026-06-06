@@ -1,15 +1,16 @@
 /**
  * Demo Director contracts — DD.9.
  *
- * Pure, frozen, read-only descriptors for governed demo proposals and
- * playback. No recording, no exports, no voice. The Demo Director only
- * proposes scripts; playback is deterministic and metadata-only.
+ * Pure, frozen descriptors for governed demo proposals and playback.
+ * Demo scripts are pipeline-first and can be narrated, recorded, and
+ * exported by the closeout orchestrator, but playback itself remains
+ * deterministic and authority-free.
  *
  * Strict invariants on every type:
  *   - `metadata_only: true`
  *   - `read_only: true`
  *   - no execution affordances
- *   - no narration / audio / mp4 references
+ *   - no execution affordances
  */
 
 // ---------------------------------------------------------------------------
@@ -26,12 +27,18 @@ export const DEMO_AUDIENCES = [
 export type DemoAudience = (typeof DEMO_AUDIENCES)[number];
 
 export const DEMO_SHOWCASE_TARGETS = [
-  "space",
-  "time",
-  "mind",
-  "soul",
-  "reality",
-  "power",
+  "rest",
+  "suggestion_inbox",
+  "pipeline",
+  "aux_routing",
+  "council",
+  "knowledge",
+  "agent_coordinator",
+  "human_gate",
+  "working",
+  "audit",
+  "telemetry",
+  "governance",
 ] as const;
 
 export type DemoShowcaseTarget = (typeof DEMO_SHOWCASE_TARGETS)[number];
@@ -41,9 +48,11 @@ export type DemoShowcaseTarget = (typeof DEMO_SHOWCASE_TARGETS)[number];
 // ---------------------------------------------------------------------------
 
 export const DEMO_CUE_KINDS = [
-  "assemble_stone",
+  "ignite_reactor",
+  "enter_route",
+  "highlight_pipeline_stage",
+  "highlight_surface",
   "ignite_human_gate",
-  "highlight_zone",
   "pulse",
   "halt",
   "approve",
@@ -58,7 +67,7 @@ export interface DemoCue {
   /** Offset within the parent segment in milliseconds. */
   at_ms: number;
   kind: DemoCueKind;
-  /** Optional logical target — stone id, zone id, edge id, or hub id. */
+  /** Optional logical target - route, pipeline stage, surface, or edge id. */
   target?: string;
   /** Optional metadata-only annotation (label text, beat notes). */
   note?: string;
@@ -74,7 +83,9 @@ export const DEMO_SEGMENT_KINDS = [
   "assembly",
   "narrative",
   "pipeline_walk",
+  "route_showcase",
   "human_gate_climax",
+  "audit_replay",
 ] as const;
 
 export type DemoSegmentKind = (typeof DEMO_SEGMENT_KINDS)[number];
@@ -102,15 +113,15 @@ export interface DemoScript {
   /** Sum of every segment.duration_ms — deterministic, recomputed at build. */
   total_duration_ms: number;
   segments: readonly DemoSegment[];
-  /** Legacy demo targets the script intends to surface. Purely descriptive. */
+  /** Pipeline targets the script intends to surface. Purely descriptive. */
   showcased_zones: readonly DemoShowcaseTarget[];
   metadata_only: true;
   read_only: true;
-  /* explicit non-features — the schema and tests guard these */
-  recording_enabled: false;
-  voice_enabled: false;
-  export_enabled: false;
-  narration_enabled: false;
+  /* DD.11/DD.12 capabilities; these never grant execution authority. */
+  recording_enabled: true;
+  voice_enabled: true;
+  export_enabled: true;
+  narration_enabled: true;
   ffmpeg_enabled: false;
 }
 
@@ -150,13 +161,12 @@ export interface DemoProposalInbox {
 
 export const DEMO_ASSEMBLY_STAGES = [
   "black",
-  "orb",
-  "space",
-  "time",
-  "mind",
-  "soul",
-  "reality",
-  "power",
+  "reactor",
+  "rest",
+  "suggestion_inbox",
+  "pipeline",
+  "working",
+  "audit",
   "human_gate",
   "first_pulse",
   "complete",
@@ -192,7 +202,7 @@ export interface DemoPlaybackSnapshot {
   execute_affordance_present: false;
   approve_affordance_present: false;
   mutation_affordance_present: false;
-  recording_enabled: false;
-  voice_enabled: false;
-  export_enabled: false;
+  recording_enabled: true;
+  voice_enabled: true;
+  export_enabled: true;
 }

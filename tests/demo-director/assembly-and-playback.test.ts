@@ -17,13 +17,12 @@ describe("DD.10 assembly sequence — ordered awakening", () => {
   it("ASSEMBLY_STAGE_ORDER lists every stage in canonical order", () => {
     expect(ASSEMBLY_STAGE_ORDER).toEqual([
       "black",
-      "orb",
-      "space",
-      "time",
-      "mind",
-      "soul",
-      "reality",
-      "power",
+      "reactor",
+      "rest",
+      "suggestion_inbox",
+      "pipeline",
+      "working",
+      "audit",
       "human_gate",
       "first_pulse",
       "complete",
@@ -58,18 +57,17 @@ describe("DD.10 assembly sequence — ordered awakening", () => {
     }
   });
 
-  it("Human Gate ignition occurs after every stone has materialised", () => {
+  it("Human Gate ignition occurs after every command center surface has materialised", () => {
     const gateBeat = ASSEMBLY_BEATS.find((b) => b.stage === "human_gate")!;
-    const stoneStages = [
-      "orb",
-      "space",
-      "time",
-      "mind",
-      "soul",
-      "reality",
-      "power",
+    const surfaceStages = [
+      "reactor",
+      "rest",
+      "suggestion_inbox",
+      "pipeline",
+      "working",
+      "audit",
     ] as const;
-    for (const stage of stoneStages) {
+    for (const stage of surfaceStages) {
       const beat = ASSEMBLY_BEATS.find((b) => b.stage === stage)!;
       expect(beat.at_ms).toBeLessThan(gateBeat.at_ms);
     }
@@ -87,7 +85,7 @@ describe("DD.10 playback snapshots — deterministic state machine", () => {
   it("inside the assembly segment, state is 'assembling'", () => {
     const snap = playbackSnapshot(DEMO_SCRIPT_RECRUITER, 2200);
     expect(snap.state).toBe("assembling");
-    expect(snap.assembly_stage).toBe("time");
+    expect(snap.assembly_stage).toBe("suggestion_inbox");
   });
 
   it("after the assembly segment, state is 'playing'", () => {
@@ -98,22 +96,22 @@ describe("DD.10 playback snapshots — deterministic state machine", () => {
 
   it("halt cues raise the snapshot to 'halted'", () => {
     // The recruiter climax halt sits at the start of its segment, which
-    // begins at 6000 + 7200 = 13200ms into the timeline.
-    const snap = playbackSnapshot(DEMO_SCRIPT_RECRUITER, 13_200);
+    // begins at 6000 + 8600 = 14600ms into the timeline.
+    const snap = playbackSnapshot(DEMO_SCRIPT_RECRUITER, 14_600);
     expect(snap.state).toBe("halted");
   });
 
   it("approve cues raise the snapshot to 'approved'", () => {
-    // The recruiter approve cue is at 2200ms inside the climax segment
-    // (13200 + 2200 = 15400).
-    const snap = playbackSnapshot(DEMO_SCRIPT_RECRUITER, 15_400);
+    // The recruiter approve cue is at 1800ms inside the climax segment
+    // (14600 + 1800 = 16400).
+    const snap = playbackSnapshot(DEMO_SCRIPT_RECRUITER, 16_400);
     expect(snap.state).toBe("approved");
   });
 
   it("deny cues raise the snapshot to 'denied'", () => {
     // The security deny cue is at 2000ms inside its climax segment.
-    // Assembly (6000) + fortress (6000) = 12000, + 2000 = 14000.
-    const snap = playbackSnapshot(DEMO_SCRIPT_SECURITY, 14_000);
+    // Assembly (6000) + fortress (7200) = 13200, + 2000 = 15200.
+    const snap = playbackSnapshot(DEMO_SCRIPT_SECURITY, 15_200);
     expect(snap.state).toBe("denied");
   });
 
@@ -132,9 +130,9 @@ describe("DD.10 playback snapshots — deterministic state machine", () => {
     expect(snap.execute_affordance_present).toBe(false);
     expect(snap.approve_affordance_present).toBe(false);
     expect(snap.mutation_affordance_present).toBe(false);
-    expect(snap.recording_enabled).toBe(false);
-    expect(snap.voice_enabled).toBe(false);
-    expect(snap.export_enabled).toBe(false);
+    expect(snap.recording_enabled).toBe(true);
+    expect(snap.voice_enabled).toBe(true);
+    expect(snap.export_enabled).toBe(true);
   });
 
   it("playbackTimeline yields deterministic snapshots ending at duration", () => {

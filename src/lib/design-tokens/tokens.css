@@ -68,18 +68,18 @@
   --jarvis-pulse-easing: var(--jarvis-motion-easing-orbit);
 
   /* Font — wired to next/font loaders in app/layout.tsx */
-  --jarvis-font-display: var(
-    --font-jarvis-display,
-    "Orbitron",
-    system-ui,
-    sans-serif
-  );
-  --jarvis-font-body: var(
-    --font-jarvis-body,
-    "Rajdhani",
-    system-ui,
-    sans-serif
-  );
+  --jarvis-font-display: "Quincy", var(
+      --font-jarvis-display,
+      "Orbitron",
+      system-ui,
+      sans-serif
+    );
+  --jarvis-font-body: "Quincy", var(
+      --font-jarvis-body,
+      "Rajdhani",
+      system-ui,
+      sans-serif
+    );
   --jarvis-font-mono: var(
     --font-jarvis-mono,
     "JetBrains Mono",

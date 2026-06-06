@@ -2,13 +2,13 @@
 
 A governed, local-first AI operating environment. Built in phases. Architecture-first.
 
-![Tests](https://img.shields.io/badge/tests-4200%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-5292%20observed%20%7C%205272%20passing-yellowgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 
 ## What This Is
 
-JARVIS is a personal AI operating environment with governance, memory, tools, voice, project intelligence, environment state, vision contracts, scheduled assistance, approval-gated execution contracts, read-only observability, and architecture visibility built into one TypeScript runtime.
+JARVIS is a personal AI operating environment with governance, memory, tools, voice, project intelligence, environment state, vision contracts, scheduled assistance, approval-gated execution contracts, read-only observability, architecture visibility, and a pipeline-first command-center UI built into one TypeScript runtime.
 
 It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-out project. The core idea is governance first: every capability is routed through safety, approval, privacy, telemetry, redaction, cost, and authority boundaries before it can matter.
 
@@ -34,6 +34,10 @@ It is not a chatbot wrapper, not a LangChain demo, and not a prompt-in-response-
 | Phase 20 final integration, hardening, packaging, and readiness | Packaging/install automation or unapproved expansion-era runtime enablement |
 
 The disabled list is not a gap. It is the architecture. Governance first, capability second. Expansion Era voice work may add local-only wake/conversation mode and tiered voice authority, but cloud wake word, pre-wake audio storage, auto-approval, destructive voice approval, public dashboards, and unapproved device actions remain forbidden.
+
+Official UI direction: the Pipeline Command Center is authoritative across Rest, Working, Audit, and Demo Director surfaces. The prior Infinity Gauntlet / cosmic prototype direction is removed from the official product path; any cinematic polish now serves the governed pipeline, not a separate gauntlet UI.
+
+Demo Director status: real browser capture and local disk export are implemented. `npm run demo:export -- recruiter` records the local app through Playwright/Chromium, writes a real `demo.mp4`, captures reactor/pipeline/working/audit screenshots, and generates transcript, architecture summary, LinkedIn draft, and release notes. Nothing auto-posts, auto-uploads, or grants execution authority.
 
 ## Phase Status
 
@@ -76,18 +80,19 @@ Key decisions:
 
 ## Tech Stack
 
-| Layer                    | Choice                             | Why                                                                                                                                                                              |
-| ------------------------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend                 | Next.js 16 + React 19 + TypeScript | Current app runtime and UI layer, with strict typed contracts across client and server.                                                                                          |
-| Styling                  | Tailwind CSS 4                     | Current styling layer for fast UI iteration without a separate component framework.                                                                                              |
-| Testing                  | Vitest                             | Current test runner for colocated unit, boundary, contract, and closeout tests.                                                                                                  |
-| Providers                | OpenAI SDK + Anthropic SDK         | Cloud provider wrappers behind a shared provider interface, disabled unless explicitly routed.                                                                                   |
-| Database                 | SQLite via `better-sqlite3`        | Local persistence foundation and operationalization store substrate.                                                                                                             |
-| Validation               | Zod                                | Runtime contract schemas for governance, graph, approval, runtime, voice, vision, and project metadata.                                                                          |
-| Desktop shell            | Tauri                              | Planned/contracted local desktop packaging with loopback-only exposure and OS permissions under governance.                                                                      |
-| Voice operationalization | Local STT/TTS stack                | Current voice remains local-first. Expansion Era target: Chatterbox-TTS-Server as primary local TTS, Kokoro/Piper as local fallbacks, and cloud STT/TTS only as opt-in fallback. |
-| Local models             | Ollama                             | Planned local model runtime behind the existing registry/router pattern.                                                                                                         |
-| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19 graph work is contracts and static registry only.                                                                                                     |
+| Layer                    | Choice                             | Why                                                                                                                                                                                                                   |
+| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend                 | Next.js 16 + React 19 + TypeScript | Current app runtime and UI layer, with strict typed contracts across client and server.                                                                                                                               |
+| Styling                  | Tailwind CSS 4                     | Current styling layer for fast UI iteration without a separate component framework.                                                                                                                                   |
+| Testing                  | Vitest                             | Current test runner for colocated unit, boundary, contract, and closeout tests.                                                                                                                                       |
+| Providers                | OpenAI SDK + Anthropic SDK         | Cloud provider wrappers behind a shared provider interface, disabled unless explicitly routed.                                                                                                                        |
+| Database                 | SQLite via `better-sqlite3`        | Local persistence foundation and operationalization store substrate.                                                                                                                                                  |
+| Validation               | Zod                                | Runtime contract schemas for governance, graph, approval, runtime, voice, vision, and project metadata.                                                                                                               |
+| Desktop shell            | Tauri                              | Planned/contracted local desktop packaging with loopback-only exposure and OS permissions under governance.                                                                                                           |
+| Voice operationalization | Local STT/TTS stack                | Current voice remains local-first. Demo Director narration prefers Chatterbox-TTS-Server, falls back to Kokoro, then the existing local narration fallback; this is narration only, not wake word or voice authority. |
+| Demo capture             | Playwright + FFmpeg                | Records local command-center demo routes, exports MP4 and screenshots to disk only, and validates the export package without posting or uploading.                                                                    |
+| Local models             | Ollama                             | Planned local model runtime behind the existing registry/router pattern.                                                                                                                                              |
+| Architecture graph UI    | React Flow or D3 later             | Deferred. Current Phase 19 graph work is contracts and static registry only.                                                                                                                                          |
 
 ## Project Structure
 
@@ -104,6 +109,7 @@ jarvis/
       onboarding-readiness/    Phase 20 onboarding and move-in readiness metadata
       portfolio-readiness/     Phase 20 portfolio and demo readiness metadata
       command-center/          Rest / Working / Audit contracts, replay, governance, demo mode
+      demo-director/           Demo scripts, narration fallback chain, real browser capture, recording/export package
       pipeline-visualization/  Phase 21K read-only governed pipeline visualization model
       social-extraction/       Phase 21E user-triggered social video extraction workflow
       voice-streaming/         Push-to-talk orchestration, barge-in, privacy, cloud routing guards
@@ -257,7 +263,24 @@ pnpm test
 pnpm lint
 ```
 
-Open `http://localhost:3000` for the current local app surface. There is no standalone `demo` script yet; demo/recruiter mode exists as tested Command Center contracts and view models.
+Open `http://localhost:3000` for the current local app surface.
+
+Export a local recruiter demo package:
+
+```bash
+npm run dev:local
+npm run demo:export -- recruiter
+```
+
+Exports land under `demo-exports/<timestamp>/` and are ignored by git because they are generated media artifacts.
+
+Latest local validation snapshot on June 6, 2026:
+
+- Focused Demo Director / pipeline / typography / registry / approval-runtime closeout: 495 tests passing.
+- Full `npm test` measured during closeout: 5,292 tests executed, 5,272 passing; the remaining failures were long-running frozen audit closeout timeouts plus direct regressions that were fixed and revalidated in the focused pass above.
+- `npx tsc --noEmit --pretty false`: pass.
+- `npm run lint`: pass with 18 pre-existing warnings in older modules.
+- `git diff --check`: pass.
 
 Optional provider environment:
 

@@ -70,3 +70,33 @@ export {
   playbackSnapshot,
   playbackTimeline,
 } from "./playback";
+
+export {
+  DEMO_NARRATION_PROVIDER_IDS,
+  buildNarrationLines,
+  createExistingLocalFallbackNarrationProvider,
+  defaultDemoNarrationProviders,
+  prepareDemoNarration,
+  selectNarrationProvider,
+  type DemoNarrationAudioCue,
+  type DemoNarrationLine,
+  type DemoNarrationProvider,
+  type DemoNarrationProviderHealth,
+  type DemoNarrationProviderId,
+  type DemoNarrationTrack,
+} from "./narration";
+
+export {
+  DEMO_RECORDING_TARGETS,
+  assertRecordingPlanSafe,
+  createDemoRecordingPlan,
+  type DemoRecordingFrame,
+  type DemoRecordingManifest,
+  type DemoRecordingPlan,
+  type DemoRecordingTarget,
+} from "./recording";
+
+export {
+  createPipelineDemoDirectorCloseout,
+  type DemoDirectorCloseout,
+} from "./closeout";

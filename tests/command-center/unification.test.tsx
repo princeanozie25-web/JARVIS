@@ -88,17 +88,18 @@ describe("Command Center unification pass", () => {
     );
   });
 
-  it("uses Orbitron, Rajdhani, and JetBrains Mono as primary typography tokens", () => {
+  it("uses Quincy-first UI tokens with Orbitron, Rajdhani, and JetBrains Mono fallbacks", () => {
     const source = sourceText();
 
+    expect(source).toContain("Quincy");
     expect(source).toContain("Orbitron");
     expect(source).toContain("Rajdhani");
     expect(source).toContain("JetBrains_Mono");
     expect(source).toMatch(
-      /--jarvis-font-display:\s*var\(\s*--font-jarvis-display,\s*"Orbitron"/,
+      /--jarvis-font-display:\s*"Quincy",\s*var\(\s*--font-jarvis-display,\s*"Orbitron"/,
     );
     expect(source).toMatch(
-      /--jarvis-font-body:\s*var\(\s*--font-jarvis-body,\s*"Rajdhani"/,
+      /--jarvis-font-body:\s*"Quincy",\s*var\(\s*--font-jarvis-body,\s*"Rajdhani"/,
     );
     expect(source).not.toMatch(/--jarvis-font-(display|body):[^;]*Arial/i);
   });

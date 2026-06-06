@@ -67,39 +67,50 @@ describe("DD.9 audience fixtures — coverage and schema", () => {
     }
   });
 
-  it("security fixture explicitly surfaces the CAI lock and a forbidden edge", () => {
+  it("security fixture explicitly surfaces governance and a forbidden edge", () => {
     const cueIds = DEMO_SCRIPT_SECURITY.segments.flatMap((s) =>
       s.cues.map((c) => c.cue_id),
     );
-    expect(cueIds).toContain("security:fortress:cai_lock");
-    expect(cueIds).toContain("security:fortress:forbidden");
+    expect(cueIds).toContain("security:governance");
+    expect(cueIds).toContain("security:forbidden_edge");
   });
 
-  it("recruiter fixture highlights every populated stone", () => {
+  it("recruiter fixture highlights the full pipeline demo path", () => {
     const targets = DEMO_SCRIPT_RECRUITER.segments.flatMap((s) =>
-      s.cues.filter((c) => c.kind === "highlight_zone").map((c) => c.target),
+      s.cues.map((c) => c.target),
     );
-    for (const stone of ["space", "time", "mind", "soul", "reality", "power"]) {
-      expect(targets).toContain(stone);
+    for (const target of [
+      "rest",
+      "suggestion_inbox",
+      "pipeline",
+      "aux_routing",
+      "council",
+      "knowledge",
+      "agent_coordinator",
+      "/working",
+      "/audit",
+    ]) {
+      expect(targets).toContain(target);
     }
   });
 
-  it("technical fixture surfaces council, routing, tiers, and telemetry", () => {
+  it("technical fixture surfaces routing, aux slots, council, telemetry, and architecture", () => {
     const targets = DEMO_SCRIPT_TECHNICAL.segments.flatMap((s) =>
       s.cues.map((c) => c.target),
     );
-    expect(targets).toContain("mind");
-    expect(targets).toContain("space");
-    expect(targets).toContain("tier_t2");
-    expect(targets).toContain("telemetry_cockpit");
+    expect(targets).toContain("route");
+    expect(targets).toContain("aux_routing");
+    expect(targets).toContain("council");
+    expect(targets).toContain("telemetry");
+    expect(targets).toContain("/audit/pipeline");
   });
 
-  it("general fixture ends by highlighting the Reality response", () => {
+  it("general fixture ends by entering the Working result surface", () => {
     const lastSegment =
       DEMO_SCRIPT_GENERAL.segments[DEMO_SCRIPT_GENERAL.segments.length - 1];
     const lastCue = lastSegment?.cues[lastSegment.cues.length - 1];
-    expect(lastCue?.kind).toBe("highlight_zone");
-    expect(lastCue?.target).toBe("reality");
+    expect(lastCue?.kind).toBe("enter_route");
+    expect(lastCue?.target).toBe("/working");
   });
 
   it("fixtures are deterministic — calling them twice yields identical script ids", () => {

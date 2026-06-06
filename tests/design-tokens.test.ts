@@ -84,7 +84,9 @@ describe("UI.2 design tokens — registry", () => {
 
   it("exposes display, body, and mono font tokens", () => {
     for (const key of REQUIRED_FONTS) {
-      expect(jarvisTokens.fonts[key]).toMatch(/--font-jarvis-(display|mono)/);
+      expect(jarvisTokens.fonts[key]).toMatch(
+        /--font-jarvis-(display|body|mono)/,
+      );
     }
   });
 

@@ -126,11 +126,11 @@ The palette is a near-black command surface with cyan/sky signal energy and sema
 
 ## 3. Typography
 
-**Display Font:** Syne (variable, weights 400-700), loaded via `next/font/google` and exposed as `--jarvis-font-display`.
-**Body Font:** Syne (same loader), exposed as `--jarvis-font-body`.
+**Display Font:** Quincy first, with Orbitron (variable, weights 400-800) loaded via `next/font/google` as the build-safe fallback and exposed as `--jarvis-font-display`.
+**Body Font:** Quincy first, with Rajdhani (weights 400-700) loaded via `next/font/google` as the build-safe fallback and exposed as `--jarvis-font-body`.
 **Label/Mono Font:** JetBrains Mono (variable, weights 400-700), loaded via `next/font/google` and exposed as `--jarvis-font-mono`.
 
-**Character:** Syne carries the JARVIS identity — geometric, technical, cinematic. JetBrains Mono is the operational instrument voice for labels, metadata strips, and code surfaces. Both fonts replaced the Phase 21 Arial fallback in UI.3; Arial is forbidden going forward. The font decision is recorded in `docs/architecture/UI_POLISH_PLAN.md` §7.
+**Character:** Quincy carries the JARVIS identity — sharp, editorial, and cinematic without becoming ordinary dashboard type. Orbitron and Rajdhani remain the self-hosted fallbacks for builds where Quincy is not installed. JetBrains Mono is the operational instrument voice for labels, metadata strips, and code surfaces. Arial is forbidden as a primary UI fallback going forward. The font decision is recorded in `docs/architecture/UI_POLISH_PLAN.md` §7.
 
 ### Hierarchy
 

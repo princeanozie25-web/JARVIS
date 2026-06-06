@@ -82,8 +82,7 @@ export function RestCommandCenter({
   marker,
 }: RestCommandCenterProps) {
   return (
-    <main
-      data-surface="command-center"
+    <div
       data-command-center-shell="pipeline-rest"
       data-rest-layout="pipeline-command-center"
       className="cc-shell min-h-screen overflow-hidden bg-void p-4 text-ink"
@@ -155,7 +154,7 @@ export function RestCommandCenter({
           <span className="text-right">No execution authority</span>
         </footer>
       </div>
-    </main>
+    </div>
   );
 }
 

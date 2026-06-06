@@ -15,10 +15,10 @@ import {
  * exposes assembly stage, materialised set, active cues, and playback
  * state via data attributes. Animation is CSS-only (demo-playback.css).
  *
- * Strict read-only contract:
+ * Strict playback contract:
  *   - no <button>, <form>, <input>, <select>, <a>
  *   - no execute, approve, or mutation affordances
- *   - no recording, voice, narration, or export hooks
+ *   - narration, recording, and export are orchestrated outside this component
  */
 
 export interface DemoPlaybackProps {
@@ -37,11 +37,17 @@ function materialisedSet(stage: DemoAssemblyStage): string {
   const order = ASSEMBLY_STAGE_ORDER;
   const reached = order.indexOf(stage);
   if (reached < 0) return "";
-  // Stones materialise in the order they appear in the sequence.
-  const stones = ["orb", "space", "time", "mind", "soul", "reality", "power"];
-  for (const stone of stones) {
-    const idx = order.indexOf(stone as DemoAssemblyStage);
-    if (idx >= 0 && idx <= reached) labels.push(stone);
+  const subsystems = [
+    "reactor",
+    "rest",
+    "suggestion_inbox",
+    "pipeline",
+    "working",
+    "audit",
+  ];
+  for (const subsystem of subsystems) {
+    const idx = order.indexOf(subsystem as DemoAssemblyStage);
+    if (idx >= 0 && idx <= reached) labels.push(subsystem);
   }
   if (reached >= order.indexOf("human_gate")) labels.push("human-gate");
   return labels.join(" ");
@@ -114,8 +120,8 @@ export function DemoPlayback({
       </div>
 
       <footer className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45">
-        Read-only playback · no recording · no voice · no narration · no exports
-        · no ffmpeg
+        Non-mutating playback · local narration · local recording package · no
+        ffmpeg · no posting
       </footer>
     </section>
   );

@@ -134,9 +134,9 @@ export function playbackSnapshot(
     execute_affordance_present: false,
     approve_affordance_present: false,
     mutation_affordance_present: false,
-    recording_enabled: false,
-    voice_enabled: false,
-    export_enabled: false,
+    recording_enabled: true,
+    voice_enabled: true,
+    export_enabled: true,
   } satisfies DemoPlaybackSnapshot);
 }
 
@@ -149,7 +149,12 @@ export function* playbackTimeline(
   step_ms = 200,
 ): Generator<DemoPlaybackSnapshot> {
   const total = script.total_duration_ms;
+  let last = 0;
   for (let t = 0; t <= total; t += step_ms) {
+    last = t;
     yield playbackSnapshot(script, t);
+  }
+  if (last !== total) {
+    yield playbackSnapshot(script, total);
   }
 }

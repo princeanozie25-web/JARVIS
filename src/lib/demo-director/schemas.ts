@@ -2,9 +2,9 @@
  * Demo Director zod schemas — DD.9.
  *
  * Boundary schemas for DemoCue / DemoSegment / DemoScript / DemoProposal.
- * Everything is metadata-only; recording / voice / export / narration /
- * ffmpeg are explicitly rejected at parse time so accidental wiring to
- * side-effectful surfaces fails closed.
+ * Everything is metadata-only at the script/playback layer. DD.11/DD.12
+ * enable narration, local recording, and local export as bounded package
+ * orchestration, while ffmpeg and execution authority remain absent.
  */
 
 import { z } from "zod";
@@ -58,10 +58,10 @@ export const DemoScriptSchema = z.object({
   showcased_zones: z.array(ShowcasedZoneSchema).min(1),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
-  recording_enabled: z.literal(false),
-  voice_enabled: z.literal(false),
-  export_enabled: z.literal(false),
-  narration_enabled: z.literal(false),
+  recording_enabled: z.literal(true),
+  voice_enabled: z.literal(true),
+  export_enabled: z.literal(true),
+  narration_enabled: z.literal(true),
   ffmpeg_enabled: z.literal(false),
 });
 

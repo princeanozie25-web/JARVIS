@@ -31,9 +31,9 @@ describe("DD.10 DemoPlayback component — read-only contract", () => {
     expect(markup).toContain('data-execute-affordance-present="false"');
     expect(markup).toContain('data-approve-affordance-present="false"');
     expect(markup).toContain('data-mutation-affordance-present="false"');
-    expect(markup).toContain('data-recording-enabled="false"');
-    expect(markup).toContain('data-voice-enabled="false"');
-    expect(markup).toContain('data-export-enabled="false"');
+    expect(markup).toContain('data-recording-enabled="true"');
+    expect(markup).toContain('data-voice-enabled="true"');
+    expect(markup).toContain('data-export-enabled="true"');
   });
 
   it("exposes no interactive controls", () => {
@@ -49,7 +49,7 @@ describe("DD.10 DemoPlayback component — read-only contract", () => {
       'data-demo-stage="black"',
     );
     expect(render(DEMO_SCRIPT_RECRUITER, 2200)).toContain(
-      'data-demo-stage="time"',
+      'data-demo-stage="suggestion_inbox"',
     );
     expect(render(DEMO_SCRIPT_RECRUITER, 5500)).toContain(
       'data-demo-stage="human_gate"',
@@ -63,11 +63,11 @@ describe("DD.10 DemoPlayback component — read-only contract", () => {
     expect(earlier).toContain('data-demo-climax="false"');
   });
 
-  it("accumulates the materialised set as stones come online", () => {
-    const orbStage = render(DEMO_SCRIPT_RECRUITER, 700);
-    expect(orbStage).toMatch(/data-demo-materialised="[^"]*orb/);
-    const power = render(DEMO_SCRIPT_RECRUITER, 4500);
-    expect(power).toMatch(/data-demo-materialised="[^"]*power/);
+  it("accumulates the materialised set as command center surfaces come online", () => {
+    const reactorStage = render(DEMO_SCRIPT_RECRUITER, 700);
+    expect(reactorStage).toMatch(/data-demo-materialised="[^"]*reactor/);
+    const audit = render(DEMO_SCRIPT_RECRUITER, 4700);
+    expect(audit).toMatch(/data-demo-materialised="[^"]*audit/);
     const climax = render(DEMO_SCRIPT_RECRUITER, 5500);
     expect(climax).toMatch(/data-demo-materialised="[^"]*human-gate/);
   });
@@ -86,7 +86,7 @@ describe("DD.10 demo-playback.css — assembly law", () => {
     expect(playbackCss).toMatch(/@keyframes\s+jarvis-demo-first-pulse/);
   });
 
-  it("hides every stone while the stage is 'black'", () => {
+  it("hides every command center surface while the stage is 'black'", () => {
     expect(playbackCss).toMatch(
       /\[data-demo-stage="black"\][^{]*\[data-demo-stage-target\][^{]*\{[^}]*opacity:\s*0/,
     );
@@ -110,13 +110,12 @@ describe("DD.10 demo-playback.css — assembly law", () => {
   it("uses no animation that the assembly order forbids — order is canonical", () => {
     // Sanity guard against future regressions of ASSEMBLY_STAGE_ORDER.
     for (const stage of [
-      "orb",
-      "space",
-      "time",
-      "mind",
-      "soul",
-      "reality",
-      "power",
+      "reactor",
+      "rest",
+      "suggestion_inbox",
+      "pipeline",
+      "working",
+      "audit",
       "human_gate",
       "first_pulse",
     ]) {

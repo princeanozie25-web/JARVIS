@@ -35,13 +35,13 @@ const script = {
   subtitle: "For tests only.",
   total_duration_ms: 1000,
   segments: [segment],
-  showcased_zones: ["space"],
+  showcased_zones: ["pipeline"],
   metadata_only: true,
   read_only: true,
-  recording_enabled: false,
-  voice_enabled: false,
-  export_enabled: false,
-  narration_enabled: false,
+  recording_enabled: true,
+  voice_enabled: true,
+  export_enabled: true,
+  narration_enabled: true,
   ffmpeg_enabled: false,
 } as const;
 
@@ -79,23 +79,23 @@ describe("DD.9 schemas — accept valid envelopes", () => {
 });
 
 describe("DD.9 schemas — reject violations of read-only contract", () => {
-  it("rejects narration_enabled: true", () => {
-    const bad = { ...script, narration_enabled: true } as unknown;
+  it("rejects narration_enabled: false", () => {
+    const bad = { ...script, narration_enabled: false } as unknown;
     expect(DemoScriptSchema.safeParse(bad).success).toBe(false);
   });
 
-  it("rejects recording_enabled: true", () => {
-    const bad = { ...script, recording_enabled: true } as unknown;
+  it("rejects recording_enabled: false", () => {
+    const bad = { ...script, recording_enabled: false } as unknown;
     expect(DemoScriptSchema.safeParse(bad).success).toBe(false);
   });
 
-  it("rejects voice_enabled: true", () => {
-    const bad = { ...script, voice_enabled: true } as unknown;
+  it("rejects voice_enabled: false", () => {
+    const bad = { ...script, voice_enabled: false } as unknown;
     expect(DemoScriptSchema.safeParse(bad).success).toBe(false);
   });
 
-  it("rejects export_enabled: true", () => {
-    const bad = { ...script, export_enabled: true } as unknown;
+  it("rejects export_enabled: false", () => {
+    const bad = { ...script, export_enabled: false } as unknown;
     expect(DemoScriptSchema.safeParse(bad).success).toBe(false);
   });
 

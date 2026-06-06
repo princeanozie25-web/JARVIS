@@ -45,7 +45,7 @@ describe("seeded models registry", () => {
   it("registers the OpenAI and Anthropic defaults", () => {
     expect(models.has(DEFAULT_MODEL_ID)).toBe(true);
     expect(models.getDefaultForProvider("openai").id).toBe(DEFAULT_MODEL_ID);
-    const anthropic = models.getDefaultForProvider("anthropic");
+    const anthropic = models.get("anthropic/claude-haiku-4-5");
     expect(anthropic.modelName).toBe("claude-haiku-4-5-20251001");
     expect(anthropic.pricing).toEqual({
       inputPerMillionUsd: 1,

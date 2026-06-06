@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# generated demo exports
+/demo-exports/
+
 # next.js
 /.next/
 /out/

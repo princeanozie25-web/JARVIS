@@ -70,8 +70,9 @@ export const jarvisShadows = {
 export type JarvisShadow = keyof typeof jarvisShadows;
 
 export const jarvisFonts = {
-  display: 'var(--font-jarvis-display, "Syne", system-ui, sans-serif)',
-  body: 'var(--font-jarvis-display, "Syne", system-ui, sans-serif)',
+  display:
+    '"Quincy", var(--font-jarvis-display, "Orbitron", system-ui, sans-serif)',
+  body: '"Quincy", var(--font-jarvis-body, "Rajdhani", system-ui, sans-serif)',
   mono: 'var(--font-jarvis-mono, "JetBrains Mono", ui-monospace, monospace)',
 } as const;
 

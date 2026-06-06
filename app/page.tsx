@@ -3,9 +3,11 @@ import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-da
 
 export default function Home() {
   return (
-    <RestCommandCenter
-      activeRoute="home"
-      marker={SYNTHETIC_OBSERVABILITY_MARKER}
-    />
+    <main aria-label="JARVIS command center" data-surface="command-center">
+      <RestCommandCenter
+        activeRoute="home"
+        marker={SYNTHETIC_OBSERVABILITY_MARKER}
+      />
+    </main>
   );
 }
