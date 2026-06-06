@@ -186,6 +186,7 @@ function validApi(): ObservabilityApi {
         telemetry_by_severity: [{ key: "info", count: 1 }],
         runtime_by_status: [{ key: "completed", count: 1 }],
         model_calls_by_provider: [{ key: "local", count: 1 }],
+        model_calls_by_aux_task: [],
         errors: [],
         posture: PROJECTION_POSTURE,
       }),

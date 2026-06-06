@@ -3,6 +3,32 @@ import { models } from "./registry";
 export const DEFAULT_MODEL_ID = "openai/gpt-4o-mini";
 
 models.register({
+  id: "anthropic/claude-haiku-title-aux",
+  provider: "anthropic",
+  modelName: "claude-haiku-title-aux",
+  tier: "T1",
+  capabilities: ["text", "stream"],
+  enabled: true,
+  pricing: {
+    inputPerMillionUsd: 0.2,
+    outputPerMillionUsd: 0.8,
+  },
+});
+
+models.register({
+  id: "anthropic/claude-haiku-summary-aux",
+  provider: "anthropic",
+  modelName: "claude-haiku-summary-aux",
+  tier: "T2",
+  capabilities: ["text", "stream"],
+  enabled: true,
+  pricing: {
+    inputPerMillionUsd: 0.5,
+    outputPerMillionUsd: 2,
+  },
+});
+
+models.register({
   id: "openai/gpt-4o-mini",
   provider: "openai",
   modelName: "gpt-4o-mini",

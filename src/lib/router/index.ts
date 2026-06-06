@@ -29,6 +29,27 @@ export { enforceRouterSafety } from "./enforcement";
 export { classifyIntent } from "./intent";
 export { classifySafety } from "./safety";
 export { selectModel } from "./selection";
+export {
+  DEFAULT_AUX_ROUTING_CONFIG_PATH,
+  evaluateAuxOutputQuality,
+  loadAuxRoutingConfig,
+  parseAuxRoutingConfig,
+  resolveAuxModel,
+} from "./aux-resolver";
+export {
+  AUX_MODEL_PREFERENCES,
+  AUX_TASK_KINDS,
+  AuxModelPreferenceSchema,
+  AuxRequirementSchema,
+  AuxTaskKindSchema,
+} from "./aux-types";
+export type {
+  AuxModelPreference,
+  AuxModelResolution,
+  AuxQualityResult,
+  AuxRequirement,
+  AuxTaskKind,
+} from "./aux-types";
 export type {
   CapabilityResult,
   IntentClass,

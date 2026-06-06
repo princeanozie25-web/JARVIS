@@ -128,6 +128,7 @@ function rowsFromTelemetry(
     readonly telemetry_by_severity: readonly unknown[];
     readonly runtime_by_status: readonly unknown[];
     readonly model_calls_by_provider: readonly unknown[];
+    readonly model_calls_by_aux_task: readonly unknown[];
   }>,
 ): {
   readonly system_status: readonly WorkingPlaceholderRow[] | null;
@@ -155,6 +156,10 @@ function rowsFromTelemetry(
       {
         label: "Severity bands",
         value: String(response.data.telemetry_by_severity.length),
+      },
+      {
+        label: "Aux tasks",
+        value: String(response.data.model_calls_by_aux_task.length),
       },
     ],
   };

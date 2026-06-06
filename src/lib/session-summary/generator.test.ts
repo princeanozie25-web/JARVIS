@@ -226,13 +226,14 @@ describe("generateSessionSummary", () => {
       timestamp: 4_000,
       success: 1,
       session_id: "session-1",
-      model_id: "gpt-4o-mini",
+      model_id: "claude-haiku-summary-aux",
       input_tokens: 100,
       output_tokens: 20,
       latency_ms: 25,
       cost_usd: 0.0001,
     });
     expect(event?.notes).toContain("summary_hash=");
+    expect(event?.notes).toContain("aux_task_kind=summary");
     expect(event?.notes).toContain("covered_message_count=1");
     expect(event?.notes).not.toContain("Do not log this");
   });

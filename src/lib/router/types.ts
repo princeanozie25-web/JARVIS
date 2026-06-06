@@ -1,4 +1,4 @@
-import type { ModelEntry, ModelTier } from "../models";
+import type { ModelCapability, ModelEntry, ModelTier } from "../models";
 import type { ProviderId } from "../providers";
 
 export type IntentClass =
@@ -23,7 +23,7 @@ export interface SafetyResult {
 
 export interface CapabilityResult {
   tier: ModelTier;
-  requiredCapabilities: Array<"text" | "stream" | "tools">;
+  requiredCapabilities: ModelCapability[];
   reason: string;
 }
 

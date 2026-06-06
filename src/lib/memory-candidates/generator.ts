@@ -13,7 +13,8 @@ import {
   MEMORY_SENSITIVITY_TIERS,
 } from "../memory/types";
 import type { ChatProvider, ProviderId } from "../providers";
-import { enforceRouterSafety, routeMessages } from "../router";
+import { enforceRouterSafety, resolveAuxModel } from "../router";
+import type { RouterDecision } from "../router";
 import type { Message } from "../types";
 
 export const MAX_MEMORY_CANDIDATES_PER_RUN = 5;
@@ -118,6 +119,7 @@ function emitFailureTelemetry(
     at: number;
     sessionId: string;
     modelId?: string;
+    auxTaskKind?: string;
     errorClass: string;
     reason: string;
   },
@@ -128,8 +130,9 @@ function emitFailureTelemetry(
     success: false,
     session_id: input.sessionId,
     model_id: input.modelId,
+    aux_task_kind: input.auxTaskKind,
     error_class: input.errorClass,
-    notes: `reason=${input.reason}`,
+    notes: `aux_task_kind=${input.auxTaskKind ?? "unknown"} reason=${input.reason}`,
   });
 }
 
@@ -163,15 +166,15 @@ export async function generateMemoryCandidates(
     messages: rows,
     latestSummary: latestSummary?.summary_text,
   });
-  const decision = routeMessages(messages, {
-    requestedProvider: input.requestedProvider,
-  });
+  const auxResolution = resolveAuxModel("keyword_extract");
+  const decision = auxResolutionToRouterDecision(auxResolution);
   const safety = enforceRouterSafety(decision);
   if (safety) {
     emitFailureTelemetry(input.db, {
       at,
       sessionId: input.sessionId,
       modelId: decision.selection.model.modelName,
+      auxTaskKind: "keyword_extract",
       errorClass: "SafetyBlocked",
       reason: "safety_blocked",
     });
@@ -200,6 +203,7 @@ export async function generateMemoryCandidates(
         at,
         sessionId: input.sessionId,
         modelId: generated.modelId,
+        auxTaskKind: "keyword_extract",
         errorClass: "StrictJsonParseError",
         reason: "parse_error",
       });
@@ -238,6 +242,7 @@ export async function generateMemoryCandidates(
       at,
       sessionId: input.sessionId,
       modelId: decision.selection.model.modelName,
+      auxTaskKind: "keyword_extract",
       errorClass: error instanceof Error ? error.constructor.name : "Error",
       reason: "provider_error",
     });
@@ -247,4 +252,22 @@ export async function generateMemoryCandidates(
       reason: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function auxResolutionToRouterDecision(
+  resolution: ReturnType<typeof resolveAuxModel>,
+): RouterDecision {
+  return {
+    intent: {
+      intent: "INFORMATION_REQUEST",
+      reason: `Aux task ${resolution.kind} resolved independently of parent route.`,
+    },
+    safety: resolution.safety,
+    capability: {
+      tier: resolution.selection.model.tier,
+      requiredCapabilities: [...resolution.requirement.requires],
+      reason: `Auxiliary ${resolution.kind} capability requirement.`,
+    },
+    selection: resolution.selection,
+  };
 }

@@ -81,6 +81,7 @@ function rollupProjection(
     calls_by_provider_kind: [{ key: "ollama", count: 2 }],
     calls_by_runtime_class: [{ key: "local", count: 2 }],
     calls_by_capability: [{ key: "chat", count: 2 }],
+    calls_by_aux_task_kind: [],
     calls_by_status: [
       { key: "failed", count: 1 },
       { key: "success", count: 1 },

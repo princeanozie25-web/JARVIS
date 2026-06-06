@@ -94,6 +94,7 @@ export interface ModelRuntimePersistenceOptions {
 
 export interface ModelRuntimeExecuteRequest {
   readonly request_id: string;
+  readonly aux_task_kind?: string;
   readonly capability: ModelCapability;
   readonly input: ModelProviderInput;
   readonly resolver_options?: Omit<ModelResolverInput, "capability">;
@@ -134,6 +135,7 @@ export interface ModelRuntimePersistenceMetadata {
 export interface ModelRuntimeExecutionSummary {
   readonly execution_id: string;
   readonly request_id: string;
+  readonly aux_task_kind?: string;
   readonly capability: ModelCapability | null;
   readonly selected_model_id: string | null;
   readonly selected_provider: string | null;
@@ -233,6 +235,13 @@ const RuntimeResolverOptionsSchema = z.strictObject({
 
 const RuntimeExecuteRequestSchema = z.strictObject({
   request_id: z.string().trim().min(1),
+  aux_task_kind: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z][a-z0-9_]*$/)
+    .optional(),
   capability: z.enum(MODEL_CAPABILITIES),
   input: z.custom<ModelProviderInput>(isModelProviderInput),
   resolver_options: RuntimeResolverOptionsSchema.optional(),
@@ -386,6 +395,7 @@ async function execute(
         metadata: createMetadata({
           executionId: executeRequest.request_id,
           requestId: executeRequest.request_id,
+          aux_task_kind: executeRequest.aux_task_kind,
           capability: executeRequest.capability,
           selected_model_id: primaryEntry.id,
           selected_provider: response.provider_id,
@@ -425,6 +435,7 @@ async function execute(
     metadata: createMetadata({
       executionId: executeRequest.request_id,
       requestId: executeRequest.request_id,
+      aux_task_kind: executeRequest.aux_task_kind,
       capability: executeRequest.capability,
       selected_model_id: primaryEntry.id,
       selected_provider: lastFailure?.provider_id ?? null,
@@ -1136,6 +1147,7 @@ function createFailureResult(input: {
 function createMetadata(input: {
   readonly executionId: string;
   readonly requestId: string;
+  readonly aux_task_kind?: string;
   readonly capability: ModelCapability | null;
   readonly selected_model_id: string | null;
   readonly selected_provider: string | null;
@@ -1159,6 +1171,7 @@ function createMetadata(input: {
   const summary: ModelRuntimeExecutionSummary = {
     execution_id: input.executionId,
     request_id: input.requestId,
+    ...(input.aux_task_kind ? { aux_task_kind: input.aux_task_kind } : {}),
     capability: input.capability,
     selected_model_id: input.selected_model_id,
     selected_provider: input.selected_provider,

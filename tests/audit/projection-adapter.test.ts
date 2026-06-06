@@ -93,6 +93,7 @@ function apiStub(
         telemetry_by_severity: [{ key: "info", count: 2 }],
         runtime_by_status: [{ key: "completed", count: 1 }],
         model_calls_by_provider: [{ key: "local-fake", count: 1 }],
+        model_calls_by_aux_task: [],
         errors: [],
         posture: {
           metadata_only: true,

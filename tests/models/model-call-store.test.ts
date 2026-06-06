@@ -322,11 +322,42 @@ describe("Phase 13E.2 model call event store bridge", () => {
     ).toMatchObject({
       projection_status: "ok",
       model_calls_by_provider: [{ key: "ollama", count: 1 }],
+      model_calls_by_aux_task: [],
       errors: [],
       posture: {
         metadata_only: true,
         raw_payload_included: false,
       },
+    });
+  });
+
+  it("persists optional aux task metadata on model call events", () => {
+    const path = databasePath();
+    const store = initializeEventStore({ databasePath: path });
+    appendModelCallEvent(store, event({ aux_task_kind: "summary" }));
+    store.close();
+
+    const raw = openRaw(path);
+    const row = raw
+      .prepare(
+        `
+          SELECT e.metadata_json
+          FROM events e
+          INNER JOIN model_calls mc ON mc.event_id = e.event_id
+        `,
+      )
+      .get() as { metadata_json: string };
+    raw.close();
+
+    expect(JSON.parse(row.metadata_json)).toMatchObject({
+      aux_task_kind: "summary",
+      selected_model_id: "llama3.2:3b",
+    });
+    expect(
+      readTelemetryRollupsProjection({ databasePath: path }),
+    ).toMatchObject({
+      projection_status: "ok",
+      model_calls_by_aux_task: [{ key: "summary", count: 1 }],
     });
   });
 

@@ -51,8 +51,16 @@ export function insertTelemetryEvent(
     event.cost_usd ?? null,
     event.error_class ?? null,
     event.user_rating ?? null,
-    event.notes ?? null,
+    telemetryNotes(event),
   );
+}
+
+function telemetryNotes(event: TelemetryEvent): string | null {
+  const notes = event.notes ?? "";
+  const auxTaskKind = event.aux_task_kind?.trim();
+  if (!auxTaskKind) return notes || null;
+  const auxNote = `aux_task_kind=${auxTaskKind}`;
+  return notes ? `${auxNote} ${notes}` : auxNote;
 }
 
 export function listTelemetryEvents(

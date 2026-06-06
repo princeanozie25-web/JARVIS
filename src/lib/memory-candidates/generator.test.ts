@@ -7,10 +7,12 @@ import { createSession } from "../db/sessions";
 import { listTelemetryEvents } from "../db/telemetry";
 import type {
   ChatProvider,
+  GenerateOptions,
   GenerateResult,
   ProviderId,
   StreamResult,
 } from "../providers";
+import type { Message } from "../types";
 import {
   generateMemoryCandidates,
   type MemoryCandidateProviderRegistry,
@@ -18,17 +20,22 @@ import {
 
 class FakeProvider implements ChatProvider {
   readonly id: ProviderId = "openai";
+  seenOptions: GenerateOptions[] = [];
 
   constructor(
     private readonly content: string,
     private readonly fail = false,
   ) {}
 
-  async generate(): Promise<GenerateResult> {
+  async generate(
+    _messages: Message[],
+    opts: GenerateOptions,
+  ): Promise<GenerateResult> {
+    this.seenOptions.push(opts);
     if (this.fail) throw new Error("provider failed");
     return {
       content: this.content,
-      modelId: "fake-model",
+      modelId: opts.model,
       costUsd: 0,
       latencyMs: 10,
     };
@@ -79,13 +86,14 @@ describe("generateMemoryCandidates", () => {
       created_at: 1_001,
     });
 
+    const provider = new FakeProvider(
+      JSON.stringify({ candidates: [candidate(1)] }),
+    );
     const result = await generateMemoryCandidates({
       db,
       sessionId: "session-1",
       requestedProvider: "openai",
-      registry: registryFor(
-        new FakeProvider(JSON.stringify({ candidates: [candidate(1)] })),
-      ),
+      registry: registryFor(provider),
       idFactory: () => "cand-1",
       now: () => 2_000,
     });
@@ -101,6 +109,7 @@ describe("generateMemoryCandidates", () => {
     expect(listMemoryCandidates(db, { sessionId: "session-1" })).toHaveLength(
       1,
     );
+    expect(provider.seenOptions[0]?.model).toBe("claude-haiku-title-aux");
   });
 
   it("caps persisted candidates at five per run", async () => {
@@ -158,7 +167,8 @@ describe("generateMemoryCandidates", () => {
       listTelemetryEvents(db).some(
         (event) =>
           event.event_type === "memory_candidate_generated" &&
-          event.success === 0,
+          event.success === 0 &&
+          event.notes?.includes("aux_task_kind=keyword_extract"),
       ),
     ).toBe(true);
   });

@@ -237,6 +237,7 @@ export interface TelemetryEvent {
   safety_tag?: string;
   tier?: string;
   model_id?: string;
+  aux_task_kind?: string;
   tool_name?: string;
   execution_id?: string;
   input_tokens?: number;

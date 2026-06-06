@@ -33,6 +33,12 @@ export class ModelCallEventError extends Error {
 }
 
 const NonEmptyStringSchema = z.string().trim().min(1);
+const AuxTaskKindMetadataSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_]*$/);
 const MetadataNumberSchema = z.number().refine(Number.isFinite);
 const NonnegativeMetadataNumberSchema = z
   .number()
@@ -56,6 +62,7 @@ const ModelRuntimeFailedModelSchema = z.strictObject({
 const ModelRuntimeExecutionSummaryForEventSchema = z.strictObject({
   execution_id: NonEmptyStringSchema,
   request_id: NonEmptyStringSchema,
+  aux_task_kind: AuxTaskKindMetadataSchema.optional(),
   capability: z.enum(MODEL_CAPABILITIES).nullable(),
   selected_model_id: NonEmptyStringSchema.nullable(),
   selected_provider: NonEmptyStringSchema.nullable(),
@@ -81,6 +88,7 @@ export const ModelCallEventSchema = z.strictObject({
   event_id: NonEmptyStringSchema,
   request_id: NonEmptyStringSchema,
   execution_id: NonEmptyStringSchema,
+  aux_task_kind: AuxTaskKindMetadataSchema.optional(),
   capability: z.enum(MODEL_CAPABILITIES).nullable(),
   selected_model_id: NonEmptyStringSchema.nullable(),
   selected_provider: NonEmptyStringSchema.nullable(),
@@ -138,6 +146,9 @@ export function createModelCallEvent(
     event_id: eventId,
     request_id: parsedSummary.request_id,
     execution_id: parsedSummary.execution_id,
+    ...(parsedSummary.aux_task_kind
+      ? { aux_task_kind: parsedSummary.aux_task_kind }
+      : {}),
     capability: parsedSummary.capability,
     selected_model_id: parsedSummary.selected_model_id,
     selected_provider: parsedSummary.selected_provider,

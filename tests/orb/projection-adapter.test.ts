@@ -48,6 +48,7 @@ interface TelemetryProjectionStub {
   readonly telemetry_by_severity: readonly CountBucketStub[];
   readonly runtime_by_status: readonly CountBucketStub[];
   readonly model_calls_by_provider: readonly CountBucketStub[];
+  readonly model_calls_by_aux_task: readonly CountBucketStub[];
   readonly errors: readonly string[];
   readonly posture: ProjectionPostureStub;
 }
@@ -132,6 +133,7 @@ function apiStub(overrides: Partial<OrbAdapterApi> = {}): OrbAdapterApi {
         telemetry_by_severity: [bucket("info")],
         runtime_by_status: [bucket("completed")],
         model_calls_by_provider: [bucket("local")],
+        model_calls_by_aux_task: [],
         errors: [],
         posture: PROJECTION_POSTURE,
       }),
@@ -179,6 +181,7 @@ describe("Phase 12D.4 Orb projection adapter", () => {
             telemetry_by_severity: [bucket("a"), bucket("b")],
             runtime_by_status: [bucket("a"), bucket("b")],
             model_calls_by_provider: [bucket("a"), bucket("b")],
+            model_calls_by_aux_task: [],
             errors: ["metadata_gap"],
             posture: PROJECTION_POSTURE,
           }),

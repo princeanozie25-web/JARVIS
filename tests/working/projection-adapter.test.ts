@@ -103,6 +103,7 @@ function apiStub(
         telemetry_by_severity: [{ key: "info", count: 2 }],
         runtime_by_status: [{ key: "completed", count: 1 }],
         model_calls_by_provider: [{ key: "local-fake", count: 1 }],
+        model_calls_by_aux_task: [{ key: "summary", count: 1 }],
         errors: [],
         posture: {
           metadata_only: true,
@@ -207,6 +208,7 @@ describe("Phase 12D.2 Working projection adapter", () => {
       placeholder_rows: expect.arrayContaining([
         { label: "Model calls", value: "1" },
         { label: "Severity bands", value: "1" },
+        { label: "Aux tasks", value: "1" },
       ]),
     });
   });

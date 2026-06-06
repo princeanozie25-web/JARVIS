@@ -1,0 +1,8 @@
+session_title: { minTier: T1, maxTier: T2, requires: [text], prefer: cheapest }
+summary: { minTier: T2, maxTier: T3, requires: [text], prefer: cheapest }
+keyword_extract:
+  { minTier: T1, maxTier: T2, requires: [text], prefer: cheapest }
+paraphrase: { minTier: T1, maxTier: T2, requires: [text], prefer: cheapest }
+vision_preprocess:
+  { minTier: T2, maxTier: T3, requires: [vision], prefer: cheapest }
+intent_assist: { minTier: T1, maxTier: T2, requires: [text], prefer: fastest }

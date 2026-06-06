@@ -4,7 +4,8 @@ import { saveSessionSummary } from "../db/session-summaries";
 import type { SessionSummaryRow } from "../db/session-summaries";
 import { insertTelemetryEvent } from "../db/telemetry";
 import type { ChatProvider, ProviderId } from "../providers";
-import { enforceRouterSafety, routeMessages } from "../router";
+import { enforceRouterSafety, resolveAuxModel } from "../router";
+import type { RouterDecision } from "../router";
 import type { Message } from "../types";
 
 export const SESSION_SUMMARY_MAX_CHARS = 1_200;
@@ -117,6 +118,7 @@ function emitGeneratedTelemetry(
     success: input.success,
     session_id: input.sessionId,
     model_id: input.modelId,
+    aux_task_kind: "summary",
     latency_ms: input.latencyMs,
     input_tokens: input.inputTokens,
     output_tokens: input.outputTokens,
@@ -144,9 +146,8 @@ export async function generateSessionSummary(
     content: row.content,
   })) satisfies Message[];
   const generationMessages = summaryMessages(messages);
-  const decision = routeMessages(generationMessages, {
-    requestedProvider: input.requestedProvider,
-  });
+  const auxResolution = resolveAuxModel("summary");
+  const decision = auxResolutionToRouterDecision(auxResolution);
   const safety = enforceRouterSafety(decision);
   if (safety) {
     emitGeneratedTelemetry(input.db, {
@@ -155,7 +156,7 @@ export async function generateSessionSummary(
       success: false,
       modelId: decision.selection.model.modelName,
       errorClass: "SafetyBlocked",
-      notes: `reason=safety_blocked covered_message_count=${rows.length}`,
+      notes: `aux_task_kind=summary reason=safety_blocked covered_message_count=${rows.length}`,
     });
     return {
       ok: false,
@@ -194,7 +195,7 @@ export async function generateSessionSummary(
       inputTokens: generated.inputTokens,
       outputTokens: generated.outputTokens,
       costUsd: generated.costUsd,
-      notes: `summary_hash=${saved.summary_hash} covered_message_count=${rows.length} chars=${summaryText.length}`,
+      notes: `aux_task_kind=summary summary_hash=${saved.summary_hash} covered_message_count=${rows.length} chars=${summaryText.length}`,
     });
 
     return {
@@ -211,7 +212,7 @@ export async function generateSessionSummary(
       success: false,
       modelId: decision.selection.model.modelName,
       errorClass: error instanceof Error ? error.constructor.name : "Error",
-      notes: `reason=provider_error covered_message_count=${rows.length}`,
+      notes: `aux_task_kind=summary reason=provider_error covered_message_count=${rows.length}`,
     });
     return {
       ok: false,
@@ -219,4 +220,22 @@ export async function generateSessionSummary(
       reason: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function auxResolutionToRouterDecision(
+  resolution: ReturnType<typeof resolveAuxModel>,
+): RouterDecision {
+  return {
+    intent: {
+      intent: "REASONING_TASK",
+      reason: `Aux task ${resolution.kind} resolved independently of parent route.`,
+    },
+    safety: resolution.safety,
+    capability: {
+      tier: resolution.selection.model.tier,
+      requiredCapabilities: [...resolution.requirement.requires],
+      reason: `Auxiliary ${resolution.kind} capability requirement.`,
+    },
+    selection: resolution.selection,
+  };
 }

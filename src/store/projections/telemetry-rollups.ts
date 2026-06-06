@@ -19,6 +19,7 @@ export interface TelemetryRollupsProjection {
   readonly telemetry_by_severity: readonly CountBucket[];
   readonly runtime_by_status: readonly CountBucket[];
   readonly model_calls_by_provider: readonly CountBucket[];
+  readonly model_calls_by_aux_task: readonly CountBucket[];
   readonly errors: readonly string[];
   readonly posture: ProjectionPosture;
 }
@@ -101,6 +102,7 @@ export function readTelemetryRollupsProjection(input: {
     const telemetryBySeverity = new Map<string, number>();
     const runtimeByStatus = new Map<string, number>();
     const modelCallsByProvider = new Map<string, number>();
+    const modelCallsByAuxTask = new Map<string, number>();
 
     for (const row of telemetryRows) {
       if (
@@ -124,16 +126,25 @@ export function readTelemetryRollupsProjection(input: {
     }
 
     for (const row of modelRows) {
+      const metadataSafe = parseMetadataJson(row.metadata_json);
       if (
         row.payload_json !== null ||
         row.cloud_call !== 0 ||
         row.prompt_payload_retained !== 0 ||
-        !parseMetadataJson(row.metadata_json)
+        !metadataSafe
       ) {
         errors.push(`unsafe_model_call:${row.model_call_id}`);
         continue;
       }
       increment(modelCallsByProvider, safeMetadataText(row.provider_id));
+      const metadata = JSON.parse(row.metadata_json) as Record<string, unknown>;
+      const auxTaskKind =
+        typeof metadata.aux_task_kind === "string"
+          ? metadata.aux_task_kind
+          : null;
+      if (auxTaskKind) {
+        increment(modelCallsByAuxTask, safeMetadataText(auxTaskKind));
+      }
     }
 
     return {
@@ -142,6 +153,7 @@ export function readTelemetryRollupsProjection(input: {
       telemetry_by_severity: buckets(telemetryBySeverity),
       runtime_by_status: buckets(runtimeByStatus),
       model_calls_by_provider: buckets(modelCallsByProvider),
+      model_calls_by_aux_task: buckets(modelCallsByAuxTask),
       errors,
       posture: PROJECTION_POSTURE,
     } satisfies TelemetryRollupsProjection;

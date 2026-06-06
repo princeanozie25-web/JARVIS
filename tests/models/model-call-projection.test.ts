@@ -150,6 +150,7 @@ describe("Phase 13E.4 model call projection adapter", () => {
       event("event-new", 1001, {
         execution_id: "execution-2",
         request_id: "request-2",
+        aux_task_kind: "summary",
         selected_model_id: "qwen2.5:7b",
         attempted_models: ["llama3.2:3b", "qwen2.5:7b"],
         successful_model: "qwen2.5:7b",
@@ -172,6 +173,7 @@ describe("Phase 13E.4 model call projection adapter", () => {
           model_call_id: "model-call:event-new",
           request_id: "request-2",
           execution_id: "execution-2",
+          aux_task_kind: "summary",
           model_id: "qwen2.5:7b",
           provider_kind: "ollama",
           runtime_class: "local",
@@ -258,6 +260,7 @@ describe("Phase 13E.4 model call projection adapter", () => {
       calls_by_provider_kind: [{ key: "ollama", count: 2 }],
       calls_by_runtime_class: [{ key: "local", count: 2 }],
       calls_by_capability: [{ key: "chat", count: 2 }],
+      calls_by_aux_task_kind: [],
       calls_by_status: [
         { key: "failed", count: 1 },
         { key: "success", count: 1 },
@@ -272,6 +275,23 @@ describe("Phase 13E.4 model call projection adapter", () => {
         network_called: false,
         ui_rendered: false,
       },
+    });
+  });
+
+  it("surfaces aux task kind in recent calls and rollups", () => {
+    const path = databasePath();
+    appendEvents(path, [
+      event("event-summary", 1000, {
+        aux_task_kind: "summary",
+      }),
+    ]);
+
+    expect(getRecentModelCalls({ databasePath: path }).calls[0]).toMatchObject({
+      aux_task_kind: "summary",
+      metadata_only: true,
+    });
+    expect(getModelCallRollup({ databasePath: path })).toMatchObject({
+      calls_by_aux_task_kind: [{ key: "summary", count: 1 }],
     });
   });
 

@@ -33,6 +33,7 @@ export interface RecentModelCallRecord {
   readonly model_call_id: string;
   readonly request_id: string;
   readonly execution_id: string;
+  readonly aux_task_kind?: string;
   readonly model_id: string | null;
   readonly provider_kind: ModelProviderKind | null;
   readonly runtime_class: ModelRuntimeClass | null;
@@ -80,6 +81,7 @@ export interface ModelCallRollupProjection {
   readonly calls_by_provider_kind: readonly ModelCallCountBucket[];
   readonly calls_by_runtime_class: readonly ModelCallCountBucket[];
   readonly calls_by_capability: readonly ModelCallCountBucket[];
+  readonly calls_by_aux_task_kind: readonly ModelCallCountBucket[];
   readonly calls_by_status: readonly ModelCallCountBucket[];
   readonly failures_by_class: readonly ModelCallCountBucket[];
   readonly errors: readonly string[];
@@ -211,6 +213,11 @@ export function getModelCallRollup(
         records.map((record) => record.runtime_class),
       ),
       calls_by_capability: buckets(records.map((record) => record.capability)),
+      calls_by_aux_task_kind: buckets(
+        records.flatMap((record) =>
+          record.aux_task_kind ? [record.aux_task_kind] : [],
+        ),
+      ),
       calls_by_status: buckets(records.map((record) => record.status)),
       failures_by_class: buckets(
         records.flatMap((record) =>
@@ -286,6 +293,9 @@ function toRecentRecord(input: NormalizedModelCallRow): RecentModelCallRecord {
     model_call_id: row.model_call_id,
     request_id: event.request_id,
     execution_id: event.execution_id,
+    ...(event.aux_task_kind
+      ? { aux_task_kind: safeMetadataText(event.aux_task_kind) }
+      : {}),
     model_id: event.selected_model_id ?? row.model_id,
     provider_kind: event.provider_kind,
     runtime_class: event.runtime_class,

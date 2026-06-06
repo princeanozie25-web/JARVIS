@@ -93,6 +93,7 @@ describe("Phase 11A.3 read-only projections", () => {
       telemetry_by_severity: [],
       runtime_by_status: [],
       model_calls_by_provider: [],
+      model_calls_by_aux_task: [],
     });
   });
 
@@ -337,6 +338,7 @@ describe("Phase 11A.3 read-only projections", () => {
       telemetry_by_severity: [{ key: "info", count: 1 }],
       runtime_by_status: [{ key: "completed", count: 1 }],
       model_calls_by_provider: [{ key: "local-fake", count: 1 }],
+      model_calls_by_aux_task: [],
       errors: [],
       posture: {
         metadata_only: true,
