@@ -25,6 +25,12 @@ import {
   type DoctorRemediationHint,
   type DoctorResultSource,
 } from "./doctor-results";
+import {
+  ModelRegistryStalenessReportSchema,
+  evaluateModelRegistryStaleness,
+  type ModelRegistryEntry,
+  type ModelRegistryStalenessReport,
+} from "../../models";
 
 export const DOCTOR_RUNTIME_VERSION = "20B.6" as const;
 
@@ -84,6 +90,7 @@ export const DoctorRuntimeEvaluationSchema = z.strictObject({
   supported_check_ids: z.array(DoctorCheckIdSchema),
   results: z.array(DoctorCheckResultSchema),
   report: DoctorReportSchema,
+  model_registry_staleness: ModelRegistryStalenessReportSchema,
   observed_at: z.string().trim().min(1).max(80).nullable(),
   metadata_only: z.literal(true),
   read_only: z.literal(true),
@@ -134,6 +141,8 @@ export type DoctorRuntimeAdapters = {
 export type DoctorRuntimeOptions = {
   adapters: DoctorRuntimeAdapters;
   observed_at?: string | null;
+  modelRegistryEntries?: readonly ModelRegistryEntry[];
+  modelRegistryNow?: Date | string;
 };
 
 const REQUIRED_DIRECTORIES = [
@@ -501,6 +510,11 @@ export function runSafeLocalDoctorRuntime(
     evaluateCheck(check, options, observedAt),
   );
   const report: DoctorReport = buildDoctorReportFromResults(results);
+  const modelRegistryStaleness: ModelRegistryStalenessReport =
+    evaluateModelRegistryStaleness(
+      options.modelRegistryEntries ?? [],
+      options.modelRegistryNow ?? "1970-01-01",
+    );
 
   return DoctorRuntimeEvaluationSchema.parse({
     runtime_version: DOCTOR_RUNTIME_VERSION,
@@ -510,6 +524,7 @@ export function runSafeLocalDoctorRuntime(
     supported_check_ids: [...SAFE_LOCAL_RUNTIME_SUPPORTED_CHECK_IDS],
     results,
     report,
+    model_registry_staleness: modelRegistryStaleness,
     observed_at: observedAt,
     metadata_only: true,
     read_only: true,

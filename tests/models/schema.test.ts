@@ -178,6 +178,40 @@ describe("Phase 13A.1 model registry schema", () => {
     ).toBe(false);
   });
 
+  it("accepts registry entries with and without optional EOL metadata", () => {
+    const result = validateModelRegistry({
+      schema_version: 1,
+      models: [
+        validEntry({ id: "without-eol" }),
+        validEntry({
+          id: "deepseek-v3",
+          provider: "deepseek",
+          runtime_class: "cloud",
+          visibility: "enabled",
+          eol_date: "2026-07-24",
+          replacement_id: "deepseek-v4-flash",
+          metadata: {
+            display_name: "DeepSeek V3",
+            description:
+              "Enabled fixture with manually configured EOL metadata.",
+            approximate_memory_mb: null,
+            cost_class: "cloud_metered_unverified",
+            governance_notes:
+              "Fixture only; loading does not call provider APIs.",
+          },
+        }),
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("expected valid registry");
+    expect(result.data.models[0].eol_date).toBeUndefined();
+    expect(result.data.models[1]).toMatchObject({
+      eol_date: "2026-07-24",
+      replacement_id: "deepseek-v4-flash",
+    });
+  });
+
   it("supports an explicitly empty registry", () => {
     expect(parseModelRegistry({ schema_version: 1, models: [] })).toEqual({
       schema_version: 1,

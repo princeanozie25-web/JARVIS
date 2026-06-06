@@ -14,6 +14,7 @@ import {
   type DoctorRuntimePathRequest,
   type DoctorRuntimeVersionProbeResult,
 } from "./index";
+import type { ModelRegistryEntry } from "../../models";
 
 const REQUIRED_DIRECTORIES = [
   "app",
@@ -109,9 +110,13 @@ function fakeAdapters(input?: {
 function runtime(input?: {
   missing?: readonly string[];
   packageManagerAvailable?: boolean;
+  modelRegistryEntries?: readonly ModelRegistryEntry[];
+  modelRegistryNow?: Date | string;
 }) {
   return runSafeLocalDoctorRuntime({
     adapters: fakeAdapters(input),
+    modelRegistryEntries: input?.modelRegistryEntries,
+    modelRegistryNow: input?.modelRegistryNow,
     observed_at: "cli-fixture",
   });
 }
@@ -183,6 +188,7 @@ describe("Phase 20B.7 doctor CLI adapter", () => {
     expect(result.output).toContain("Skipped checks");
     expect(result.output).toContain("Category breakdown");
     expect(result.output).toContain("Read-only posture");
+    expect(result.output).toContain("Model registry EOL");
     expect(JSON.stringify(result)).toBe(
       JSON.stringify(
         runDoctorCliAdapter({
@@ -206,6 +212,12 @@ describe("Phase 20B.7 doctor CLI adapter", () => {
       exit_code: 0,
       evaluation: {
         runtime_version: "20B.6",
+        model_registry_staleness: {
+          metadata_only: true,
+          read_only: true,
+          network_call_enabled: false,
+          rows: [],
+        },
         report: {
           report_version: "20B.5",
         },
@@ -258,6 +270,50 @@ describe("Phase 20B.7 doctor CLI adapter", () => {
     expect(result.evaluation.report.blocking_failures).toHaveLength(1);
     expect(result.output).toContain(
       "doctor-check:required-project-directories",
+    );
+  });
+
+  it("renders the model registry EOL one-line summary and row table", () => {
+    const result = runDoctorCliAdapter({
+      argv: [],
+      runRuntime: () =>
+        runtime({
+          modelRegistryNow: "2026-06-24",
+          modelRegistryEntries: [
+            {
+              id: "deepseek-v3",
+              provider: "deepseek",
+              tier: "T2",
+              runtime_class: "cloud",
+              capabilities: ["chat", "summarize", "classify", "tool_reasoning"],
+              context_window: 128000,
+              visibility: "enabled",
+              priority: 10,
+              supports_streaming: true,
+              supports_tools: true,
+              supports_vision: false,
+              eol_date: "2026-07-24",
+              replacement_id: "deepseek-v4-flash",
+              metadata: {
+                display_name: "DeepSeek V3",
+                description: "Fixture model metadata.",
+                approximate_memory_mb: null,
+                cost_class: "cloud_metered",
+                governance_notes: "Fixture only; no provider calls.",
+              },
+            },
+          ],
+        }),
+    });
+
+    expect(result.output).toContain(
+      "1 model retires in 30 days: deepseek-v3 -> deepseek-v4-flash",
+    );
+    expect(result.output).toContain(
+      "id | model_name | tier | eol_date | daysRemaining | status | replacement_id",
+    );
+    expect(result.output).toContain(
+      "deepseek-v3 | deepseek-v3 | T2 | 2026-07-24 | 30 | EOL_SOON | deepseek-v4-flash",
     );
   });
 

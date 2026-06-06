@@ -53,6 +53,21 @@ export type {
 } from "./local-dev-overrides";
 
 export {
+  MODEL_REGISTRY_STALENESS_STATUSES,
+  MODEL_REGISTRY_STALENESS_WARNING_WINDOW_DAYS,
+  ModelRegistryStalenessReportSchema,
+  ModelRegistryStalenessRowSchema,
+  ModelRegistryStalenessStatusSchema,
+  evaluateModelRegistryStaleness,
+  summarizeModelRegistryStalenessRows,
+} from "./staleness";
+export type {
+  ModelRegistryStalenessReport,
+  ModelRegistryStalenessRow,
+  ModelRegistryStalenessStatus,
+} from "./staleness";
+
+export {
   MODEL_FALLBACK_GOVERNANCE_FLAGS,
   MODEL_RESOLVER_FAILURE_REASONS,
   MODEL_RESOLVER_REJECTION_REASONS,

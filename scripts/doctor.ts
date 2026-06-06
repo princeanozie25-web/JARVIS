@@ -24,6 +24,7 @@ import {
   type DoctorRuntimeVersionProbeRequest,
   type DoctorRuntimeVersionProbeResult,
 } from "../src/lib/bootstrap-readiness";
+import { loadDefaultModelRegistry } from "../src/models";
 
 export type DoctorStatus = "pass" | "warn" | "fail";
 
@@ -233,6 +234,8 @@ export function runDoctorCli(
     runRuntime: () =>
       runSafeLocalDoctorRuntime({
         adapters: createNodeDoctorRuntimeAdapters(),
+        modelRegistryEntries: loadDefaultModelRegistry().listModels(),
+        modelRegistryNow: new Date(),
         observed_at: null,
       }),
   });

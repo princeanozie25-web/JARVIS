@@ -106,6 +106,10 @@ export function renderDoctorReportText(
     `- network calls: ${evaluation.network_call_enabled}`,
     `- provider calls: ${evaluation.provider_call_enabled}`,
     `- UI route: ${evaluation.ui_route_created}`,
+    "",
+    "Model registry EOL",
+    `- ${evaluation.model_registry_staleness.summary}`,
+    ...renderModelRegistryStalenessRows(evaluation),
   ];
 
   return lines.join("\n");
@@ -173,4 +177,23 @@ function renderResultLines(
     (result) =>
       `- ${result.check_id}: ${result.status} (${result.remediation_hint.summary})`,
   );
+}
+
+function renderModelRegistryStalenessRows(
+  evaluation: DoctorRuntimeEvaluation,
+): string[] {
+  const rows = evaluation.model_registry_staleness.rows;
+
+  if (rows.length === 0) {
+    return ["- rows: none"];
+  }
+
+  return [
+    "- rows:",
+    "  id | model_name | tier | eol_date | daysRemaining | status | replacement_id",
+    ...rows.map(
+      (row) =>
+        `  ${row.id} | ${row.model_name} | ${row.tier} | ${row.eol_date ?? "n/a"} | ${row.daysRemaining ?? "n/a"} | ${row.status} | ${row.replacement_id ?? "n/a"}`,
+    ),
+  ];
 }

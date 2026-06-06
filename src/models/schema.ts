@@ -41,6 +41,11 @@ export const ModelRegistryEntrySchema = z
     supports_streaming: z.boolean(),
     supports_tools: z.boolean(),
     supports_vision: z.boolean(),
+    eol_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    replacement_id: ModelIdSchema.optional(),
     metadata: ModelRegistryEntryMetadataSchema,
   })
   .superRefine((entry, ctx) => {
