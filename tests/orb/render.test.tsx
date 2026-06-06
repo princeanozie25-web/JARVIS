@@ -13,6 +13,8 @@ import {
 const ORB_SOURCE_FILES = [
   "src/app/rest/page.tsx",
   "app/rest/page.tsx",
+  "src/components/command-center/RestCommandCenter.tsx",
+  "src/components/command-center/CommandCenterNav.tsx",
   "src/components/orb/Orb.tsx",
   "src/components/orb/types.ts",
   "src/components/orb/state-tokens.ts",
@@ -30,22 +32,21 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
   it("/rest page renders the polished local Rest Mode layout", () => {
     const html = renderRestPage();
 
-    expect(html).toContain('data-rest-layout="command-center-showpiece"');
-    expect(html).toContain("Command Center Foundation");
-    expect(html).toContain("JARVIS Room OS - Working Signal");
-    expect(html).toContain(
-      "Activity indicated. No execution controls exposed.",
-    );
+    expect(html).toContain('data-rest-layout="pipeline-command-center"');
+    expect(html).toContain('data-command-center-shell="pipeline-rest"');
+    expect(html).toContain('data-rest-pipeline-surface="standing-by"');
+    expect(html).toContain('data-pipeline-diagram="read-only"');
+    expect(html).toContain("Governed Pipeline");
     expect(html).toContain("Metadata-only visual layer");
     expect(html).toContain("Synthetic demo-safe only");
     expect(html).toContain("No execution authority");
-    expect(html).toContain('data-orb-mode="working"');
-    expect(html).toContain('data-load-band="active"');
-    expect(html).toContain('data-governance-posture="all_green"');
-    expect(html).toContain('data-heartbeat="stable"');
-    expect(html).toContain('data-local-only="true"');
-    expect(html).toContain('data-authority="none"');
-    expect(html).toContain('data-metadata-only="true"');
+    expect(html).toContain('data-suggestion-inbox="pipeline-hud"');
+    expect(html.match(/data-suggestion-card=/g)).toHaveLength(6);
+    expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(6);
+    expect(html).toContain('data-command-center-nav="unified"');
+    expect(html).toContain('data-execute-affordance-present="false"');
+    expect(html).toContain('data-approve-affordance-present="false"');
+    expect(html).toContain('data-mutation-affordance-present="false"');
   });
 
   it("orb component renders the deterministic idle state", () => {
@@ -74,7 +75,7 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
   });
 
   it("renders metadata labels from the state-token view model", () => {
-    const html = renderRestPage();
+    const html = renderToStaticMarkup(<Orb state={IDLE_ORB_STATE} />);
 
     expect(html).toContain('aria-label="Rest orb metadata"');
     expect(html).toContain("<dt");
@@ -140,11 +141,20 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     const html = renderRestPage();
 
     expect(html).not.toMatch(/<button\b/i);
-    expect(html).not.toMatch(/<a\b/i);
     expect(html).not.toMatch(/<form\b/i);
     expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
     expect(html).not.toMatch(/\brole="button"/i);
-    expect(html).not.toMatch(/\b(run|retry|approve|execute)\b/i);
+    expect(html).toContain('data-execute-affordance-present="false"');
+    expect(html).toContain('data-approve-affordance-present="false"');
+    for (const href of [
+      "/",
+      "/rest",
+      "/working",
+      "/audit",
+      "/audit/pipeline",
+    ]) {
+      expect(html).toContain(`href="${href}"`);
+    }
   });
 
   it("does not reference capture, room, provider, persistence, network, or Tauri IPC APIs", () => {

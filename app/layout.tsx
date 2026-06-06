@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Syne } from "next/font/google";
+import { JetBrains_Mono, Orbitron, Rajdhani } from "next/font/google";
 
 import "./globals.css";
 
-const syne = Syne({
+const orbitron = Orbitron({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-jarvis-display",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const rajdhani = Rajdhani({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jarvis-body",
   weight: ["400", "500", "600", "700"],
 });
 
@@ -30,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

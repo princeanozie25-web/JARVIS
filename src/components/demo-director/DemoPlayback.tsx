@@ -1,4 +1,4 @@
-import { GauntletPipeline } from "@/components/gauntlet/GauntletPipeline";
+import { PipelineDiagram } from "@/components/pipeline/PipelineDiagram";
 import {
   ASSEMBLY_STAGE_ORDER,
   playbackSnapshot,
@@ -11,7 +11,7 @@ import {
 /**
  * Demo playback surface — DD.10.
  *
- * Composes the existing GauntletPipeline inside a read-only shell that
+ * Composes the governed PipelineDiagram inside a read-only shell that
  * exposes assembly stage, materialised set, active cues, and playback
  * state via data attributes. Animation is CSS-only (demo-playback.css).
  *
@@ -109,8 +109,8 @@ export function DemoPlayback({
         </p>
       </header>
 
-      <div data-demo-stage-target="space time mind soul reality power human-gate">
-        <GauntletPipeline />
+      <div data-demo-stage-target="governed-pipeline">
+        <PipelineDiagram />
       </div>
 
       <footer className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45">

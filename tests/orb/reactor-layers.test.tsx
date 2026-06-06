@@ -27,13 +27,17 @@ describe("Orb reactor refinement - layer presence", () => {
     const markup = render();
 
     for (const reactorLayer of [
+      "mechanical_outer_ring",
       "atmospheric_halo",
       "outer_containment_ring",
+      "blue_plasma_vane_array",
       "compression_ring",
       "counter_rotating_containment_lattice",
+      "triangular_flux_bridge",
       "turbine_ring",
       "plasma_compression_chamber",
       "fusion_core",
+      "arc_reactor_blue_white_core",
     ]) {
       expect(markup).toContain(`data-orb-reactor-layer="${reactorLayer}"`);
     }
@@ -47,10 +51,10 @@ describe("Orb reactor refinement - layer presence", () => {
       (match) => !match.includes("fusion_flame"),
     ).length;
 
-    expect(primaryLayerCount).toBe(7);
-    expect(markup.match(/data-orb-layer-purpose="/g)).toHaveLength(8);
-    expect(markup.match(/data-orb-layer-identity="/g)).toHaveLength(8);
-    expect(markup.match(/data-orb-layer-motion="/g)).toHaveLength(8);
+    expect(primaryLayerCount).toBe(11);
+    expect(markup.match(/data-orb-layer-purpose="/g)).toHaveLength(12);
+    expect(markup.match(/data-orb-layer-identity="/g)).toHaveLength(12);
+    expect(markup.match(/data-orb-layer-motion="/g)).toHaveLength(12);
   });
 
   it("preserves the original ring / sweep / core layers", () => {
@@ -63,6 +67,8 @@ describe("Orb reactor refinement - layer presence", () => {
   it("preserves atmosphere, containment, turbine, and plasma layers", () => {
     const markup = render();
     expect(markup).toContain('data-orb-layer="atmosphere"');
+    expect(markup).toContain('data-orb-layer="reactor-shell"');
+    expect(markup).toContain('data-orb-layer="reactor-vane"');
     expect(markup).toContain('data-orb-layer="containment"');
     expect(markup).toContain('data-orb-layer="turbine"');
     expect(markup).toContain('data-orb-layer="plasma"');
@@ -92,6 +98,9 @@ describe("Orb reactor refinement - CSS contract", () => {
     expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-plasma-compress/);
     expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-compression-tighten/);
     expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-fusion-heartbeat/);
+    expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-mechanical-ring-spin/);
+    expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-vane-pressure/);
+    expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-bridge-shimmer/);
     expect(orbCss).toMatch(/@keyframes\s+jarvis-orb-overload-flicker/);
   });
 
@@ -118,6 +127,8 @@ describe("Orb reactor refinement - CSS contract", () => {
     const block = reducedMotionBlock![0]!;
     for (const layer of [
       "atmosphere",
+      "reactor-shell",
+      "reactor-vane",
       "containment",
       "turbine",
       "plasma",

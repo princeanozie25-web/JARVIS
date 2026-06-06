@@ -1,1 +1,5 @@
-export { default } from "@/app/audit/gauntlet/page";
+import { redirect } from "next/navigation";
+
+export default function RemovedLegacyCinematicRoute() {
+  redirect("/audit/pipeline");
+}

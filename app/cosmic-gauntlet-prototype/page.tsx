@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-
-import { CosmicGauntletPrototype } from "@/components/cosmic-gauntlet-prototype";
-
-import "@/components/cosmic-gauntlet-prototype/cosmic-gauntlet-prototype.css";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Cosmic Gauntlet Prototype | JARVIS",
+  title: "JARVIS Pipeline",
   description:
-    "Standalone cinematic JARVIS Cosmic Gauntlet prototype for visual navigation only.",
+    "Legacy cinematic prototype URL redirected to the governed pipeline surface.",
 };
 
-export default function CosmicGauntletPrototypePage() {
-  return <CosmicGauntletPrototype />;
+export default function RemovedLegacyCinematicPrototypeRoute() {
+  redirect("/audit/pipeline");
 }

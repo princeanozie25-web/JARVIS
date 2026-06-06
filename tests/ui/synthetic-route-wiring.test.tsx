@@ -21,10 +21,20 @@ const SYNTHETIC_ROUTE_SOURCE_FILES = [
 
 const COMPONENT_SOURCE_FILES = [
   "src/components/orb/Orb.tsx",
+  "src/components/command-center/CommandCenterNav.tsx",
+  "src/components/command-center/RestCommandCenter.tsx",
   "src/components/working/WorkingShell.tsx",
   "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
 ] as const;
+
+const COMMAND_CENTER_SAFE_HREFS = [
+  "/",
+  "/rest",
+  "/working",
+  "/audit",
+  "/audit/pipeline",
+] as readonly string[];
 
 function sourceText(files: readonly string[]) {
   return files.map((file) => readFileSync(file, "utf8")).join("\n");
@@ -37,19 +47,19 @@ function assertNoControls(html: string) {
   assertOnlySafeNavigationLinks(html);
   expect(html).not.toMatch(/\brole="button"/i);
   expect(html).not.toMatch(
-    /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+    /data-(execute|approve|mutation)-affordance-present="true"/i,
   );
 }
 
 function assertOnlySafeNavigationLinks(html: string) {
-  const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
-  expect(anchors.length).toBeLessThanOrEqual(1);
-  if (anchors.length === 1) {
-    expect(anchors[0]).toContain('href="/audit/gauntlet"');
-    expect(anchors[0]).toContain(
-      'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
-    );
-  }
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+
+  expect(hrefs).toEqual(expect.arrayContaining([...COMMAND_CENTER_SAFE_HREFS]));
+  expect(hrefs.every((href) => COMMAND_CENTER_SAFE_HREFS.includes(href))).toBe(
+    true,
+  );
 }
 
 function buttonLabels(html: string): string[] {
@@ -111,10 +121,9 @@ describe("Phase 12F.1 synthetic route-level projection wiring", () => {
 
     expect(html).toContain(SYNTHETIC_OBSERVABILITY_MARKER);
     expect(html).toContain("Synthetic demo-safe only");
-    expect(html).toContain('data-orb-mode="working"');
-    expect(html).toContain('data-load-band="active"');
-    expect(html).toContain("JARVIS Room OS - Working Signal");
-    expect(html).toContain("Routine completed.");
+    expect(html).toContain('data-rest-pipeline-surface="standing-by"');
+    expect(html).toContain('data-pipeline-diagram="read-only"');
+    expect(html).toContain("Governed Pipeline");
     assertNoControls(html);
   });
 

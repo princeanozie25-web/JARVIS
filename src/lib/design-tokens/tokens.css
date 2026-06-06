@@ -59,7 +59,7 @@
   --jarvis-color-ruby: #e0115f;
 
   /* Pulse timing — DD.0. Pulse durations are governed independently of
-     the motion-system durations so the gauntlet can dwell at the gate
+     the motion-system durations so the pipeline can dwell at the gate
      longer than a normal interaction. */
   --jarvis-pulse-duration-short: 800ms;
   --jarvis-pulse-duration-normal: 1600ms;
@@ -68,9 +68,24 @@
   --jarvis-pulse-easing: var(--jarvis-motion-easing-orbit);
 
   /* Font — wired to next/font loaders in app/layout.tsx */
-  --jarvis-font-display: var(--font-jarvis-display, "Syne", system-ui, sans-serif);
-  --jarvis-font-body: var(--font-jarvis-display, "Syne", system-ui, sans-serif);
-  --jarvis-font-mono: var(--font-jarvis-mono, "JetBrains Mono", ui-monospace, monospace);
+  --jarvis-font-display: var(
+    --font-jarvis-display,
+    "Orbitron",
+    system-ui,
+    sans-serif
+  );
+  --jarvis-font-body: var(
+    --font-jarvis-body,
+    "Rajdhani",
+    system-ui,
+    sans-serif
+  );
+  --jarvis-font-mono: var(
+    --font-jarvis-mono,
+    "JetBrains Mono",
+    ui-monospace,
+    monospace
+  );
 
   /* Radius */
   --jarvis-radius-sm: 4px;
@@ -94,13 +109,13 @@
   --jarvis-text-display-size: 3rem;
   --jarvis-text-display-weight: 600;
   --jarvis-text-display-line-height: 1.05;
-  --jarvis-text-display-letter-spacing: -0.01em;
+  --jarvis-text-display-letter-spacing: normal;
 
   --jarvis-text-headline-font: var(--jarvis-font-display);
   --jarvis-text-headline-size: 2rem;
   --jarvis-text-headline-weight: 600;
   --jarvis-text-headline-line-height: 1.15;
-  --jarvis-text-headline-letter-spacing: -0.005em;
+  --jarvis-text-headline-letter-spacing: normal;
 
   --jarvis-text-title-font: var(--jarvis-font-display);
   --jarvis-text-title-size: 1.25rem;

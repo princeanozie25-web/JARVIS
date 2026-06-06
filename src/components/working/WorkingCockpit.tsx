@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
+
 type WorkflowId = "project" | "research" | "build" | "brief";
 
 type ProposalKind =
@@ -293,6 +295,7 @@ export function WorkingCockpit() {
       className="working-cockpit grid h-[calc(100vh-3.75rem)] min-h-[620px] overflow-hidden border border-border-subtle bg-panel/78 text-ink shadow-cockpit-depth"
       data-working-cockpit="working-cockpit"
       data-working-shell="approval-gated"
+      data-command-center-shell="working"
       data-working-phase="12-ui-realization"
       data-authority-source="architecture-operationalization"
       data-only-mutator="human-gate"
@@ -337,7 +340,7 @@ function TopBar({
   statusText: string;
 }>) {
   return (
-    <header className="grid h-16 grid-cols-[150px_200px_minmax(330px,1fr)_420px] items-center gap-3 border-b border-border-subtle bg-void/55 px-4">
+    <header className="cc-shell-header grid h-16 grid-cols-[150px_minmax(390px,520px)_minmax(330px,1fr)_420px] items-center gap-3 border-b border-border-subtle bg-void/55 px-4">
       <div>
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.24em] text-signal">
           Jarvis
@@ -347,26 +350,7 @@ function TopBar({
         </h1>
       </div>
 
-      <nav aria-label="Screen tabs" className="flex items-center gap-1">
-        <a
-          className="wc-screen-tab border border-border-subtle bg-panel-soft px-2.5 py-2 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-ink/62 transition-colors hover:border-signal/40 hover:text-ink"
-          href="/rest"
-        >
-          Rest
-        </a>
-        <a
-          className="wc-screen-tab wc-screen-tab-active border border-signal/45 bg-signal/12 px-2.5 py-2 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-ink"
-          href="/working"
-        >
-          Working
-        </a>
-        <a
-          className="wc-screen-tab border border-border-subtle bg-panel-soft px-2.5 py-2 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-ink/62 transition-colors hover:border-signal/40 hover:text-ink"
-          href="/audit"
-        >
-          Audit
-        </a>
-      </nav>
+      <CommandCenterNav active="working" compact />
 
       <nav
         aria-label="Workflow tabs"

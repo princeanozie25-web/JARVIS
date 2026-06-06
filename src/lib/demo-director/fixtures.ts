@@ -3,7 +3,7 @@
  *
  * Four deterministic, hand-authored scripts. No LLM generation, no
  * randomness, no dynamic timing. Every script:
- *   - opens with the Gauntlet Assembly sequence (DD.10)
+ *   - opens with the Pipeline Assembly sequence (DD.10)
  *   - walks a curated path through the populated stones
  *   - climaxes at the Human Gate
  *
@@ -127,7 +127,7 @@ function makeRecruiterScript(): DemoScript {
 
   const walk: DemoSegment = {
     segment_id: "segment:recruiter:walk",
-    kind: "gauntlet_walk",
+    kind: "pipeline_walk",
     label: "Six-stone walk",
     description:
       "Traverse Space, Time, Mind, Soul, Reality, and Power — every flow held by the Human Gate.",
@@ -251,7 +251,7 @@ function makeSecurityScript(): DemoScript {
 
   const fortress: DemoSegment = {
     segment_id: "segment:security:fortress",
-    kind: "gauntlet_walk",
+    kind: "pipeline_walk",
     label: "Fortress focus",
     description:
       "Power reactor stays in frame. Forbidden edge highlights; CAI execution gate stays locked.",
@@ -348,7 +348,7 @@ function makeTechnicalScript(): DemoScript {
 
   const architecture: DemoSegment = {
     segment_id: "segment:technical:architecture",
-    kind: "gauntlet_walk",
+    kind: "pipeline_walk",
     label: "Architecture",
     description:
       "Council deliberates. Space routes through tiers. Power telemetry watches.",

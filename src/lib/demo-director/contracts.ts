@@ -12,8 +12,6 @@
  *   - no narration / audio / mp4 references
  */
 
-import type { GauntletZoneId } from "@/lib/gauntlet-visualization";
-
 // ---------------------------------------------------------------------------
 // Audience
 // ---------------------------------------------------------------------------
@@ -26,6 +24,17 @@ export const DEMO_AUDIENCES = [
 ] as const;
 
 export type DemoAudience = (typeof DEMO_AUDIENCES)[number];
+
+export const DEMO_SHOWCASE_TARGETS = [
+  "space",
+  "time",
+  "mind",
+  "soul",
+  "reality",
+  "power",
+] as const;
+
+export type DemoShowcaseTarget = (typeof DEMO_SHOWCASE_TARGETS)[number];
 
 // ---------------------------------------------------------------------------
 // Cues — atomic, deterministic instructions inside a segment
@@ -64,7 +73,7 @@ export interface DemoCue {
 export const DEMO_SEGMENT_KINDS = [
   "assembly",
   "narrative",
-  "gauntlet_walk",
+  "pipeline_walk",
   "human_gate_climax",
 ] as const;
 
@@ -93,8 +102,8 @@ export interface DemoScript {
   /** Sum of every segment.duration_ms — deterministic, recomputed at build. */
   total_duration_ms: number;
   segments: readonly DemoSegment[];
-  /** Zones the script intends to surface. Purely descriptive. */
-  showcased_zones: readonly GauntletZoneId[];
+  /** Legacy demo targets the script intends to surface. Purely descriptive. */
+  showcased_zones: readonly DemoShowcaseTarget[];
   metadata_only: true;
   read_only: true;
   /* explicit non-features — the schema and tests guard these */

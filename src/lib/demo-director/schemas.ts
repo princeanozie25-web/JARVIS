@@ -14,6 +14,7 @@ import {
   DEMO_CUE_KINDS,
   DEMO_PROPOSAL_STATUSES,
   DEMO_SEGMENT_KINDS,
+  DEMO_SHOWCASE_TARGETS,
   type DemoProposal,
   type DemoScript,
   type DemoSegment,
@@ -45,14 +46,7 @@ export const DemoSegmentSchema = z.object({
   read_only: z.literal(true),
 });
 
-const ShowcasedZoneSchema = z.enum([
-  "space",
-  "time",
-  "mind",
-  "soul",
-  "reality",
-  "power",
-]);
+const ShowcasedZoneSchema = z.enum(DEMO_SHOWCASE_TARGETS);
 
 export const DemoScriptSchema = z.object({
   script_id: z.string().min(1).max(120),

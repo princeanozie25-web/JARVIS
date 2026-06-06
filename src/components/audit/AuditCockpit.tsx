@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
+
 import type { AuditPanelViewModel } from "./types";
 
 type AuditViewId = "trace" | "architecture" | "telemetry" | "governance";
@@ -356,6 +358,7 @@ export function AuditCockpit({ marker, projectionPanels }: AuditCockpitProps) {
       aria-label="JARVIS Audit fortress"
       data-audit-cockpit="read-only-fortress"
       data-audit-shell="read-only"
+      data-command-center-shell="audit"
       data-audit-authority="none"
       data-metadata-only="true"
       data-zero-mutation="true"
@@ -405,7 +408,7 @@ function AuditAtmosphere() {
 
 function AuditTopbar({ marker }: { marker: string }) {
   return (
-    <header className="relative z-10 grid h-16 grid-cols-[170px_230px_minmax(420px,1fr)_330px] items-center gap-4 border-b border-cyan-100/10 bg-slate-950/64 px-4 backdrop-blur">
+    <header className="cc-shell-header relative z-10 grid h-16 grid-cols-[170px_minmax(390px,520px)_minmax(420px,1fr)_330px] items-center gap-4 border-b border-cyan-100/10 bg-slate-950/64 px-4 backdrop-blur">
       <div>
         <p className="text-[0.65rem] uppercase tracking-[0.2em] text-cyan-200/60">
           Jarvis
@@ -414,32 +417,7 @@ function AuditTopbar({ marker }: { marker: string }) {
           Audit Mode
         </h1>
       </div>
-      <nav
-        aria-label="Screen navigation"
-        className="grid grid-cols-3 gap-1 text-[0.68rem] uppercase tracking-[0.14em]"
-      >
-        <a
-          href="/rest"
-          data-audit-nav-link="rest"
-          className="border border-white/10 bg-white/[0.025] px-2 py-2 text-center text-slate-400"
-        >
-          Rest
-        </a>
-        <a
-          href="/working"
-          data-audit-nav-link="working"
-          className="border border-white/10 bg-white/[0.025] px-2 py-2 text-center text-slate-400"
-        >
-          Working
-        </a>
-        <a
-          href="/audit"
-          data-audit-nav-link="audit"
-          className="border border-cyan-200/35 bg-cyan-300/[0.09] px-2 py-2 text-center text-cyan-100"
-        >
-          Audit
-        </a>
-      </nav>
+      <CommandCenterNav active="audit" compact />
       <nav
         aria-label="Audit view navigation"
         className="grid grid-cols-4 gap-1 text-[0.62rem] uppercase tracking-[0.12em]"

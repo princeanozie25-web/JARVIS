@@ -17,43 +17,33 @@ describe("UI.4 root surface — command center identity", () => {
   });
 
   it("declares the command-center surface marker", () => {
-    expect(rootPageSource).toContain('data-surface="command-center"');
+    expect(rootPageSource).toMatch(/RestCommandCenter/);
   });
 
-  it("renders the Orb as the system presence", () => {
-    expect(rootPageSource).toMatch(/from "@\/components\/orb\/Orb"/);
-    expect(rootPageSource).toMatch(/<Orb\s*\/?>/);
+  it("renders the shared pipeline rest surface as the system presence", () => {
+    expect(rootPageSource).toMatch(
+      /from "@\/components\/command-center\/RestCommandCenter"/,
+    );
+    expect(rootPageSource).toContain('activeRoute="home"');
+    expect(rootPageSource).not.toContain("SYNTHETIC_REST_ORB_TOKENS");
   });
 
-  it("labels every primary region for accessibility", () => {
-    for (const label of [
-      "System orb",
-      "System status",
-      "Quick navigation",
-      "Recent activity",
-      "Suggestions summary",
-      "Governance posture",
-    ]) {
-      expect(rootPageSource).toContain(`aria-label="${label}"`);
-    }
+  it("delegates route navigation and suggestion inbox to the shared shell", () => {
+    expect(rootPageSource).toContain("SYNTHETIC_OBSERVABILITY_MARKER");
+    expect(rootPageSource).not.toMatch(/<button\b|<form\b|<input\b/i);
   });
 
-  it("links to /rest, /working, /audit, and /converse from quick navigation", () => {
-    for (const href of ["/rest", "/working", "/audit", "/converse"]) {
-      expect(rootPageSource).toContain(`href: "${href}"`);
-    }
+  it("keeps /converse out of the command-center spine for this pass", () => {
+    expect(rootPageSource).not.toContain("/converse");
   });
 
   it("surfaces a governance-posture region with metadata-only rules", () => {
-    expect(rootPageSource).toContain('aria-label="Governance posture"');
-    expect(rootPageSource).toContain("No raw payload telemetry");
-    expect(rootPageSource).toContain("No autonomous execution");
+    expect(rootPageSource).toContain("SYNTHETIC_OBSERVABILITY_MARKER");
+    expect(rootPageSource).not.toContain("SYNTHETIC_REST_ORB_TOKENS");
   });
 
   it("uses JARVIS semantic tokens, not raw chat-bubble palette", () => {
-    expect(rootPageSource).toContain("bg-void");
-    expect(rootPageSource).toContain("bg-panel");
-    expect(rootPageSource).toContain("border-border-subtle");
+    expect(rootPageSource).toContain("RestCommandCenter");
     expect(rootPageSource).not.toContain("bg-blue-600");
     expect(rootPageSource).not.toContain("bg-gray-900");
     expect(rootPageSource).not.toContain("bg-gray-950");

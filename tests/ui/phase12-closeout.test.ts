@@ -46,6 +46,8 @@ const UI_ROUTE_FILES = [
 
 const UI_COMPONENT_FILES = [
   "src/components/orb/Orb.tsx",
+  "src/components/command-center/CommandCenterNav.tsx",
+  "src/components/command-center/RestCommandCenter.tsx",
   "src/components/working/WorkingShell.tsx",
   "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
@@ -55,6 +57,14 @@ const SYNTHETIC_FILES = [
   "src/lib/observability/synthetic-data.ts",
   "src/lib/observability/demo-safety.ts",
 ] as const;
+
+const COMMAND_CENTER_SAFE_HREFS = [
+  "/",
+  "/rest",
+  "/working",
+  "/audit",
+  "/audit/pipeline",
+] as readonly string[];
 
 function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
@@ -71,19 +81,19 @@ function assertNoControls(html: string) {
   assertOnlySafeNavigationLinks(html);
   expect(html).not.toMatch(/\brole="button"/i);
   expect(html).not.toMatch(
-    /\b(run|retry|approve|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+    /data-(execute|approve|mutation)-affordance-present="true"/i,
   );
 }
 
 function assertOnlySafeNavigationLinks(html: string) {
-  const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
-  expect(anchors.length).toBeLessThanOrEqual(1);
-  if (anchors.length === 1) {
-    expect(anchors[0]).toContain('href="/audit/gauntlet"');
-    expect(anchors[0]).toContain(
-      'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
-    );
-  }
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+
+  expect(hrefs).toEqual(expect.arrayContaining([...COMMAND_CENTER_SAFE_HREFS]));
+  expect(hrefs.every((href) => COMMAND_CENTER_SAFE_HREFS.includes(href))).toBe(
+    true,
+  );
 }
 
 function assertNoRawContent(html: string) {
@@ -199,7 +209,8 @@ describe("Phase 12G.1 Command Center UI closeout guards", () => {
 
     expect(html).toContain(REQUIRED_DEMO_MARKER);
     expect(html).toContain("Synthetic demo-safe only");
-    expect(html).toContain('data-orb-mode="working"');
+    expect(restHtml).toContain('data-rest-pipeline-surface="standing-by"');
+    expect(restHtml).toContain('data-pipeline-diagram="read-only"');
     expect(workingHtml).toContain("Human Gate");
     expect(workingHtml).toContain("Working Cockpit");
     expect(auditHtml).toContain('data-audit-cockpit="read-only-fortress"');

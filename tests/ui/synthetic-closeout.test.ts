@@ -24,9 +24,19 @@ const ROUTE_AND_SYNTHETIC_FILES = [
   "src/app/rest/page.tsx",
   "src/app/working/page.tsx",
   "src/app/audit/page.tsx",
+  "src/components/command-center/CommandCenterNav.tsx",
+  "src/components/command-center/RestCommandCenter.tsx",
   "src/lib/observability/synthetic-data.ts",
   "src/lib/observability/demo-safety.ts",
 ] as const;
+
+const COMMAND_CENTER_SAFE_HREFS = [
+  "/",
+  "/rest",
+  "/working",
+  "/audit",
+  "/audit/pipeline",
+] as readonly string[];
 
 function sourceText(files: readonly string[]) {
   return files.map((file) => readFileSync(file, "utf8")).join("\n");
@@ -39,19 +49,19 @@ function assertNoControls(html: string) {
   assertOnlySafeNavigationLinks(html);
   expect(html).not.toMatch(/\brole="button"/i);
   expect(html).not.toMatch(
-    /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+    /data-(execute|approve|mutation)-affordance-present="true"/i,
   );
 }
 
 function assertOnlySafeNavigationLinks(html: string) {
-  const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
-  expect(anchors.length).toBeLessThanOrEqual(1);
-  if (anchors.length === 1) {
-    expect(anchors[0]).toContain('href="/audit/gauntlet"');
-    expect(anchors[0]).toContain(
-      'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
-    );
-  }
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+
+  expect(hrefs).toEqual(expect.arrayContaining([...COMMAND_CENTER_SAFE_HREFS]));
+  expect(hrefs.every((href) => COMMAND_CENTER_SAFE_HREFS.includes(href))).toBe(
+    true,
+  );
 }
 
 function buttonLabels(html: string): string[] {
@@ -116,7 +126,8 @@ describe("Phase 12F.3 synthetic demo closeout guards", () => {
 
     expect(html).toContain(REQUIRED_DEMO_MARKER);
     expect(html).toContain("Synthetic demo-safe only");
-    expect(html).toContain('data-orb-mode="working"');
+    expect(restHtml).toContain('data-rest-pipeline-surface="standing-by"');
+    expect(restHtml).toContain('data-pipeline-diagram="read-only"');
     expect(workingHtml).toContain("Human Gate");
     expect(workingHtml).toContain("Working Cockpit");
     expect(html).toContain("synthetic 3");

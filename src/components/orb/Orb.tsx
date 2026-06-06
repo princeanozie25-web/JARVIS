@@ -80,10 +80,19 @@ export function Orb({
       data-orb-activity-state={activity.state}
       data-orb-activity-tone={activity.semantic}
       data-orb-activity-animation={activity.animation}
-      className="flex min-h-[560px] w-full flex-col items-center justify-center gap-9 text-center"
+      className="flex min-h-[500px] w-full flex-col items-center justify-center gap-6 text-center"
     >
-      <div className="relative grid h-[21rem] w-[21rem] place-items-center rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.12),rgba(8,47,73,0.08)_38%,rgba(2,6,23,0)_72%)] sm:h-[26rem] sm:w-[26rem]">
+      <div className="relative grid h-[19rem] w-[19rem] place-items-center rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.12),rgba(8,47,73,0.08)_38%,rgba(2,6,23,0)_72%)] sm:h-[22rem] sm:w-[22rem]">
         <OrbReactorAtmosphere presentationalState={activity.state} />
+        <div
+          aria-hidden="true"
+          data-orb-layer="reactor-shell"
+          data-orb-reactor-layer="mechanical_outer_ring"
+          data-orb-layer-purpose="machined reactor casing"
+          data-orb-layer-identity="arc reactor outer steel-blue shell"
+          data-orb-layer-motion="slow structural idle spin"
+          className="absolute h-[106%] w-[106%] rounded-full border border-cyan-100/20 bg-[repeating-conic-gradient(from_0deg,rgba(226,246,255,0.18)_0deg,rgba(226,246,255,0.18)_2deg,transparent_2deg,transparent_11deg),radial-gradient(circle,transparent_58%,rgba(14,165,233,0.1)_60%,transparent_68%)]"
+        />
         {/* Atmospheric outer halo — reactor exhaust. */}
         <div
           aria-hidden="true"
@@ -103,6 +112,15 @@ export function Orb({
           data-orb-layer-identity="engineered pressure shell"
           data-orb-layer-motion="restrained containment pulse"
           className={`absolute h-full w-full rounded-full border ${tone.accent} opacity-55 motion-safe:animate-pulse`}
+        />
+        <div
+          aria-hidden="true"
+          data-orb-layer="reactor-vane"
+          data-orb-reactor-layer="blue_plasma_vane_array"
+          data-orb-layer-purpose="radial plasma focusing"
+          data-orb-layer-identity="blue-white reactor vane array"
+          data-orb-layer-motion="subtle counter-pressure flicker"
+          className="absolute h-[92%] w-[92%] rounded-full bg-[repeating-conic-gradient(from_9deg,rgba(186,230,253,0.22)_0deg,rgba(186,230,253,0.22)_4deg,transparent_4deg,transparent_20deg)] opacity-70"
         />
         {/* Mid containment ring — counter-rotates with the turbine. */}
         <div
@@ -131,6 +149,14 @@ export function Orb({
           data-orb-layer-identity="compressed plasma chamber"
           data-orb-layer-motion="contained pressure breathing"
           className="absolute h-[64%] w-[64%] rounded-full border border-cyan-100/10"
+        />
+        <div
+          aria-hidden="true"
+          data-orb-reactor-layer="triangular_flux_bridge"
+          data-orb-layer-purpose="arc reactor structural bridge"
+          data-orb-layer-identity="tri-blade inner compression bridge"
+          data-orb-layer-motion="locked alignment shimmer"
+          className="absolute h-[46%] w-[46%] bg-[conic-gradient(from_30deg,transparent_0deg,transparent_24deg,rgba(226,246,255,0.22)_24deg,rgba(226,246,255,0.22)_42deg,transparent_42deg,transparent_144deg,rgba(125,211,252,0.2)_144deg,rgba(125,211,252,0.2)_162deg,transparent_162deg,transparent_264deg,rgba(226,246,255,0.22)_264deg,rgba(226,246,255,0.22)_282deg,transparent_282deg)] opacity-80"
         />
 
         {/* Turbine — jet-engine blade ring rendered as conic SVG. */}
@@ -180,8 +206,16 @@ export function Orb({
           data-orb-layer-purpose="central power source"
           data-orb-layer-identity="contained fusion heart"
           data-orb-layer-motion="plasma heartbeat"
-          className={`relative grid h-60 w-60 place-items-center rounded-full border bg-[radial-gradient(circle_at_50%_42%,var(--tw-gradient-stops))] ${tone.core} ${tone.shell} sm:h-72 sm:w-72`}
+          className={`relative grid h-52 w-52 place-items-center rounded-full border bg-[radial-gradient(circle_at_50%_42%,var(--tw-gradient-stops))] ${tone.core} ${tone.shell} sm:h-64 sm:w-64`}
         >
+          <div
+            aria-hidden="true"
+            data-orb-reactor-layer="arc_reactor_blue_white_core"
+            data-orb-layer-purpose="visible arc-reactor authority core"
+            data-orb-layer-identity="blue-white contained intelligence core"
+            data-orb-layer-motion="slow contained plasma ignition"
+            className="absolute h-[72%] w-[72%] rounded-full border border-white/30 bg-[radial-gradient(circle,rgba(255,255,255,0.88)_0%,rgba(186,230,253,0.55)_18%,rgba(56,189,248,0.24)_42%,transparent_72%)]"
+          />
           {/* Plasma flame — bright reactor center. */}
           <div
             aria-hidden="true"
@@ -190,11 +224,11 @@ export function Orb({
             data-orb-layer-purpose="visible fusion pressure"
             data-orb-layer-identity="compressed blue plasma"
             data-orb-layer-motion="contained flame compression"
-            className="absolute h-40 w-40 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.92)_0%,rgba(125,211,252,0.55)_22%,rgba(14,165,233,0.35)_48%,rgba(8,47,73,0)_78%)] sm:h-48 sm:w-48"
+            className="absolute h-36 w-36 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.92)_0%,rgba(125,211,252,0.55)_22%,rgba(14,165,233,0.35)_48%,rgba(8,47,73,0)_78%)] sm:h-44 sm:w-44"
           />
-          <div className="h-36 w-36 rounded-full border border-white/20 bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(34,211,238,0.12)_42%,rgba(3,7,18,0.78)_72%)] sm:h-44 sm:w-44" />
-          <div className="absolute h-48 w-48 rounded-full border border-teal-100/15 sm:h-60 sm:w-60" />
-          <div className="absolute h-20 w-20 rounded-full bg-white/10 blur-2xl" />
+          <div className="h-32 w-32 rounded-full border border-white/20 bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(34,211,238,0.12)_42%,rgba(3,7,18,0.78)_72%)] sm:h-40 sm:w-40" />
+          <div className="absolute h-44 w-44 rounded-full border border-teal-100/15 sm:h-56 sm:w-56" />
+          <div className="absolute h-16 w-16 rounded-full bg-white/10 blur-2xl" />
         </div>
       </div>
 
