@@ -71,8 +71,18 @@ describe("Gauntlet cosmic canvas architecture", () => {
     expect(canvasSource).toContain("<OrbitControls");
     expect(canvasSource).toContain("enablePan");
     expect(canvasSource).toContain("enableZoom");
-    expect(canvasSource).toContain("enableRotate={false}");
+    expect(canvasSource).toContain("enableRotate");
+    expect(canvasSource).toContain("minDistance={30}");
+    expect(canvasSource).toContain("maxDistance={1400}");
+    expect(canvasSource).toContain("zoomSpeed={1.2}");
+    expect(canvasSource).toContain("panSpeed={1}");
     expect(canvasSource).toContain("target={[0, 0, 0]}");
+    expect(canvasSource).toContain("GAUNTLET_WORLD_COORDINATES");
+    expect(canvasSource).toContain("space: [-420, 40, -80]");
+    expect(canvasSource).toContain("power: [200, -400, -140]");
+    expect(canvasSource).toContain("far: LOD_FAR_DISTANCE");
+    expect(canvasSource).toContain("near: LOD_NEAR_DISTANCE");
+    expect(canvasSource).toContain('from "maath"');
 
     expect(starfieldSource).toContain("<Stars");
     expect(starfieldSource).toContain("count={8000}");

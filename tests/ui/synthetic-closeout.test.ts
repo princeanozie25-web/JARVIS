@@ -32,14 +32,6 @@ function sourceText(files: readonly string[]) {
   return files.map((file) => readFileSync(file, "utf8")).join("\n");
 }
 
-function routeHtml() {
-  return [
-    renderToStaticMarkup(createElement(RestPage)),
-    renderToStaticMarkup(createElement(WorkingPage)),
-    renderToStaticMarkup(createElement(AuditPage)),
-  ].join("\n");
-}
-
 function assertNoControls(html: string) {
   expect(html).not.toMatch(/<button\b/i);
   expect(html).not.toMatch(/<form\b/i);
@@ -62,16 +54,76 @@ function assertOnlySafeNavigationLinks(html: string) {
   }
 }
 
+function buttonLabels(html: string): string[] {
+  return Array.from(html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi))
+    .map((match) =>
+      match[1]!
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function assertWorkingGateControlsOnly(html: string) {
+  expect(html).toContain('data-working-layout="approval-gated-cockpit"');
+  expect(html).toContain('data-working-cockpit="working-cockpit"');
+  expect(html).toContain('data-only-mutator="human-gate"');
+  expect(html).toContain('data-only-path-to-side-effects="true"');
+  expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+  expect(html).toContain('data-read-only-context-panel="true"');
+  expect(html).toContain("FAKE ADAPTER");
+  expect(buttonLabels(html).join(" ")).not.toMatch(
+    /\b(run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
+function assertAuditZeroMutation(html: string) {
+  expect(html).not.toMatch(/<button\b/i);
+  expect(html).not.toMatch(/<form\b/i);
+  expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+  expect(hrefs).toEqual(
+    expect.arrayContaining([
+      "/rest",
+      "/working",
+      "/audit",
+      "#audit-trace",
+      "#audit-architecture",
+      "#audit-telemetry",
+      "#audit-governance",
+    ]),
+  );
+  expect(
+    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
+  ).toBe(true);
+  expect(html).not.toMatch(/\brole="button"/i);
+  expect(html).not.toMatch(
+    /\b(approve|run|retry|execute|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
 describe("Phase 12F.3 synthetic demo closeout guards", () => {
   it("renders /rest, /working, and /audit with synthetic demo-safe data only", () => {
-    const html = routeHtml();
+    const restHtml = renderToStaticMarkup(createElement(RestPage));
+    const workingHtml = renderToStaticMarkup(createElement(WorkingPage));
+    const auditHtml = renderToStaticMarkup(createElement(AuditPage));
+    const html = [restHtml, workingHtml, auditHtml].join("\n");
 
     expect(html).toContain(REQUIRED_DEMO_MARKER);
     expect(html).toContain("Synthetic demo-safe only");
     expect(html).toContain('data-orb-mode="working"');
-    expect(html).toContain("synthetic known");
+    expect(workingHtml).toContain("Human Gate");
+    expect(workingHtml).toContain("Working Cockpit");
     expect(html).toContain("synthetic 3");
-    assertNoControls(html);
+    expect(auditHtml).toContain('data-audit-cockpit="read-only-fortress"');
+    assertNoControls(restHtml);
+    assertWorkingGateControlsOnly(workingHtml);
+    assertAuditZeroMutation(auditHtml);
   });
 
   it("keeps synthetic datasets marked read-only, metadata-only, local, and non-persistent", () => {

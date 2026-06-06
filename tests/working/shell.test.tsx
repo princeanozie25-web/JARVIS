@@ -37,23 +37,26 @@ function sourceText() {
   );
 }
 
+function buttonLabels(html: string): string[] {
+  return Array.from(html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi))
+    .map((match) => match[1] ?? "")
+    .map((content) => content.replace(/<[^>]+>/g, " "))
+    .map((content) => content.replace(/\s+/g, " ").trim());
+}
+
 describe("Phase 12B.1 Working screen shell", () => {
-  it("/working page renders the read-only cockpit shell", () => {
+  it("/working page renders the approval-gated cockpit shell", () => {
     const html = renderWorkingPage();
 
-    expect(html).toContain('data-working-layout="read-only-cockpit"');
-    expect(html).toContain('data-working-shell="read-only"');
-    expect(html).toContain("JARVIS Room OS");
-    expect(html).toContain("Working Mode");
-    expect(html).toContain("Command Center Cockpit");
-    expect(html).toContain("Read-only cockpit shell");
-    expect(html).toContain('data-local-only="true"');
-    expect(html).toContain('data-metadata-only="true"');
-    expect(html).toContain('data-authority="none"');
+    expect(html).toContain('data-working-layout="approval-gated-cockpit"');
+    expect(html).toContain('data-working-shell="approval-gated"');
+    expect(html).toContain("Working Cockpit");
+    expect(html).toContain("Human Gate");
+    expect(html).toContain('data-only-mutator="human-gate"');
   });
 
-  it("renders polished registry layout and metadata badges", () => {
-    const html = renderWorkingPage();
+  it("keeps the legacy WorkingShell deterministic and read-only", () => {
+    const html = renderToStaticMarkup(<WorkingShell />);
 
     expect(html).toContain('aria-label="Working shell metadata badges"');
     expect(html).toContain('aria-label="Working panel registry layout"');
@@ -65,7 +68,7 @@ describe("Phase 12B.1 Working screen shell", () => {
   });
 
   it("renders every placeholder panel region", () => {
-    const html = renderWorkingPage();
+    const html = renderToStaticMarkup(<WorkingShell />);
 
     for (const title of REQUIRED_PANELS) {
       expect(html).toContain(title);
@@ -102,16 +105,14 @@ describe("Phase 12B.1 Working screen shell", () => {
     });
   });
 
-  it("renders no buttons, forms, action links, or authority affordances", () => {
+  it("keeps approval controls inside the Human Gate on the route", () => {
     const html = renderWorkingPage();
 
-    expect(html).not.toMatch(/<button\b/i);
-    expect(html).not.toMatch(/<form\b/i);
-    expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
-    expect(html).not.toMatch(/<a\b/i);
-    expect(html).not.toMatch(/\brole="button"/i);
-    expect(html).not.toMatch(
-      /\b(approve|run|retry|execute|mutate|schedule)\b/i,
+    expect(html).toContain('data-human-gate-panel="true"');
+    expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
+    expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+    expect(buttonLabels(html).join(" ")).not.toMatch(
+      /\b(run|retry|execute|schedule)\b/i,
     );
   });
 

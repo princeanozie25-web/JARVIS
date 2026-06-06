@@ -22,6 +22,7 @@ const SYNTHETIC_ROUTE_SOURCE_FILES = [
 const COMPONENT_SOURCE_FILES = [
   "src/components/orb/Orb.tsx",
   "src/components/working/WorkingShell.tsx",
+  "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
 ] as const;
 
@@ -51,6 +52,59 @@ function assertOnlySafeNavigationLinks(html: string) {
   }
 }
 
+function buttonLabels(html: string): string[] {
+  return Array.from(html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi))
+    .map((match) =>
+      match[1]!
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function assertWorkingGateControlsOnly(html: string) {
+  expect(html).toContain('data-working-layout="approval-gated-cockpit"');
+  expect(html).toContain('data-working-cockpit="working-cockpit"');
+  expect(html).toContain('data-only-mutator="human-gate"');
+  expect(html).toContain('data-only-path-to-side-effects="true"');
+  expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+  expect(html).toContain('data-read-only-context-panel="true"');
+  expect(html).toContain("FAKE ADAPTER");
+  expect(buttonLabels(html).join(" ")).not.toMatch(
+    /\b(run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
+function assertAuditZeroMutation(html: string) {
+  expect(html).not.toMatch(/<button\b/i);
+  expect(html).not.toMatch(/<form\b/i);
+  expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+  expect(hrefs).toEqual(
+    expect.arrayContaining([
+      "/rest",
+      "/working",
+      "/audit",
+      "#audit-trace",
+      "#audit-architecture",
+      "#audit-telemetry",
+      "#audit-governance",
+    ]),
+  );
+  expect(
+    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
+  ).toBe(true);
+  expect(html).not.toMatch(/\brole="button"/i);
+  expect(html).not.toMatch(
+    /\b(approve|run|retry|execute|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
 describe("Phase 12F.1 synthetic route-level projection wiring", () => {
   it("/rest route renders projection-backed synthetic orb metadata", () => {
     const html = renderToStaticMarkup(<RestPage />);
@@ -64,28 +118,32 @@ describe("Phase 12F.1 synthetic route-level projection wiring", () => {
     assertNoControls(html);
   });
 
-  it("/working route renders projection-backed synthetic panels", () => {
+  it("/working route renders the approval-gated cockpit with gate-only controls", () => {
     const html = renderToStaticMarkup(<WorkingPage />);
 
     expect(html).toContain(SYNTHETIC_OBSERVABILITY_MARKER);
-    expect(html).toContain("synthetic known");
-    expect(html).toContain("demo current");
-    expect(html).toContain("Synthetic demo-safe metadata");
-    expect(html).toContain('data-panel-id="room_state"');
-    expect(html).toContain('data-panel-status="placeholder"');
-    assertNoControls(html);
+    expect(html).toContain("Project");
+    expect(html).toContain("Research");
+    expect(html).toContain("Build Monitor");
+    expect(html).toContain("Morning Brief");
+    expect(html).toContain("Human Gate");
+    assertWorkingGateControlsOnly(html);
   });
 
-  it("/audit route renders projection-backed synthetic panels", () => {
+  it("/audit route renders the living read-only audit fortress", () => {
     const html = renderToStaticMarkup(<AuditPage />);
 
     expect(html).toContain(SYNTHETIC_OBSERVABILITY_MARKER);
     expect(html).toContain("synthetic 3");
     expect(html).toContain("Replay path");
     expect(html).toContain("Graph path");
-    expect(html).toContain('data-audit-panel-id="replay_timeline"');
-    expect(html).toContain('data-panel-status="placeholder"');
-    assertNoControls(html);
+    expect(html).toContain('data-audit-cockpit="read-only-fortress"');
+    expect(html).toContain('data-audit-view="trace"');
+    expect(html).toContain('data-audit-view="architecture"');
+    expect(html).toContain('data-audit-view="telemetry"');
+    expect(html).toContain('data-audit-view="governance"');
+    expect(html).toContain('data-tripwire-fired="true"');
+    assertAuditZeroMutation(html);
     expect(html).not.toMatch(
       /replay execution|start replay|execute replay|graph execution|execute graph|graph-driven execution/i,
     );

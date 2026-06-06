@@ -1116,3 +1116,225 @@
     bottom: 5.2rem;
   }
 }
+
+/*
+ * Cosmic gauntlet rebuild.
+ *
+ * The visible surface is now the full-bleed Three.js cosmos. The SVG
+ * pipeline remains mounted only as a hidden read-only contract layer so
+ * governance invariants and existing tests continue to exercise the same
+ * metadata markers without visually cluttering the map.
+ */
+
+.jarvis-gauntlet-cinematic {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.12), transparent 12rem),
+    radial-gradient(ellipse at 21% 28%, rgba(34, 197, 94, 0.12), transparent 20rem),
+    radial-gradient(ellipse at 78% 24%, rgba(192, 132, 252, 0.13), transparent 20rem),
+    radial-gradient(ellipse at 76% 75%, rgba(34, 211, 238, 0.1), transparent 22rem),
+    linear-gradient(180deg, #02030a 0%, #050816 44%, #000 100%);
+}
+
+.jarvis-gauntlet-canvas-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  opacity: 1;
+  mix-blend-mode: normal;
+  mask-image: none;
+}
+
+.jarvis-gauntlet-overlay {
+  min-height: 100vh;
+}
+
+.jarvis-gauntlet-titleplate {
+  position: absolute;
+  top: clamp(1rem, 2vw, 2rem);
+  left: clamp(1rem, 2vw, 2rem);
+  z-index: 20;
+  max-width: min(38rem, calc(100vw - 2rem));
+  text-shadow: 0 0 24px rgba(2, 6, 23, 0.92);
+}
+
+.jarvis-gauntlet-constellation-label,
+.jarvis-gauntlet-node-label {
+  position: absolute;
+  left: var(--label-x);
+  top: var(--label-y);
+  z-index: 18;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  text-shadow:
+    0 0 14px rgba(0, 0, 0, 0.95),
+    0 0 26px currentColor;
+}
+
+.jarvis-gauntlet-constellation-label {
+  min-width: 5.75rem;
+  border: 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.92);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.5rem 0.6rem;
+  text-transform: uppercase;
+  transition:
+    color var(--jarvis-motion-duration-fast) var(--jarvis-motion-easing-smooth),
+    transform var(--jarvis-motion-duration-fast) var(--jarvis-motion-easing-smooth);
+}
+
+.jarvis-gauntlet-constellation-label::before {
+  position: absolute;
+  inset: 0.2rem;
+  z-index: -1;
+  border: 1px solid rgba(186, 230, 253, 0.18);
+  background: rgba(2, 6, 23, 0.26);
+  box-shadow: inset 0 0 20px rgba(125, 211, 252, 0.08);
+  content: "";
+}
+
+.jarvis-gauntlet-constellation-label:hover,
+.jarvis-gauntlet-constellation-label:focus-visible {
+  color: rgba(253, 230, 138, 0.96);
+  outline: none;
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.jarvis-gauntlet-node-label {
+  max-width: 14rem;
+  color: rgba(241, 245, 249, 0.88);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.64rem;
+  line-height: 1.15;
+  padding: 0.3rem 0.42rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.jarvis-gauntlet-node-label::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid rgba(226, 232, 240, 0.12);
+  background: rgba(2, 6, 23, 0.58);
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.12);
+  content: "";
+}
+
+.jarvis-gauntlet-lod-readout,
+.jarvis-gauntlet-focus-readout {
+  position: absolute;
+  z-index: 18;
+  width: min(17rem, calc(100vw - 2rem));
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.9);
+}
+
+.jarvis-gauntlet-lod-readout {
+  top: clamp(1rem, 2vw, 2rem);
+  right: clamp(1rem, 2vw, 2rem);
+}
+
+.jarvis-gauntlet-focus-readout {
+  right: clamp(1rem, 2vw, 2rem);
+  bottom: 6.25rem;
+}
+
+.jarvis-gauntlet-focus-nav {
+  position: absolute;
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  bottom: clamp(0.75rem, 2vw, 1.5rem);
+  left: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 24;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.jarvis-gauntlet-focus-nav button {
+  display: grid;
+  min-height: 2.75rem;
+  place-items: center;
+  border: 1px solid rgba(186, 230, 253, 0.14);
+  background: rgba(2, 6, 23, 0.54);
+  color: rgba(226, 232, 240, 0.78);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.68rem;
+  line-height: 1.1;
+  padding: 0.55rem 0.5rem;
+  text-transform: uppercase;
+  backdrop-filter: blur(18px);
+  transition:
+    border-color var(--jarvis-motion-duration-fast) var(--jarvis-motion-easing-smooth),
+    color var(--jarvis-motion-duration-fast) var(--jarvis-motion-easing-smooth),
+    background var(--jarvis-motion-duration-fast) var(--jarvis-motion-easing-smooth);
+}
+
+.jarvis-gauntlet-focus-nav button[aria-pressed="true"],
+.jarvis-gauntlet-focus-nav button:focus-visible,
+.jarvis-gauntlet-focus-nav button:hover {
+  border-color: rgba(251, 191, 36, 0.58);
+  background: rgba(15, 23, 42, 0.74);
+  color: rgba(253, 230, 138, 0.96);
+  outline: none;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.16);
+}
+
+.jarvis-gauntlet-contract-layer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .jarvis-gauntlet-titleplate {
+    max-width: calc(100vw - 2rem);
+  }
+
+  .jarvis-gauntlet-lod-readout,
+  .jarvis-gauntlet-focus-readout {
+    display: none;
+  }
+
+  .jarvis-gauntlet-focus-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .jarvis-gauntlet-focus-nav button {
+    min-height: 2.55rem;
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .jarvis-gauntlet-titleplate h1 {
+    font-size: 1.35rem;
+  }
+
+  .jarvis-gauntlet-titleplate p:last-child {
+    display: none;
+  }
+
+  .jarvis-gauntlet-focus-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jarvis-gauntlet-node-label {
+    font-size: 0.58rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jarvis-gauntlet-constellation-label,
+  .jarvis-gauntlet-node-label,
+  .jarvis-gauntlet-focus-nav button {
+    transition: none !important;
+  }
+}

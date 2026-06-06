@@ -1,0 +1,13 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          29968
+- Dir:          C:\Users\princ\Documents\jarvis
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 29968 /F to stop it.
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.16.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.16.0
+npm notice To update run: npm install -g npm@11.16.0
+npm notice

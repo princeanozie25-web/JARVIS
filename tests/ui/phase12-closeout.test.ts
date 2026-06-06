@@ -47,6 +47,7 @@ const UI_ROUTE_FILES = [
 const UI_COMPONENT_FILES = [
   "src/components/orb/Orb.tsx",
   "src/components/working/WorkingShell.tsx",
+  "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
 ] as const;
 
@@ -61,14 +62,6 @@ function readJson<T>(path: string): T {
 
 function sourceText(files: readonly string[]) {
   return files.map((file) => readFileSync(file, "utf8")).join("\n");
-}
-
-function commandCenterHtml() {
-  return [
-    renderToStaticMarkup(createElement(RestPage)),
-    renderToStaticMarkup(createElement(WorkingPage)),
-    renderToStaticMarkup(createElement(AuditPage)),
-  ].join("\n");
 }
 
 function assertNoControls(html: string) {
@@ -96,6 +89,59 @@ function assertOnlySafeNavigationLinks(html: string) {
 function assertNoRawContent(html: string) {
   expect(html).not.toMatch(
     /raw_payload|payload_json|prompt body|prompt leaked|model output|ocr text|frame bytes|voice sample|project body|command value|sk-secret|hidden-token/i,
+  );
+}
+
+function buttonLabels(html: string): string[] {
+  return Array.from(html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi))
+    .map((match) =>
+      match[1]!
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function assertWorkingGateControlsOnly(html: string) {
+  expect(html).toContain('data-working-layout="approval-gated-cockpit"');
+  expect(html).toContain('data-working-cockpit="working-cockpit"');
+  expect(html).toContain('data-only-mutator="human-gate"');
+  expect(html).toContain('data-only-path-to-side-effects="true"');
+  expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+  expect(html).toContain('data-read-only-context-panel="true"');
+  expect(html).toContain("FAKE ADAPTER");
+  expect(buttonLabels(html).join(" ")).not.toMatch(
+    /\b(run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
+function assertAuditZeroMutation(html: string) {
+  expect(html).not.toMatch(/<button\b/i);
+  expect(html).not.toMatch(/<form\b/i);
+  expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+  expect(hrefs).toEqual(
+    expect.arrayContaining([
+      "/rest",
+      "/working",
+      "/audit",
+      "#audit-trace",
+      "#audit-architecture",
+      "#audit-telemetry",
+      "#audit-governance",
+    ]),
+  );
+  expect(
+    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
+  ).toBe(true);
+  expect(html).not.toMatch(/\brole="button"/i);
+  expect(html).not.toMatch(
+    /\b(approve|run|retry|execute|schedule|replay_execute|graph_execute)\b/i,
   );
 }
 
@@ -146,14 +192,22 @@ describe("Phase 12G.1 Command Center UI closeout guards", () => {
   });
 
   it("renders /rest, /working, and /audit with synthetic demo-safe metadata only", () => {
-    const html = commandCenterHtml();
+    const restHtml = renderToStaticMarkup(createElement(RestPage));
+    const workingHtml = renderToStaticMarkup(createElement(WorkingPage));
+    const auditHtml = renderToStaticMarkup(createElement(AuditPage));
+    const html = [restHtml, workingHtml, auditHtml].join("\n");
 
     expect(html).toContain(REQUIRED_DEMO_MARKER);
     expect(html).toContain("Synthetic demo-safe only");
     expect(html).toContain('data-orb-mode="working"');
-    expect(html).toContain('data-panel-id="room_state"');
-    expect(html).toContain('data-audit-panel-id="replay_timeline"');
-    assertNoControls(html);
+    expect(workingHtml).toContain("Human Gate");
+    expect(workingHtml).toContain("Working Cockpit");
+    expect(auditHtml).toContain('data-audit-cockpit="read-only-fortress"');
+    expect(auditHtml).toContain('data-audit-view="trace"');
+    expect(auditHtml).toContain('data-tripwire-fired="true"');
+    assertNoControls(restHtml);
+    assertWorkingGateControlsOnly(workingHtml);
+    assertAuditZeroMutation(auditHtml);
     assertNoRawContent(html);
   });
 
@@ -209,6 +263,7 @@ describe("Phase 12G.1 Command Center UI closeout guards", () => {
       /room\/adapters|fake-room-adapter|executeCommand|commandRoom|approval service|executeReplay|executeGraph|runReplay|graphAction/i,
     );
     expect(source).not.toMatch(/<button|<form|onClick|onSubmit/i);
+    expect(source).not.toMatch(/<input|<textarea|<select/i);
   });
 
   it("keeps synthetic and demo-safety modules pure, local, metadata-only, and non-authoritative", () => {
@@ -270,9 +325,14 @@ describe("Phase 12G.1 Command Center UI closeout guards", () => {
   });
 
   it("does not render action controls or disabled affordance names as controls anywhere in the Command Center routes", () => {
-    const html = commandCenterHtml();
+    const restHtml = renderToStaticMarkup(createElement(RestPage));
+    const workingHtml = renderToStaticMarkup(createElement(WorkingPage));
+    const auditHtml = renderToStaticMarkup(createElement(AuditPage));
+    const html = [restHtml, workingHtml, auditHtml].join("\n");
 
-    assertNoControls(html);
+    assertNoControls(restHtml);
+    assertWorkingGateControlsOnly(workingHtml);
+    assertAuditZeroMutation(auditHtml);
     expect(html).not.toMatch(
       /replay execution|start replay|execute replay|graph execution|execute graph|graph-driven execution|dependency action|approval execution/i,
     );

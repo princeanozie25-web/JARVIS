@@ -1,16 +1,13 @@
 import { WorkingCockpit } from "@/components/working/WorkingCockpit";
-import {
-  SYNTHETIC_OBSERVABILITY_MARKER,
-  syntheticWorkingPanels,
-} from "@/lib/observability/synthetic-data";
+import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
 
 export default function WorkingPage() {
   return (
     <main
       aria-label="JARVIS Working cockpit"
-      data-working-layout="read-only-cockpit"
-      data-working-layout-style="mission-control"
-      className="min-h-screen overflow-hidden bg-void px-6 py-8 text-ink sm:px-10"
+      data-working-layout="approval-gated-cockpit"
+      data-working-layout-style="working-cockpit"
+      className="min-h-screen overflow-hidden bg-void p-4 text-ink"
     >
       <div
         aria-hidden="true"
@@ -21,11 +18,11 @@ export default function WorkingPage() {
         className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,var(--color-theme-glow),transparent_38%),radial-gradient(circle_at_80%_10%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,rgba(2,6,23,0.16),rgba(2,4,10,0.98)_72%)]"
       />
 
-      <div className="relative w-full min-h-[calc(100vh-4rem)]">
-        <p className="mb-4 font-mono text-xs uppercase tracking-[0.22em] text-signal">
+      <div className="relative w-full">
+        <p className="mb-3 font-mono text-[0.64rem] uppercase tracking-[0.2em] text-signal/76">
           {SYNTHETIC_OBSERVABILITY_MARKER}
         </p>
-        <WorkingCockpit projectionPanels={syntheticWorkingPanels()} />
+        <WorkingCockpit />
       </div>
     </main>
   );

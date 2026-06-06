@@ -24,16 +24,19 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
       'data-gauntlet-asset-backdrop="nasa-webb-carina-cosmic-cliffs"',
     );
     expect(markup).toContain('data-gauntlet-cinematic-stage="galaxy-map"');
-    expect(markup).toContain("JARVIS - Infinity Gauntlet");
+    expect(markup).toContain("JARVIS - Cosmic System Map");
+    expect(markup).toContain("Navigable Constellation Audit");
   });
 
-  it("renders the left Orb reactor panel with reactor hooks preserved", () => {
+  it("renders the React truth overlay with sparse LOD labels", () => {
     const markup = renderToStaticMarkup(<GauntletPage />);
 
-    expect(markup).toContain('data-gauntlet-orb-panel="arc-reactor-heart"');
-    expect(markup).toContain('data-orb-atmosphere="threejs"');
-    expect(markup).toContain('data-orb-reactor-layer="fusion_core"');
-    expect(markup).toContain('data-orb-layer="plasma"');
+    expect(markup).toContain('data-gauntlet-react-overlay="truth-layer"');
+    expect(markup).toContain('data-gauntlet-label-layer="lod-react-overlay"');
+    expect(markup).toContain('data-gauntlet-lod-status="distance-based"');
+    expect(markup).toContain('data-gauntlet-overlay-owns-labels="true"');
+    expect(markup).toContain('data-gauntlet-overlay-owns-metadata="true"');
+    expect(markup).toContain('data-gauntlet-overlay-owns-approval="false"');
   });
 
   it("renders cinematic hooks for every stone and the Human Gate authority core", () => {
@@ -64,22 +67,18 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
   it("renders pan, zoom, and stone-focus affordances without execution authority", () => {
     const markup = renderToStaticMarkup(<GauntletPage />);
 
-    expect(markup).toContain('data-gauntlet-pan-zoom="interactive"');
     expect(markup).toContain(
       'data-gauntlet-navigation-affordance="pan-zoom-focus"',
     );
     expect(markup).toContain(
-      'data-gauntlet-territory-artifact-layer="cosmic-fields"',
+      'data-gauntlet-navigation-authority="presentational-only"',
     );
-    expect(markup).toContain('data-gauntlet-territory-artifact="space"');
-    expect(markup).toContain('data-gauntlet-territory-artifact="human_gate"');
-    expect(markup).toContain('data-gauntlet-drag-surface="pointer-drag"');
+    expect(markup).toContain('data-gauntlet-focus-target="overview"');
     expect(markup).toContain('data-gauntlet-focus-target="space"');
     expect(markup).toContain('data-gauntlet-focus-target="human_gate"');
-    expect(markup).toContain('data-gauntlet-execution-authority="none"');
   });
 
-  it("keeps Three.js/canvas atmosphere layers aria-hidden and non-interactive", () => {
+  it("keeps Three.js/canvas atmosphere layers aria-hidden and presentational", () => {
     const markup = renderToStaticMarkup(<GauntletPage />);
 
     expect(markup).toContain(
@@ -89,7 +88,6 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
     expect(markup).toContain('data-gauntlet-canvas-owns-metadata="false"');
     expect(markup).toContain('data-gauntlet-canvas-owns-routing="false"');
     expect(markup).toContain('data-gauntlet-canvas-owns-approval="false"');
-    expect(markup).toContain('data-orb-atmosphere="threejs"');
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain("pointer-events-none");
     expect(markup).not.toMatch(
@@ -110,7 +108,7 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
     expect(markup).not.toMatch(/>\s*(Run|Send|Execute|Approve|Mutate)\s*</i);
   });
 
-  it("links the root and audit index to the cinematic Gauntlet route", () => {
+  it("links the root to the cinematic Gauntlet route while audit owns its fortress index", () => {
     const homeMarkup = renderToStaticMarkup(<HomePage />);
     const markup = renderToStaticMarkup(<AuditPage />);
 
@@ -119,10 +117,8 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
       'data-root-gauntlet-nav-link="living-system-map"',
     );
     expect(homeMarkup).toContain("Open Living System Map");
-    expect(markup).toContain('href="/audit/gauntlet"');
-    expect(markup).toContain(
-      'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
-    );
+    expect(markup).toContain('data-audit-cockpit="read-only-fortress"');
+    expect(markup).toContain('data-audit-view="architecture"');
   });
 
   it("declares starfield, galaxy, and reduced-motion CSS hooks", () => {
@@ -130,7 +126,8 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
     expect(gauntletCss).toContain(".jarvis-gauntlet-cosmic-asset-backdrop");
     expect(gauntletCss).toContain(".jarvis-gauntlet-galaxy-backdrop");
     expect(gauntletCss).toContain(".jarvis-gauntlet-nebula");
-    expect(gauntletCss).toContain(".jarvis-gauntlet-camera-plane");
+    expect(gauntletCss).toContain(".jarvis-gauntlet-focus-nav");
+    expect(gauntletCss).toContain(".jarvis-gauntlet-node-label");
     expect(gauntletCss).toContain("data-space-tesseract-core");
     expect(gauntletCss).toContain("data-human-gate-authority-core");
     expect(gauntletCss).toMatch(/prefers-reduced-motion:\s*reduce/);
@@ -144,6 +141,8 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
 
     expect(manifest).toContain("NASA Webb Carina Cosmic Cliffs");
     expect(manifest).toContain("Poly Haven Kloppenheim 02 Pure Sky HDRI");
+    expect(manifest).toContain("Kenney UI Pack - Sci-Fi");
+    expect(manifest).toContain("Creative Commons Zero (CC0)");
     expect(manifest).toContain("public/assets/cosmic-gauntlet");
     expect(manifest).toContain("No copyrighted Marvel");
     expect(
@@ -154,5 +153,10 @@ describe("/audit/gauntlet cinematic galaxy HUD", () => {
     expect(existsSync("public/assets/cosmic-gauntlet/starfield.hdr")).toBe(
       true,
     );
+    expect(
+      existsSync(
+        "public/assets/cosmic-gauntlet/kenney-ui-pack-sci-fi/License.txt",
+      ),
+    ).toBe(true);
   });
 });

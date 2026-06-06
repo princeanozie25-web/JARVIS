@@ -42,7 +42,9 @@ const UI_SHELL_FILES = [
   "src/app/working/page.tsx",
   "src/app/audit/page.tsx",
   "src/components/orb/Orb.tsx",
+  "src/components/working/WorkingCockpit.tsx",
   "src/components/working/WorkingShell.tsx",
+  "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
 ] as const;
 
@@ -66,6 +68,59 @@ const PROJECTION_POSTURE: ProjectionPostureStub = Object.freeze({
 
 function readFiles(files: readonly string[]) {
   return files.map((file) => readFileSync(file, "utf8")).join("\n");
+}
+
+function buttonLabels(html: string): string[] {
+  return Array.from(html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/gi))
+    .map((match) =>
+      match[1]!
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function assertWorkingGateControlsOnly(html: string) {
+  expect(html).toContain('data-working-layout="approval-gated-cockpit"');
+  expect(html).toContain('data-working-cockpit="working-cockpit"');
+  expect(html).toContain('data-only-mutator="human-gate"');
+  expect(html).toContain('data-only-path-to-side-effects="true"');
+  expect(html.match(/data-human-gate-panel="true"/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-approve/g)).toHaveLength(4);
+  expect(html.match(/wc-gate-deny/g)).toHaveLength(4);
+  expect(html).toContain('data-read-only-context-panel="true"');
+  expect(html).toContain("FAKE ADAPTER");
+  expect(buttonLabels(html).join(" ")).not.toMatch(
+    /\b(run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
+  );
+}
+
+function assertAuditZeroMutation(html: string) {
+  expect(html).not.toMatch(/<button\b/i);
+  expect(html).not.toMatch(/<form\b/i);
+  expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+  const hrefs = (html.match(/<a\b[^>]*>/gi) ?? []).map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+  expect(hrefs).toEqual(
+    expect.arrayContaining([
+      "/rest",
+      "/working",
+      "/audit",
+      "#audit-trace",
+      "#audit-architecture",
+      "#audit-telemetry",
+      "#audit-governance",
+    ]),
+  );
+  expect(
+    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
+  ).toBe(true);
+  expect(html).not.toMatch(/\brole="button"/i);
+  expect(html).not.toMatch(
+    /\b(approve|run|retry|execute|schedule|replay_execute|graph_execute)\b/i,
+  );
 }
 
 function response<T>(
@@ -321,11 +376,9 @@ describe("Phase 12D.5 projection adapter closeout guards", () => {
 
   it("keeps Rest, Working, and Audit routes free of projection adapters and live transports", () => {
     const source = readFiles(UI_SHELL_FILES);
-    const html = [
-      renderToStaticMarkup(createElement(RestPage)),
-      renderToStaticMarkup(createElement(WorkingPage)),
-      renderToStaticMarkup(createElement(AuditPage)),
-    ].join("\n");
+    const restHtml = renderToStaticMarkup(createElement(RestPage));
+    const workingHtml = renderToStaticMarkup(createElement(WorkingPage));
+    const auditHtml = renderToStaticMarkup(createElement(AuditPage));
 
     expect(source).not.toMatch(
       /projection-adapter|createOrbProjectionTokens|createWorkingProjectionViewModels|createAuditProjectionViewModels|createObservabilityApi|queryRoomState|queryRecentTraces|queryTelemetryRollups|queryOrbStateMetadata/i,
@@ -333,8 +386,15 @@ describe("Phase 12D.5 projection adapter closeout guards", () => {
     expect(source).not.toMatch(
       /setInterval|setTimeout|poll|fetch\(|WebSocket|EventSource|invoke\(/i,
     );
-    expect(html).toContain("Synthetic demo-safe metadata");
-    expect(html).toContain("Static placeholder regions only.");
-    expect(html).not.toMatch(/<button\b|<form\b|<input\b|role="button"/i);
+    expect(restHtml).toContain("Synthetic demo-safe only");
+    expect(workingHtml).toContain("Working Cockpit");
+    expect(workingHtml).toContain("Human Gate");
+    expect(auditHtml).toContain("Audit Mode");
+    expect(auditHtml).toContain('data-audit-cockpit="read-only-fortress"');
+    assertWorkingGateControlsOnly(workingHtml);
+    assertAuditZeroMutation(auditHtml);
+    expect([restHtml, auditHtml].join("\n")).not.toMatch(
+      /<button\b|<form\b|<input\b|<textarea\b|<select\b|role="button"/i,
+    );
   });
 });

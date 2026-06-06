@@ -1,224 +1,225 @@
-import { Orb } from "@/components/orb/Orb";
-import type { ReactNode } from "react";
+"use client";
 
-import { GauntletCosmicViewport } from "./GauntletCosmicViewport";
+import type { CSSProperties } from "react";
+
+import {
+  GAUNTLET_LOD_THRESHOLDS,
+  type GauntletCanvasTelemetry,
+  type GauntletFocusTarget,
+  type GauntletScreenLabel,
+  type GauntletZoneId,
+} from "./GauntletCanvas";
 import { GauntletPipeline } from "./GauntletPipeline";
 
-const SYSTEM_STATUS = [
-  ["System Health", "Optimal", "local"],
-  ["Security", "Fortress Lock", "review"],
-  ["Learning", "Active", "signal"],
-  ["Energy", "Stable", "local"],
-] as const;
+interface GauntletOverlayProps {
+  focusTarget: GauntletFocusTarget;
+  telemetry: GauntletCanvasTelemetry;
+  onFocus: (target: GauntletFocusTarget) => void;
+}
 
-const AUDIT_TRAIL = [
-  ["Intent received", "10:42:01"],
-  ["Classified", "10:42:02"],
-  ["Routed", "10:42:03"],
-  ["Gate proposal", "10:42:04"],
-  ["Approved", "10:42:05"],
-  ["Audited", "10:42:09"],
-] as const;
+const FOCUS_TARGETS: readonly {
+  id: GauntletFocusTarget;
+  label: string;
+  description: string;
+}[] = [
+  { id: "overview", label: "Overview", description: "Full cosmos" },
+  { id: "human_gate", label: "Human Gate", description: "Authority centre" },
+  { id: "space", label: "Space", description: "Tesseract routing" },
+  { id: "time", label: "Time", description: "Agent orbit" },
+  { id: "mind", label: "Mind", description: "Council orbit" },
+  { id: "soul", label: "Soul", description: "Memory orbit" },
+  { id: "reality", label: "Reality", description: "Room orbit" },
+  { id: "power", label: "Power", description: "Policy orbit" },
+];
 
-const LIVE_PULSE_LEGEND = [
-  ["Intent", "space"],
-  ["Route", "reality"],
-  ["Proposal", "gold"],
-  ["Knowledge", "soul"],
-  ["Agent", "time"],
-  ["Council", "mind"],
-] as const;
+const ZONE_ORDER: readonly GauntletZoneId[] = [
+  "space",
+  "time",
+  "mind",
+  "soul",
+  "reality",
+  "power",
+];
 
-export function GauntletOverlay() {
+export function GauntletOverlay({
+  focusTarget,
+  telemetry,
+  onFocus,
+}: GauntletOverlayProps) {
+  const visibleLabels = declutterLabels(
+    telemetry.screenLabels.filter((label) => {
+      if (!label.visible) return false;
+      if (label.kind === "attribute") {
+        return label.zoneId === focusTarget && label.lod === "near";
+      }
+      return true;
+    }),
+  );
+  const focusedZone =
+    focusTarget !== "overview" && focusTarget !== "human_gate"
+      ? focusTarget
+      : null;
+
   return (
-    <div
+    <section
+      id="gauntlet-pipeline"
+      aria-label="Navigable cosmic system map"
       data-gauntlet-react-overlay="truth-layer"
       data-gauntlet-overlay-owns-labels="true"
       data-gauntlet-overlay-owns-metadata="true"
       data-gauntlet-overlay-owns-approval="false"
-      className="relative z-10 grid min-h-[calc(100vh-2.5rem)] gap-3 lg:grid-cols-[320px_minmax(0,1fr)]"
+      data-gauntlet-cinematic-stage="galaxy-map"
+      className="jarvis-gauntlet-overlay pointer-events-none absolute inset-0 z-10"
     >
-      <aside
-        aria-label="JARVIS Rest Mode reactor status"
-        data-gauntlet-orb-panel="arc-reactor-heart"
-        className="jarvis-gauntlet-hud-panel grid content-between gap-4 rounded-lg border border-cyan-100/10 bg-slate-950/55 p-4 shadow-[0_0_60px_rgba(14,165,233,0.14)]"
+      <div className="jarvis-gauntlet-titleplate pointer-events-none">
+        <p className="font-mono text-[0.68rem] uppercase text-cyan-100/72">
+          JARVIS - Cosmic System Map
+        </p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-white sm:text-3xl">
+          Navigable Constellation Audit
+        </h1>
+        <p className="mt-2 max-w-[34rem] text-sm leading-6 text-slate-300/72">
+          Metadata-only governance surface. No execute, approve, mutation,
+          recording, voice, export, or live telemetry subscription controls.
+        </p>
+      </div>
+
+      <div
+        aria-label="Cosmic map labels"
+        data-gauntlet-label-layer="lod-react-overlay"
+        className="absolute inset-0"
       >
-        <header>
-          <p className="font-mono text-sm uppercase tracking-[0.32em] text-cyan-100/80">
-            JARVIS - Rest Mode
-          </p>
-        </header>
-        <div
-          aria-hidden="true"
-          data-gauntlet-orb-visual-window="reactor-only"
-          className="jarvis-gauntlet-orb-viewport overflow-hidden"
-        >
-          <div className="origin-top scale-[0.78] sm:scale-[0.82] xl:scale-[0.76]">
-            <Orb activityState="idle" />
-          </div>
-        </div>
-        <section aria-label="System standby" className="text-center">
-          <p className="font-mono text-sm uppercase tracking-[0.22em] text-cyan-100/75">
-            System Standby
-          </p>
-          <p className="mt-1 font-mono text-xs uppercase tracking-[0.18em] text-slate-400">
-            Awaiting intent
-          </p>
-        </section>
-        <dl
-          aria-label="Gauntlet status overview"
-          className="grid gap-2 rounded-md border border-cyan-100/10 bg-black/20 p-3"
-        >
-          {SYSTEM_STATUS.map(([label, value, tone]) => (
-            <div
-              key={label}
-              data-gauntlet-status-tone={tone}
-              className="flex items-center justify-between gap-3 border-b border-white/5 py-2 last:border-b-0"
+        {visibleLabels.map((label) =>
+          label.kind === "attribute" ? (
+            <span
+              key={label.id}
+              data-gauntlet-node-label={label.id}
+              data-gauntlet-node-label-zone={label.zoneId}
+              data-gauntlet-label-lod={label.lod}
+              className="jarvis-gauntlet-node-label"
+              style={labelStyle(label)}
             >
-              <dt className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-slate-300">
-                {label}
+              {label.label}
+            </span>
+          ) : (
+            <button
+              key={label.id}
+              type="button"
+              data-gauntlet-constellation-label={label.id}
+              data-gauntlet-label-lod={label.lod}
+              className="jarvis-gauntlet-constellation-label pointer-events-auto"
+              style={labelStyle(label)}
+              onClick={() => onFocus(label.id as GauntletFocusTarget)}
+            >
+              {label.label}
+            </button>
+          ),
+        )}
+      </div>
+
+      <aside
+        aria-label="LOD status"
+        data-gauntlet-lod-status="distance-based"
+        className="jarvis-gauntlet-lod-readout pointer-events-none"
+      >
+        <p className="font-mono text-[0.62rem] uppercase text-slate-400">
+          LOD thresholds: near {"<="} {GAUNTLET_LOD_THRESHOLDS.near}, mid {"<="}{" "}
+          {GAUNTLET_LOD_THRESHOLDS.far}, far &gt; {GAUNTLET_LOD_THRESHOLDS.far}
+        </p>
+        <dl className="mt-3 grid gap-2">
+          {ZONE_ORDER.map((zone) => (
+            <div key={zone} className="grid grid-cols-[5rem_3rem_auto] gap-2">
+              <dt className="font-mono text-[0.62rem] uppercase text-slate-300">
+                {zone}
               </dt>
-              <dd className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-cyan-100">
-                {value}
+              <dd
+                className="font-mono text-[0.62rem] uppercase text-cyan-100"
+                data-gauntlet-zone-lod={telemetry.lodByZone[zone]}
+              >
+                {telemetry.lodByZone[zone]}
+              </dd>
+              <dd className="font-mono text-[0.62rem] text-slate-500">
+                {Math.round(telemetry.distanceByZone[zone] ?? 0)}
               </dd>
             </div>
           ))}
         </dl>
-        <p className="text-center font-mono text-xs uppercase tracking-[0.24em] text-slate-400">
-          I&apos;m here. Ready when you are.
-        </p>
       </aside>
 
-      <section
-        id="gauntlet-pipeline"
-        aria-label="Cinematic Living System Map"
-        data-gauntlet-cinematic-stage="galaxy-map"
-        className="jarvis-gauntlet-stage relative overflow-hidden rounded-lg border border-cyan-100/10 bg-slate-950/45 shadow-[0_0_90px_rgba(14,165,233,0.12)]"
-      >
-        <header className="relative z-20 flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
-          <div>
-            <p className="font-mono text-base uppercase tracking-[0.28em] text-cyan-100/90">
-              JARVIS - Infinity Gauntlet
-            </p>
-            <p className="mt-1 font-mono text-xs uppercase tracking-[0.2em] text-slate-400">
-              Living system map
-            </p>
-          </div>
-          <div
-            aria-label="Gauntlet telemetry status"
-            className="flex flex-wrap items-center gap-2 font-mono text-[0.68rem] uppercase tracking-[0.16em]"
-          >
-            <span className="rounded border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-emerald-200">
-              Live
-            </span>
-            <span className="rounded border border-cyan-100/10 bg-black/25 px-2 py-1 text-slate-300">
-              Telemetry: metadata only
-            </span>
-          </div>
-        </header>
-
-        <GauntletCosmicViewport>
-          <GauntletPipeline presentation="cinematic" />
-        </GauntletCosmicViewport>
-
+      {focusedZone ? (
         <aside
-          aria-label="Audit trail"
-          data-gauntlet-audit-trail="metadata-only"
-          className="jarvis-gauntlet-audit-trail absolute right-5 top-[38%] z-30 hidden w-56 rounded-md border border-cyan-100/15 bg-slate-950/70 p-4 shadow-[0_0_50px_rgba(14,165,233,0.12)] backdrop-blur-md lg:block"
+          aria-label={`${focusedZone} detail status`}
+          data-gauntlet-focused-detail={focusedZone}
+          className="jarvis-gauntlet-focus-readout pointer-events-none"
         >
-          <p className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-slate-300">
-            Audit Trail
+          <p className="font-mono text-[0.64rem] uppercase text-cyan-100/70">
+            Focus
           </p>
-          <dl className="grid gap-2">
-            {AUDIT_TRAIL.map(([label, time]) => (
-              <div key={label} className="grid grid-cols-[1fr_auto] gap-3">
-                <dt className="font-mono text-[0.64rem] uppercase tracking-[0.13em] text-slate-300">
-                  {label}
-                </dt>
-                <dd className="font-mono text-[0.64rem] text-slate-500">
-                  {time}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <p className="mt-1 font-display text-xl capitalize text-white">
+            {focusedZone}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-300/72">
+            Node labels are only visible in near LOD for this constellation.
+          </p>
         </aside>
-      </section>
+      ) : null}
 
-      <footer
-        aria-label="Gauntlet bottom telemetry"
-        data-gauntlet-bottom-telemetry="read-only"
-        className="grid gap-3 lg:col-span-2 lg:grid-cols-[1fr_1.5fr_1fr_1fr_1fr]"
+      <nav
+        aria-label="Focus constellations"
+        data-gauntlet-navigation-affordance="pan-zoom-focus"
+        data-gauntlet-navigation-authority="presentational-only"
+        className="jarvis-gauntlet-focus-nav pointer-events-auto"
       >
-        <MetricPanel title="Status Overview">
-          <Metric label="Intents Today" value="24" />
-          <Metric label="Tasks Completed" value="18" />
-          <Metric label="Knowledge Growth" value="+42" />
-          <Metric label="System Uptime" value="99.8%" />
-        </MetricPanel>
-        <MetricPanel title="Live Pulse Legend">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {LIVE_PULSE_LEGEND.map(([label, stone]) => (
-              <span
-                key={label}
-                data-gauntlet-legend-stone={stone}
-                className="rounded border border-cyan-100/10 bg-black/20 px-3 py-3 text-center font-mono text-[0.66rem] uppercase tracking-[0.12em] text-slate-200"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </MetricPanel>
-        <MetricPanel title="Gate Status">
-          <p className="font-mono text-xl uppercase tracking-[0.12em] text-emerald-200">
-            Approved
-          </p>
-          <p className="mt-1 font-mono text-[0.65rem] uppercase tracking-[0.16em] text-slate-500">
-            T1 path authorized
-          </p>
-        </MetricPanel>
-        <MetricPanel title="System Trust">
-          <p className="font-mono text-4xl text-emerald-200">92</p>
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-emerald-300/70">
-            High trust
-          </p>
-        </MetricPanel>
-        <MetricPanel title="Cost Frame">
-          <p className="font-mono text-xl uppercase tracking-[0.12em] text-emerald-200">
-            T1
-          </p>
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-emerald-300/70">
-            Optimized
-          </p>
-        </MetricPanel>
-      </footer>
-    </div>
-  );
-}
+        {FOCUS_TARGETS.map((target) => (
+          <button
+            key={target.id}
+            type="button"
+            data-gauntlet-focus-target={target.id}
+            aria-pressed={focusTarget === target.id}
+            title={target.description}
+            onClick={() => onFocus(target.id)}
+          >
+            <span>{target.label}</span>
+          </button>
+        ))}
+      </nav>
 
-function MetricPanel({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="jarvis-gauntlet-hud-panel rounded-lg border border-cyan-100/10 bg-slate-950/55 p-4">
-      <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-slate-400">
-        {title}
-      </h2>
-      {children}
+      <div
+        aria-hidden="true"
+        data-gauntlet-contract-layer="hidden-read-only-svg"
+        className="jarvis-gauntlet-contract-layer"
+      >
+        <GauntletPipeline presentation="cinematic" />
+      </div>
     </section>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="inline-grid min-w-28 gap-1 rounded border border-cyan-100/10 bg-black/20 px-3 py-3">
-      <span className="font-mono text-[0.62rem] uppercase tracking-[0.13em] text-slate-500">
-        {label}
-      </span>
-      <span className="font-mono text-xl text-cyan-100">{value}</span>
-    </div>
-  );
+function labelStyle(label: GauntletScreenLabel): CSSProperties {
+  return {
+    "--label-x": `clamp(3.5rem, ${label.x}px, calc(100vw - 3.5rem))`,
+    "--label-y": `clamp(4.5rem, ${label.y}px, calc(100vh - 7rem))`,
+  } as CSSProperties;
+}
+
+function declutterLabels(
+  labels: readonly GauntletScreenLabel[],
+): readonly GauntletScreenLabel[] {
+  const kept: GauntletScreenLabel[] = [];
+  const sorted = [...labels].sort((a, b) => a.importance - b.importance);
+
+  for (const label of sorted) {
+    const minDistance = label.kind === "attribute" ? 42 : 72;
+    const overlaps = kept.some(
+      (other) =>
+        Math.hypot(other.x - label.x, other.y - label.y) < minDistance &&
+        other.kind === label.kind,
+    );
+    if (!overlaps) kept.push(label);
+  }
+
+  return kept.sort((a, b) => {
+    if (a.kind === b.kind) return a.importance - b.importance;
+    return a.kind === "attribute" ? 1 : -1;
+  });
 }

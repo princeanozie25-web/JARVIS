@@ -12,18 +12,17 @@ import {
 const AUDIT_SOURCE_FILES = [
   "src/app/audit/page.tsx",
   "app/audit/page.tsx",
+  "src/components/audit/AuditCockpit.tsx",
   "src/components/audit/AuditShell.tsx",
   "src/components/audit/panel-registry.ts",
   "src/components/audit/types.ts",
 ] as const;
 
 const REQUIRED_REGIONS = [
-  "Replay timeline",
-  "Trace viewer",
-  "Governance boundary viewer",
-  "Runtime dependency viewer",
-  "Redaction status",
-  "Disabled-feature matrix",
+  "Trace Timeline",
+  "Architecture Graph",
+  "Telemetry Cockpit",
+  "Governance Boundary",
 ] as const;
 
 function renderAuditPage() {
@@ -36,11 +35,35 @@ function sourceText() {
   );
 }
 
-function assertOnlySafeNavigationLinks(html: string) {
+function assertAuditNavigationLinksOnly(html: string) {
   const anchors = html.match(/<a\b[^>]*>/gi) ?? [];
-  expect(anchors).toEqual([expect.stringContaining('href="/audit/gauntlet"')]);
-  expect(anchors[0]).toContain(
-    'data-audit-gauntlet-nav-link="cinematic-gauntlet"',
+  const hrefs = anchors.map(
+    (anchor) => anchor.match(/\bhref="([^"]+)"/i)?.[1] ?? "",
+  );
+  expect(hrefs).toEqual(
+    expect.arrayContaining([
+      "/rest",
+      "/working",
+      "/audit",
+      "#audit-trace",
+      "#audit-architecture",
+      "#audit-telemetry",
+      "#audit-governance",
+    ]),
+  );
+  expect(
+    hrefs.every((href) => href.startsWith("/") || href.startsWith("#")),
+  ).toBe(true);
+}
+
+function assertAuditZeroMutation(html: string) {
+  expect(html).not.toMatch(/<button\b/i);
+  expect(html).not.toMatch(/<form\b/i);
+  expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
+  assertAuditNavigationLinksOnly(html);
+  expect(html).not.toMatch(/\brole="button"/i);
+  expect(html).not.toMatch(
+    /\b(approve|run|retry|execute|schedule|replay_execute|graph_execute)\b/i,
   );
 }
 
@@ -50,28 +73,37 @@ describe("Phase 12C.1 Audit screen shell", () => {
 
     expect(html).toContain('data-audit-layout="read-only-forensics"');
     expect(html).toContain('data-audit-shell="read-only"');
+    expect(html).toContain('data-audit-cockpit="read-only-fortress"');
     expect(html).toContain("JARVIS Room OS");
     expect(html).toContain("Audit Mode");
     expect(html).toContain("Command Center Forensics");
-    expect(html).toContain("Read-only forensics shell");
-    expect(html).toContain('data-local-only="true"');
     expect(html).toContain('data-metadata-only="true"');
-    expect(html).toContain('data-authority="none"');
+    expect(html).toContain('data-audit-authority="none"');
+    expect(html).toContain('data-zero-mutation="true"');
   });
 
-  it("renders every placeholder audit region", () => {
+  it("renders every audit fortress view", () => {
     const html = renderAuditPage();
 
     for (const title of REQUIRED_REGIONS) {
       expect(html).toContain(title);
     }
-    expect(html).toContain('aria-label="Audit panel registry layout"');
-    expect(html).toContain('data-audit-panel-id="replay_timeline"');
-    expect(html).toContain('data-audit-panel-id="trace_viewer"');
-    expect(html).toContain('data-audit-panel-id="governance_boundary"');
-    expect(html).toContain('data-audit-panel-id="runtime_dependency"');
-    expect(html).toContain('data-audit-panel-id="redaction_status"');
-    expect(html).toContain('data-audit-panel-id="disabled_feature_matrix"');
+    expect(html).toContain('data-audit-view="trace"');
+    expect(html).toContain('data-audit-view="architecture"');
+    expect(html).toContain('data-audit-view="telemetry"');
+    expect(html).toContain('data-audit-view="governance"');
+    expect(html.match(/data-read-only-audit-view="true"/g)).toHaveLength(4);
+  });
+
+  it("renders alive read-only graph, telemetry, and tripwire surfaces", () => {
+    const html = renderAuditPage();
+
+    expect(html).toContain('data-graph-node="phase"');
+    expect(html).toContain('data-graph-edge-status="forbidden"');
+    expect(html).toContain('data-tripwire-fired="true"');
+    expect(html).toContain("Disabled Feature Matrix");
+    expect(html).toContain("Public dashboards");
+    expect(html).toContain("Latency Wave");
   });
 
   it("uses deterministic static placeholder data only", () => {
@@ -101,14 +133,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
   it("renders no buttons, forms, action links, or authority affordances", () => {
     const html = renderAuditPage();
 
-    expect(html).not.toMatch(/<button\b/i);
-    expect(html).not.toMatch(/<form\b/i);
-    expect(html).not.toMatch(/<input\b|<textarea\b|<select\b/i);
-    assertOnlySafeNavigationLinks(html);
-    expect(html).not.toMatch(/\brole="button"/i);
-    expect(html).not.toMatch(
-      /\b(approve|run|retry|execute|mutate|schedule|replay_execute|graph_execute)\b/i,
-    );
+    assertAuditZeroMutation(html);
   });
 
   it("does not expose replay or graph execution affordances", () => {
@@ -137,6 +162,7 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(sourceText()).not.toMatch(
       /store\/|event-store|better-sqlite3|room\/adapters|fake-room-adapter|executeCommand|commandRoom/i,
     );
+    expect(sourceText()).not.toMatch(/<button|<form|<input|onClick|onSubmit/i);
   });
 
   it("does not touch global fetch during render", () => {
