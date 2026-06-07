@@ -176,3 +176,16 @@ No live runtime bridge or gameplay systems are implemented in this slice.
 The repo-local project includes `AJarvisHumanGateAnchor`, a lightweight C++ placeholder actor for the Human Gate visual authority metaphor.
 
 The actor is Unreal-side visual scaffolding only. It exposes editable metadata and a default sphere placeholder, has tick disabled, and does not call into JARVIS runtime systems.
+
+## Tooling Status
+
+The project explicitly enables safe built-in Unreal visual tooling for future Gauntlet work:
+
+- Niagara
+- PCG
+- Metasound
+- ControlRig
+- MovieRenderPipeline
+- EnhancedInput
+
+External plugins and asset sources remain deferred. Fab, Megascans, MetaHuman, and RealityCapture are not installed or imported.
