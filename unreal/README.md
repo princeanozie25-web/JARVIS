@@ -52,6 +52,12 @@ The Gauntlet concept treats Unreal as a high-fidelity cockpit for observing JARV
 
 The Unreal layer should consume only curated, sanitized, metadata-only events. It should not receive secrets, raw prompts, private memory content, approval bypass data, or executable tool payloads.
 
+## Universe Scaffold
+
+`Universe_01` is the first level for the lab. The initial C++ scaffold adds `AJarvisHumanGateAnchor`, a placeholder visual actor for the Human Gate authority metaphor.
+
+The actor is not gameplay authority and does not connect to JARVIS. It is available for future placement in the level when a dedicated editor slice is ready to modify map assets.
+
 ## Future Event-Stream Bridge
 
 Expected direction:

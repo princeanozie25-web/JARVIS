@@ -170,3 +170,9 @@ Mac validation is intentionally not part of this Windows adoption slice.
 This project remains a read-only visual client. It must not modify JARVIS governance, approval, router, model, memory, tools, voice, agents, council, Google, Telegram, UI Polish, or runtime contracts.
 
 No live runtime bridge or gameplay systems are implemented in this slice.
+
+## Universe Scaffold Placeholder
+
+The repo-local project includes `AJarvisHumanGateAnchor`, a lightweight C++ placeholder actor for the Human Gate visual authority metaphor.
+
+The actor is Unreal-side visual scaffolding only. It exposes editable metadata and a default sphere placeholder, has tick disabled, and does not call into JARVIS runtime systems.
