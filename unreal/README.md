@@ -8,10 +8,10 @@ The branch exists to prepare Unreal Engine tooling, repository conventions, and 
 
 ## Current Project Status
 
-The manually-created C++ project is currently external to the repository:
+The manually-created C++ project has been imported into the repository:
 
 ```text
-D:\JarvisGauntlet\JarvisGauntlet
+unreal\JarvisGauntlet
 ```
 
 It was created with Unreal Engine association `5.7`, and the local engine was detected at:
@@ -20,7 +20,7 @@ It was created with Unreal Engine association `5.7`, and the local engine was de
 D:\UE_5.7
 ```
 
-The repository adopts the project through documentation and verification first. The external `.uproject`, `Config`, `Content`, and `Source` directories have not been copied into Git in this slice.
+The repository tracks only source project inputs: `JarvisGauntlet.uproject`, `Config`, `Content`, and `Source`. Generated Unreal outputs remain ignored.
 
 Run the verification script from the repository root:
 

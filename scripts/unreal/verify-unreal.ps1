@@ -68,10 +68,13 @@ if (-not $enginePath -and (Test-Path -LiteralPath "C:\Program Files\Epic Games")
     Select-Object -First 1 -ExpandProperty FullName
 }
 
+$repoProjectPath = Join-Path $repoRoot "unreal\JarvisGauntlet\JarvisGauntlet.uproject"
+$externalProjectPath = "D:\JarvisGauntlet\JarvisGauntlet\JarvisGauntlet.uproject"
+
 $uprojectCandidates = @(
-  (Join-Path $repoRoot "unreal\JarvisGauntlet\JarvisGauntlet.uproject"),
+  $repoProjectPath,
   "D:\JarvisGauntlet\JarvisGauntlet.uproject",
-  "D:\JarvisGauntlet\JarvisGauntlet\JarvisGauntlet.uproject"
+  $externalProjectPath
 )
 
 $uprojectPath = Find-FirstExistingPath -Paths $uprojectCandidates
@@ -90,6 +93,7 @@ if ($enginePath) {
 
 Write-Host "JARVIS Unreal verification"
 Write-Host "Repository: $repoRoot"
+Write-Host "Project preference: repo-local unreal\JarvisGauntlet, then external fallback"
 Write-Check -Name "Unreal Engine path" -Value $enginePath
 Write-Check -Name "JarvisGauntlet.uproject" -Value $uprojectPath
 Write-Check -Name "Build.bat" -Value $buildBatPath

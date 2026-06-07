@@ -10,6 +10,12 @@ The manually-created Unreal C++ project was detected at:
 D:\JarvisGauntlet\JarvisGauntlet
 ```
 
+It has now been imported into the repository at:
+
+```text
+C:\Users\princ\Documents\jarvis\unreal\JarvisGauntlet
+```
+
 The expected prompt path `D:\JarvisGauntlet\JarvisGauntlet.uproject` was not present. The actual project file is:
 
 ```text
@@ -38,23 +44,23 @@ D:\UE_5.7
 
 ## Adoption Decision
 
-This slice adopts the project by documentation and verification script first. The Unreal project remains external at `D:\JarvisGauntlet\JarvisGauntlet`.
+The previous slice adopted the project by documentation and verification script first. This slice imports the source project inputs into `unreal\JarvisGauntlet` while retaining the external project as a fallback/reference path.
 
 Rationale:
 
-- This is project adoption and verification only.
+- This is project import and verification only.
 - There is no live JARVIS bridge yet.
 - There are no gameplay systems to integrate yet.
 - The existing project contains generated Unreal folders that must not be copied.
-- The copyable project subset includes binary `.uasset` content. Git LFS is prepared, but importing binary content should be a deliberate follow-up.
+- Unreal binary assets are tracked through Git LFS.
 
-If the project is later copied into the repository, the target path should be:
+The imported project path is:
 
 ```text
 unreal\JarvisGauntlet
 ```
 
-Copy only source project inputs:
+Imported source project inputs:
 
 - `JarvisGauntlet.uproject`
 - `Config\`
@@ -65,7 +71,7 @@ Do not copy generated outputs.
 
 ## What Files Are Tracked
 
-For the current adoption slice, the repository tracks only lab workflow files:
+The repository now tracks the Unreal project source inputs and lab workflow files:
 
 - `scripts/unreal/verify-unreal.ps1`
 - `docs/unreal/JARVIS_GAUNTLET_PROJECT.md`
@@ -73,8 +79,12 @@ For the current adoption slice, the repository tracks only lab workflow files:
 - `unreal/README.md`
 - `.gitattributes`
 - `.gitignore`
+- `unreal/JarvisGauntlet/JarvisGauntlet.uproject`
+- `unreal/JarvisGauntlet/Config/`
+- `unreal/JarvisGauntlet/Content/`
+- `unreal/JarvisGauntlet/Source/`
 
-The external project at `D:\JarvisGauntlet\JarvisGauntlet` is not tracked by Git in this slice.
+The external project at `D:\JarvisGauntlet\JarvisGauntlet` is no longer the primary project path for this branch, but remains supported by the verification script as a fallback.
 
 ## What Files Are Ignored
 
@@ -111,10 +121,9 @@ C:\Program Files\Epic Games\UE_5.x
 3. Install Git LFS.
 4. Install Epic Games Launcher from the official Epic Games website.
 5. Install the matching Unreal Engine version, currently Unreal Engine 5.7.
-6. Place or copy the Unreal project at one of the supported paths:
+6. Use the repository-imported project path:
 
 ```text
-D:\JarvisGauntlet\JarvisGauntlet
 <repo>\unreal\JarvisGauntlet
 ```
 
