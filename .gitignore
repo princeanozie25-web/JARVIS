@@ -46,3 +46,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .dual-graph/
+
+# Unreal Engine generated files
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
