@@ -58,6 +58,8 @@ The Unreal layer should consume only curated, sanitized, metadata-only events. I
 
 The actor is not gameplay authority and does not connect to JARVIS. It is available for future placement in the level when a dedicated editor slice is ready to modify map assets.
 
+`Universe_01` also includes `AJarvisUniverseFoundationActor`, a procedural visual scaffold for the dark cosmic command-space, six future galaxy-domain anchors, starfield, overview camera, and central Human Gate reserve.
+
 ## Future Event-Stream Bridge
 
 Expected direction:

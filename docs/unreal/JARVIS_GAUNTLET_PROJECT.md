@@ -189,3 +189,9 @@ The project explicitly enables safe built-in Unreal visual tooling for future Ga
 - EnhancedInput
 
 External plugins and asset sources remain deferred. Fab, Megascans, MetaHuman, and RealityCapture are not installed or imported.
+
+## Universe Foundation
+
+`Universe_01` now contains the first visual foundation for a dark cosmic Gauntlet command-space. The level uses `AJarvisUniverseFoundationActor` as a single procedural scene scaffold containing a starfield, central Human Gate reserve marker, six future galaxy-domain anchors, labels, and an overview camera.
+
+The foundation remains read-only visual scaffolding. It does not place the Human Gate actor, connect to JARVIS, or add gameplay authority.
