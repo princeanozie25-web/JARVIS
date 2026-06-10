@@ -9,6 +9,7 @@ import type {
   WorkingCommandCenterModel,
 } from "@/lib/command-center/liquid-command-center-data";
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
+import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
 
 export interface WorkingCockpitProps {
   model?: WorkingCommandCenterModel;
@@ -66,6 +67,11 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
   ],
   activity: [
     {
+      ts: "09:31",
+      tag: "VOICE",
+      text: "Wake event observed - conversation active - T0 route available",
+    },
+    {
       ts: "09:28",
       tag: "PROP",
       text: "Chat created room proposal prop-room-1842",
@@ -81,6 +87,7 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
       text: "Local model warm - llama3.2:3b ready",
     },
   ],
+  voiceActivity: buildVoicePipelineVisibilityModel().events,
 };
 
 export function WorkingCockpit({

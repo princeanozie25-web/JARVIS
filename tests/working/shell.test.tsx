@@ -53,6 +53,7 @@ describe("Phase 12B.1 Working screen shell", () => {
     expect(html).toContain("Working Cockpit");
     expect(html).toContain("Human Gate");
     expect(html).toContain('data-only-mutator="human-gate"');
+    expect(html).toContain("Wake event observed - conversation active");
   });
 
   it("keeps the legacy WorkingShell deterministic and read-only", () => {

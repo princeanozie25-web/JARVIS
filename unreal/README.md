@@ -76,6 +76,49 @@ Bridge expectations:
 - No control plane calls from Unreal back into JARVIS.
 - No runtime dependency from JARVIS core systems on Unreal assets.
 
+## MCP Control Lane
+
+The Unreal MCP lane is vendored for editor-only automation:
+
+```text
+tools\unreal-mcp\Python
+unreal\JarvisGauntlet\Plugins\UnrealMCP
+```
+
+Setup details live in:
+
+```text
+docs\unreal\UNREAL_MCP_SETUP.md
+```
+
+Current status:
+
+- `chongdashu/unreal-mcp` is vendored at commit `4e5f00da50733190481311e254d16d137a84ef33`.
+- The Unreal plugin is present under the repo-local project.
+- The Python MCP server is present under `tools\unreal-mcp\Python`.
+- The screenshot bridge script writes to `docs\unreal\screenshots\mcp-latest.png`.
+- Manual editor enablement and restart are still required before MCP can control the editor.
+
+Workflow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/unreal/check-mcp-prereqs.ps1
+```
+
+Then:
+
+1. Open `unreal\JarvisGauntlet\JarvisGauntlet.uproject`.
+2. Enable `UnrealMCP` in `Edit > Plugins`.
+3. Restart Unreal Editor.
+4. Start the MCP server:
+
+   ```powershell
+   uv --directory "C:\Users\princ\Documents\jarvis\tools\unreal-mcp\Python" run unreal_mcp_server.py
+   ```
+
+5. Test a harmless read-only tool such as `get_actors_in_level`.
+6. Use the screenshot bridge after visual changes; never mark a visual change complete without inspecting the actual Unreal screenshot.
+
 ## Branch Isolation Rules
 
 - Work only on `unreal-gauntlet-lab`.

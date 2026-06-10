@@ -39,7 +39,14 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     expect(html).toContain("rest mode");
     expect(html).toContain("SYSTEM STANDBY");
     expect(html).toContain("Awaiting you");
-    expect(html).toContain("TAP ONCE TO ENABLE VOICE");
+    expect(html).toContain("HEY JARVIS YOU UP");
+    expect(html).toContain('data-voice-wake-mode="openwakeword_local_onnx"');
+    expect(html).toContain('data-rest-voice-wake="openwakeword-local-onnx"');
+    expect(html).toContain('data-wake-phrase="Hey Jarvis you up"');
+    expect(html).toContain('data-pre-wake-audio-storage="false"');
+    expect(html).toContain('data-voice-reactor-state="sleep"');
+    expect(html).toContain('data-reactor-state="thinking"');
+    expect(html).toContain('data-reactor-state="approval"');
     expect(html).toContain("NO ACTION AUTHORITY");
     expect(html.match(/data-suggestion-card=/g)).toHaveLength(4);
     expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(4);
@@ -146,7 +153,7 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     expect(html).toContain('data-voice-authorizes-actions="false"');
   });
 
-  it("does not reference capture, room, provider, persistence, network, or Tauri IPC APIs", () => {
+  it("does not reference capture, room execution, persistence, network, or Tauri IPC APIs", () => {
     expect(sourceText()).not.toMatch(
       /getUserMedia|getDisplayMedia|mediaDevices|AudioContext|navigator\.mediaDevices|camera|microphone|screen capture|global-hotkey|globalShortcut/i,
     );
@@ -154,7 +161,7 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
       /fetch\(|XMLHttpRequest|WebSocket|EventSource|invoke\(|@tauri-apps|tauri::command/i,
     );
     expect(sourceText()).not.toMatch(
-      /room\/|store\/|event-store|better-sqlite3|provider|openai|anthropic|ollama|hue|adapter/i,
+      /room\/|store\/|event-store|better-sqlite3|provider runtime|provider call|createProvider|openai|anthropic|ollama|hue|adapter/i,
     );
   });
 

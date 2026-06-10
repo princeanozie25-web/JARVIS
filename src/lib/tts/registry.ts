@@ -1,3 +1,7 @@
+import {
+  createChatterboxSpeechProvider,
+  createKokoroSpeechProvider,
+} from "./chatterbox-provider";
 import { disabledSpeechProvider } from "./disabled-provider";
 import { localTtsPlaceholderProvider } from "./local-placeholder";
 import type { SpeechProvider } from "./types";
@@ -33,4 +37,10 @@ export const speechProviders = new SpeechProviderRegistry(
 );
 
 speechProviders.register(disabledSpeechProvider);
+speechProviders.register(
+  createChatterboxSpeechProvider({ enabled: false, status: "unavailable" }),
+);
+speechProviders.register(
+  createKokoroSpeechProvider({ enabled: false, status: "unavailable" }),
+);
 speechProviders.register(localTtsPlaceholderProvider);

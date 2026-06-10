@@ -8,6 +8,14 @@ import type {
   ObservabilityProjectionReaders,
 } from "@/lib/observability/contracts";
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
+import {
+  buildSystemVoiceStackRuntimeState,
+  buildVoicePipelineVisibilityModel,
+} from "@/lib/voice-operating-mode";
+import type {
+  SystemVoiceStackRuntimeState,
+  VoicePipelineEvent,
+} from "@/lib/voice-operating-mode";
 import type { CountBucket } from "@/store/projections/telemetry-rollups";
 
 import { validateObservabilityPayloadSafety } from "./observability-redaction";
@@ -21,6 +29,15 @@ export interface RestAmbientCard {
   readonly meta: string;
 }
 
+export type RestVoiceReactorState =
+  | "sleep"
+  | "wake"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "approval"
+  | "alert";
+
 export interface RestCommandCenterModel {
   readonly marker: string;
   readonly cards: readonly RestAmbientCard[];
@@ -31,7 +48,11 @@ export interface RestCommandCenterModel {
     readonly micIndicatorRequired: true;
     readonly explicitPermissionGate: true;
     readonly authorizesActions: false;
-    readonly wakeMode: "explicit_local_visual_wake";
+    readonly wakeMode: "openwakeword_local_onnx";
+    readonly reactorState: RestVoiceReactorState;
+    readonly reactorStates: readonly RestVoiceReactorState[];
+    readonly stack: SystemVoiceStackRuntimeState;
+    readonly pipelineEvents: readonly VoicePipelineEvent[];
   };
 }
 
@@ -50,7 +71,7 @@ export interface WorkingMetric {
 
 export interface WorkingActivity {
   readonly ts: string;
-  readonly tag: "PROP" | "INFO" | "AUDIT" | "DENY";
+  readonly tag: "PROP" | "INFO" | "AUDIT" | "DENY" | "VOICE";
   readonly text: string;
 }
 
@@ -88,6 +109,7 @@ export interface WorkingCommandCenterModel {
   readonly room: readonly WorkingRoomDevice[];
   readonly cost: readonly WorkingMetric[];
   readonly activity: readonly WorkingActivity[];
+  readonly voiceActivity: readonly VoicePipelineEvent[];
 }
 
 export interface AuditStage {
@@ -140,6 +162,7 @@ export interface AuditCommandCenterModel {
   readonly trustClasses: readonly AuditTrustClass[];
   readonly forbiddenEdgesObserved: number;
   readonly disabledFeatures: readonly AuditDisabledFeature[];
+  readonly voiceActivity: readonly VoicePipelineEvent[];
   readonly replayNonExecutable: true;
   readonly surfaceAuthority: "none";
 }
@@ -152,6 +175,16 @@ const PROJECTION_POSTURE = Object.freeze({
   network_called: false,
   ui_rendered: false,
 });
+
+const PHASE22_REACTOR_STATES: readonly RestVoiceReactorState[] = [
+  "sleep",
+  "wake",
+  "listening",
+  "thinking",
+  "speaking",
+  "approval",
+  "alert",
+];
 
 const SYNTHETIC_READERS: ObservabilityProjectionReaders = Object.freeze({
   roomState: () => ({
@@ -277,7 +310,11 @@ export function buildRestCommandCenterModel(): RestCommandCenterModel {
         micIndicatorRequired: true,
         explicitPermissionGate: true,
         authorizesActions: false,
-        wakeMode: "explicit_local_visual_wake",
+        wakeMode: "openwakeword_local_onnx",
+        reactorState: "sleep",
+        reactorStates: PHASE22_REACTOR_STATES,
+        stack: buildSystemVoiceStackRuntimeState(),
+        pipelineEvents: buildVoicePipelineVisibilityModel().events,
       },
     },
     fallbackRestModel(orb),
@@ -318,6 +355,7 @@ export function buildWorkingCommandCenterModel(): WorkingCommandCenterModel {
       room,
       cost,
       activity,
+      voiceActivity: buildVoicePipelineVisibilityModel().events,
     },
     fallbackWorkingModel(),
   );
@@ -360,14 +398,16 @@ export function buildAuditCommandCenterModel(): AuditCommandCenterModel {
       ],
       forbiddenEdgesObserved: 0,
       disabledFeatures: [
-        { name: "Wake word", status: "DISABLED" },
-        { name: "Always-listening", status: "DISABLED" },
+        { name: "Cloud wake word", status: "DISABLED" },
+        { name: "Pre-wake audio storage", status: "DISABLED" },
+        { name: "Always-listening recording", status: "DISABLED" },
         { name: "Background camera", status: "DISABLED" },
         { name: "Auto-approval", status: "DISABLED" },
         { name: "Voice-only approval", status: "DISABLED" },
         { name: "Remote dashboard", status: "DISABLED" },
         { name: "Cloud-by-default", status: "DISABLED" },
       ],
+      voiceActivity: buildVoicePipelineVisibilityModel().events,
       replayNonExecutable: true,
       surfaceAuthority: "none",
     },
@@ -442,11 +482,18 @@ function workingActivity(api: ObservabilityApi): readonly WorkingActivity[] {
   ) {
     return fallbackActivity();
   }
-  return response.data.traces.map((traceItem) => ({
-    ts: timeLabel(traceItem.occurred_at_ms),
-    tag: /approval/i.test(traceItem.trace_kind) ? "PROP" : "INFO",
-    text: `${titleCase(traceItem.trace_kind)} metadata observed`,
-  }));
+  return [
+    {
+      ts: timeLabel(Date.now()),
+      tag: "VOICE",
+      text: "Wake event observed - conversation active - T0 route available",
+    },
+    ...response.data.traces.map<WorkingActivity>((traceItem) => ({
+      ts: timeLabel(traceItem.occurred_at_ms),
+      tag: /approval/i.test(traceItem.trace_kind) ? "PROP" : "INFO",
+      text: `${titleCase(traceItem.trace_kind)} metadata observed`,
+    })),
+  ];
 }
 
 function auditTraces(api: ObservabilityApi): readonly AuditTrace[] {
@@ -589,7 +636,11 @@ function fallbackRestModel(orb: RestOrbStateTokens): RestCommandCenterModel {
       micIndicatorRequired: true,
       explicitPermissionGate: true,
       authorizesActions: false,
-      wakeMode: "explicit_local_visual_wake",
+      wakeMode: "openwakeword_local_onnx",
+      reactorState: "sleep",
+      reactorStates: PHASE22_REACTOR_STATES,
+      stack: buildSystemVoiceStackRuntimeState(),
+      pipelineEvents: buildVoicePipelineVisibilityModel().events,
     },
   };
 }
@@ -622,6 +673,7 @@ function fallbackWorkingModel(): WorkingCommandCenterModel {
     room: fallbackRoomDevices(),
     cost: fallbackCostMetrics(),
     activity: fallbackActivity(),
+    voiceActivity: buildVoicePipelineVisibilityModel().events,
   };
 }
 
@@ -650,14 +702,16 @@ function fallbackAuditModel(): AuditCommandCenterModel {
     ],
     forbiddenEdgesObserved: 0,
     disabledFeatures: [
-      { name: "Wake word", status: "DISABLED" },
-      { name: "Always-listening", status: "DISABLED" },
+      { name: "Cloud wake word", status: "DISABLED" },
+      { name: "Pre-wake audio storage", status: "DISABLED" },
+      { name: "Always-listening recording", status: "DISABLED" },
       { name: "Background camera", status: "DISABLED" },
       { name: "Auto-approval", status: "DISABLED" },
       { name: "Voice-only approval", status: "DISABLED" },
       { name: "Remote dashboard", status: "DISABLED" },
       { name: "Cloud-by-default", status: "DISABLED" },
     ],
+    voiceActivity: buildVoicePipelineVisibilityModel().events,
     replayNonExecutable: true,
     surfaceAuthority: "none",
   };
@@ -697,6 +751,11 @@ function fallbackCostMetrics(): readonly WorkingMetric[] {
 
 function fallbackActivity(): readonly WorkingActivity[] {
   return [
+    {
+      ts: "09:31",
+      tag: "VOICE",
+      text: "Wake event observed - conversation active - T0 route available",
+    },
     {
       ts: "09:28",
       tag: "PROP",

@@ -19,6 +19,13 @@ struct FJarvisGalaxyAnchor
 {
 	GENERATED_BODY()
 
+	FJarvisGalaxyAnchor()
+		: DomainName(NAME_None)
+		, Location(FVector::ZeroVector)
+		, DomainColor(FLinearColor::White)
+	{
+	}
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
 	FName DomainName;
 
@@ -38,6 +45,8 @@ public:
 	AJarvisUniverseFoundationActor();
 
 	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void Tick(float DeltaSeconds) override;
+	virtual bool ShouldTickIfViewportsOnly() const override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
 	FString UniverseName;
@@ -49,10 +58,16 @@ public:
 	float GalaxyAnchorDistance;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
+	bool bShowDomainLabels;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
 	int32 StarCount;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
 	float StarfieldRadius;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
+	int32 NebulaWispCount;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "JARVIS|Universe")
 	TArray<FJarvisGalaxyAnchor> GalaxyAnchors;
@@ -65,7 +80,40 @@ protected:
 	TObjectPtr<UInstancedStaticMeshComponent> StarfieldInstances;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> NearStarfieldInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> WarmStarfieldInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> WhiteStarfieldInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> UltraFarStarfieldInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> NearDustInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> BrightStarFlareInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
 	TObjectPtr<UInstancedStaticMeshComponent> GalaxyAnchorInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> NebulaWispInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>> DomainNebulaInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>> DomainFogSheetInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> CommandGridInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TObjectPtr<UInstancedStaticMeshComponent> CoreBeamInstances;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
 	TObjectPtr<UStaticMeshComponent> HumanGateReserveMarker;
@@ -82,15 +130,38 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
 	TObjectPtr<UPointLightComponent> ChamberLight;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "JARVIS|Visual")
+	TArray<TObjectPtr<UPointLightComponent>> GalaxyGlowLights;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMesh> SphereMesh;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> CubeMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> FogSheetMesh;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> EmissiveMaterial;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> BasicShapeMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> FogSheetMaterial;
+
 private:
+	float LivingVoidTimeSeconds;
+
 	void ConfigureGalaxyAnchors();
 	void ConfigureLabels();
+	void ConfigureGalaxyGlowLights();
+	void ConfigureMaterials();
 	void BuildStarfield();
+	void BuildNearDust();
 	void BuildGalaxyAnchors();
+	void BuildNebulaWisps();
+	void BuildCommandGrid();
+	void BuildCoreBeam();
 };

@@ -23,6 +23,7 @@ const REQUIRED_REGIONS = [
   "REPLAY VIEWER",
   "TELEMETRY",
   "GOVERNANCE BOUNDARY",
+  "VOICE ACTIVITY",
   "DISABLED MATRIX",
 ] as const;
 
@@ -101,6 +102,9 @@ describe("Phase 12C.1 Audit screen shell", () => {
     expect(html).toContain("DISABLED MATRIX");
     expect(html).toContain("Remote dashboard");
     expect(html).toContain("P95 LATENCY");
+    expect(html).toContain('data-voice-pipeline-event="wake_event"');
+    expect(html).toContain('data-raw-audio-included="false"');
+    expect(html).toContain('data-voice-text-included="false"');
     expect(html).toContain("input redacted");
     expect(html).toContain("output redacted");
   });

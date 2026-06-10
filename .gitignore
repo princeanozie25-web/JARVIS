@@ -53,3 +53,21 @@ DerivedDataCache/
 Intermediate/
 Saved/
 .vs/
+
+# Unreal MCP / Python tool local state
+/docs/index.bleve/
+tools/unreal-mcp/Python/.venv/
+tools/unreal-mcp/Python/.pytest_cache/
+tools/unreal-mcp/Python/.mypy_cache/
+tools/unreal-mcp/Python/.ruff_cache/
+tools/unreal-mcp/Python/*.egg-info/
+tools/unreal-mcp/Python/unreal_mcp.log
+tools/unreal-mcp/Python/**/__pycache__/
+tools/unreal-mcp/Python/**/*.pyc
+tools/mcp-unreal-remiphilippe/bin/
+tools/mcp-unreal-remiphilippe/docs/index.bleve/
+
+# Unreal plugin generated outputs
+unreal/JarvisGauntlet/Plugins/**/Binaries/
+unreal/JarvisGauntlet/Plugins/**/Intermediate/
+unreal/JarvisGauntlet/Plugins/**/Saved/

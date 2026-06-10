@@ -6,8 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import type {
   RestAmbientCard,
   RestCommandCenterModel,
+  RestVoiceReactorState,
 } from "@/lib/command-center/liquid-command-center-data";
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
+import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
+import { buildSystemVoiceStackRuntimeState } from "@/lib/voice-operating-mode/voice-stack";
 
 import type { CommandCenterRouteId } from "./CommandCenterNav";
 
@@ -54,7 +57,19 @@ const FALLBACK_MODEL: RestCommandCenterModel = {
     micIndicatorRequired: true,
     explicitPermissionGate: true,
     authorizesActions: false,
-    wakeMode: "explicit_local_visual_wake",
+    wakeMode: "openwakeword_local_onnx",
+    reactorState: "sleep",
+    reactorStates: [
+      "sleep",
+      "wake",
+      "listening",
+      "thinking",
+      "speaking",
+      "approval",
+      "alert",
+    ],
+    stack: buildSystemVoiceStackRuntimeState(),
+    pipelineEvents: buildVoicePipelineVisibilityModel().events,
   },
 };
 
@@ -76,6 +91,9 @@ export function RestCommandCenter({
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
   const [listening, setListening] = useState(false);
   const [caption, setCaption] = useState("Awaiting you");
+  const [reactorState, setReactorState] = useState<RestVoiceReactorState>(
+    model.voice.reactorState,
+  );
   const [surging, setSurging] = useState(false);
   const [ripples, setRipples] = useState<readonly number[]>([]);
   const [waveHeights, setWaveHeights] = useState([30, 65, 100, 55, 80, 35]);
@@ -106,9 +124,10 @@ export function RestCommandCenter({
       window.setTimeout(() => setSurging(false), 900);
     });
 
-    setListening((current) => {
-      const next = !current;
-      setCaption(next ? "Listening..." : "Awaiting you");
+    setReactorState((current) => {
+      const next = nextReactorState(current, model.voice.reactorStates);
+      setCaption(REACTOR_COPY[next]);
+      setListening(next === "listening" || next === "speaking");
       return next;
     });
   }
@@ -123,6 +142,9 @@ export function RestCommandCenter({
       data-rest-authority="none"
       data-rest-mutating-affordances="0"
       data-voice-authorizes-actions={String(model.voice.authorizesActions)}
+      data-voice-reactor-state={reactorState}
+      data-voice-wake-mode={model.voice.wakeMode}
+      data-voice-stack-selected={model.voice.stack.selected_provider}
       data-observability-marker={visibleMarker}
     >
       <CommandCenterField depthRef={depthRef} includeFourthBlob />
@@ -147,7 +169,9 @@ export function RestCommandCenter({
             className={`jcc-orb ${listening ? "listening" : ""} ${
               surging ? "surge-on" : ""
             }`}
-            data-rest-voice-wake="explicit-local-visual"
+            data-rest-voice-wake="openwakeword-local-onnx"
+            data-wake-phrase="Hey Jarvis you up"
+            data-pre-wake-audio-storage="false"
             data-voice-permission-gate="required"
             data-mic-indicator="visible"
             tabIndex={0}
@@ -194,7 +218,21 @@ export function RestCommandCenter({
           </div>
           <div className="jcc-orb-caption">
             <div className="lead">{caption}</div>
-            <div className="hint">TAP ONCE TO ENABLE VOICE</div>
+            <div className="hint">HEY JARVIS YOU UP</div>
+            <div
+              className="jcc-reactor-states"
+              aria-label="Voice reactor states"
+            >
+              {model.voice.reactorStates.map((state) => (
+                <span
+                  key={state}
+                  data-reactor-state={state}
+                  data-reactor-state-active={String(state === reactorState)}
+                >
+                  {state}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -227,11 +265,39 @@ export function RestCommandCenter({
             <span>
               SECURITY <b>{model.security}</b>
             </span>
+            <span>
+              VOICE{" "}
+              <b>{voiceStackLabel(model.voice.stack.selected_provider)}</b>
+            </span>
           </div>
         </footer>
       </main>
     </section>
   );
+}
+
+const REACTOR_COPY: Record<RestVoiceReactorState, string> = {
+  sleep: "Awaiting you",
+  wake: "Ignition",
+  listening: "Listening...",
+  thinking: "Thinking",
+  speaking: "Speaking",
+  approval: "Human Gate",
+  alert: "Attention",
+};
+
+function nextReactorState(
+  current: RestVoiceReactorState,
+  states: readonly RestVoiceReactorState[],
+): RestVoiceReactorState {
+  const index = states.indexOf(current);
+  return states[(index + 1) % states.length] ?? "sleep";
+}
+
+function voiceStackLabel(value: string): string {
+  if (value === "chatterbox-tts-server") return "CHATTERBOX";
+  if (value === "kokoro") return "KOKORO";
+  return "LOCAL";
 }
 
 function CommandCenterField({

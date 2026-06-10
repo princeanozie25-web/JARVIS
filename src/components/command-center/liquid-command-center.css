@@ -388,6 +388,67 @@
   transform: scale(1.045);
 }
 
+.jcc-rest[data-voice-reactor-state="sleep"] .jcc-orb::before {
+  opacity: 0.35;
+}
+
+.jcc-rest[data-voice-reactor-state="sleep"] .jcc-sphere {
+  filter: saturate(80%) brightness(0.82);
+  box-shadow:
+    inset 0 2vmin 5vmin rgba(80, 140, 220, 0.14),
+    inset 0 -4vmin 9vmin rgba(3, 9, 28, 0.95),
+    0 3vmin 10vmin rgba(8, 32, 80, 0.42),
+    0 0 9vmin rgba(36, 104, 210, 0.12);
+}
+
+.jcc-rest[data-voice-reactor-state="wake"] .jcc-sphere {
+  border-color: rgba(210, 235, 255, 0.5);
+  box-shadow:
+    inset 0 3vmin 7vmin rgba(210, 235, 255, 0.36),
+    inset 0 -4vmin 9vmin rgba(3, 9, 28, 0.88),
+    0 5vmin 14vmin rgba(8, 32, 80, 0.6),
+    0 0 30vmin rgba(134, 188, 255, 0.46);
+}
+
+.jcc-rest[data-voice-reactor-state="thinking"] .jcc-c1 {
+  animation-duration: 8s;
+}
+
+.jcc-rest[data-voice-reactor-state="thinking"] .jcc-c2 {
+  animation-duration: 13s;
+}
+
+.jcc-rest[data-voice-reactor-state="speaking"] .jcc-core {
+  animation-duration: 2.4s;
+}
+
+.jcc-rest[data-voice-reactor-state="speaking"] .jcc-sphere {
+  border-color: rgba(180, 225, 255, 0.42);
+  animation-duration: 2.8s;
+}
+
+.jcc-rest[data-voice-reactor-state="approval"] .jcc-sphere {
+  border-color: rgba(255, 178, 77, 0.55);
+  box-shadow:
+    inset 0 3vmin 7vmin rgba(255, 178, 77, 0.24),
+    inset 0 -4vmin 9vmin rgba(3, 9, 28, 0.9),
+    0 5vmin 14vmin rgba(8, 32, 80, 0.6),
+    0 0 28vmin rgba(255, 138, 31, 0.35);
+}
+
+.jcc-rest[data-voice-reactor-state="approval"] .jcc-core {
+  background: radial-gradient(circle, rgba(255, 236, 198, 0.95), rgba(255, 178, 77, 0.72) 38%, rgba(255, 138, 31, 0) 74%);
+}
+
+.jcc-rest[data-voice-reactor-state="alert"] .jcc-sphere {
+  border-color: rgba(255, 107, 107, 0.6);
+  box-shadow:
+    inset 0 3vmin 7vmin rgba(255, 107, 107, 0.24),
+    inset 0 -4vmin 9vmin rgba(3, 9, 28, 0.9),
+    0 5vmin 14vmin rgba(8, 32, 80, 0.6),
+    0 0 26vmin rgba(255, 107, 107, 0.32);
+}
+
 .jcc-ring {
   position: absolute;
   inset: -6%;
@@ -574,6 +635,33 @@
   font-family: var(--jarvis-font-mono);
   font-size: 0.95vmin;
   letter-spacing: 0.46em;
+}
+
+.jcc-reactor-states {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 38vmin;
+  margin-top: 1.2vmin;
+  gap: 0.55vmin;
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.62vmin;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.jcc-reactor-states span {
+  border: 1px solid rgba(150, 190, 255, 0.12);
+  border-radius: 0.45vmin;
+  padding: 0.25vmin 0.55vmin;
+  color: var(--jcc-faint);
+  background: rgba(120, 160, 220, 0.04);
+}
+
+.jcc-reactor-states span[data-reactor-state-active="true"] {
+  border-color: rgba(134, 188, 255, 0.38);
+  color: var(--jcc-blue);
+  box-shadow: 0 0 1.6vmin rgba(134, 188, 255, 0.16);
 }
 
 .jcc-card {
@@ -1474,6 +1562,23 @@
 
 .jcc-disabled-row .s {
   color: var(--jcc-faint);
+}
+
+.jcc-voice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1vmin;
+  border-left: 1px solid rgba(95, 230, 224, 0.22);
+  padding-left: 1vmin;
+  color: var(--jcc-dim);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+}
+
+.jcc-voice-row span:last-child {
+  color: var(--jcc-cyan);
 }
 
 @keyframes jcc-drift1 {

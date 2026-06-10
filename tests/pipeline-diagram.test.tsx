@@ -136,6 +136,19 @@ describe("UI.10 PipelineDiagram — Graphify-compatible read-only invariant", ()
     }
   });
 
+  it("surfaces Phase 22 voice activity as read-only metadata", () => {
+    const markup = html();
+    expect(markup).toContain('data-pipeline-region="voice-activity"');
+    expect(markup).toContain(
+      'data-voice-pipeline-authoritative-surface="/audit/pipeline"',
+    );
+    expect(markup).toContain('data-voice-pipeline-event="wake_event"');
+    expect(markup).toContain('data-voice-pipeline-event="t2_proposal"');
+    expect(markup).toContain('data-raw-audio-included="false"');
+    expect(markup).toContain('data-transcript-included="false"');
+    expect(markup).toContain('data-executable-payload-included="false"');
+  });
+
   it("exposes no interactive controls (no buttons, forms, inputs, anchors)", () => {
     const markup = html();
     expect(markup).not.toMatch(/<button\b/i);
