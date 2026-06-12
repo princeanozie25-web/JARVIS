@@ -1,4 +1,38 @@
 export {
+  gateAndEmit,
+  VIDEO_COUNT_BANDS,
+  VIDEO_DURATION_BANDS,
+  videoCountBand,
+  videoDurationBand,
+  type VideoCountBand,
+  type VideoDurationBand,
+} from "./events";
+export {
+  sampleVideoFrames,
+  VideoFrameSamplingEventSchema,
+  type SampleVideoFramesDeps,
+  type SampleVideoFramesInput,
+  type SampleVideoFramesResult,
+  type VideoFrameExtractionRunner,
+  type VideoFrameRef,
+} from "./frames";
+export {
+  assembleMultimodalPacket,
+  MultimodalAnalysisPacketSchema,
+  VideoPacketEventSchema,
+  type AssembleMultimodalPacketDeps,
+  type AssembleMultimodalPacketInput,
+  type AssembleMultimodalPacketResult,
+  type MultimodalAnalysisPacket,
+} from "./packet";
+export {
+  executeVideoPipeline,
+  type VideoPipelineDependencies,
+  type VideoPipelineRequest,
+  type VideoPipelineResult,
+  type VideoPipelineStatus,
+} from "./pipeline";
+export {
   extractDottedVersion,
   meetsMinimumVersion,
   MIN_FFMPEG_VERSION,
@@ -7,6 +41,18 @@ export {
   VIDEO_RUNTIME_TOOLS,
   type VideoRuntimeTool,
 } from "./runtime-requirements";
+export {
+  extractVideoTranscript,
+  transcriptSegmentCount,
+  VideoTranscriptEventSchema,
+  type ExtractVideoTranscriptDeps,
+  type ExtractVideoTranscriptInput,
+  type ExtractVideoTranscriptResult,
+  type VideoAudioExtractionRunner,
+  type VideoSttRequest,
+  type VideoSttResult,
+  type VideoTranscriptionProvider,
+} from "./transcript";
 export {
   classifyVideoUrlPlatform,
   DEFAULT_VIDEO_ARTIFACT_ROOT,
