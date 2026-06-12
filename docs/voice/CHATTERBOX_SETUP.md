@@ -1,6 +1,12 @@
-# Chatterbox Setup For Demo Director Narration
+# Chatterbox Setup For System Voice
 
-Chatterbox is used only for Demo Director narration. It is not wake word, voice control, standing consent, conversation mode, or any T0-T3 authority path.
+Chatterbox is the primary system-wide local TTS provider for JARVIS voice
+output. Demo Director narration uses the same provider chain, but Chatterbox is
+not limited to Demo Director.
+
+Chatterbox is still not wake word detection, standing-consent authority, or an
+approval path. It speaks approved/speakable output selected by the voice stack;
+it never grants authority, auto-approves, or changes T0-T3 voice policy.
 
 ## Local Runtime
 
@@ -64,11 +70,25 @@ Windows portable environment at the upstream watermarker initialization step;
 the Demo Director therefore fell back automatically to the existing local
 narration provider while preserving the Chatterbox-first runtime order.
 
-## Fallback Order
+## System-Wide Fallback Order
 
 1. Chatterbox TTS Server at `JARVIS_CHATTERBOX_URL` or `http://127.0.0.1:8004`
 2. Kokoro at `JARVIS_KOKORO_URL` or `http://127.0.0.1:8880`
-3. Existing local fallback
+3. Existing local runtime fallback
+
+Health checks are required before selecting Chatterbox or Kokoro. If Chatterbox
+is reachable but synthesis fails, JARVIS falls back for that utterance without
+changing authority or retrying through a cloud provider.
+
+The same provider IDs are registered in the system `tts` registry:
+
+- `chatterbox-tts-server`
+- `kokoro`
+- `local-tts-placeholder`
+
+The registry instances are loopback-only and safety-policy gated. They are
+available to the whole voice system, while the disabled provider remains the
+default until the runtime health selector chooses an available local provider.
 
 ## Demo Export
 

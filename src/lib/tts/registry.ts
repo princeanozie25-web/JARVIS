@@ -1,3 +1,7 @@
+import {
+  createChatterboxSpeechProvider,
+  createKokoroSpeechProvider,
+} from "./chatterbox-provider";
 import { disabledSpeechProvider } from "./disabled-provider";
 import { localTtsPlaceholderProvider } from "./local-placeholder";
 import type { SpeechProvider } from "./types";
@@ -33,4 +37,12 @@ export const speechProviders = new SpeechProviderRegistry(
 );
 
 speechProviders.register(disabledSpeechProvider);
+speechProviders.register(
+  createChatterboxSpeechProvider({ enabled: false, status: "unavailable" }),
+);
+// Kokoro: registered, not installed — no local runtime at DEFAULT_SYSTEM_KOKORO_URL
+// and no install path or env override configured (health probe 2026-06-12).
+speechProviders.register(
+  createKokoroSpeechProvider({ enabled: false, status: "unavailable" }),
+);
 speechProviders.register(localTtsPlaceholderProvider);

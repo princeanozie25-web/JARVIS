@@ -263,6 +263,25 @@ export function AuditCockpit({ model }: AuditCockpitProps) {
               </div>
             </section>
 
+            <section className="jcc-context two jcc-glass">
+              <PanelHead label="VOICE ACTIVITY" />
+              <div className="jcc-context-body">
+                {model.voiceActivity.slice(0, 4).map((event) => (
+                  <div
+                    key={event.event_id}
+                    className="jcc-voice-row"
+                    data-voice-pipeline-event={event.kind}
+                    data-voice-tier={event.tier}
+                    data-raw-audio-included={String(event.raw_audio_included)}
+                    data-voice-text-included={String(event.transcript_included)}
+                  >
+                    <span>{event.label}</span>
+                    <span>{event.tier}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             <section
               className="jcc-context three jcc-glass"
               style={{ flex: 1, minHeight: 0 }}

@@ -1,0 +1,35 @@
+version: phase22.voice.standing-consent.v1
+owner_controlled: true
+auditable: true
+revocable: true
+voice_may_grant_consent: false
+no_self_expansion: true
+metadata_only: true
+consents:
+  - id: office_lights_focus
+    label: Office lights focus preset
+    tier: T1
+    action: lights
+    scope: room.office.lights
+    granted: true
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:office_lights_focus
+  - id: local_timer_short
+    label: Local timer under 30 minutes
+    tier: T1
+    action: timers
+    scope: local.timer.under_30m
+    granted: true
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:local_timer_short
+  - id: local_note_quick_capture
+    label: Local note quick capture
+    tier: T1
+    action: local_notes
+    scope: local.notes.quick_capture
+    granted: true
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:local_note_quick_capture

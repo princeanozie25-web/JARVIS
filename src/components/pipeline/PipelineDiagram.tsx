@@ -3,6 +3,10 @@ import {
   type PipelineStageId,
   type PipelineViewModel,
 } from "@/lib/pipeline-visualization";
+import {
+  buildVoicePipelineVisibilityModel,
+  type VoicePipelineVisibilityModel,
+} from "@/lib/voice-operating-mode/pipeline-visibility";
 
 /**
  * PipelineDiagram — UI.10.
@@ -77,10 +81,12 @@ const STAGE_PALETTE: Readonly<Record<PipelineStageId, StagePalette>> =
 
 export interface PipelineDiagramProps {
   viewModel?: PipelineViewModel;
+  voiceModel?: VoicePipelineVisibilityModel;
 }
 
 export function PipelineDiagram({
   viewModel = buildPipelineViewModel(),
+  voiceModel = buildVoicePipelineVisibilityModel(),
 }: PipelineDiagramProps) {
   const forbiddenEdges = viewModel.edges.filter(
     (edge) => edge.policy === "forbidden",
@@ -269,6 +275,42 @@ export function PipelineDiagram({
               </p>
               <p className="mt-1 text-xs leading-5 text-ink/65">
                 {boundary.description}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section
+        aria-label="Voice activity"
+        data-pipeline-region="voice-activity"
+        data-voice-pipeline-authoritative-surface={
+          voiceModel.authoritative_surface
+        }
+        className="relative grid gap-3"
+      >
+        <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
+          Voice activity
+        </p>
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {voiceModel.events.map((event) => (
+            <li
+              key={event.event_id}
+              data-voice-pipeline-event={event.kind}
+              data-voice-tier={event.tier}
+              data-voice-state={event.state}
+              data-raw-audio-included={String(event.raw_audio_included)}
+              data-transcript-included={String(event.transcript_included)}
+              data-executable-payload-included={String(
+                event.executable_payload_included,
+              )}
+              className="border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.1)] backdrop-blur-md"
+            >
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-ink/55">
+                {event.tier} · {event.state}
+              </p>
+              <p className="mt-1 font-display text-sm text-ink">
+                {event.label}
               </p>
             </li>
           ))}

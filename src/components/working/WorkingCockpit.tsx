@@ -9,6 +9,8 @@ import type {
   WorkingCommandCenterModel,
 } from "@/lib/command-center/liquid-command-center-data";
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
+import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
+import { buildSystemVoiceStackRuntimeState } from "@/lib/voice-operating-mode/voice-stack";
 
 export interface WorkingCockpitProps {
   model?: WorkingCommandCenterModel;
@@ -66,6 +68,11 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
   ],
   activity: [
     {
+      ts: "09:31",
+      tag: "VOICE",
+      text: "Wake event observed - conversation active - T0 route available",
+    },
+    {
       ts: "09:28",
       tag: "PROP",
       text: "Chat created room proposal prop-room-1842",
@@ -81,7 +88,10 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
       text: "Local model warm - llama3.2:3b ready",
     },
   ],
+  voiceActivity: buildVoicePipelineVisibilityModel().events,
 };
+
+const VOICE_STACK = buildSystemVoiceStackRuntimeState();
 
 export function WorkingCockpit({
   model = FALLBACK_WORKING_MODEL,
@@ -148,6 +158,7 @@ export function WorkingCockpit({
       data-working-cockpit="working-cockpit"
       data-working-shell="approval-gated"
       data-only-mutator="human-gate"
+      data-voice-tts-provider={VOICE_STACK.selected_provider}
       data-observability-marker={model.marker}
     >
       <CommandCenterField depthRef={depthRef} />
@@ -167,6 +178,7 @@ export function WorkingCockpit({
               warn={pending > 0}
             />
             <StatusPill label="MODEL" value="local-primary" />
+            <StatusPill label="TTS" value={VOICE_STACK.selected_provider} />
             <StatusPill label="CLOCK" value={clock} />
           </div>
         </header>

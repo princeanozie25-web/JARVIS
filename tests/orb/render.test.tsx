@@ -39,7 +39,7 @@ describe("Phase 12A.2 Rest orb skeleton", () => {
     expect(html).toContain("rest mode");
     expect(html).toContain("SYSTEM STANDBY");
     expect(html).toContain("Awaiting you");
-    expect(html).toContain("TAP ONCE TO ENABLE VOICE");
+    expect(html).toContain("HEY JARVIS YOU UP");
     expect(html).toContain("NO ACTION AUTHORITY");
     expect(html.match(/data-suggestion-card=/g)).toHaveLength(4);
     expect(html.match(/data-suggestion-executable="false"/g)).toHaveLength(4);

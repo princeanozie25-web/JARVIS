@@ -7,6 +7,16 @@ export {
   type SpeechChunkerResult,
 } from "./chunker";
 export {
+  DEFAULT_SYSTEM_CHATTERBOX_URL,
+  DEFAULT_SYSTEM_KOKORO_URL,
+  SYSTEM_CHATTERBOX_PROVIDER_ID,
+  SYSTEM_KOKORO_PROVIDER_ID,
+  createChatterboxSpeechProvider,
+  createHttpSystemSpeechProvider,
+  createKokoroSpeechProvider,
+  type HttpSystemSpeechProviderOptions,
+} from "./chatterbox-provider";
+export {
   disabledSpeechProvider,
   disabledSpeechResult,
 } from "./disabled-provider";
