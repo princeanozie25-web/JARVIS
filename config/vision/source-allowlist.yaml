@@ -1,0 +1,19 @@
+version: phase23.vision.source-allowlist.v1
+owner_controlled: true
+metadata_only: true
+platforms:
+  youtube:
+    enabled: false
+  instagram_reels:
+    enabled: false
+  tiktok:
+    enabled: false
+  x_twitter:
+    enabled: false
+  local_file:
+    enabled: false
+caps:
+  max_filesize_mb: 512
+  max_duration_s: 3600
+  max_frames_per_video: 120
+  frame_sample_fps: 1

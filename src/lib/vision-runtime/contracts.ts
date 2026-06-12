@@ -12,6 +12,8 @@ export const VISION_INPUT_KINDS = [
   "screenshot",
   "mock_camera_frame",
   "real_camera_frame",
+  "video_frame",
+  "video_segment",
 ] as const;
 
 export const VISION_PROVIDER_KINDS = [

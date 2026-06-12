@@ -250,6 +250,10 @@ Voice authority moves to a T0-T3 model:
 
 Still forbidden: T2/T3 voice-only approval, destructive voice approval, governance changes by voice, self-elevating trust classes, auto-approval, public/remote dashboards, unapproved device actions, cloud wake word, pre-wake audio storage, and raw audio/transcript telemetry.
 
+### Model tiers vs action authority
+
+ModelTier `T0`–`T4` (`src/lib/models/types.ts`) ranks model capability for routing and cost; it is not the voice action-authority ladder above (`src/lib/voice-operating-mode/authority.ts`). T4 is the frontier multimodal reasoning class — native image+audio+text input with long-context cross-modal synthesis. No production model entry instantiates T4 yet, and registering one later is registry data, not a phase change. In analysis packets, `model_tier` is a minimum-capability floor: the resolver selects the lowest qualifying tier at or above T3 per aux-routing and cost rules.
+
 ## Getting Started
 
 Prerequisites: Node.js 20+ and pnpm. The repo currently also includes an npm lockfile, so npm equivalents work.

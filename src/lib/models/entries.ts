@@ -53,3 +53,7 @@ models.register({
     outputPerMillionUsd: 5.0,
   },
 });
+
+// Phase 23A: no production T4 entry is registered by design. T4 is the
+// frontier multimodal class (see ModelTier in ./types.ts); instantiating it
+// later is registry data only and requires no phase change.

@@ -226,7 +226,15 @@ export type TelemetryEventType =
   | "voice_privacy_policy_evaluated"
   | "voice_privacy_policy_allowed"
   | "voice_privacy_policy_denied"
-  | "voice_privacy_policy_unknown_payload";
+  | "voice_privacy_policy_unknown_payload"
+  | "video_ingest_requested"
+  | "video_ingest_completed"
+  | "video_ingest_failed"
+  | "frame_sampling_completed"
+  | "transcript_extraction_completed"
+  | "multimodal_packet_assembled"
+  | "multimodal_analysis_completed"
+  | "vision_lane_event";
 
 export interface TelemetryEvent {
   timestamp: number;

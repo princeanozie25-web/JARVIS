@@ -1,0 +1,62 @@
+version: phase23.vision.standing-consent.v1
+owner_controlled: true
+auditable: true
+revocable: true
+vision_may_grant_consent: false
+no_self_expansion: true
+metadata_only: true
+consents:
+  - id: video_ingest_url
+    label: Video ingest from an allowlisted URL
+    tier: T2
+    action: video_ingest
+    scope: vision.video.ingest_url
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:video_ingest_url
+  - id: video_ingest_local_file
+    label: Video ingest from a local file
+    tier: T2
+    action: video_ingest
+    scope: vision.video.ingest_local_file
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:video_ingest_local_file
+  - id: frame_sampling
+    label: Frame sampling from ingested video
+    tier: T2
+    action: frame_sampling
+    scope: vision.video.frame_sampling
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:frame_sampling
+  - id: transcript_extraction
+    label: Transcript extraction from ingested audio
+    tier: T2
+    action: transcript_extraction
+    scope: vision.video.transcript_extraction
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:transcript_extraction
+  - id: multimodal_analysis
+    label: Multimodal analysis of assembled packets
+    tier: T3
+    action: multimodal_analysis
+    scope: vision.analysis.multimodal
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:multimodal_analysis
+  - id: camera_capture
+    label: Camera capture
+    tier: T3
+    action: camera_capture
+    scope: vision.camera.capture
+    granted: false
+    revoked: false
+    granted_by: user_config
+    audit_event: standing-consent:camera_capture

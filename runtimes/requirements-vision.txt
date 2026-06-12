@@ -1,0 +1,4 @@
+# Phase 23 vision lane Python runtime.
+# Install: pip install -r runtimes/requirements-vision.txt
+# Setup runbook: docs/runbooks/phase23-runtime-setup.md
+faster-whisper==1.2.1
