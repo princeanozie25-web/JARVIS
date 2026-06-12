@@ -31,6 +31,8 @@ describe("Phase 13A model runtime closeout", () => {
         "deepseek",
         "anthropic",
         "openai",
+        // E-008: additive — google provider kind for disabled catalog entries.
+        "google",
         "mock",
       ],
       ModelRegistrySchema: expect.any(Object),

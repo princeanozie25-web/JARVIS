@@ -6,6 +6,9 @@ export const MODEL_PROVIDER_KINDS = [
   "deepseek",
   "anthropic",
   "openai",
+  // E-008 living-catalog: additive provider kind for disabled Gemini
+  // catalog entries; no Google adapter or execution path exists.
+  "google",
   "mock",
 ] as const;
 

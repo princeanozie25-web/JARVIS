@@ -152,6 +152,94 @@ models:
       approximate_memory_mb: null
       cost_class: cloud_metered
       governance_notes: Disabled by default; registry loading must not call Anthropic APIs.
+  - id: gemini-3.1-flash-lite
+    provider: google
+    tier: T3
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - vision
+      - tool_reasoning
+    context_window: 1048576
+    visibility: disabled
+    priority: 112
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    metadata:
+      display_name: Gemini 3.1 Flash-Lite
+      description: Fast-tier Google cloud model; identifiers and 1,048,576-token input limit verified from ai.google.dev on 2026-06-12.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled catalog entry for 21A doctor awareness; registry loading must not call Google APIs.
+  - id: gemini-3.5-flash
+    provider: google
+    tier: T4
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - vision
+      - tool_reasoning
+    context_window: 1048576
+    visibility: disabled
+    priority: 114
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    metadata:
+      display_name: Gemini 3.5 Flash
+      description: Current Google frontier GA model; identifiers and 1,048,576-token input limit verified from ai.google.dev on 2026-06-12.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled catalog entry for 21A doctor awareness; registry loading must not call Google APIs.
+  - id: gpt-5.4-mini
+    provider: openai
+    tier: T3
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - vision
+      - tool_reasoning
+    context_window: 400000
+    visibility: disabled
+    priority: 116
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    metadata:
+      display_name: GPT-5.4 mini
+      description: Fast-tier OpenAI cloud model; identifier and 400K context verified from developers.openai.com on 2026-06-12.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled catalog entry for 21A doctor awareness; registry loading must not call OpenAI APIs.
+  - id: gpt-5.5
+    provider: openai
+    tier: T4
+    runtime_class: cloud
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - vision
+      - tool_reasoning
+    context_window: 1000000
+    visibility: disabled
+    priority: 118
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    metadata:
+      display_name: GPT-5.5
+      description: Current OpenAI flagship; identifier and 1M context verified from developers.openai.com on 2026-06-12.
+      approximate_memory_mb: null
+      cost_class: cloud_metered
+      governance_notes: Disabled catalog entry for 21A doctor awareness; registry loading must not call OpenAI APIs.
   - id: mock-local-model
     provider: mock
     tier: T1

@@ -286,28 +286,37 @@ describe("Phase 13B Ollama provider closeout", () => {
       .listModels()
       .filter((model) => model.runtime_class === "cloud");
 
-    expect(cloudModels).toEqual([
-      expect.objectContaining({
-        id: "deepseek-v4-flash",
-        provider: "deepseek",
-        visibility: "disabled",
-      }),
-      expect.objectContaining({
-        id: "deepseek-v4-pro",
-        provider: "deepseek",
-        visibility: "disabled",
-      }),
-      expect.objectContaining({
-        id: "claude-haiku",
-        provider: "anthropic",
-        visibility: "disabled",
-      }),
-      expect.objectContaining({
-        id: "claude-opus",
-        provider: "anthropic",
-        visibility: "disabled",
-      }),
-    ]);
+    // E-008 registry-pin reshape (extended to this file): the exact cloud
+    // census is replaced by baseline preservation + the disabled-cloud
+    // doctrine, so the catalog may grow without reopening this closeout.
+    expect(cloudModels.length).toBeGreaterThanOrEqual(4);
+    expect(cloudModels.every((model) => model.visibility === "disabled")).toBe(
+      true,
+    );
+    expect(cloudModels).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "deepseek-v4-flash",
+          provider: "deepseek",
+          visibility: "disabled",
+        }),
+        expect.objectContaining({
+          id: "deepseek-v4-pro",
+          provider: "deepseek",
+          visibility: "disabled",
+        }),
+        expect.objectContaining({
+          id: "claude-haiku",
+          provider: "anthropic",
+          visibility: "disabled",
+        }),
+        expect.objectContaining({
+          id: "claude-opus",
+          provider: "anthropic",
+          visibility: "disabled",
+        }),
+      ]),
+    );
     expect(registry.getAuthoritySnapshot()).toEqual({
       networkCallsEnabled: false,
       providerExecutionEnabled: false,

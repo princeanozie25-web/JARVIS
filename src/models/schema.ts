@@ -117,6 +117,8 @@ function validateProviderRuntimeCombination(
     deepseek: "cloud",
     anthropic: "cloud",
     openai: "cloud",
+    // E-008 living-catalog: google is cloud-only, mirrors the other clouds.
+    google: "cloud",
     mock: "mock",
   } as const;
   const supportedRuntime = supportedRuntimeByProvider[entry.provider];

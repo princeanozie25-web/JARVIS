@@ -405,6 +405,11 @@ describe("Phase 13C.2 resolver fallback planning", () => {
       "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
+      // E-008: additive updates for the disabled cloud catalog entries.
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gpt-5.4-mini",
+      "gpt-5.5",
     ]);
     expect(plan.governance_flags).toContain("cloud_opt_in_required");
   });
@@ -445,6 +450,11 @@ describe("Phase 13C.2 resolver fallback planning", () => {
       "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
+      // E-008: additive updates for the disabled cloud catalog entries.
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gpt-5.4-mini",
+      "gpt-5.5",
     ]);
   });
 
@@ -563,6 +573,11 @@ models:
       "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
+      // E-008: additive updates for the disabled cloud catalog entries.
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gpt-5.4-mini",
+      "gpt-5.5",
     ]);
   });
 
