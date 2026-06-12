@@ -10,19 +10,79 @@ import {
 } from "../../src/models";
 
 describe("Phase 13A.1 model registry loader", () => {
+  // E-008 registry-pin reshape: the deep-equal ID census froze the catalog
+  // as data, contradicting the 23A T4 doctrine and the 21A living-catalog
+  // premise. Reshaped to Phase 13 baseline preservation — the seven closeout
+  // rows stay present with unchanged key properties; the catalog may grow.
   it("loads config/models/registry.yaml successfully", () => {
     const registry = loadDefaultModelRegistry();
 
     expect(registry.schemaVersion).toBe(1);
-    expect(registry.listModels().map((entry) => entry.id)).toEqual([
-      "mock-local-model",
-      "llama3.2:3b",
-      "qwen2.5:7b",
-      "deepseek-v4-flash",
-      "deepseek-v4-pro",
-      "claude-haiku",
-      "claude-opus",
-    ]);
+    const phase13Baseline = [
+      {
+        id: "mock-local-model",
+        tier: "T1",
+        runtime_class: "mock",
+        visibility: "enabled",
+      },
+      {
+        id: "llama3.2:3b",
+        tier: "T1",
+        runtime_class: "local",
+        visibility: "enabled",
+      },
+      {
+        id: "qwen2.5:7b",
+        tier: "T2",
+        runtime_class: "local",
+        visibility: "enabled",
+      },
+      {
+        id: "deepseek-v4-flash",
+        tier: "T2",
+        runtime_class: "cloud",
+        visibility: "disabled",
+      },
+      {
+        id: "deepseek-v4-pro",
+        tier: "T3",
+        runtime_class: "cloud",
+        visibility: "disabled",
+      },
+      {
+        id: "claude-haiku",
+        tier: "T3",
+        runtime_class: "cloud",
+        visibility: "disabled",
+      },
+      {
+        id: "claude-opus",
+        tier: "T4",
+        runtime_class: "cloud",
+        visibility: "disabled",
+      },
+    ] as const;
+    for (const baseline of phase13Baseline) {
+      expect(registry.getModel(baseline.id)).toMatchObject(baseline);
+    }
+  });
+
+  // E-008 (b): universal schema + consistency assertions over the LIVE
+  // registry — every entry, present and future.
+  it("keeps every live registry entry schema-consistent (E-008)", () => {
+    const registry = loadDefaultModelRegistry();
+    const models = registry.listModels();
+
+    expect(models.length).toBeGreaterThanOrEqual(7);
+    for (const entry of models) {
+      expect(["T0", "T1", "T2", "T3", "T4"]).toContain(entry.tier);
+      expect(["local", "cloud", "mock"]).toContain(entry.runtime_class);
+      expect(["enabled", "disabled"]).toContain(entry.visibility);
+      expect(entry.supports_tools).toBe(
+        entry.capabilities.includes("tool_reasoning"),
+      );
+      expect(entry.supports_vision).toBe(entry.capabilities.includes("vision"));
+    }
   });
 
   it("registers DeepSeek V4 cloud entries as disabled metadata only", () => {

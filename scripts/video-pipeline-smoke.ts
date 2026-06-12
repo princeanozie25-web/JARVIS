@@ -19,12 +19,12 @@ import { createFasterWhisperSttProvider } from "../src/lib/voice-runtime";
 
 // Phase 23D real-execution smoke: ingest -> frames -> transcript -> packet on
 // a locally generated clip, inside one real vision session. Real ffmpeg frame
-// extraction and REAL faster-whisper transcription (cached local model; the
-// sine-tone clip may legitimately yield an empty transcript — the proof is
-// the real round trip). Committed config/vision/*.yaml stay byte-untouched
-// and default-deny (asserted, invariant I-23D-6). If the Python
-// faster-whisper runtime is missing, this HALTS with a clear report — no
-// mock fallback, no installs.
+// extraction and REAL faster-whisper transcription against locally generated
+// SAPI speech (the frozen Phase 22 STT contract fails closed on empty
+// transcripts, so the clip must contain real words — still no network).
+// Committed config/vision/*.yaml stay byte-untouched and default-deny
+// (asserted, invariant I-23D-6). If the Python faster-whisper runtime is
+// missing, this HALTS with a clear report — no mock fallback, no installs.
 
 const SMOKE_TIMEOUT_MS = 300_000;
 

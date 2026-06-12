@@ -40,7 +40,13 @@ describe("Phase 13C.1 model resolver", () => {
     expect(result.failure).toBeNull();
     expect(
       result.eligible_candidates.map((candidate) => candidate.entry.id),
-    ).toEqual(["llama3.2:3b", "qwen2.5:7b", "mock-local-model"]);
+    ).toEqual([
+      "llama3.2:3b",
+      "qwen2.5:7b",
+      // E-008: additive update for the 23E local reasoning entry.
+      "deepseek-r1:14b",
+      "mock-local-model",
+    ]);
   });
 
   it("excludes cloud models by default", () => {
@@ -374,7 +380,8 @@ describe("Phase 13C.2 resolver fallback planning", () => {
     });
 
     expect(plan.selected_primary?.entry.id).toBe("llama3.2:3b");
-    expect(fallbackIds(plan)).toEqual(["qwen2.5:7b"]);
+    // E-008: additive update for the 23E local reasoning entry.
+    expect(fallbackIds(plan)).toEqual(["qwen2.5:7b", "deepseek-r1:14b"]);
     expect(
       plan.fallback_chain.every(
         (candidate) => candidate.entry.runtime_class !== "cloud",
@@ -432,6 +439,8 @@ describe("Phase 13C.2 resolver fallback planning", () => {
     expect(fallbackIds(fullyOptedIn)).toEqual([
       "llama3.2:3b",
       "qwen2.5:7b",
+      // E-008: additive update for the 23E local reasoning entry.
+      "deepseek-r1:14b",
       "deepseek-v4-flash",
       "deepseek-v4-pro",
       "claude-haiku",
@@ -548,6 +557,8 @@ models:
       "mock-local-model",
       "llama3.2:3b",
       "qwen2.5:7b",
+      // E-008: additive update for the 23E local reasoning entry.
+      "deepseek-r1:14b",
       "deepseek-v4-flash",
       "deepseek-v4-pro",
       "claude-haiku",
@@ -618,7 +629,8 @@ models:
     });
 
     expect(plan.selected_primary?.entry.id).toBe("mock-local-model");
-    expect(fallbackIds(plan)).toEqual([]);
+    // E-008: additive update — the 23E local reasoning entry enters the chain.
+    expect(fallbackIds(plan)).toEqual(["deepseek-r1:14b"]);
     expect(plan.rejection_reasons.excluded).toEqual([
       "llama3.2:3b",
       "qwen2.5:7b",

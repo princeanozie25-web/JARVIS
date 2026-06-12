@@ -45,6 +45,28 @@ models:
       approximate_memory_mb: 8192
       cost_class: local_free
       governance_notes: Metadata only; no provider execution or runtime orchestration is enabled.
+  - id: deepseek-r1:14b
+    provider: ollama
+    tier: T3
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+    context_window: 8192
+    visibility: enabled
+    priority: 30
+    supports_streaming: true
+    supports_tools: false
+    supports_vision: false
+    params_b: 14
+    quant: q4_K_M
+    metadata:
+      display_name: DeepSeek R1 14B
+      description: Reasoning-class local model, fit-scored 2026-06-12 (tight, 0.894 capacity ratio); operating context window capped at 8192 for hardware fit.
+      approximate_memory_mb: 8960
+      cost_class: local_free
+      governance_notes: Local-only T3 reasoning entry pulled under the 23E owner ruling; enables Phase 23E analysis with no cloud path.
   - id: claude-haiku
     provider: anthropic
     tier: T3

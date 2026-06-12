@@ -1,4 +1,19 @@
 export {
+  analyzeMultimodalPacket,
+  extractActionSuggestions,
+  isLocalAnalysisModel,
+  resolveAnalysisModel,
+  VideoAnalysisCompletedEventSchema,
+  VideoAnalysisLaneEventSchema,
+  type AnalyzeMultimodalPacketDeps,
+  type AnalyzeMultimodalPacketInput,
+  type AnalyzeMultimodalPacketResult,
+  type ResolveAnalysisModelResult,
+  type VideoAnalysisAuxSlugRunner,
+  type VideoAnalysisModalityCoverage,
+  type VideoAnalysisModelRunner,
+} from "./analysis";
+export {
   gateAndEmit,
   VIDEO_COUNT_BANDS,
   VIDEO_DURATION_BANDS,

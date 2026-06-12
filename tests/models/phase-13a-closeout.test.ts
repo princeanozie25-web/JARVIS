@@ -104,17 +104,18 @@ describe("Phase 13A model runtime closeout", () => {
     );
     const enabledModels = registry.listEnabledModels();
 
-    expect(cloudModels.map((model) => model.visibility)).toEqual([
-      "disabled",
-      "disabled",
-      "disabled",
-      "disabled",
-    ]);
-    expect(enabledModels.map((model) => model.runtime_class).sort()).toEqual([
-      "local",
-      "local",
-      "mock",
-    ]);
+    // E-008 registry-pin reshape: census lists replaced by doctrine + Phase 13
+    // baseline preservation; the catalog may grow without reopening this test.
+    expect(cloudModels.length).toBeGreaterThanOrEqual(4);
+    expect(cloudModels.every((model) => model.visibility === "disabled")).toBe(
+      true,
+    );
+    expect(
+      enabledModels.every((model) => model.runtime_class !== "cloud"),
+    ).toBe(true);
+    for (const id of ["mock-local-model", "llama3.2:3b", "qwen2.5:7b"]) {
+      expect(enabledModels.map((model) => model.id)).toContain(id);
+    }
     expect(registry.getAuthoritySnapshot()).toEqual({
       networkCallsEnabled: false,
       providerExecutionEnabled: false,
@@ -132,7 +133,10 @@ describe("Phase 13A model runtime closeout", () => {
     const second = loadDefaultModelRegistry().listModels();
 
     expect(first).toEqual(second);
-    expect(first.map((model) => model.id)).toEqual([
+    // E-008 registry-pin reshape: exact-order census replaced by baseline
+    // presence; determinism above stays the load guarantee.
+    const ids = first.map((model) => model.id);
+    for (const id of [
       "mock-local-model",
       "llama3.2:3b",
       "qwen2.5:7b",
@@ -140,7 +144,9 @@ describe("Phase 13A model runtime closeout", () => {
       "deepseek-v4-pro",
       "claude-haiku",
       "claude-opus",
-    ]);
+    ]) {
+      expect(ids).toContain(id);
+    }
   });
 
   it("keeps provider surfaces metadata-only", async () => {
