@@ -4,9 +4,10 @@ import {
   type PipelineViewModel,
 } from "@/lib/pipeline-visualization";
 import {
-  buildVoicePipelineVisibilityModel,
-  type VoicePipelineVisibilityModel,
-} from "@/lib/voice-operating-mode/pipeline-visibility";
+  buildLaneViewModel,
+  PIPELINE_LANES,
+  type PipelineLaneViewModel,
+} from "@/lib/pipeline-visualization/lane-registry";
 
 /**
  * PipelineDiagram — UI.10.
@@ -81,12 +82,12 @@ const STAGE_PALETTE: Readonly<Record<PipelineStageId, StagePalette>> =
 
 export interface PipelineDiagramProps {
   viewModel?: PipelineViewModel;
-  voiceModel?: VoicePipelineVisibilityModel;
+  laneViewModels?: readonly PipelineLaneViewModel[];
 }
 
 export function PipelineDiagram({
   viewModel = buildPipelineViewModel(),
-  voiceModel = buildVoicePipelineVisibilityModel(),
+  laneViewModels = PIPELINE_LANES.map((lane) => buildLaneViewModel(lane)),
 }: PipelineDiagramProps) {
   const forbiddenEdges = viewModel.edges.filter(
     (edge) => edge.policy === "forbidden",
@@ -281,41 +282,53 @@ export function PipelineDiagram({
         </ul>
       </section>
 
-      <section
-        aria-label="Voice activity"
-        data-pipeline-region="voice-activity"
-        data-voice-pipeline-authoritative-surface={
-          voiceModel.authoritative_surface
-        }
-        className="relative grid gap-3"
-      >
-        <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
-          Voice activity
-        </p>
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {voiceModel.events.map((event) => (
-            <li
-              key={event.event_id}
-              data-voice-pipeline-event={event.kind}
-              data-voice-tier={event.tier}
-              data-voice-state={event.state}
-              data-raw-audio-included={String(event.raw_audio_included)}
-              data-transcript-included={String(event.transcript_included)}
-              data-executable-payload-included={String(
-                event.executable_payload_included,
-              )}
-              className="border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.1)] backdrop-blur-md"
-            >
-              <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-ink/55">
-                {event.tier} · {event.state}
-              </p>
-              <p className="mt-1 font-display text-sm text-ink">
-                {event.label}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {laneViewModels.map((lane) => (
+        <section
+          key={lane.lane_id}
+          aria-label={`${lane.label} activity`}
+          data-pipeline-region={`lane-${lane.lane_id}`}
+          data-lane-authoritative-surface={lane.authoritative_surface}
+          data-lane-synthetic-fixture={String(lane.synthetic_fixture)}
+          data-execute-affordance-present={String(
+            lane.execute_affordance_present,
+          )}
+          data-approve-affordance-present={String(
+            lane.approve_affordance_present,
+          )}
+          data-mutation-affordance-present={String(
+            lane.mutation_affordance_present,
+          )}
+          className="relative grid gap-3"
+        >
+          <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
+            {lane.label} activity
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {lane.items.map((item) => (
+              <li
+                key={item.item_id}
+                data-lane-item={item.kind}
+                data-lane-stage={item.stage_id}
+                data-lane-tier={item.tier ?? "none"}
+                data-lane-state={item.state}
+                data-raw-audio-included={String(item.raw_audio_included)}
+                data-transcript-included={String(item.transcript_included)}
+                data-executable-payload-included={String(
+                  item.executable_payload_included,
+                )}
+                className="border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.1)] backdrop-blur-md"
+              >
+                <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-ink/55">
+                  {[item.tier, item.state].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-1 font-display text-sm text-ink">
+                  {item.label}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
 
       <footer
         data-pipeline-region="footer"
