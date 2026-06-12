@@ -4,7 +4,7 @@ Runtime prerequisites for the Phase 23 vision lane (video ingest → frames → 
 
 ## Minimum versions
 
-Minimums are pinned to the versions verified on this machine on 2026-06-12. Health checks enforce them at plan time (implemented in slice 23C, not 23A).
+Minimums are pinned to the versions verified on this machine on 2026-06-12. **Source of truth: `src/lib/video-extraction/runtime-requirements.ts`** (`MIN_YTDLP_VERSION`, `MIN_FFMPEG_VERSION`) — this table mirrors it. Health checks enforce the minimums at plan time (slice 23C: `executeVideoIngest` refuses below-minimum or missing tools before any download).
 
 | Constant             | Value               | Source                                                                                                        |
 | -------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
