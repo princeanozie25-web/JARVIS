@@ -1,0 +1,18 @@
+version: phase23g.voice.piper-fallback.v1
+owner_controlled: true
+metadata_only: true
+# Documented defaults for THIS machine, commissioned in slice 23G-1. Every value
+# below is overridable by the matching environment variable (env wins per field):
+#   executable -> JARVIS_PIPER_EXECUTABLE
+#   model      -> JARVIS_PIPER_MODEL
+#   config     -> JARVIS_PIPER_MODEL_CONFIG
+#   output_dir -> JARVIS_TTS_OUTPUT_DIR
+#   voice_id   -> JARVIS_TTS_VOICE_ID
+# The terminal narration fallback reports unavailable (fail-closed) whenever the
+# resolved executable / model / config paths do not exist on disk.
+piper:
+  executable: 'C:\Users\princ\.jarvis\runtimes\piper\piper\piper.exe'
+  model: 'C:\Users\princ\.jarvis\runtimes\piper\voices\en_US-lessac-medium.onnx'
+  config: 'C:\Users\princ\.jarvis\runtimes\piper\voices\en_US-lessac-medium.onnx.json'
+  output_dir: 'C:\Users\princ\.jarvis\runtimes\piper\output'
+  voice_id: en_US-lessac-medium

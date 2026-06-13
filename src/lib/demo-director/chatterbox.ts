@@ -8,7 +8,7 @@ import type {
   DemoNarrationProviderHealth,
   DemoNarrationProviderId,
 } from "./narration";
-import { createExistingLocalFallbackNarrationProvider } from "./narration";
+import { createPiperNarrationFallbackProvider } from "./piper-fallback";
 
 export const DEFAULT_CHATTERBOX_URL = "http://127.0.0.1:8004" as const;
 export const DEFAULT_KOKORO_URL = "http://127.0.0.1:8880" as const;
@@ -95,7 +95,14 @@ export function createRuntimeNarrationProviders(
       fetch_impl: input.fetch_impl,
       now: input.now,
     }),
-    createExistingLocalFallbackNarrationProvider({ now: input.now }),
+    // 23G-2: terminal fallback now synthesizes real audio via the commissioned
+    // Piper runtime (was a no-audio stub). WAVs land in the chain's output_dir
+    // so the export package stays coherent; exe/model/config come from
+    // config/voice/piper-fallback.yaml (+ JARVIS_PIPER_* env overrides).
+    createPiperNarrationFallbackProvider({
+      outputDir: input.output_dir,
+      now: input.now,
+    }),
   ];
 }
 

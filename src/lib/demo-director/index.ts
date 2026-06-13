@@ -87,6 +87,16 @@ export {
 } from "./narration";
 
 export {
+  DEFAULT_PIPER_FALLBACK_CONFIG_PATH,
+  PIPER_FALLBACK_PROVIDER_ID,
+  createPiperNarrationFallbackProvider,
+  loadPiperFallbackConfig,
+  type PiperFallbackConfigResult,
+  type PiperFallbackResolvedConfig,
+  type PiperNarrationFallbackOptions,
+} from "./piper-fallback";
+
+export {
   DEMO_RECORDING_TARGETS,
   assertRecordingPlanSafe,
   createDemoRecordingPlan,
