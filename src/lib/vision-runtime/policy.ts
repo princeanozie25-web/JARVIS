@@ -124,6 +124,10 @@ export interface VisionPolicyEvaluationInput {
   readonly raw_ocr_text_telemetry_requested?: boolean;
   readonly mutation_authority_requested?: readonly VisionMutationAuthorityClass[];
   readonly policy?: VisionRuntimePolicy;
+  // 23F (spec §23F): registration-time consent-loader verdict, injected by
+  // the capture caller. Policy itself stays IO-free. Absent or false, the
+  // real-camera branch denies exactly as it always has.
+  readonly camera_capture_consent_granted?: boolean;
 }
 
 export type VisionTelemetryValidationResult =
@@ -227,7 +231,16 @@ export function evaluateVisionRuntimePolicy(
     providerKind === "real_camera" ||
     policy.real_camera_enabled
   ) {
-    return deny("real_camera_disabled");
+    // 23F (spec §23F): the categorical denial becomes the DENY branch of a
+    // consent check. Default behavior is byte-identical — without an explicit
+    // consent-loader confirmation PLUS a user trigger PLUS single-shot
+    // capture, the deny reason is unchanged. Background/periodic/continuous
+    // remain denied above regardless of consent.
+    const admitted =
+      input.camera_capture_consent_granted === true &&
+      input.user_triggered === true &&
+      captureMode === "single";
+    return admitted ? allow() : deny("real_camera_disabled");
   }
   if (
     capability === "mock_camera" ||

@@ -53,6 +53,8 @@ describe("Phase 23A vision source allowlist (I-23A-1, I-23A-2)", () => {
       max_duration_s: 3600,
       max_frames_per_video: 120,
       frame_sample_fps: 1,
+      // 23F additive field, defaulted when absent from the committed yaml.
+      max_camera_clip_s: 30,
     });
   });
 
@@ -105,6 +107,7 @@ describe("Phase 23A vision source allowlist (I-23A-1, I-23A-2)", () => {
       max_duration_s: 0,
       max_frames_per_video: 0,
       frame_sample_fps: 0,
+      max_camera_clip_s: 0,
     });
   });
 

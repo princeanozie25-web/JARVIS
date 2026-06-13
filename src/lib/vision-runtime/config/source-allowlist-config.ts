@@ -28,6 +28,9 @@ const VisionSourceCapsSchema = z.strictObject({
   max_duration_s: z.number().int().positive(),
   max_frames_per_video: z.number().int().positive(),
   frame_sample_fps: z.number().positive(),
+  // 23F additive: bounded camera clip ceiling; committed yaml without the
+  // field still parses (default applied).
+  max_camera_clip_s: z.number().int().positive().default(30),
 });
 
 const VisionSourceAllowlistFileSchema = z.strictObject({
@@ -75,6 +78,7 @@ const FAIL_CLOSED_CAPS: VisionSourceCaps = Object.freeze({
   max_duration_s: 0,
   max_frames_per_video: 0,
   frame_sample_fps: 0,
+  max_camera_clip_s: 0,
 });
 
 function failClosed(

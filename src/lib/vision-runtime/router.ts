@@ -6,11 +6,13 @@ import {
   VisionObservationSchema,
   VisionProviderResultSchema,
   VisionRedactionStatusSchema,
+  VisionRuntimeEnvironmentSchema,
   type VisionCapability,
   type VisionInputKind,
   type VisionObservation,
   type VisionProviderResult,
 } from "./contracts";
+import { evaluateVisionRuntimePolicy } from "./policy";
 import {
   VisionDetectionInputArtifactSchema,
   type VisionDetectionArtifactProviderRunRequest,
@@ -49,7 +51,13 @@ import {
   type TesseractDryRunProviderPathResult,
 } from "./tesseract-provider";
 
-export const VISION_ROUTER_MODES = ["fake", "dry_run_disabled"] as const;
+// 23F (spec §23F): "real_local" appended additively; the fake and
+// dry_run_disabled literals and their behavior are byte-untouched.
+export const VISION_ROUTER_MODES = [
+  "fake",
+  "dry_run_disabled",
+  "real_local",
+] as const;
 
 export const VISION_ROUTER_STATUSES = [
   "completed",
@@ -129,11 +137,27 @@ export const VisionDetectionArtifactRouterRequestSchema =
     provider_timeout_ms: z.number().int().positive().optional(),
   });
 
+// 23F: real_local admission request — the router is the governance gate; the
+// actual capture runs in src/lib/video-extraction/camera.ts. Structural
+// requirements: user-initiated, single-shot, consent verdict injected by the
+// caller (the consent loader runs there; the router stays IO-free).
+export const VisionRealLocalCameraRouterRequestSchema =
+  RouterCommonRequestSchema.extend({
+    capability: z.literal("real_camera"),
+    input_kind: z.literal("real_camera_frame"),
+    mode: z.literal("real_local"),
+    user_triggered: z.literal(true),
+    capture_mode: z.literal("single"),
+    environment: VisionRuntimeEnvironmentSchema,
+    camera_capture_consent_granted: z.boolean(),
+  });
+
 export const VisionRouterRequestSchema = z.union([
   VisionScreenshotOcrRouterRequestSchema,
   VisionMockCameraObjectRouterRequestSchema,
   VisionOcrArtifactRouterRequestSchema,
   VisionDetectionArtifactRouterRequestSchema,
+  VisionRealLocalCameraRouterRequestSchema,
 ]);
 
 export const VisionRouterResultSchema = z.strictObject({
@@ -242,6 +266,36 @@ export async function runVisionCapabilityRouter(
     "detection_artifact" in request
   ) {
     return routeYoloDryRun(request);
+  }
+  if (
+    request.capability === "real_camera" &&
+    request.input_kind === "real_camera_frame" &&
+    request.mode === "real_local" &&
+    "camera_capture_consent_granted" in request
+  ) {
+    // 23F admission verdict only — no capture happens here. Denial reuses
+    // the existing reason literals (no new telemetry or reason values).
+    const decision = evaluateVisionRuntimePolicy({
+      capability: request.capability,
+      input_kind: request.input_kind,
+      provider_kind: "real_camera",
+      environment: request.environment,
+      user_triggered: request.user_triggered,
+      capture_mode: request.capture_mode,
+      camera_capture_consent_granted: request.camera_capture_consent_granted,
+    });
+    return routerResult({
+      request_id: request.request_id,
+      capability: request.capability,
+      input_kind: request.input_kind,
+      mode: request.mode,
+      status: decision.allowed ? "completed" : "denied",
+      reason: decision.allowed ? "completed" : "source_denied",
+      provider_result: null,
+      observations: [],
+      events: [],
+      invocation_result: null,
+    });
   }
 
   return routerResult({

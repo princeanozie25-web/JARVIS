@@ -186,15 +186,33 @@ export function createVisionProviderExecutionDisabledResult(
   });
 }
 
+// 23F (spec §23F): consent-loader verdict captured at registration time by
+// the registering caller; the provider layer itself stays IO-free.
+export interface VisionProviderAdmissionOptions {
+  readonly camera_capture_consent_granted?: boolean;
+}
+
 export function isVisionProviderCapabilityAllowed(
   provider: Pick<VisionProvider, "kind" | "supported_capability">,
+  admission?: VisionProviderAdmissionOptions,
 ): boolean {
-  return (
-    provider.supported_capability !== "cloud_vision" &&
-    provider.supported_capability !== "real_camera" &&
-    provider.kind !== "cloud_vision" &&
-    provider.kind !== "real_camera"
-  );
+  // cloud_vision rejection is unconditional (stays closed in Phase 23).
+  if (
+    provider.supported_capability === "cloud_vision" ||
+    provider.kind === "cloud_vision"
+  ) {
+    return false;
+  }
+  // 23F: the real_camera rejection is the DENY branch of a consent check.
+  // Without an explicit registration-time consent confirmation the rejection
+  // is identical to the historical default.
+  if (
+    provider.supported_capability === "real_camera" ||
+    provider.kind === "real_camera"
+  ) {
+    return admission?.camera_capture_consent_granted === true;
+  }
+  return true;
 }
 
 export function evaluateVisionProviderRequest(

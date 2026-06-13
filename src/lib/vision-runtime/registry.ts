@@ -7,6 +7,7 @@ import {
 import {
   isVisionProviderCapabilityAllowed,
   type VisionProvider,
+  type VisionProviderAdmissionOptions,
 } from "./provider";
 
 export type VisionProviderRegistryResult =
@@ -44,7 +45,13 @@ export class VisionProviderRegistry {
     ]);
   }
 
-  register(provider: VisionProvider): VisionProviderRegistryResult {
+  // 23F: optional registration-time admission carries the consent-loader
+  // verdict for real_camera; omitted, rejection is identical to the
+  // historical default (same reason codes).
+  register(
+    provider: VisionProvider,
+    admission?: VisionProviderAdmissionOptions,
+  ): VisionProviderRegistryResult {
     if (this.providersById.has(provider.id)) {
       return registryError(
         "duplicate_provider_id",
@@ -52,7 +59,7 @@ export class VisionProviderRegistry {
         provider.supported_capability,
       );
     }
-    if (!isVisionProviderCapabilityAllowed(provider)) {
+    if (!isVisionProviderCapabilityAllowed(provider, admission)) {
       return registryError(
         "forbidden_provider_capability",
         provider.id,

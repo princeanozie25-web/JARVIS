@@ -14,6 +14,15 @@ export {
   type VideoAnalysisModelRunner,
 } from "./analysis";
 export {
+  CameraLaneEventSchema,
+  captureCameraFrame,
+  type CameraCaptureDependencies,
+  type CameraCaptureRequest,
+  type CameraCaptureResult,
+  type CameraCaptureRunner,
+  type CameraLaneEvent,
+} from "./camera";
+export {
   gateAndEmit,
   VIDEO_COUNT_BANDS,
   VIDEO_DURATION_BANDS,
