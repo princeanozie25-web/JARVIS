@@ -10,3 +10,17 @@ E-005 | CRLF-fragile frontmatter regex in typography-tokens.test.ts | frozen tes
 E-006 | Rest voice reactor visibility + wake-word copy amendment | tests/orb/render.test.tsx (one copy assertion only) + RestCommandCenter.tsx | Phase 22 idle copy replaces tap-to-enable; reactor visuals display-only; /provider/i purity regex RETAINED byte-identical; zero provider symbols on Rest; TTS provider readout moves to Working | COMPLETE
 E-008 | Phase 13 registry-pin reshape | frozen test files tests/models/registry.test.ts, phase-13a-closeout.test.ts, phase-13b-closeout.test.ts, resolver.test.ts; additive provider-kind "google" in src/models/types.ts + schema.ts | Deep-equal ID censuses froze the catalog as data, contradicting 23A T4 doctrine + 21A living-catalog premise; reshaped to baseline-preservation + universal schema assertions; google added as a cloud-only provider kind for the disabled catalog entries | APPROVED
 E-009 | Fixture-ize resolver tests | decouple tests/models/resolver.test.ts from live config/models/registry.yaml | behavioral tests should run against fixture registries | PROPOSED
+
+## Verification deferrals
+
+23F-CAMERA-PROOF — **PENDING-HARDWARE.** The real camera path landed in `ca19217`
+(spec §23F) and is unit-verified: tests/video-extraction/camera.test.ts (13 tests)
+exercises the consent gate, structural indicator gate, additive `real_local` router
+mode, duration cap, and a fixture round-trip (indicator_on → indicator_off →
+capture_completed, hash-only descriptor, vision+observability gate hygiene). The
+mandated real single-shot smoke (scripts/camera-capture-smoke.ts) HALTed: this
+machine enumerates zero dshow video devices (only "Microphone Array (Realtek(R)
+Audio)"; device listing recorded in the 23F closeout). 23G picks this up under its
+"if hardware present" clause — run the smoke on a camera and record the live
+indicator transitions, descriptor sha256, and artifact path; flip to VERIFIED once
+real capture proof exists.
