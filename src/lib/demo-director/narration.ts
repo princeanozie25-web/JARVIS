@@ -4,6 +4,14 @@ import type {
   DemoScript,
   DemoSegment,
 } from "./contracts";
+import type { NarrationTelemetrySink } from "./failover-telemetry";
+
+// 23G-3: optional metadata-only audit of chain advances + final selection.
+// Absent (default) = pure, no side effects; present = every advance emits.
+export interface NarrationTelemetryOptions {
+  readonly telemetry?: NarrationTelemetrySink;
+  readonly now?: () => number;
+}
 
 export const DEMO_NARRATION_PROVIDER_IDS = [
   "chatterbox-tts-server",
@@ -129,42 +137,93 @@ export function buildNarrationLines(script: DemoScript): DemoNarrationLine[] {
 
 export async function selectNarrationProvider(
   providers: readonly DemoNarrationProvider[] = defaultDemoNarrationProviders(),
+  options: NarrationTelemetryOptions = {},
 ): Promise<{
   provider: DemoNarrationProvider;
   health: DemoNarrationProviderHealth[];
 }> {
+  const now = options.now ?? (() => Date.now());
   const ordered = [...providers].sort(
     (left, right) => left.priority - right.priority,
   );
   const health: DemoNarrationProviderHealth[] = [];
+  let position = 0;
   for (const provider of ordered) {
     const checked = await provider.health();
     health.push(checked);
-    if (checked.ok) return { provider, health };
+    if (checked.ok) {
+      options.telemetry?.recordSelected({
+        provider_id: provider.provider_id,
+        chain_position: position,
+        occurred_at_ms: now(),
+      });
+      return { provider, health };
+    }
+    const next = ordered[position + 1];
+    if (next) {
+      options.telemetry?.recordFailover({
+        from_provider_id: provider.provider_id,
+        to_provider_id: next.provider_id,
+        reason: "health_probe_failed",
+        chain_position: position,
+        occurred_at_ms: now(),
+      });
+    }
+    position += 1;
   }
 
   const fallback = ordered[ordered.length - 1];
   if (!fallback) {
     throw new Error("No narration providers configured.");
   }
+  options.telemetry?.recordSelected({
+    provider_id: fallback.provider_id,
+    chain_position: ordered.length - 1,
+    occurred_at_ms: now(),
+  });
   return { provider: fallback, health };
 }
 
 export async function prepareDemoNarration(input: {
   script: DemoScript;
   providers?: readonly DemoNarrationProvider[];
+  telemetry?: NarrationTelemetrySink;
+  now?: () => number;
 }): Promise<DemoNarrationTrack> {
   const providers = input.providers ?? defaultDemoNarrationProviders();
+  const now = input.now ?? (() => Date.now());
   const lines = buildNarrationLines(input.script);
   const ordered = [...providers].sort(
     (left, right) => left.priority - right.priority,
   );
   const provider_health: DemoNarrationProviderHealth[] = [];
 
+  const recordFailover = (
+    fromProvider: DemoNarrationProvider,
+    position: number,
+    reason: "health_probe_failed" | "synth_error",
+  ): void => {
+    const next = ordered[position + 1];
+    if (next) {
+      input.telemetry?.recordFailover({
+        from_provider_id: fromProvider.provider_id,
+        to_provider_id: next.provider_id,
+        reason,
+        chain_position: position,
+        occurred_at_ms: now(),
+      });
+    }
+  };
+
+  let position = 0;
   for (const provider of ordered) {
     const checked = await provider.health();
     provider_health.push(checked);
-    if (!checked.ok) continue;
+    if (!checked.ok) {
+      recordFailover(provider, position, "health_probe_failed");
+      position += 1;
+      continue;
+    }
 
     try {
       const audio_cues: DemoNarrationAudioCue[] = [];
@@ -173,6 +232,11 @@ export async function prepareDemoNarration(input: {
           audio_cues.push(await provider.synthesize(lineItem));
         }
       }
+      input.telemetry?.recordSelected({
+        provider_id: provider.provider_id,
+        chain_position: position,
+        occurred_at_ms: now(),
+      });
       return narrationTrack({
         script: input.script,
         provider,
@@ -181,6 +245,8 @@ export async function prepareDemoNarration(input: {
         audio_cues,
       });
     } catch {
+      recordFailover(provider, position, "synth_error");
+      position += 1;
       continue;
     }
   }
@@ -189,6 +255,11 @@ export async function prepareDemoNarration(input: {
   if (!fallback) {
     throw new Error("No narration providers configured.");
   }
+  input.telemetry?.recordSelected({
+    provider_id: fallback.provider_id,
+    chain_position: ordered.length - 1,
+    occurred_at_ms: now(),
+  });
   return narrationTrack({
     script: input.script,
     provider: fallback,

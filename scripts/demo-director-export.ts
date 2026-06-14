@@ -1,4 +1,5 @@
 import {
+  createNarrationFailoverTelemetrySink,
   DEMO_SCRIPT_GENERAL,
   DEMO_SCRIPT_RECRUITER,
   DEMO_SCRIPT_SECURITY,
@@ -31,7 +32,18 @@ async function main() {
     output_dir: audioOutput,
     timeout_ms: Number(process.env.JARVIS_DEMO_TTS_TIMEOUT_MS ?? 1_500),
   });
-  const narration = await prepareDemoNarration({ script, providers });
+  // 23G-3: emit metadata-only failover + selection audit. The DB layer is
+  // `server-only` (unavailable in this tsx script), so this CLI routes the
+  // sink to stdout; server callers route recordEvent -> telemetry_events.
+  const narration = await prepareDemoNarration({
+    script,
+    providers,
+    telemetry: createNarrationFailoverTelemetrySink({
+      sessionId: `demo-narration:${script.script_id}`,
+      recordEvent: (event) =>
+        console.log(`[narration-audit] ${JSON.stringify(event)}`),
+    }),
+  });
   const pkg = await createDemoExportPackage({
     script,
     narration,

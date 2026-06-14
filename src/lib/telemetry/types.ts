@@ -234,7 +234,9 @@ export type TelemetryEventType =
   | "transcript_extraction_completed"
   | "multimodal_packet_assembled"
   | "multimodal_analysis_completed"
-  | "vision_lane_event";
+  | "vision_lane_event"
+  | "voice_provider_failover"
+  | "voice_provider_selected";
 
 export interface TelemetryEvent {
   timestamp: number;

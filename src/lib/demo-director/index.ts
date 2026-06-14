@@ -80,11 +80,24 @@ export {
   selectNarrationProvider,
   type DemoNarrationAudioCue,
   type DemoNarrationLine,
+  type NarrationTelemetryOptions,
   type DemoNarrationProvider,
   type DemoNarrationProviderHealth,
   type DemoNarrationProviderId,
   type DemoNarrationTrack,
 } from "./narration";
+
+export {
+  NARRATION_FAILOVER_REASONS,
+  NARRATION_TELEMETRY_FORBIDDEN_FIELDS,
+  createNarrationFailoverTelemetrySink,
+  findForbiddenTelemetryField,
+  type NarrationFailoverInfo,
+  type NarrationFailoverReason,
+  type NarrationFailoverTelemetrySinkDeps,
+  type NarrationProviderSelectedInfo,
+  type NarrationTelemetrySink,
+} from "./failover-telemetry";
 
 export {
   DEFAULT_PIPER_FALLBACK_CONFIG_PATH,
