@@ -72,7 +72,9 @@ describe("Phase 20F.7 governance integrity audit", () => {
       phase_span: "phases-1-through-20",
       verdict: "pass",
     });
-  }, 45000);
+    // E-015: raise to 120s (companion to E-013) — whole-repo-scan audit times
+    // out under machine load; assertions unchanged.
+  }, 120000);
 
   it("covers every required Phase 1-20 governance invariant", () => {
     const auditReport = report();

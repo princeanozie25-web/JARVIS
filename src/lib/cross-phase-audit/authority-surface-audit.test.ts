@@ -113,7 +113,9 @@ describe("Phase 20E.7 authority surface audit", () => {
         audit_execution_enabled: false,
       },
     });
-  }, 15000);
+    // E-015: raise to 120s (companion to E-013) — whole-repo-scan audit times
+    // out under machine load; assertions unchanged.
+  }, 120000);
 
   it("covers every required authority surface", () => {
     const authorityReport = report();

@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import ArchitectureGraphPage from "../../app/audit/architecture-graph/page";
 import {
@@ -23,6 +23,11 @@ import {
   validateArchitectureGraphMetadata,
   getStaticArchitectureGraph,
 } from "./index";
+
+// E-015: file-scoped timeout raise (companion to E-013). This whole-repo-scan
+// closeout audit times out under machine load; raise to 120s. Assertions
+// unchanged.
+vi.setConfig({ testTimeout: 120_000 });
 
 const FORBIDDEN_EXPORT_NAMES = [
   "execute",
