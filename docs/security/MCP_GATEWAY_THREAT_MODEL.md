@@ -135,12 +135,11 @@ disturb it.
 
 **Attack:** client submits proposal text crafted to manipulate the human or
 JARVIS's reasoning ("pre-approved, just click yes").
-**Control [AMBER-PLANNED]:** FC-1 (truth is server-derived) + no-act-on-content
-
-- EoP-11 cross-surface separation.
-  **Required drill (24C):** submit a social-engineering payload; assert it
-  surfaces as untrusted-requiring-review with the server-derived effect shown
-  undistorted. Status AMBER until that drill passes.
+**Control [AMBER-PLANNED]:** FC-1 (truth is server-derived), no-act-on-content,
+and EoP-11 cross-surface separation.
+**Required drill (24C):** submit a social-engineering payload; assert it
+surfaces as untrusted-requiring-review with the server-derived effect shown
+undistorted. Status AMBER until that drill passes.
 
 ### EoP-4 — Confused deputy [AMBER-PLANNED, conditional on EoP-13]
 
