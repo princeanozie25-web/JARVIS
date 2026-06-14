@@ -145,6 +145,9 @@ export const VISION_METADATA_ALLOWED_FIELDS = [
   "weights_configured",
   "sensitivity_class",
   "size_band",
+  // 23H additive: dedicated audio/temporal duration band (was previously
+  // carried on size_band as a stopgap; see video-extraction/transcript.ts).
+  "duration_band",
 ] as const;
 
 export const VISION_TELEMETRY_FORBIDDEN_FIELD_PATTERNS = [

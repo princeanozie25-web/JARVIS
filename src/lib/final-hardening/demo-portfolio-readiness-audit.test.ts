@@ -79,7 +79,12 @@ describe("Phase 20F.8 demo portfolio readiness audit", () => {
       phase: "20F.8",
       verdict: "pass_with_notes",
     });
-  }, 45000);
+    // E-013 (APPROVED 2026-06-14): this whole-repo-scan audit needs a higher
+    // ceiling than the 45s default under machine load (chronic timeout across
+    // Phase 23). Raised to 120s — the budget was set for faster hardware; the
+    // assertions are unchanged. Not gaming: zero assertion failures ever, only
+    // the wall-clock limit.
+  }, 120000);
 
   it("covers every required demo and portfolio readiness area", () => {
     const auditReport = report();

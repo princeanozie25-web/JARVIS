@@ -25,8 +25,9 @@ const HashReferenceSchema = z
 
 // Field-name notes (vision gate is a strict allowlist):
 // - observation_count carries the SEGMENT-COUNT BAND (banding convention);
-// - size_band carries the audio DURATION BAND — the allowlist has no
-//   duration_band field, and duration is the temporal size of the audio;
+// - duration_band carries the audio DURATION BAND (23H: migrated off the
+//   size_band stopgap now that the allowlist has a dedicated duration_band;
+//   size_band stays reserved for actual byte sizes, e.g. the ingest event);
 // - latency_ms is the exact STT latency, matching vision-runtime's own
 //   established exact-latency usage. Exact durations/counts live on disk.
 export const VideoTranscriptEventSchema = z.strictObject({
@@ -39,7 +40,12 @@ export const VideoTranscriptEventSchema = z.strictObject({
   language: BoundedIdSchema.nullable(),
   latency_ms: z.number().int().nonnegative(),
   observation_count: z.enum(["empty", "1_to_30", "31_to_120", "over_120"]),
-  size_band: z.enum(["under_10s", "10s_to_60s", "60s_to_600s", "over_600s"]),
+  duration_band: z.enum([
+    "under_10s",
+    "10s_to_60s",
+    "60s_to_600s",
+    "over_600s",
+  ]),
   created_at_ms: z.number().int().nonnegative(),
   metadata_only: z.literal(true),
   raw_payload_included: z.literal(false),
@@ -200,7 +206,7 @@ export async function extractVideoTranscript(
     language: transcription.language || null,
     latency_ms: Math.max(0, Math.round(transcription.latency_ms)),
     observation_count: segmentBand,
-    size_band: durationBand,
+    duration_band: durationBand,
     created_at_ms: input.now_ms,
     metadata_only: true,
     raw_payload_included: false,

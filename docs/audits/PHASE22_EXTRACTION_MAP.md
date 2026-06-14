@@ -111,10 +111,10 @@ Rulings: orb-test copy assertion amended (ONLY change in that file); `/provider/
 - No `JARVIS_KOKORO_URL` env override set; no install path referenced anywhere in repo/config — only the URL constant (`src/lib/tts/chatterbox-provider.ts:15`) and the setup doc mention (`docs/voice/CHATTERBOX_SETUP.md:76`).
 - Registry registration already `enabled: false, status: "unavailable"`; marking comment added at the registration site (`src/lib/tts/registry.ts`).
 
-**(b) Failover drill: SKIPPED — precondition not met.**
+**(b) Failover drill: DONE — proven live 2026-06-14 (was SKIPPED on 2026-06-12).**
 
-- Chatterbox probe `http://127.0.0.1:8004` (DEFAULT_SYSTEM_CHATTERBOX_URL): connection refused — no server running, so the kill-mid-session drill is not executable.
-- Static fallback evidence: `fallback_order` is `chatterbox-tts-server → kokoro → existing-local-runtime` (`voice-stack.ts`); with both remote providers unhealthy, `selectSystemVoiceProvider` deterministically lands on `existing-local-runtime`; voice telemetry hygiene (`emitMetadataOnlyVoiceTelemetry`) is the metadata-only sink a live failover event would pass through. Live confirmation deferred until a Chatterbox runtime exists.
+- Chatterbox was commissioned (serves `http://127.0.0.1:8004`) and the kill-mid-drill executed: killed Chatterbox, re-ran `npm run demo:export`; the demo-director narration chain emitted `voice_provider_failover` (chatterbox→kokoro), `voice_provider_failover` (kokoro→existing-local-fallback), and `voice_provider_selected` (existing-local-fallback), and a Piper terminal provider synthesized all 23 narration WAVs (ear-confirmed intelligible). Commits: synthesis `6e19fbe` (23G-2), audit `e19501f` (23G-3); registry E-010 → CLOSED-PROVEN-BY-DRILL.
+- The live CLI audit path logs these metadata-only events to stdout (the tsx CLI cannot reach the `server-only` sqlite DB); sqlite persistence via `recordEvent` is covered by the server path and the I-23G3-2 unit round-trip. NOTE: this is the demo-director chain; the system voice-stack (`voice-stack.ts`) selection logic is still fixture-based — wiring the real fallback into the live voice runtime is tracked as E-012.
 
 ## Ready-to-run extraction (after owner rules on AMBIGUOUS)
 

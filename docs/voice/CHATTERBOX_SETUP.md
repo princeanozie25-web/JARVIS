@@ -73,12 +73,21 @@ narration provider while preserving the Chatterbox-first runtime order.
 ## System-Wide Fallback Order
 
 1. Chatterbox TTS Server at `JARVIS_CHATTERBOX_URL` or `http://127.0.0.1:8004`
-2. Kokoro at `JARVIS_KOKORO_URL` or `http://127.0.0.1:8880`
-3. Existing local runtime fallback
+   — primary; commissioned and serving (proven by live drill 2026-06-14).
+2. Kokoro at `JARVIS_KOKORO_URL` or `http://127.0.0.1:8880` — REGISTERED but NOT
+   INSTALLED on this machine (health probe refuses); a forward slot.
+3. Existing local runtime fallback.
 
 Health checks are required before selecting Chatterbox or Kokoro. If Chatterbox
 is reachable but synthesis fails, JARVIS falls back for that utterance without
 changing authority or retrying through a cloud provider.
+
+In the demo-director narration chain this fallback is REAL end-to-end: when
+Chatterbox and Kokoro are unreachable the chain falls to a Piper terminal
+provider that synthesizes local audio, emitting a metadata-only
+`voice_provider_failover`/`selected` audit on every advance (proven by live
+kill-drill, 2026-06-14). Carrying that into the live voice runtime is tracked
+as E-012.
 
 The same provider IDs are registered in the system `tts` registry:
 

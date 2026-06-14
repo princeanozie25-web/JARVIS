@@ -14,12 +14,23 @@ approval lifecycle and governance substrate.
 Chatterbox is now the primary system-wide TTS provider, not only a Demo
 Director narrator:
 
-1. Chatterbox TTS Server at `http://127.0.0.1:8004`
-2. Kokoro at `http://127.0.0.1:8880`
-3. Existing local runtime fallback
+1. Chatterbox TTS Server at `http://127.0.0.1:8004` — primary; commissioned and
+   serving (proven by live drill 2026-06-14).
+2. Kokoro at `http://127.0.0.1:8880` — REGISTERED but NOT INSTALLED on this
+   machine (health probe refuses); a forward slot, not a live provider today.
+3. Existing local runtime fallback — the terminal selection slot.
 
 Health checks are required before selection. Provider output does not grant
 authority and does not auto-play without the existing playback supervisor.
+
+Note (2026-06-14): the _demo-director narration chain_ now has a REAL terminal
+fallback — a Piper provider that synthesizes local audio when Chatterbox/Kokoro
+are unreachable, with a metadata-only `voice_provider_failover`/`selected` audit
+on every chain advance (proven by live kill-drill — 23 narration WAVs produced).
+Wiring that same real fallback + audit into this system voice-stack runtime (so
+production voice turns, not just demo export, get it) is tracked as E-012; today
+this list describes selection order, and the proven real-synthesis fallback
+lives in the demo chain.
 
 ## Wake Word
 
