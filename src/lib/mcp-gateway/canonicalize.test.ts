@@ -348,12 +348,19 @@ describe("I-24C1-5 (metadata-only): the effect leaks no raw value", () => {
 // ===========================================================================
 // I-24C1-6 — GATE-2 leaf: the canonicalizer reaches no mutator tree
 // ===========================================================================
-describe("I-24C1-6 (GATE-2 leaf): canonicalize.ts imports only zod + the sanitizer", () => {
-  it("its only module edges are zod and ./sanitizer", () => {
+describe("I-24C1-6 (GATE-2 leaf): canonicalize.ts imports only zod + the sanitizer + the canonical-policy leaf", () => {
+  it("its only module edges are zod, ./sanitizer, and @/lib/canonical-policy", () => {
+    // 24D-2b: the vocab + derivation moved to the pure canonical-policy leaf
+    // (both the gateway and the executor depend on it; neither imports the
+    // other). canonicalize.ts now delegates to it — a third mutator-free edge.
     const froms = [
       ...codeWithoutComments(CANON_SRC).matchAll(/\bfrom\s*["']([^"']+)["']/g),
     ].map((m) => m[1]);
-    expect([...new Set(froms)].sort()).toEqual(["./sanitizer", "zod"]);
+    expect([...new Set(froms)].sort()).toEqual([
+      "./sanitizer",
+      "@/lib/canonical-policy",
+      "zod",
+    ]);
   });
 
   it("references no denied tree", () => {

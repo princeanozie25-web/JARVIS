@@ -20,14 +20,15 @@
 // proposal-exposable, is REJECTED. Absence of an exposable classification ⇒ NOT
 // exposable.
 //
-// GATE-2: this module imports ONLY zod + the local leaf sanitizer. It does NOT
-// import the tool registry (tools/ pulls router + db — denied trees). Registry
-// metadata enters through an INJECTED lookup (the narrow-projection / injected-
-// source template from 24B-2): the host builds a ToolMetadata projection from
-// the real registry OUTSIDE the gateway import graph and passes it in. The
-// gateway re-declares the small registry vocab as local string unions (mirrors
-// tools/types.ts ReversibilityClass + router SafetyTag + approval-runtime risk
-// classes) so it needs no import from those trees.
+// GATE-2: this module imports ONLY zod, the local leaf sanitizer, and the
+// canonical-policy leaf (@/lib/canonical-policy — a pure, mutator-free module).
+// It does NOT import the tool registry (tools/ pulls router + db — denied trees).
+// Registry metadata enters through an INJECTED lookup (the narrow-projection /
+// injected-source template from 24B-2): the host builds a ToolMetadata projection
+// from the real registry OUTSIDE the gateway import graph and passes it in. The
+// small registry vocab + derivation (mirroring tools/types.ts ReversibilityClass
+// + router SafetyTag + approval-runtime risk classes) come from the canonical-
+// policy leaf, which the executor also depends on — so neither imports the other.
 //
 // THIS SLICE DERIVES AND STOPS. There is no enqueue, no approval, no execution,
 // no runtime.runTool. 24C-2 builds the enqueue behind the GATE-5 needle's eye.
@@ -35,39 +36,29 @@
 import { z } from "zod";
 
 import { findForbiddenFields } from "./sanitizer";
+import {
+  approvalTierOf,
+  mutationTypeOf,
+  riskClassOf,
+  summarizeTarget,
+  type ApprovalTier,
+  type MutationType,
+  type ReversibilityClass,
+  type RiskClass,
+  type SafetyTag,
+} from "@/lib/canonical-policy";
 
-// --- registry vocab, re-declared locally (NO import from tools/router) -------
-// Structurally identical to tools/types.ts `ReversibilityClass`, router
-// `SafetyTag`, and approval-runtime `APPROVAL_RISK_CLASSES`. Re-declaring keeps
-// the gateway import graph free of those denied trees while letting an injected
-// projection (typed by the real registry) assign into these unions structurally.
-export type GatewayReversibilityClass =
-  | "NO_SIDE_EFFECT"
-  | "PURE_READ"
-  | "REVERSIBLE_WRITE"
-  | "IRREVERSIBLE";
-
-export type GatewaySafetyTag =
-  | "ALLOW"
-  | "CONFIRM_ONCE"
-  | "CONFIRM_ALWAYS"
-  | "BLOCK";
-
-export type CanonicalMutationType =
-  | "none"
-  | "read"
-  | "reversible_write"
-  | "irreversible_write";
-
-/** Mirrors approval-runtime APPROVAL_RISK_CLASSES so the derived risk_class is
- * compatible with the proposal contract a later slice (24C-2) will populate. */
-export type CanonicalRiskClass = "low" | "medium" | "high" | "critical";
-
-export type CanonicalApprovalTier =
-  | "auto"
-  | "confirm_once"
-  | "confirm_always"
-  | "elevated";
+// --- registry vocab, from the shared canonical-policy leaf (24D-2b) ----------
+// The vocab + derivation now live in @/lib/canonical-policy — a pure, mutator-
+// free leaf BOTH the gateway and the executor (chat/) depend DOWN onto, so the
+// executor can re-check the same policy at the decision point WITHOUT importing
+// the gateway and vice-versa (no cycle; closes E-016). These aliases preserve
+// the gateway's local vocab names so nothing downstream of this file changes.
+export type GatewayReversibilityClass = ReversibilityClass;
+export type GatewaySafetyTag = SafetyTag;
+export type CanonicalMutationType = MutationType;
+export type CanonicalRiskClass = RiskClass;
+export type CanonicalApprovalTier = ApprovalTier;
 
 // --- the injected registry projection (narrow, read-only) --------------------
 /**
@@ -147,113 +138,8 @@ export const ClientProposalRequestSchema = z.strictObject({
 
 export type ClientProposalRequest = z.infer<typeof ClientProposalRequestSchema>;
 
-// --- derivation policy (pure functions of registry metadata) -----------------
-function mutationTypeOf(
-  reversibility: GatewayReversibilityClass,
-): CanonicalMutationType {
-  switch (reversibility) {
-    case "NO_SIDE_EFFECT":
-      return "none";
-    case "PURE_READ":
-      return "read";
-    case "REVERSIBLE_WRITE":
-      return "reversible_write";
-    case "IRREVERSIBLE":
-      return "irreversible_write";
-    default:
-      // fail-safe: an unrecognized class is treated as the most dangerous
-      return "irreversible_write";
-  }
-}
-
-const RISK_ORDER: CanonicalRiskClass[] = ["low", "medium", "high", "critical"];
-
-function bumpRisk(risk: CanonicalRiskClass, by: number): CanonicalRiskClass {
-  const index = RISK_ORDER.indexOf(risk);
-  const next = Math.min(RISK_ORDER.length - 1, Math.max(0, index + by));
-  return RISK_ORDER[next];
-}
-
-/** risk_class is a pure function of the registry's reversibilityClass +
- * requiredSafetyTag — never the client. CONFIRM_ALWAYS escalates one level;
- * BLOCK (which should already be non-exposable) pins to critical. */
-function riskClassOf(
-  reversibility: GatewayReversibilityClass,
-  safetyTag: GatewaySafetyTag,
-): CanonicalRiskClass {
-  let base: CanonicalRiskClass;
-  switch (reversibility) {
-    case "NO_SIDE_EFFECT":
-    case "PURE_READ":
-      base = "low";
-      break;
-    case "REVERSIBLE_WRITE":
-      base = "medium";
-      break;
-    case "IRREVERSIBLE":
-      base = "high";
-      break;
-    default:
-      base = "critical"; // fail-safe
-  }
-  if (safetyTag === "BLOCK") return "critical";
-  if (safetyTag === "CONFIRM_ALWAYS") return bumpRisk(base, 1);
-  return base;
-}
-
-/** approval_tier is derived from the registry's requiredSafetyTag (the confirm
- * requirement) + reversibilityClass. A write is never weaker than confirm_once;
- * an irreversible action is never weaker than confirm_always. */
-function approvalTierOf(
-  reversibility: GatewayReversibilityClass,
-  safetyTag: GatewaySafetyTag,
-): CanonicalApprovalTier {
-  const isWrite =
-    reversibility === "REVERSIBLE_WRITE" || reversibility === "IRREVERSIBLE";
-
-  let tier: CanonicalApprovalTier;
-  if (safetyTag === "ALLOW") tier = isWrite ? "confirm_once" : "auto";
-  else if (safetyTag === "CONFIRM_ONCE") tier = "confirm_once";
-  else tier = "confirm_always"; // CONFIRM_ALWAYS or BLOCK
-
-  if (reversibility === "IRREVERSIBLE") {
-    tier = tier === "confirm_always" ? "elevated" : "confirm_always";
-  }
-  return tier;
-}
-
-/**
- * Structurally summarize a raw scope/target string so NO raw path/value/secret
- * enters the metadata-only effect. Filesystem paths collapse to
- * "filesystem:<ext-shape>"; scheme-prefixed scopes keep the scheme only
- * ("memory:<target>"); anything else is "opaque:<target>".
- */
-function summarizeTarget(rawScope: string): {
-  target: string;
-  scopeCategory: string;
-} {
-  const trimmed = rawScope.trim();
-  const winDrive = /^[a-zA-Z]:[\\/]/.test(trimmed);
-  const pathLike =
-    winDrive ||
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("\\") ||
-    /[\\/]/.test(trimmed);
-
-  if (pathLike) {
-    const ext = /\.([a-z0-9]{1,8})$/i.exec(trimmed);
-    const shape = ext ? `*.${ext[1].toLowerCase()}` : "path";
-    return { target: `filesystem:${shape}`, scopeCategory: "filesystem" };
-  }
-
-  const schemeMatch = /^([a-z][a-z0-9_-]*):/i.exec(trimmed);
-  if (schemeMatch) {
-    const scheme = schemeMatch[1].toLowerCase();
-    return { target: `${scheme}:<target>`, scopeCategory: scheme };
-  }
-
-  return { target: "opaque:<target>", scopeCategory: "opaque" };
-}
+// Derivation (mutationTypeOf, riskClassOf, approvalTierOf, summarizeTarget) is
+// imported from the canonical-policy leaf above — same pure functions, one home.
 
 /**
  * FC-1. Turn an UNTRUSTED client request into a server-derived canonical effect.

@@ -18,6 +18,7 @@ import {
   recomputeCanonicalEffectHash,
   revalidateGatewayProposal,
 } from "./approval-revalidation";
+import type { ClassificationLookup } from "@/lib/canonical-policy";
 
 const meta: ToolMetadata = {
   capability: "fs.create_file",
@@ -144,5 +145,93 @@ describe("revalidateGatewayProposal", () => {
         NOW,
       ),
     ).toEqual({ kind: "deny", reason: "effect_missing" });
+  });
+});
+
+// ===========================================================================
+// 24D-2b — registry-drift re-check at the decision point (closes E-016)
+//
+// The hash proves the effect is UNCHANGED; these prove it is also STILL VALID
+// against CURRENT policy. `classify` is injected to simulate drift between
+// queueing and approval. The frozen sample effect is fs.create_file @ tier
+// confirm_once (its live classification), so the default path stays "ok".
+// ===========================================================================
+describe("revalidateGatewayProposal — registry-drift re-check (24D-2b)", () => {
+  const json = stableStringify(sampleEffect()); // capability fs.create_file
+  const hash = recomputeCanonicalEffectHash(json);
+  const NOW = 1_000;
+  const FUTURE = 10_000;
+  const row = {
+    canonical_effect_hash: hash,
+    canonical_effect_json: json,
+    expires_at: FUTURE,
+  };
+
+  it("I-24D2b-5 (no drift): with the live policy unchanged, a hash-valid proposal proceeds", () => {
+    // default classify = the live canonical-policy map; fs.create_file is still
+    // exposable @ confirm_once, so the re-check passes and the outcome is ok.
+    expect(revalidateGatewayProposal(row, NOW)).toEqual({ kind: "ok" });
+  });
+
+  it("I-24D2b-6 (drift: declassified): a capability no longer classified denies tool_declassified", () => {
+    const classifyNone: ClassificationLookup = () => null;
+    expect(revalidateGatewayProposal(row, NOW, classifyNone)).toEqual({
+      kind: "deny",
+      reason: "tool_declassified",
+    });
+  });
+
+  it("I-24D2b-6 (drift: hidden): a capability flipped mcp_exposable:false denies tool_declassified", () => {
+    const classifyHidden: ClassificationLookup = () => ({
+      mcp_exposable: false,
+      proposal_allowed: true,
+      required_scope: "fs.write",
+      required_approval_tier: "confirm_once",
+    });
+    expect(revalidateGatewayProposal(row, NOW, classifyHidden)).toEqual({
+      kind: "deny",
+      reason: "tool_declassified",
+    });
+  });
+
+  it("I-24D2b-7 (drift: tier tightened): a tightened approval tier denies approval_policy_changed", () => {
+    const classifyTightened: ClassificationLookup = () => ({
+      mcp_exposable: true,
+      proposal_allowed: true,
+      required_scope: "fs.write",
+      required_approval_tier: "confirm_always", // was confirm_once at freeze
+    });
+    expect(revalidateGatewayProposal(row, NOW, classifyTightened)).toEqual({
+      kind: "deny",
+      reason: "approval_policy_changed",
+    });
+  });
+
+  it("I-24D2b-8 (ordering): the hash check fires BEFORE the policy re-check", () => {
+    // even with a declassifying policy, a DRIFTED hash denies on hash_mismatch —
+    // the re-check only inspects a hash-verified blob, never an unverified one.
+    const classifyNone: ClassificationLookup = () => null;
+    expect(
+      revalidateGatewayProposal(
+        { ...row, canonical_effect_json: `${json} DRIFTED` },
+        NOW,
+        classifyNone,
+      ),
+    ).toEqual({ kind: "deny", reason: "hash_mismatch" });
+  });
+
+  it("I-24D2b-8 (effect_unparsable): a hash-matched but non-JSON effect denies", () => {
+    const garbage = "not-json{";
+    const garbageHash = recomputeCanonicalEffectHash(garbage);
+    expect(
+      revalidateGatewayProposal(
+        {
+          canonical_effect_hash: garbageHash,
+          canonical_effect_json: garbage,
+          expires_at: FUTURE,
+        },
+        NOW,
+      ),
+    ).toEqual({ kind: "deny", reason: "effect_unparsable" });
   });
 });

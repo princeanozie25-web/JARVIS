@@ -18,10 +18,28 @@
 // Rate/time LIMITS are DECLARED here; the running rate COUNTER is enforced in
 // 24D-3. The per-proposal time_bound IS enforced at submission (this slice).
 //
-// GATE-2: imports only a local gateway TYPE (CanonicalApprovalTier). No db, no
-// tools/ tree, no fs — a pure policy + enforcement leaf.
+// GATE-2: imports only the canonical-policy leaf (pure vocab + the EoP-13
+// classification, re-exported here for existing importers). No db, no tools/
+// tree, no fs — a pure policy + enforcement leaf.
 
-import type { CanonicalApprovalTier } from "./canonicalize";
+import {
+  CAPABILITY_CLASSIFICATION,
+  classifyCapability,
+  findUnclassifiedMutatingCapabilities,
+  isCapabilityExposable,
+  type CapabilityClassification,
+} from "@/lib/canonical-policy";
+
+// Re-export the shared EoP-13 classification surface so existing importers of
+// "./scope" are unaffected by the 24D-2b move into the canonical-policy leaf
+// (the policy now lives in one place both the gateway and the executor import).
+export {
+  CAPABILITY_CLASSIFICATION,
+  classifyCapability,
+  findUnclassifiedMutatingCapabilities,
+  isCapabilityExposable,
+};
+export type { CapabilityClassification };
 
 // --- read scope (ID-2) -------------------------------------------------------
 export const READABLE_RESOURCE_NAMES = [
@@ -54,132 +72,11 @@ export interface ClientScope {
   propose: ProposeGrant[];
 }
 
-// --- EoP-13 capability classification (gateway policy, default-deny) ----------
-export interface CapabilityClassification {
-  mcp_exposable: boolean;
-  proposal_allowed: boolean;
-  required_scope: string;
-  required_approval_tier: CanonicalApprovalTier;
-}
-
-/**
- * EVERY mutating capability the tool registry can expose MUST appear here with an
- * explicit classification (the completeness test fails the build otherwise). Most
- * are declared NOT exposable (conservative default); a capability is proposable
- * over MCP only if BOTH mcp_exposable AND proposal_allowed are true. Default-deny:
- * a capability absent from this map is treated as NOT exposable.
- */
-export const CAPABILITY_CLASSIFICATION: Readonly<
-  Record<string, CapabilityClassification>
-> = {
-  "memory.note": {
-    mcp_exposable: true,
-    proposal_allowed: true,
-    required_scope: "memory.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.create_file": {
-    mcp_exposable: true,
-    proposal_allowed: true,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.write_file": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.append_file": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.mkdir": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.rename": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "fs.delete_file": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_always",
-  },
-  "fs.undo": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "fs.write",
-    required_approval_tier: "confirm_once",
-  },
-  "project.register": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "project.write",
-    required_approval_tier: "confirm_once",
-  },
-  "project.add_source": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "project.write",
-    required_approval_tier: "confirm_once",
-  },
-  "project.index": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "project.write",
-    required_approval_tier: "confirm_once",
-  },
-  "project.promote_task": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "project.write",
-    required_approval_tier: "confirm_once",
-  },
-  "project.set_status": {
-    mcp_exposable: false,
-    proposal_allowed: false,
-    required_scope: "project.write",
-    required_approval_tier: "confirm_once",
-  },
-};
-
-export function classifyCapability(
-  capability: string,
-): CapabilityClassification | null {
-  return Object.prototype.hasOwnProperty.call(
-    CAPABILITY_CLASSIFICATION,
-    capability,
-  )
-    ? CAPABILITY_CLASSIFICATION[capability]
-    : null;
-}
-
-/** Default-deny: only a classified capability with BOTH flags true is exposable. */
-export function isCapabilityExposable(capability: string): boolean {
-  const classification = classifyCapability(capability);
-  return (
-    classification !== null &&
-    classification.mcp_exposable &&
-    classification.proposal_allowed
-  );
-}
-
-/** EoP-13 completeness: returns the mutating capabilities that have NO
- * classification. A non-empty result MUST fail the build. */
-export function findUnclassifiedMutatingCapabilities(
-  mutatingCapabilities: readonly string[],
-): string[] {
-  return mutatingCapabilities.filter((cap) => classifyCapability(cap) === null);
-}
+// --- EoP-13 capability classification ----------------------------------------
+// CapabilityClassification / CAPABILITY_CLASSIFICATION / classifyCapability /
+// isCapabilityExposable / findUnclassifiedMutatingCapabilities now live in the
+// canonical-policy leaf (imported + re-exported above). The executor re-checks
+// the SAME map at the decision point without importing the gateway (E-016).
 
 // --- read-scope enforcement (ID-2) -------------------------------------------
 export function isReadAllowed(

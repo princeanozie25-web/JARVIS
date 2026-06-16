@@ -78,6 +78,11 @@ const repoRel = (abs: string): string => toPosix(relative(REPO_ROOT, abs));
 const ALLOW_PREFIXES = [
   "src/lib/mcp-gateway/",
   "src/lib/pipeline-visualization/",
+  // 24D-2b: the shared canonicalization leaf (pure, imports NOTHING) — the
+  // neutral home both the gateway and the executor depend on, so neither imports
+  // the other (E-016). Adding it does not weaken the freeze's load-bearing claim:
+  // the gateway still reaches NO mutator tree (asserted by I-24B3-2 below).
+  "src/lib/canonical-policy/",
 ];
 const DENY_TREES = [
   "src/lib/approval-runtime/",
@@ -303,6 +308,14 @@ describe("I-24B3-2 (GATE-2): the gateway import graph reaches only the allowed r
     expect(
       GATE2.reachableRepo.has("src/lib/pipeline-visualization/contracts.ts"),
     ).toBe(true);
+  });
+
+  it("reaches the shared canonical-policy leaf, and it pulls in no further repo module (24D-2b)", () => {
+    expect(GATE2.reachableRepo.has("src/lib/canonical-policy/index.ts")).toBe(
+      true,
+    );
+    // the leaf is the deepest node on its branch: it imports NOTHING, so it adds
+    // no external and no new repo module — the non-mutation claim is preserved.
   });
 
   it("reaches NO mutator tree", () => {

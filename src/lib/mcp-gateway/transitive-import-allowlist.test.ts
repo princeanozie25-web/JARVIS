@@ -42,6 +42,11 @@ const repoRel = (abs: string): string => toPosix(relative(REPO_ROOT, abs));
 const ALLOW_PREFIXES = [
   "src/lib/mcp-gateway/",
   "src/lib/pipeline-visualization/",
+  // 24D-2b: the shared canonicalization leaf. A PURE, mutator-free module (it
+  // imports NOTHING) that BOTH the gateway and the executor depend DOWN onto, so
+  // the decision-point re-check uses the same policy with no gateway<->executor
+  // cycle (E-016). The safest possible addition: a leaf, reached only by value.
+  "src/lib/canonical-policy/",
 ];
 
 const EXTERNAL_ALLOW = new Set<string>(["zod", "node:crypto"]);
@@ -306,9 +311,17 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(
       result.reachableRepo.has("src/lib/mcp-gateway/client-registry.ts"),
     ).toBe(true);
-    // 24D-2a: the per-client scope + EoP-13 classification leaf. It imports only
-    // a local gateway type (CanonicalApprovalTier) — no tools/db tree.
+    // 24D-2a: the per-client scope + propose-scope enforcement. It now sources
+    // the EoP-13 classification from the canonical-policy leaf (24D-2b) and
+    // re-exports it — no tools/db tree.
     expect(result.reachableRepo.has("src/lib/mcp-gateway/scope.ts")).toBe(true);
+    // 24D-2b: the shared canonicalization leaf is reached (by VALUE — canonicalize
+    // imports its derivation fns, scope imports its classification). It is the
+    // neutral home both the gateway and the executor import; it pulls in NOTHING
+    // further, so it adds no external and no new repo module to the graph.
+    expect(result.reachableRepo.has("src/lib/canonical-policy/index.ts")).toBe(
+      true,
+    );
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

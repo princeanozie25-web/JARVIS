@@ -390,12 +390,15 @@ describe("I-24D2a-8 (fail-closed): missing/ambiguous scope + unclassified => den
 // ===========================================================================
 // I-24D2a-9 — GATE-2 leaf (no mutator tree, no cross-client)
 // ===========================================================================
-describe("I-24D2a-9 (GATE-2 leaf): scope.ts imports only a local gateway type", () => {
-  it("its only module edge is ./canonicalize (a type import)", () => {
+describe("I-24D2a-9 (GATE-2 leaf): scope.ts imports only the canonical-policy leaf", () => {
+  it("its only module edge is the shared canonical-policy leaf (24D-2b)", () => {
+    // 24D-2b moved the EoP-13 classification into @/lib/canonical-policy (a pure,
+    // mutator-free leaf both the gateway and the executor import); scope.ts now
+    // imports + re-exports it. That is its ONLY module edge.
     const froms = [...SCOPE_SRC.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map(
       (m) => m[1],
     );
-    expect([...new Set(froms)]).toEqual(["./canonicalize"]);
+    expect([...new Set(froms)]).toEqual(["@/lib/canonical-policy"]);
   });
 
   it("references no db/tools/approval-runtime/chat tree", () => {

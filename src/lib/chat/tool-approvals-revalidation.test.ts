@@ -21,6 +21,7 @@ import type { Tool } from "../tools/types";
 import {
   buildCanonicalProposal,
   canonicalizeProposalRequest,
+  type GatewaySafetyTag,
   type ToolMetadata,
   type ToolMetadataLookup,
 } from "../mcp-gateway";
@@ -72,8 +73,14 @@ const confirmTool: Tool<{ value: string }> = {
   },
 };
 
+// 24D-2b: the canonical effect's CAPABILITY must be a live-classified exposable
+// capability so the new decision-point re-check passes when the hash is intact.
+// "memory.note" is classified @ confirm_once; confirmTool derives confirm_once
+// (REVERSIBLE_WRITE + CONFIRM_ONCE), so the frozen tier matches current policy.
+// The tool actually executed is still confirmTool — only the effect's policy
+// fields are re-derived. Drift cases below OVERRIDE this capability/tag.
 const meta: ToolMetadata = {
-  capability: confirmTool.id,
+  capability: "memory.note",
   reversibilityClass: "REVERSIBLE_WRITE",
   requiredSafetyTag: "CONFIRM_ONCE",
   proposalExposable: true,
@@ -118,14 +125,32 @@ async function awaitToolCall(executionId: string): Promise<void> {
 
 // Create a GATEWAY-originated pending approval (carries the FC-2 hash + the
 // stable serialization). `drift` stores a serialization that no longer hashes
-// to the stored hash.
+// to the stored hash. `capability`/`safetyTag` OVERRIDE the frozen effect's
+// policy fields to simulate REGISTRY/POLICY drift between queueing and approval
+// (24D-2b): an unclassified capability, or a derived tier the live policy no
+// longer matches. The hash stays internally consistent — only its relationship
+// to CURRENT policy drifts, which is exactly what the decision-point re-check
+// catches and the hash check cannot.
 function createGatewayApproval(
   executionId: string,
-  opts: { drift?: boolean } = {},
+  opts: {
+    drift?: boolean;
+    capability?: string;
+    safetyTag?: GatewaySafetyTag;
+  } = {},
 ): string {
+  // default path uses the shared lookup; drift cases swap in an overridden meta
+  const effLookup: ToolMetadataLookup =
+    opts.capability || opts.safetyTag
+      ? () => ({
+          ...meta,
+          ...(opts.capability ? { capability: opts.capability } : {}),
+          ...(opts.safetyTag ? { requiredSafetyTag: opts.safetyTag } : {}),
+        })
+      : lookup;
   const canon = canonicalizeProposalRequest(
     { tool: confirmTool.id, args: { value: "alpha" } },
-    lookup,
+    effLookup,
   );
   if (!canon.ok) throw new Error(`canonicalize: ${canon.reason}`);
   const proposal = buildCanonicalProposal({
@@ -230,6 +255,59 @@ describe("resumeApproval — FC-2 re-validation guard", () => {
     expect(
       events.some((e) => e.error_class === "ApprovalRevalidationFailed"),
     ).toBe(false);
+  });
+
+  it("I-24D2b-3 (drift declassified): a capability no longer classified finalizes DENIED, runTool NOT called", async () => {
+    await awaitToolCall("exec-declassified");
+    // freeze an effect whose capability is unclassified in the LIVE policy; the
+    // hash is intact, so ONLY the decision-point re-check can catch this.
+    const token = createGatewayApproval("exec-declassified", {
+      capability: "mock.confirm",
+    });
+
+    const res = await resumeApproval({
+      db,
+      runtime,
+      executionId: "exec-declassified",
+      decision: "APPROVED_ONCE",
+      approvalToken: token,
+      now,
+      recordEvent,
+    });
+
+    expect(res.body.ok).toBe(false);
+    expect(res.body.reason).toBe("revalidation_tool_declassified");
+    expect(getToolCall(db, "exec-declassified")?.status).toBe("DENIED");
+    expect(calls).toEqual([]); // never executed
+    expect(
+      events.some((e) => e.error_class === "ApprovalRevalidationFailed"),
+    ).toBe(true);
+  });
+
+  it("I-24D2b-4 (drift tier): a frozen tier the live policy no longer matches finalizes DENIED, runTool NOT called", async () => {
+    await awaitToolCall("exec-tier");
+    // memory.note is classified @ confirm_once; freeze it with a derived tier of
+    // confirm_always (CONFIRM_ALWAYS safety tag) so current policy no longer
+    // matches the frozen tier — a policy drift the hash alone cannot detect.
+    const token = createGatewayApproval("exec-tier", {
+      capability: "memory.note",
+      safetyTag: "CONFIRM_ALWAYS",
+    });
+
+    const res = await resumeApproval({
+      db,
+      runtime,
+      executionId: "exec-tier",
+      decision: "APPROVED_ONCE",
+      approvalToken: token,
+      now,
+      recordEvent,
+    });
+
+    expect(res.body.ok).toBe(false);
+    expect(res.body.reason).toBe("revalidation_approval_policy_changed");
+    expect(getToolCall(db, "exec-tier")?.status).toBe("DENIED");
+    expect(calls).toEqual([]); // never executed
   });
 });
 
