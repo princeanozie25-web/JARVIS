@@ -31,6 +31,20 @@ export type {
 } from "./resources";
 
 export {
+  QUEUE_STATUS_URI,
+  QUEUE_STATUS_NAME,
+  DEFAULT_QUEUE_STATUS_CADENCE_MS,
+  projectQueueStatus,
+  createQueueStatusReader,
+} from "./queue-status";
+export type {
+  QueueStatusSnapshot,
+  QueueStatusBucket,
+  QueueStatusSource,
+  QueueStatusReader,
+} from "./queue-status";
+
+export {
   authenticateConnection,
   deriveClientId,
   hashToken,

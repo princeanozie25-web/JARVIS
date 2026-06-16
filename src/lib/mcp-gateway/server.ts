@@ -9,12 +9,23 @@
 //
 // Stream types use the ambient NodeJS.{Readable,Writable}Stream globals, so this
 // module imports no node builtin (keeps the GATE-2 import graph minimal).
+//
+// The queue-status counts source (24B-2) is INJECTED: the caller supplies a
+// `() => number` that reads the approvals count from OUTSIDE the gateway's
+// import graph. The server wraps it in the cadence-cached reader and hands that
+// to the handler. When no source is given, queue-status reads are denied (the
+// gateway never imports the approvals/db tree itself — GATE-2).
 
 import {
   authenticateConnection,
   loadProvisionedTokenHashesFromEnv,
 } from "./identity";
 import { handleJsonRpcRequest, type GatewaySession } from "./protocol";
+import {
+  createQueueStatusReader,
+  type QueueStatusReader,
+  type QueueStatusSource,
+} from "./queue-status";
 import { rpcInvalidRequest } from "./schemas";
 
 export interface StartStdioServerOptions {
@@ -24,6 +35,13 @@ export interface StartStdioServerOptions {
   presentedToken?: string | null;
   /** Human-provisioned allowlist (token hashes), also out-of-band. */
   provisionedTokenHashes?: ReadonlySet<string>;
+  /** Injected raw pending-count source. Reads the approvals count OUTSIDE the
+   * gateway import graph. Absent => queue-status reads are denied. */
+  queueStatusSource?: QueueStatusSource;
+  /** ID-3 cadence for the queue-status count cache (server-controlled). */
+  queueStatusCadenceMs?: number;
+  /** Injectable clock (tests); defaults to Date.now via the reader. */
+  now?: () => number;
 }
 
 export interface RunningStdioServer {
@@ -50,6 +68,17 @@ export function startStdioServer(
     ? { authenticated: true, clientId: auth.clientId }
     : { authenticated: false, clientId: null };
 
+  // Build the queue-status reader only when a counts source was injected. The
+  // cadence + clock are server-controlled, never client-settable.
+  const queueStatusReader: QueueStatusReader | null =
+    options.queueStatusSource !== undefined
+      ? createQueueStatusReader({
+          source: options.queueStatusSource,
+          cadenceMs: options.queueStatusCadenceMs,
+          now: options.now,
+        })
+      : null;
+
   const write = (value: unknown): void => {
     output.write(`${JSON.stringify(value)}\n`);
   };
@@ -62,7 +91,7 @@ export function startStdioServer(
       write(rpcInvalidRequest(null));
       return;
     }
-    const response = handleJsonRpcRequest(parsed, session);
+    const response = handleJsonRpcRequest(parsed, session, queueStatusReader);
     if (response !== null) write(response);
   };
 

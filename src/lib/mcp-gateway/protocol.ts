@@ -5,8 +5,13 @@
 // Every refusal — unauthenticated, unknown method, unknown/forbidden resource,
 // bad params — collapses to the SAME denial (ID-5). No mutation path exists:
 // there is no method that proposes, approves, executes, or writes.
+//
+// The queue-status read (24B-2) is served through an INJECTED reader passed by
+// the caller. When it is absent (null), queue-status reads collapse to the same
+// uniform denial as any other miss — the handler imports no DB/approvals tree.
 
 import { EXPOSED_RESOURCES, readResourceByUri } from "./resources";
+import type { QueueStatusReader } from "./queue-status";
 import {
   JsonRpcRequestSchema,
   ResourcesReadParamsSchema,
@@ -20,7 +25,7 @@ import {
 export const MCP_PROTOCOL_VERSION = "2025-06-18" as const;
 export const MCP_SERVER_INFO = {
   name: "jarvis-mcp-gateway",
-  version: "24b1",
+  version: "24b2",
 } as const;
 
 export interface GatewaySession {
@@ -47,10 +52,15 @@ function isNotification(raw: unknown): boolean {
  * notification (which gets no reply). The handler never mutates anything and
  * never reads a client-supplied identity — `session.clientId` is server-derived
  * upstream (identity.ts).
+ *
+ * `queueStatus` is the injected counts-only reader for the queue-status read; it
+ * defaults to null so callers that never wired a counts source (and every
+ * 24B-1 call site) see queue-status reads collapse to the uniform denial.
  */
 export function handleJsonRpcRequest(
   raw: unknown,
   session: GatewaySession,
+  queueStatus: QueueStatusReader | null = null,
 ): JsonRpcResponse | null {
   const parsed = JsonRpcRequestSchema.safeParse(raw);
   if (!parsed.success) {
@@ -89,7 +99,7 @@ export function handleJsonRpcRequest(
     case "resources/read": {
       const params = ResourcesReadParamsSchema.safeParse(request.params);
       if (!params.success) return rpcDenied(id);
-      const outcome = readResourceByUri(params.data.uri);
+      const outcome = readResourceByUri(params.data.uri, queueStatus);
       if (!outcome.ok) return rpcDenied(id); // unknown AND forbidden look identical
       return rpcResult(id, {
         contents: [

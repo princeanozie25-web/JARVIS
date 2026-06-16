@@ -273,6 +273,12 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(result.reachableRepo.has("src/lib/mcp-gateway/sanitizer.ts")).toBe(
       true,
     );
+    // 24B-2: the queue-status read path is traversed too — and being under the
+    // allowed mcp-gateway prefix, it needs NO allowlist relaxation. Its raw
+    // count is injected from outside, so the walk reaches no approvals/db tree.
+    expect(
+      result.reachableRepo.has("src/lib/mcp-gateway/queue-status.ts"),
+    ).toBe(true);
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

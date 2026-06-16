@@ -139,21 +139,27 @@ describe("I-24B1-2 (sanitized): the read passes the sanitizer; no forbidden fiel
 });
 
 // ---------------------------------------------------------------------------
-// I-24B1-4 — exposure conformance: EXACTLY the pipeline-view-model, nothing else
+// I-24B1-4 — exposure conformance: the exposed set is EXACTLY the read surface
+// (as of 24B-2: pipeline-view-model + queue-status), nothing else. Queue-status
+// exposure/redaction is asserted in depth in queue-status.test.ts (I-24B2-*).
 // ---------------------------------------------------------------------------
-describe("I-24B1-4 (exposure conformance): the exposed set == {pipeline-view-model}", () => {
-  it("exposes exactly one resource", () => {
-    expect(listExposedResourceNames()).toEqual(["pipeline-view-model"]);
-    expect(EXPOSED_RESOURCES.length).toBe(1);
+describe("I-24B1-4 (exposure conformance): the exposed set == {pipeline-view-model, queue-status}", () => {
+  it("exposes exactly the two read resources", () => {
+    expect(listExposedResourceNames()).toEqual([
+      "pipeline-view-model",
+      "queue-status",
+    ]);
+    expect(EXPOSED_RESOURCES.length).toBe(2);
   });
 
-  it("resources/list returns exactly that one; a non-exposed read is uniformly denied", () => {
+  it("resources/list returns exactly those two; a non-exposed read is uniformly denied", () => {
     const list = handleJsonRpcRequest(
       { jsonrpc: "2.0", id: 1, method: "resources/list" },
       AUTHED,
-    ) as GatewayResp;
+    ) as unknown as GatewayResp;
     expect(list.result.resources.map((r: { name: string }) => r.name)).toEqual([
       "pipeline-view-model",
+      "queue-status",
     ]);
 
     const denied = handleJsonRpcRequest(
@@ -164,14 +170,14 @@ describe("I-24B1-4 (exposure conformance): the exposed set == {pipeline-view-mod
         params: { uri: "jarvis://telemetry/event-store" },
       },
       AUTHED,
-    ) as GatewayResp;
+    ) as unknown as GatewayResp;
     expect(denied.error.message).toBe(UNIFORM_DENIAL_MESSAGE);
 
     // unknown method is denied with the SAME message (no surface enumeration, ID-5)
     const unknown = handleJsonRpcRequest(
       { jsonrpc: "2.0", id: 3, method: "tools/call", params: {} },
       AUTHED,
-    ) as GatewayResp;
+    ) as unknown as GatewayResp;
     expect(unknown.error.message).toBe(UNIFORM_DENIAL_MESSAGE);
     expect(unknown.error.code).toBe(denied.error.code);
   });
@@ -245,7 +251,7 @@ describe("I-24B1-5 (identity, fail-closed): absent/unprovisioned token refused; 
         params: { clientInfo: { client_id: "attacker-chosen" } },
       },
       AUTHED,
-    ) as GatewayResp;
+    ) as unknown as GatewayResp;
     // the response carries no client-chosen identity; server identity is derived upstream
     expect(JSON.stringify(resp)).not.toContain("attacker-chosen");
   });
