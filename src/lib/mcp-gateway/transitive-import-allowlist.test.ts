@@ -279,6 +279,13 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(
       result.reachableRepo.has("src/lib/mcp-gateway/queue-status.ts"),
     ).toBe(true);
+    // 24C-1: the FC-1 canonicalizer is traversed too — and being under the
+    // allowed mcp-gateway prefix, it needs NO allowlist relaxation. It reads
+    // registry metadata via an injected lookup, so the walk reaches no
+    // tools/router/approval-runtime tree.
+    expect(
+      result.reachableRepo.has("src/lib/mcp-gateway/canonicalize.ts"),
+    ).toBe(true);
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

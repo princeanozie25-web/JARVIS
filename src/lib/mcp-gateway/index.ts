@@ -67,3 +67,20 @@ export {
   UNIFORM_DENIAL_MESSAGE,
 } from "./schemas";
 export type { JsonRpcResponse } from "./schemas";
+
+export {
+  canonicalizeProposalRequest,
+  ClientProposalRequestSchema,
+} from "./canonicalize";
+export type {
+  CanonicalEffect,
+  CanonicalizeResult,
+  CanonicalizeRejectionReason,
+  CanonicalMutationType,
+  CanonicalRiskClass,
+  CanonicalApprovalTier,
+  ToolMetadata,
+  ToolMetadataLookup,
+  GatewayReversibilityClass,
+  GatewaySafetyTag,
+} from "./canonicalize";
