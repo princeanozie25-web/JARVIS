@@ -296,6 +296,11 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(result.reachableRepo.has("src/lib/mcp-gateway/enqueue.ts")).toBe(
       true,
     );
+    // 24C-3: the presentation projection (injection containment) is traversed;
+    // it imports only local gateway types + the leaf sanitizer — no mutator tree.
+    expect(
+      result.reachableRepo.has("src/lib/mcp-gateway/presentation.ts"),
+    ).toBe(true);
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

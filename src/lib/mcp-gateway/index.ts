@@ -104,3 +104,19 @@ export type {
   SubmitProposalDeps,
   SubmitOutcome,
 } from "./enqueue";
+
+export {
+  buildProposalPresentation,
+  proposalToSpeechString,
+  summarizeUntrustedClientText,
+  UNTRUSTED_CLIENT_TEXT_LABEL,
+  UNTRUSTED_CLIENT_TEXT_MAX_LENGTH,
+} from "./presentation";
+export type {
+  ProposalPresentation,
+  TrustedProposalChannel,
+  UntrustedClientText,
+  UntrustedRenderHardening,
+  AuxUntrustedSummary,
+  UntrustedSummarizer,
+} from "./presentation";
