@@ -84,3 +84,23 @@ export type {
   GatewayReversibilityClass,
   GatewaySafetyTag,
 } from "./canonicalize";
+
+export {
+  buildCanonicalProposal,
+  computeCanonicalEffectHash,
+  computeScopeSnapshotHash,
+  generateProposalId,
+  stableStringify,
+  CanonicalEffectSchema,
+  CanonicalProposalSchema,
+} from "./proposal";
+export type { CanonicalProposal } from "./proposal";
+
+export { enqueueCanonicalProposal, submitProposalRequest } from "./enqueue";
+export type {
+  EnqueueProposal,
+  EnqueueOutcome,
+  EnqueueRejectionReason,
+  SubmitProposalDeps,
+  SubmitOutcome,
+} from "./enqueue";

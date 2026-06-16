@@ -28,6 +28,10 @@ export interface ApprovalRow {
   decided_at: number;
   expires_at: number | null;
   consumed_at: number | null;
+  // Additive (24C-2, per GATE-1): the FC-2 server-computed canonical effect
+  // hash + scope snapshot hash. Optional/nullable; pre-existing rows carry null.
+  canonical_effect_hash: string | null;
+  scope_snapshot_hash: string | null;
 }
 
 export interface RecordApprovalInput {
@@ -42,6 +46,8 @@ export interface RecordApprovalInput {
   token_hash?: string | null;
   expires_at?: number | null;
   consumed_at?: number | null;
+  canonical_effect_hash?: string | null;
+  scope_snapshot_hash?: string | null;
 }
 
 export interface CreatePendingApprovalInput {
@@ -54,6 +60,8 @@ export interface CreatePendingApprovalInput {
   ttl_ms: number;
   token?: string;
   newId?: () => string;
+  canonical_effect_hash?: string | null;
+  scope_snapshot_hash?: string | null;
 }
 
 export interface PendingApproval {
@@ -119,6 +127,8 @@ function normalizeRow(row: ApprovalRow | undefined): ApprovalRow | undefined {
     ...row,
     state: row.state ?? stateFromDecision(row.decision),
     token_hash: row.token_hash ?? null,
+    canonical_effect_hash: row.canonical_effect_hash ?? null,
+    scope_snapshot_hash: row.scope_snapshot_hash ?? null,
   };
 }
 
@@ -183,8 +193,9 @@ export function recordApproval(
   db.prepare(
     `INSERT INTO approvals (
        id, execution_id, session_id, tool_id, scope_hash, state, token_hash,
-       decision, decided_at, expires_at, consumed_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       decision, decided_at, expires_at, consumed_at,
+       canonical_effect_hash, scope_snapshot_hash
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     input.id,
     input.execution_id ?? null,
@@ -197,6 +208,8 @@ export function recordApproval(
     input.decided_at,
     input.expires_at ?? null,
     input.consumed_at ?? null,
+    input.canonical_effect_hash ?? null,
+    input.scope_snapshot_hash ?? null,
   );
 }
 
@@ -220,6 +233,8 @@ export function createPendingApproval(
     decision: "PENDING",
     decided_at: input.created_at,
     expires_at: expiresAt,
+    canonical_effect_hash: input.canonical_effect_hash ?? null,
+    scope_snapshot_hash: input.scope_snapshot_hash ?? null,
   });
 
   return { id, token, tokenHash, expiresAt };

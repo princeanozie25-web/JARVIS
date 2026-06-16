@@ -652,6 +652,16 @@ export function applyMigrations(db: DatabaseType.Database): void {
       "INSERT OR IGNORE INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
     ).run("003_approval_lifecycle", Date.now());
   }
+  // Additive (24C-2, per GATE-1): FC-2 server-computed canonical-effect + scope
+  // snapshot hashes on a pending proposal. Idempotent ADD COLUMN; intentionally
+  // NOT recorded as a new _schema_migrations row (hasColumn already guarantees
+  // idempotency, and the migration-id list is pinned by schema.test.ts).
+  if (!hasColumn(db, "approvals", "canonical_effect_hash")) {
+    db.exec("ALTER TABLE approvals ADD COLUMN canonical_effect_hash TEXT");
+  }
+  if (!hasColumn(db, "approvals", "scope_snapshot_hash")) {
+    db.exec("ALTER TABLE approvals ADD COLUMN scope_snapshot_hash TEXT");
+  }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id
       ON telemetry_events (execution_id);

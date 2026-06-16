@@ -66,6 +66,20 @@ export const ApprovalProposalContractSchema = z.strictObject({
   replay: ApprovalReplayMetadataSchema,
   redaction: ApprovalRedactionMetadataSchema,
   guard: ApprovalAuthorityGuardMetadataSchema,
+  // Additive (24C-2, per GATE-1): the FC-2 server-computed canonical-effect hash
+  // + scope-snapshot ref hash. OPTIONAL, hash-shaped, metadata-only — every
+  // existing Phase-18A proposal stays valid; no existing field is altered and no
+  // lifecycle state is added.
+  canonical_effect_hash: z
+    .string()
+    .trim()
+    .regex(/^hash:[a-z0-9._:-]+$/)
+    .optional(),
+  scope_snapshot_ref_hash: z
+    .string()
+    .trim()
+    .regex(/^hash:[a-z0-9._:-]+$/)
+    .optional(),
 });
 
 export const ApprovalStageTransitionSchema =

@@ -286,6 +286,16 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(
       result.reachableRepo.has("src/lib/mcp-gateway/canonicalize.ts"),
     ).toBe(true);
+    // 24C-2: the FC-2 proposal builder + GATE-5 enqueue boundary are traversed.
+    // Both sit under the allowed mcp-gateway prefix — NO allowlist relaxation.
+    // The enqueue happens via an injected boundary, so the walk reaches no
+    // db/approval-runtime tree.
+    expect(result.reachableRepo.has("src/lib/mcp-gateway/proposal.ts")).toBe(
+      true,
+    );
+    expect(result.reachableRepo.has("src/lib/mcp-gateway/enqueue.ts")).toBe(
+      true,
+    );
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,
