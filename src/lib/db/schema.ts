@@ -662,6 +662,12 @@ export function applyMigrations(db: DatabaseType.Database): void {
   if (!hasColumn(db, "approvals", "scope_snapshot_hash")) {
     db.exec("ALTER TABLE approvals ADD COLUMN scope_snapshot_hash TEXT");
   }
+  // Additive (24C-2b): the exact stable serialization the FC-2 hash was computed
+  // over, so the approval-time guard can recompute + compare it without a gateway
+  // dependency. Idempotent ADD COLUMN; not recorded as a new migration row.
+  if (!hasColumn(db, "approvals", "canonical_effect_json")) {
+    db.exec("ALTER TABLE approvals ADD COLUMN canonical_effect_json TEXT");
+  }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id
       ON telemetry_events (execution_id);

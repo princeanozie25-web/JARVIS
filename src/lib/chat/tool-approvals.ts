@@ -16,6 +16,7 @@ import type { TelemetryEvent } from "../telemetry";
 import { persistToolOutput } from "../tools/persist-output";
 import type { ToolCallStatus } from "../db/tool-calls";
 import type { ToolRuntime } from "../tools/types";
+import { revalidateGatewayProposal } from "./approval-revalidation";
 
 export const PENDING_APPROVAL_TTL_MS = 5 * 60 * 1000;
 export const SESSION_APPROVAL_TTL_MS = 30 * 60 * 1000;
@@ -335,6 +336,45 @@ export async function resumeApproval(input: {
         decision: input.decision,
         reason: `approval_${approval.status}`,
         message: `Tool approval ${approval.status}.`,
+      },
+    };
+  }
+
+  // FC-2 (24C-2b): re-validate a gateway-originated proposal at the decision
+  // point, BEFORE execution. ONLY applies when the approval carries a
+  // canonical_effect_hash — legacy chat approvals (no hash) return "legacy" and
+  // fall through UNCHANGED. On drift/expiry/missing-hash this mirrors the
+  // existing DENIED finalization above and returns WITHOUT calling runTool.
+  const revalidation = revalidateGatewayProposal(
+    {
+      canonical_effect_hash: approval.row?.canonical_effect_hash ?? null,
+      canonical_effect_json: approval.row?.canonical_effect_json ?? null,
+      expires_at: approval.row?.expires_at ?? null,
+    },
+    now,
+  );
+  if (revalidation.kind === "deny") {
+    updateToolCall(input.db, input.executionId, {
+      status: "DENIED",
+      error_message: `Tool approval revalidation failed: ${revalidation.reason}.`,
+      completed_at: now,
+    });
+    input.recordEvent?.({
+      ...telemetryFromRow(row),
+      timestamp: now,
+      event_type: "tool_denied",
+      success: false,
+      error_class: "ApprovalRevalidationFailed",
+      notes: `revalidation=${revalidation.reason} approval_decision=${input.decision}`,
+    });
+    return {
+      httpStatus: 409,
+      body: {
+        ok: false,
+        executionId: input.executionId,
+        decision: input.decision,
+        reason: `revalidation_${revalidation.reason}`,
+        message: "Tool approval is no longer valid; re-create required.",
       },
     };
   }
