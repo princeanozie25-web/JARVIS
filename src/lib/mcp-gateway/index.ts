@@ -120,3 +120,17 @@ export type {
   AuxUntrustedSummary,
   UntrustedSummarizer,
 } from "./presentation";
+
+export {
+  authenticateClient,
+  parseClientRegistryFromEnv,
+  isStructurallyValidToken,
+  CLIENT_REGISTRY_ENV_VAR,
+} from "./client-registry";
+export type {
+  ProvisionedClient,
+  ProvisionedClientRegistry,
+  RecordLastUsed,
+  ClientAuthResult,
+  ClientAuthRefusalReason,
+} from "./client-registry";

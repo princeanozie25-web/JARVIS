@@ -301,6 +301,11 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(
       result.reachableRepo.has("src/lib/mcp-gateway/presentation.ts"),
     ).toBe(true);
+    // 24D-1: the FC-3 client registry / token auth is traversed via server.ts.
+    // It imports only node:crypto + the identity leaf — no db/approval-runtime.
+    expect(
+      result.reachableRepo.has("src/lib/mcp-gateway/client-registry.ts"),
+    ).toBe(true);
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

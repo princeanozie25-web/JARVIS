@@ -19,7 +19,14 @@
 import {
   authenticateConnection,
   loadProvisionedTokenHashesFromEnv,
+  type ConnectionAuthResult,
 } from "./identity";
+import {
+  authenticateClient,
+  type ClientAuthResult,
+  type ProvisionedClientRegistry,
+  type RecordLastUsed,
+} from "./client-registry";
 import { handleJsonRpcRequest, type GatewaySession } from "./protocol";
 import {
   createQueueStatusReader,
@@ -33,8 +40,14 @@ export interface StartStdioServerOptions {
   output?: NodeJS.WritableStream;
   /** Presented out-of-band (spawn env), never from a request body. */
   presentedToken?: string | null;
-  /** Human-provisioned allowlist (token hashes), also out-of-band. */
+  /** Human-provisioned allowlist (token hashes), also out-of-band. 24B-1 seam. */
   provisionedTokenHashes?: ReadonlySet<string>;
+  /** FC-3 (24D-1): the human-provisioned client registry (token_hash -> client).
+   * Built by the host from the env-carried source (parseClientRegistryFromEnv),
+   * OUTSIDE the gateway import graph. When supplied, it is the FC-3 auth path. */
+  clientRegistry?: ProvisionedClientRegistry;
+  /** Injected last-used recorder (host -> db/file), keyed by client_id. */
+  recordLastUsed?: RecordLastUsed;
   /** Injected raw pending-count source. Reads the approvals count OUTSIDE the
    * gateway import graph. Absent => queue-status reads are denied. */
   queueStatusSource?: QueueStatusSource;
@@ -55,15 +68,26 @@ export function startStdioServer(
 ): RunningStdioServer {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
-  const provisionedTokenHashes =
-    options.provisionedTokenHashes ?? loadProvisionedTokenHashesFromEnv();
   const presentedToken =
     options.presentedToken ?? process.env.JARVIS_MCP_TOKEN ?? null;
 
-  const auth = authenticateConnection({
-    presentedToken,
-    provisionedTokenHashes,
-  });
+  // Auth: FC-3 client registry (24D-1) when the host supplies one; otherwise the
+  // 24B-1 hash-Set seam (backward-compat). Identity is ALWAYS server-derived; an
+  // absent/unprovisioned/disabled token is refused (fail-closed). The token is
+  // presented out-of-band and never read from a request body.
+  let auth: ClientAuthResult | ConnectionAuthResult;
+  if (options.clientRegistry !== undefined) {
+    auth = authenticateClient({
+      presentedToken,
+      registry: options.clientRegistry,
+      recordLastUsed: options.recordLastUsed,
+      now: options.now,
+    });
+  } else {
+    const provisionedTokenHashes =
+      options.provisionedTokenHashes ?? loadProvisionedTokenHashesFromEnv();
+    auth = authenticateConnection({ presentedToken, provisionedTokenHashes });
+  }
   const session: GatewaySession = auth.ok
     ? { authenticated: true, clientId: auth.clientId }
     : { authenticated: false, clientId: null };
