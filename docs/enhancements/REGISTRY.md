@@ -8,6 +8,18 @@ docs/audits/PHASE23_CLOSEOUT_VERIFICATION.md (I1-I5 re-verified with file:line
 evidence, the six-stage pipeline spine byte-frozen, zero new mutation surfaces).
 Further changes to Phase 23 frozen surfaces require a new entry above first.
 
+**Phase 24B (MCP gateway read-server): FROZEN 2026-06-16.** Closeout verified in
+docs/security/PHASE24B_CLOSEOUT.md (read-surface invariants re-verified with
+file:line — exposure set of exactly two reads {pipeline-view-model,
+queue-status}, GATE-2 structural non-mutation, ID-1/ID-3/ID-4/ID-5, fail-closed
+identity seam; closeout test tests/mcp-gateway/phase-24b-closeout.test.ts). The
+read surface is FROZEN: the exposed set is **exactly two reads** and there is NO
+mutation path. Adding a THIRD exposed read is default-NEVER (ID-0) — it requires
+an explicit exposure-matrix amendment plus a new slice, entered as a new registry
+row above first. (Builds on 24B-1 6da7ee4, 24B-2 5e90c45, GATE-1 256048c. 24C
+adds the proposal constructor + enqueue boundary — and only those — to the GATE-2
+allowlist per the GATE-5 needle's eye.)
+
 E-001 | Phase 22 voice extraction to main | 6 Phase 21 UI files (AuditCockpit, RestCommandCenter, liquid-command-center.css, PipelineDiagram, WorkingCockpit, liquid-command-center-data.ts) — voice-state visibility only, display-only, no new affordances | Phase 22 completion requires code on main | COMPLETE
 E-002 | Data-driven pipeline stage registry | /audit/pipeline presentation (3 files) | Phase 23 adds Capture→Frames→Transcript→Analysis→Result; camera path adds a second chain; hardcoded const arrays force repeated frozen-file edits — RESOLVED as visibility lanes (spec §23B): spine byte-frozen, lanes data-driven in lane-registry.ts, PipelineDiagram refactored once | COMPLETE
 E-003 | T4 authority tier definition | authority model | T4 exists in social-extraction schema with no documented semantics; define or remove before Phase 23 builds on it — RESOLVED: T4 is defined-by-use as the cloud analysis tier (config/models/registry.yaml T4 entries gemini-3.5-flash, gpt-5.5; the 23E multimodal analysis + social-extraction enforce model_tier T3/T4) | COMPLETE
