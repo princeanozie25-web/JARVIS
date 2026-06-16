@@ -27,6 +27,7 @@ import {
   type CanonicalProposal,
 } from "./proposal";
 import { findForbiddenFields } from "./sanitizer";
+import { checkProposeScope, type ClientScope } from "./scope";
 
 /** The injected write boundary. The host wires this to the real
  * createPendingApproval (db), OUTSIDE the gateway import graph. It performs the
@@ -108,6 +109,10 @@ export interface SubmitProposalDeps {
   enqueue: EnqueueProposal;
   now_ms: number;
   ttl_ms: number;
+  /** Per-client scope (24D-2a). When supplied, the proposal is scope-checked on
+   * the client's identity before freeze (EoP-13 + EoP-4). An FC-3 client always
+   * carries one; absent (undefined) is the legacy/unscoped path. */
+  scope?: ClientScope | null;
   /** Injectable for deterministic tests. */
   proposal_id?: string;
 }
@@ -120,7 +125,7 @@ export type SubmitOutcome =
     }
   | {
       ok: false;
-      stage: "canonicalize" | "provenance" | "enqueue";
+      stage: "canonicalize" | "scope" | "provenance" | "enqueue";
       reason: string;
     };
 
@@ -137,6 +142,23 @@ export function submitProposalRequest(
   const canon = canonicalizeProposalRequest(rawClientRequest, deps.lookup);
   if (!canon.ok) {
     return { ok: false, stage: "canonicalize", reason: canon.reason };
+  }
+
+  // SCOPE-CHECK (24D-2a): enforce the client's GRANTED scope on the server-derived
+  // effect, on the client's identity (EoP-4), BEFORE freeze/enqueue. Enforced only
+  // when a scope is supplied — an FC-3 client always carries one; a null scope
+  // denies (fail-closed); undefined is the legacy/unscoped path.
+  if (deps.scope !== undefined) {
+    const scopeResult = checkProposeScope({
+      capability: canon.canonical_effect.capability,
+      rawTarget: canon.raw_target,
+      args: canon.args,
+      ttlMs: deps.ttl_ms,
+      scope: deps.scope,
+    });
+    if (!scopeResult.ok) {
+      return { ok: false, stage: "scope", reason: scopeResult.reason };
+    }
   }
 
   if (!deps.clientId || deps.clientId.trim().length === 0) {

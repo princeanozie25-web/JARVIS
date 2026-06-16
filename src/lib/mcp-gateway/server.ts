@@ -89,7 +89,12 @@ export function startStdioServer(
     auth = authenticateConnection({ presentedToken, provisionedTokenHashes });
   }
   const session: GatewaySession = auth.ok
-    ? { authenticated: true, clientId: auth.clientId }
+    ? {
+        authenticated: true,
+        clientId: auth.clientId,
+        // FC-3 auth carries the client's scope (24D-2a); the legacy seam does not.
+        scope: "scope" in auth ? auth.scope : undefined,
+      }
     : { authenticated: false, clientId: null };
 
   // Build the queue-status reader only when a counts source was injected. The

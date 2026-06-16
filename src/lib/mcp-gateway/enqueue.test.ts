@@ -403,6 +403,7 @@ describe("I-24C2-6 (GATE-2 leaf): the write modules import no mutator tree", () 
     "./sanitizer",
     "./canonicalize",
     "./proposal",
+    "./scope",
   ]);
   it("proposal.ts + enqueue.ts only import the allowed gateway/leaf modules", () => {
     for (const file of ["proposal.ts", "enqueue.ts"]) {

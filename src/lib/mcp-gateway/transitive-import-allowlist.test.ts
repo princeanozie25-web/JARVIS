@@ -306,6 +306,9 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(
       result.reachableRepo.has("src/lib/mcp-gateway/client-registry.ts"),
     ).toBe(true);
+    // 24D-2a: the per-client scope + EoP-13 classification leaf. It imports only
+    // a local gateway type (CanonicalApprovalTier) — no tools/db tree.
+    expect(result.reachableRepo.has("src/lib/mcp-gateway/scope.ts")).toBe(true);
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

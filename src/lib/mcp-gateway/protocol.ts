@@ -12,6 +12,7 @@
 
 import { EXPOSED_RESOURCES, readResourceByUri } from "./resources";
 import type { QueueStatusReader } from "./queue-status";
+import { isReadAllowed, type ClientScope } from "./scope";
 import {
   JsonRpcRequestSchema,
   ResourcesReadParamsSchema,
@@ -32,6 +33,9 @@ export interface GatewaySession {
   authenticated: boolean;
   /** Server-derived (token hash); never client-chosen. Null when refused. */
   clientId: string | null;
+  /** Per-client read/propose scope (24D-2a). When present, read-scope (ID-2) is
+   * enforced; absent/null is the legacy unscoped seam (24B behavior unchanged). */
+  scope?: ClientScope | null;
 }
 
 function extractId(raw: unknown): JsonRpcId {
@@ -99,6 +103,17 @@ export function handleJsonRpcRequest(
     case "resources/read": {
       const params = ResourcesReadParamsSchema.safeParse(request.params);
       if (!params.success) return rpcDenied(id);
+      // ID-2 read scope (24D-2a): when the session carries a scope, the requested
+      // resource must be in it. A scoped client reading out-of-scope (or an unknown
+      // URI) gets the SAME uniform denial — no cross-client info, no enumeration.
+      if (session.scope) {
+        const descriptor = EXPOSED_RESOURCES.find(
+          (resource) => resource.uri === params.data.uri,
+        );
+        if (!descriptor || !isReadAllowed(session.scope, descriptor.name)) {
+          return rpcDenied(id);
+        }
+      }
       const outcome = readResourceByUri(params.data.uri, queueStatus);
       if (!outcome.ok) return rpcDenied(id); // unknown AND forbidden look identical
       return rpcResult(id, {

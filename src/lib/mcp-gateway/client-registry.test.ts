@@ -79,7 +79,7 @@ describe("I-24D1-1 (FC-3 token->identity): client_id derived from the token hash
     const reg = registryFor(TOKEN, "mcp-client:alpha");
     expect(
       authenticateClient({ presentedToken: TOKEN, registry: reg }),
-    ).toEqual({ ok: true, clientId: "mcp-client:alpha" });
+    ).toEqual({ ok: true, clientId: "mcp-client:alpha", scope: null });
   });
 
   it("identity is keyed by the token HASH — a different token cannot reach that identity", () => {
@@ -254,7 +254,11 @@ describe("I-24D1-5 (last-used): recorded via the injected store, keyed by client
     const froms = [...SELF_CODE.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map(
       (m) => m[1],
     );
-    expect([...new Set(froms)].sort()).toEqual(["./identity", "node:crypto"]);
+    expect([...new Set(froms)].sort()).toEqual([
+      "./identity",
+      "./scope",
+      "node:crypto",
+    ]);
   });
 });
 

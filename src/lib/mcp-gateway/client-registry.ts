@@ -43,6 +43,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { hashToken } from "./identity";
+import { coerceClientScope, type ClientScope } from "./scope";
 
 /** A provisioned client. The token HASH is the registry key; this is the value. */
 export interface ProvisionedClient {
@@ -53,6 +54,8 @@ export interface ProvisionedClient {
   created_at_ms: number;
   /** If this token replaced an earlier one (rotation), the prior token's hash. */
   rotated_from_hash: string | null;
+  /** Per-client fine-grained scope (24D-2a). Absent => no read/propose authority. */
+  scope?: ClientScope | null;
 }
 
 /** token_hash (lowercase sha256 hex) -> provisioned client. The allowlist. */
@@ -69,7 +72,7 @@ export type ClientAuthRefusalReason =
   | "disabled"; // provisioned but revoked/disabled
 
 export type ClientAuthResult =
-  | { ok: true; clientId: string }
+  | { ok: true; clientId: string; scope: ClientScope | null }
   | { ok: false; reason: ClientAuthRefusalReason };
 
 export const CLIENT_REGISTRY_ENV_VAR = "JARVIS_MCP_CLIENT_REGISTRY" as const;
@@ -137,7 +140,7 @@ export function authenticateClient(input: {
 
   const at = (input.now ?? (() => Date.now()))();
   input.recordLastUsed?.(client.client_id, at);
-  return { ok: true, clientId: client.client_id };
+  return { ok: true, clientId: client.client_id, scope: client.scope ?? null };
 }
 
 /**
@@ -177,6 +180,7 @@ export function parseClientRegistryFromEnv(
       created_at_ms: typeof r.created_at_ms === "number" ? r.created_at_ms : 0,
       rotated_from_hash:
         typeof r.rotated_from_hash === "string" ? r.rotated_from_hash : null,
+      scope: coerceClientScope(r.scope),
     });
   }
   return registry;

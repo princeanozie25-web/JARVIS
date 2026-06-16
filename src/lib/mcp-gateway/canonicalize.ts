@@ -122,7 +122,16 @@ export type CanonicalizeRejectionReason =
   | "sanitizer_blocked"; // derived effect failed the metadata-only sentinel
 
 export type CanonicalizeResult =
-  | { ok: true; canonical_effect: CanonicalEffect }
+  | {
+      ok: true;
+      canonical_effect: CanonicalEffect;
+      /** The validated tool id + args, and the DERIVED (raw, unmasked) target.
+       * Carried for the 24D-2a scope check (target-prefix matching); the
+       * canonical_effect itself stays metadata-only (masked target). */
+      tool: string;
+      args: unknown;
+      raw_target: string;
+    }
   | { ok: false; reason: CanonicalizeRejectionReason };
 
 /**
@@ -317,5 +326,11 @@ export function canonicalizeProposalRequest(
     return { ok: false, reason: "sanitizer_blocked" };
   }
 
-  return { ok: true, canonical_effect: effect };
+  return {
+    ok: true,
+    canonical_effect: effect,
+    tool,
+    args,
+    raw_target: rawScope,
+  };
 }

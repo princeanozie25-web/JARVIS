@@ -134,3 +134,21 @@ export type {
   ClientAuthResult,
   ClientAuthRefusalReason,
 } from "./client-registry";
+
+export {
+  classifyCapability,
+  isCapabilityExposable,
+  isReadAllowed,
+  checkProposeScope,
+  coerceClientScope,
+  findUnclassifiedMutatingCapabilities,
+  CAPABILITY_CLASSIFICATION,
+  READABLE_RESOURCE_NAMES,
+} from "./scope";
+export type {
+  ClientScope,
+  ProposeGrant,
+  CapabilityClassification,
+  ScopeCheckResult,
+  ScopeDenyReason,
+} from "./scope";
