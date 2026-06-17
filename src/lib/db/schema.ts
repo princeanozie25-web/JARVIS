@@ -562,6 +562,40 @@ CREATE TABLE IF NOT EXISTS memory_embeddings (
   created_at  INTEGER NOT NULL
 );
 
+-- WorkflowBox v1a (additive, capability surface): a personal-scale Project is a
+-- goal + a graph of work-nodes. Structured source of truth lives here. NOTE:
+-- rollup_percent is DERIVED from the nodes at read time and is intentionally NOT
+-- a column (it can never be authored directly). effect_class reserves the
+-- amber-door seam ('display' in v1; a future 'side_effecting' node would route
+-- through the Human Gate when built — not wired here).
+CREATE TABLE IF NOT EXISTS workflow_projects (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  goal        TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workflow_nodes (
+  id               TEXT PRIMARY KEY,
+  project_id       TEXT NOT NULL,
+  title            TEXT NOT NULL,
+  detail           TEXT,
+  status           TEXT NOT NULL DEFAULT 'todo',
+  percent          INTEGER NOT NULL DEFAULT 0,
+  depends_on_json  TEXT NOT NULL DEFAULT '[]',
+  layout_x         REAL NOT NULL DEFAULT 0,
+  layout_y         REAL NOT NULL DEFAULT 0,
+  effect_class     TEXT NOT NULL DEFAULT 'display',
+  sort_order       INTEGER NOT NULL DEFAULT 0,
+  created_at       INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES workflow_projects (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_nodes_project
+  ON workflow_nodes (project_id, sort_order);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS long_term_memory_fts
   USING fts5(
     memory_id UNINDEXED,
