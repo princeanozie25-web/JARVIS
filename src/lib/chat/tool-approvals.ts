@@ -17,6 +17,7 @@ import { persistToolOutput } from "../tools/persist-output";
 import type { ToolCallStatus } from "../db/tool-calls";
 import type { ToolRuntime } from "../tools/types";
 import { revalidateGatewayProposal } from "./approval-revalidation";
+import type { CurrentGrantLookup } from "@/lib/canonical-policy";
 
 export const PENDING_APPROVAL_TTL_MS = 5 * 60 * 1000;
 export const SESSION_APPROVAL_TTL_MS = 30 * 60 * 1000;
@@ -253,6 +254,11 @@ export async function resumeApproval(input: {
   recordEvent?: (
     event: Omit<TelemetryEvent, "timestamp"> & { timestamp?: number },
   ) => void;
+  /** 24D-4: injected per-client grant lookup (host-wired to the live client
+   * registry). When a gateway approval carries a client_id and this is provided,
+   * the decision guard re-reads the client's CURRENT grant and denies if revoked.
+   * Absent => the per-client re-check is not applied (legacy behavior unchanged). */
+  currentGrant?: CurrentGrantLookup;
 }): Promise<ResumeApprovalResult> {
   const now = input.now ?? Date.now();
   expirePendingApprovals(input.db, now);
@@ -350,8 +356,11 @@ export async function resumeApproval(input: {
       canonical_effect_hash: approval.row?.canonical_effect_hash ?? null,
       canonical_effect_json: approval.row?.canonical_effect_json ?? null,
       expires_at: approval.row?.expires_at ?? null,
+      client_id: approval.row?.client_id ?? null,
     },
     now,
+    undefined, // classify: use the live canonical-policy map (default)
+    input.currentGrant, // 24D-4: injected per-client grant lookup (host-wired)
   );
   if (revalidation.kind === "deny") {
     updateToolCall(input.db, input.executionId, {

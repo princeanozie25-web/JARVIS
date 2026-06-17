@@ -1,4 +1,5 @@
-// FC-2 approval-time re-validation (24C-2b) + registry-drift re-check (24D-2b).
+// FC-2 approval-time re-validation (24C-2b) + registry-drift re-check (24D-2b)
+// + per-client grant re-check (24D-4).
 //
 // A gateway-originated proposal (24C-2) was hash-frozen at submission. This leaf
 // re-validates it at the human-decision point, BEFORE runtime.runTool, closing
@@ -14,6 +15,14 @@
 // approval_tier against the CURRENT classification via the shared canonical-policy
 // leaf. DENY on drift, by the same mirror, before any execution.
 //
+// 24D-4 (closes E-017): the hash + policy re-checks are client-AGNOSTIC. They do
+// NOT catch PER-CLIENT grant revocation — a SPECIFIC client's scope withdrawn
+// between queueing and approval. So the approval row now persists the gateway's
+// client_id, and the guard takes an injected CurrentGrantLookup (host-wired to the
+// live registry; the executor still imports NO gateway code) to re-read that
+// client's CURRENT grant and DENY (grant_revoked) if it no longer authorizes the
+// capability. Legacy/chat approvals (no client_id) are unaffected.
+//
 // This module imports ONLY node:crypto and the canonical-policy leaf (a pure,
 // mutator-free module). It does NOT import the gateway (the executor must never
 // depend on src/lib/mcp-gateway/) — the leaf is the neutral home BOTH sides share
@@ -27,8 +36,10 @@ import { createHash } from "node:crypto";
 
 import {
   classifyCapability,
+  clientGrantStillAuthorizes,
   recheckFrozenEffectPolicy,
   type ClassificationLookup,
+  type CurrentGrantLookup,
 } from "@/lib/canonical-policy";
 
 /** Recompute the FC-2 canonical_effect_hash from the stored stable serialization.
@@ -48,13 +59,18 @@ export type RevalidationFailureReason =
   | "hash_mismatch" // recomputed hash != stored hash (the effect/hash drifted)
   | "effect_unparsable" // hash matched but the frozen JSON isn't a usable effect
   | "tool_declassified" // capability no longer exposable in current policy (24D-2b)
-  | "approval_policy_changed"; // required approval tier drifted since freeze (24D-2b)
+  | "approval_policy_changed" // required approval tier drifted since freeze (24D-2b)
+  | "grant_revoked"; // THIS client's grant no longer authorizes the capability (24D-4)
 
 /** The subset of the approval row the guard needs. */
 export interface RevalidationRow {
   canonical_effect_hash: string | null;
   canonical_effect_json: string | null;
   expires_at: number | null;
+  /** The gateway's server-derived client_id (24D-4). Null/absent for legacy/chat
+   * approvals (the per-client grant re-check then does not apply) — so existing
+   * callers/rows that predate this field are unaffected. */
+  client_id?: string | null;
 }
 
 export type RevalidationOutcome =
@@ -81,16 +97,24 @@ interface FrozenEffectShape {
  *   - frozen effect not parseable     -> deny (hash matched but JSON unusable)
  *   - capability declassified         -> deny (24D-2b registry drift)
  *   - required approval tier changed  -> deny (24D-2b policy drift)
+ *   - THIS client's grant revoked     -> deny (24D-4 per-client drift; only when
+ *                                       the row carries a client_id AND a
+ *                                       currentGrant lookup is wired)
  *   - otherwise                       -> ok
  *
  * `classify` is injectable so a test can simulate registry drift; it defaults to
- * the live canonical-policy map (the SAME map the gateway derived from). The
- * re-check runs only AFTER the hash check, so it inspects a hash-verified blob.
+ * the live canonical-policy map (the SAME map the gateway derived from).
+ * `currentGrant` is the injected per-client grant lookup (24D-4): the host wires
+ * it to the live client registry (the executor never imports the gateway). When a
+ * row carries a client_id and the lookup is present, the guard re-reads that
+ * client's CURRENT grant and denies if it no longer authorizes the capability.
+ * All re-checks run only AFTER the hash check, so they inspect a hash-verified blob.
  */
 export function revalidateGatewayProposal(
   row: RevalidationRow,
   now: number,
   classify: ClassificationLookup = classifyCapability,
+  currentGrant?: CurrentGrantLookup,
 ): RevalidationOutcome {
   const hash = row.canonical_effect_hash;
   if (hash === null) return { kind: "legacy" };
@@ -131,6 +155,21 @@ export function revalidateGatewayProposal(
     classify,
   );
   if (!recheck.ok) return { kind: "deny", reason: recheck.reason };
+
+  // 24D-4 (closes E-017): the hash + policy re-checks above are client-AGNOSTIC.
+  // If this approval carries a gateway client_id AND a current-grant lookup is
+  // wired, re-read THAT client's CURRENT grant and DENY if it no longer authorizes
+  // the frozen capability — i.e. the client's grant was revoked / narrowed away
+  // between queueing and approval. A null client_id (legacy/chat) or an unwired
+  // lookup leaves this UNAPPLIED (the prior behavior is byte-for-byte unchanged).
+  const clientId = row.client_id ?? null;
+  if (clientId !== null && clientId.length > 0 && currentGrant) {
+    if (
+      !clientGrantStillAuthorizes(currentGrant(clientId), frozen.capability)
+    ) {
+      return { kind: "deny", reason: "grant_revoked" };
+    }
+  }
 
   return { kind: "ok" };
 }

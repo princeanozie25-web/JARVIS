@@ -17,6 +17,7 @@ import {
   CAPABILITY_CLASSIFICATION,
   approvalTierOf,
   classifyCapability,
+  clientGrantStillAuthorizes,
   findUnclassifiedMutatingCapabilities,
   isCapabilityExposable,
   mutationTypeOf,
@@ -189,5 +190,60 @@ describe("I-24D2b-2 (recheckFrozenEffectPolicy): registry-drift re-check", () =>
         classifyDrift,
       ),
     ).toEqual({ ok: false, reason: "tool_declassified" });
+  });
+});
+
+// ===========================================================================
+// 24D-4 — clientGrantStillAuthorizes: the per-client decision-time grant re-check
+// ===========================================================================
+describe("clientGrantStillAuthorizes (24D-4): per-client grant authorization", () => {
+  it("true when the current grant still lists the capability", () => {
+    expect(
+      clientGrantStillAuthorizes(
+        {
+          propose: [
+            { capability: "memory.note" },
+            { capability: "fs.create_file" },
+          ],
+        },
+        "memory.note",
+      ),
+    ).toBe(true);
+  });
+
+  it("false when the capability is no longer in the grant (narrowed away)", () => {
+    expect(
+      clientGrantStillAuthorizes(
+        { propose: [{ capability: "fs.create_file" }] },
+        "memory.note",
+      ),
+    ).toBe(false);
+  });
+
+  it("false when the client was fully revoked (null/undefined grant)", () => {
+    expect(clientGrantStillAuthorizes(null, "memory.note")).toBe(false);
+    expect(clientGrantStillAuthorizes(undefined, "memory.note")).toBe(false);
+  });
+
+  it("false for an empty propose set (fail-closed)", () => {
+    expect(clientGrantStillAuthorizes({ propose: [] }, "memory.note")).toBe(
+      false,
+    );
+  });
+
+  it("the gateway's richer ClientScope shape is structurally accepted", () => {
+    // a ProposeGrant carries more than {capability}; the view only reads capability
+    const richScope = {
+      read: ["pipeline-view-model"],
+      propose: [
+        {
+          capability: "memory.note",
+          target_prefix: "memory:",
+          max_args_bytes: 1000,
+        },
+      ],
+    };
+    expect(clientGrantStillAuthorizes(richScope, "memory.note")).toBe(true);
+    expect(clientGrantStillAuthorizes(richScope, "fs.create_file")).toBe(false);
   });
 });

@@ -2,7 +2,9 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   consumeApproval,
+  createPendingApproval,
   getActiveApproval,
+  getApprovalById,
   recordApproval,
 } from "./approvals";
 import { appendMessage, listMessages } from "./messages";
@@ -513,6 +515,31 @@ describe("approvals", () => {
         at: 1_700,
       }),
     ).toBeUndefined();
+  });
+
+  it("I-24D4-3: persists an additive client_id; legacy approvals carry null", () => {
+    createPendingApproval(db, {
+      id: "appr-cid",
+      execution_id: "exec-cid",
+      session_id: "s1",
+      tool_id: "memory.note",
+      scope_hash: "scope",
+      created_at: 1_000,
+      ttl_ms: 60_000,
+      client_id: "mcp-client:alice",
+    });
+    expect(getApprovalById(db, "appr-cid")?.client_id).toBe("mcp-client:alice");
+
+    // a legacy approval that passes no client_id reads back null (unaffected)
+    recordApproval(db, {
+      id: "appr-legacy",
+      session_id: "s1",
+      tool_id: "memory.note",
+      scope_hash: "scope",
+      decision: "PENDING",
+      decided_at: 1_000,
+    });
+    expect(getApprovalById(db, "appr-legacy")?.client_id).toBeNull();
   });
 });
 

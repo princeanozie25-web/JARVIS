@@ -35,6 +35,10 @@ export interface ApprovalRow {
   // Additive (24C-2b): the stable serialization the hash was computed over, so
   // the approval-time guard can recompute + compare without a gateway dependency.
   canonical_effect_json: string | null;
+  // Additive (24D-4): the gateway's server-derived client_id (FC-3) for a
+  // gateway-originated proposal, so the decision-time guard can re-read that
+  // client's CURRENT grant. Null for legacy/chat approvals.
+  client_id: string | null;
 }
 
 export interface RecordApprovalInput {
@@ -52,6 +56,7 @@ export interface RecordApprovalInput {
   canonical_effect_hash?: string | null;
   scope_snapshot_hash?: string | null;
   canonical_effect_json?: string | null;
+  client_id?: string | null;
 }
 
 export interface CreatePendingApprovalInput {
@@ -67,6 +72,7 @@ export interface CreatePendingApprovalInput {
   canonical_effect_hash?: string | null;
   scope_snapshot_hash?: string | null;
   canonical_effect_json?: string | null;
+  client_id?: string | null;
 }
 
 export interface PendingApproval {
@@ -135,6 +141,7 @@ function normalizeRow(row: ApprovalRow | undefined): ApprovalRow | undefined {
     canonical_effect_hash: row.canonical_effect_hash ?? null,
     scope_snapshot_hash: row.scope_snapshot_hash ?? null,
     canonical_effect_json: row.canonical_effect_json ?? null,
+    client_id: row.client_id ?? null,
   };
 }
 
@@ -200,8 +207,8 @@ export function recordApproval(
     `INSERT INTO approvals (
        id, execution_id, session_id, tool_id, scope_hash, state, token_hash,
        decision, decided_at, expires_at, consumed_at,
-       canonical_effect_hash, scope_snapshot_hash, canonical_effect_json
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       canonical_effect_hash, scope_snapshot_hash, canonical_effect_json, client_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     input.id,
     input.execution_id ?? null,
@@ -217,6 +224,7 @@ export function recordApproval(
     input.canonical_effect_hash ?? null,
     input.scope_snapshot_hash ?? null,
     input.canonical_effect_json ?? null,
+    input.client_id ?? null,
   );
 }
 
@@ -243,6 +251,7 @@ export function createPendingApproval(
     canonical_effect_hash: input.canonical_effect_hash ?? null,
     scope_snapshot_hash: input.scope_snapshot_hash ?? null,
     canonical_effect_json: input.canonical_effect_json ?? null,
+    client_id: input.client_id ?? null,
   });
 
   return { id, token, tokenHash, expiresAt };

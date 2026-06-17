@@ -668,6 +668,14 @@ export function applyMigrations(db: DatabaseType.Database): void {
   if (!hasColumn(db, "approvals", "canonical_effect_json")) {
     db.exec("ALTER TABLE approvals ADD COLUMN canonical_effect_json TEXT");
   }
+  // Additive (24D-4, closes E-017): the gateway's server-derived client_id on a
+  // pending proposal, so the decision-time guard can re-read THAT client's CURRENT
+  // grant and DENY if it was revoked between queue and approval. Nullable; legacy/
+  // chat approvals carry null and are unaffected. Idempotent ADD COLUMN; not
+  // recorded as a new _schema_migrations row (the migration-id list stays pinned).
+  if (!hasColumn(db, "approvals", "client_id")) {
+    db.exec("ALTER TABLE approvals ADD COLUMN client_id TEXT");
+  }
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_execution_id
       ON telemetry_events (execution_id);

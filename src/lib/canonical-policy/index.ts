@@ -298,3 +298,45 @@ export function recheckFrozenEffectPolicy(
   }
   return { ok: true };
 }
+
+// --- decision-time PER-CLIENT grant re-check (24D-4, closes E-017) -----------
+//
+// 24D-2b catches TOOL/POLICY drift (capability declassified, tier changed). It
+// cannot catch PER-CLIENT grant revocation: the frozen effect is client-AGNOSTIC
+// (no client_id in the hashed effect, by FC-1). So the approval row additionally
+// persists the gateway's client_id (24D-4), and at the decision point the executor
+// re-reads THAT client's CURRENT grant — via an injected lookup, never importing
+// the gateway — and asks THIS leaf whether the grant still authorizes the frozen
+// effect's capability. If the client's grant was revoked / narrowed away between
+// queueing and approval, it no longer does => DENY.
+//
+// The raw target is intentionally NOT persisted (the effect is metadata-only, I2),
+// so this is a capability-grant-authorization check — the faithful close of grant
+// revocation; target-prefix narrowing within a still-present grant is bounded by
+// the metadata-only design and was already enforced at submission (24D-2a). The
+// gateway's richer ClientScope is structurally assignable to ClientGrantView, so
+// the host wires the lookup straight from the live registry with no adapter.
+
+/** The CURRENT per-client grant, projected to what the decision-time re-check
+ * needs: the capabilities this client may still propose. */
+export interface ClientGrantView {
+  propose: ReadonlyArray<{ capability: string }>;
+}
+
+/** Injected at the decision point (host-wired to the live client registry, OUTSIDE
+ * the executor's import graph — the executor never imports the gateway). Returns
+ * the client's CURRENT grant, or null if the client was fully revoked/removed. */
+export type CurrentGrantLookup = (
+  clientId: string,
+) => ClientGrantView | null | undefined;
+
+/** Pure: does the client's CURRENT grant still authorize this capability? A null/
+ * absent grant (client revoked) or a grant with no entry for the capability
+ * (capability withdrawn / narrowed away) => NOT authorized. Fail-closed. */
+export function clientGrantStillAuthorizes(
+  grant: ClientGrantView | null | undefined,
+  capability: string,
+): boolean {
+  if (!grant || !Array.isArray(grant.propose)) return false;
+  return grant.propose.some((g) => g.capability === capability);
+}

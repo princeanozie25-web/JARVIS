@@ -26,6 +26,7 @@ import {
   type ToolMetadataLookup,
 } from "../mcp-gateway";
 import { ensurePendingToolApproval, resumeApproval } from "./tool-approvals";
+import type { CurrentGrantLookup } from "@/lib/canonical-policy";
 
 const allowDecision: RouterDecision = {
   intent: { intent: "DETERMINISTIC_COMMAND", reason: "test" },
@@ -137,6 +138,7 @@ function createGatewayApproval(
     drift?: boolean;
     capability?: string;
     safetyTag?: GatewaySafetyTag;
+    clientId?: string;
   } = {},
 ): string {
   // default path uses the shared lookup; drift cases swap in an overridden meta
@@ -171,6 +173,9 @@ function createGatewayApproval(
     canonical_effect_json: opts.drift
       ? `${proposal.canonical_effect_json} DRIFTED`
       : proposal.canonical_effect_json,
+    // 24D-4: persist the gateway's client_id when the case exercises the
+    // per-client grant re-check; omitted => null => the re-check does not fire.
+    client_id: opts.clientId,
   });
   return pending.token;
 }
@@ -309,6 +314,84 @@ describe("resumeApproval — FC-2 re-validation guard", () => {
     expect(getToolCall(db, "exec-tier")?.status).toBe("DENIED");
     expect(calls).toEqual([]); // never executed
   });
+
+  it("I-24D4-2 (still granted): a client still holding the grant executes exactly once", async () => {
+    await awaitToolCall("exec-granted");
+    const token = createGatewayApproval("exec-granted", {
+      clientId: "mcp-client:alice",
+    });
+    const currentGrant: CurrentGrantLookup = () => ({
+      propose: [{ capability: "memory.note" }],
+    });
+
+    const res = await resumeApproval({
+      db,
+      runtime,
+      executionId: "exec-granted",
+      decision: "APPROVED_ONCE",
+      approvalToken: token,
+      now,
+      recordEvent,
+      currentGrant,
+    });
+
+    expect(res.body.ok).toBe(true);
+    expect(calls).toEqual(["alpha"]); // grant re-check passed; executed once
+  });
+
+  it("I-24D4-1 (grant revoked): a client revoked between queue and approval finalizes DENIED, runTool NOT called", async () => {
+    await awaitToolCall("exec-revoked");
+    const token = createGatewayApproval("exec-revoked", {
+      clientId: "mcp-client:bob",
+    });
+    const currentGrant: CurrentGrantLookup = () => null; // bob's grant withdrawn
+
+    const res = await resumeApproval({
+      db,
+      runtime,
+      executionId: "exec-revoked",
+      decision: "APPROVED_ONCE",
+      approvalToken: token,
+      now,
+      recordEvent,
+      currentGrant,
+    });
+
+    expect(res.body.ok).toBe(false);
+    expect(res.body.reason).toBe("revalidation_grant_revoked");
+    expect(getToolCall(db, "exec-revoked")?.status).toBe("DENIED");
+    expect(calls).toEqual([]); // never executed
+    expect(
+      events.some((e) => e.error_class === "ApprovalRevalidationFailed"),
+    ).toBe(true);
+    // I-24D4-8 metadata-only: no raw payload, and the client_id (an opaque id) is
+    // not leaked into the telemetry event.
+    const denyEvent = events.find(
+      (e) => e.error_class === "ApprovalRevalidationFailed",
+    );
+    expect(JSON.stringify(denyEvent)).not.toContain("alpha");
+    expect(JSON.stringify(denyEvent)).not.toContain("bob");
+  });
+
+  it("I-24D4-4 (legacy unaffected): a no-client_id approval ignores the lookup and executes", async () => {
+    await awaitToolCall("exec-legacy-grant");
+    const token = createGatewayApproval("exec-legacy-grant"); // no client_id persisted
+    const currentGrant: CurrentGrantLookup = () => null; // would DENY if it applied
+
+    const res = await resumeApproval({
+      db,
+      runtime,
+      executionId: "exec-legacy-grant",
+      decision: "APPROVED_ONCE",
+      approvalToken: token,
+      now,
+      recordEvent,
+      currentGrant,
+    });
+
+    expect(res.body.ok).toBe(true);
+    expect(calls).toEqual(["alpha"]); // the per-client re-check did not fire
+  });
 });
 
 describe("I-24C2b-5 (sole executor): runtime.runTool call-site count is unchanged", () => {
@@ -335,5 +418,32 @@ describe("I-24C2b-5 (sole executor): runtime.runTool call-site count is unchange
         readFileSync(resolve(chatDir, "approval-revalidation.ts"), "utf8"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("I-24D4-6 (no cycle): the executor imports the shared leaf, never the gateway", () => {
+  it("no chat/ production file imports src/lib/mcp-gateway", () => {
+    const chatDir = dirname(fileURLToPath(import.meta.url));
+    const stripComments = (s: string): string =>
+      s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\n)\s*\/\/[^\n]*/g, "");
+    const offenders: string[] = [];
+    for (const name of readdirSync(chatDir)) {
+      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      const code = stripComments(readFileSync(resolve(chatDir, name), "utf8"));
+      const froms = [...code.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map(
+        (m) => m[1],
+      );
+      for (const f of froms) {
+        if (f.includes("mcp-gateway")) offenders.push(`${name} -> ${f}`);
+      }
+    }
+    expect(
+      offenders,
+      `chat files importing the gateway: ${offenders.join(", ")}`,
+    ).toEqual([]);
+    // the bridge is the shared canonical-policy leaf + the injected CurrentGrantLookup
+    expect(
+      readFileSync(resolve(chatDir, "approval-revalidation.ts"), "utf8"),
+    ).toContain("@/lib/canonical-policy");
   });
 });

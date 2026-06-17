@@ -6,10 +6,12 @@
   drilled.** The 24E non-bypass drill (`tests/mcp-gateway/phase-24e-nonbypass-drill.test.ts`,
   DRILL-1..12) exercised every elevation path against the real gateway; each
   failed closed. Every control that is BUILT + DRILLED is now **GREEN by drill**
-  (resolution table at the end of this document). **One named residual remains:**
-  E-017 (per-client decision-time grant re-validation → 24D-4) — bounded, not
-  RED. The core proof holds: `runtime.runTool` call-site count is **EXACTLY 2**
-  with the whole gateway built (DRILL-12).
+  (resolution table at the end of this document). **ZERO open residuals:** the one
+  named residual at 24E — E-017 (per-client decision-time grant re-validation) —
+  was CLOSED by 24D-4 (the approval row persists client_id; the decision guard
+  re-reads the client's CURRENT grant via the shared leaf + an injected lookup and
+  denies if revoked). The core proof holds: `runtime.runTool` call-site count is
+  **EXACTLY 2** with the whole gateway built (DRILL-12).
 - **v3 method (honest taxonomy preserved):** v2's rule stands — a control is GREEN
   only when DRILLED, not when designed. v3 does not relax that; it records that
   the drills HAPPENED (slice + DRILL-N cited per control). The per-control prose
@@ -119,9 +121,9 @@ body's `client_id` is ignored/rejected. A client can never choose its identity.
 
 > **v3 status:** every `[AMBER-PLANNED]` tag below is the DESIGN-time state. The
 > CURRENT status is in the **24E resolution table** at the end — all of
-> EoP-1..13/15 are **GREEN by drill** except the bounded E-017 residual (the
-> per-client decision-time slice of EoP-8/14, → 24D-4) and EoP-11's future
-> visual-UI capstone (voice + data-layer is GREEN).
+> EoP-1..13/15 are **GREEN by drill** (including the per-client decision-time slice
+> of EoP-8/14, closed by 24D-4 / E-017); EoP-11's future visual-UI capstone is the
+> only cross-phase carry-over (voice + data-layer is GREEN).
 
 ### EoP-1 — Direct execution via the tool runtime [GREEN — frozen P18 + 24B GATE-2, DRILL-12]
 
@@ -404,7 +406,7 @@ the design-time `[AMBER-PLANNED]` tags in the prose above.
 | EoP-5 provenance laundering     | **GREEN**                       | 24C-2               | DRILL-4                                                                   |
 | EoP-6 alternate mutator import  | **GREEN**                       | 24B GATE-2          | DRILL-9, DRILL-12                                                         |
 | EoP-7 client-supplied effect    | **GREEN**                       | 24C-1               | DRILL-7                                                                   |
-| EoP-8/14 proposal TOCTOU        | **GREEN** (proposal hash)       | 24C-2b              | DRILL-8a — _per-client revocation = E-017 residual → 24D-4_               |
+| EoP-8/14 proposal TOCTOU        | **GREEN** (hash + per-client)   | 24C-2b + 24D-4      | DRILL-8a; per-client grant revocation closed by 24D-4 (E-017, I-24D4-1)   |
 | EoP-9 token theft → weapon      | **GREEN**                       | 24D-1 + 24D-3       | DRILL-5, DRILL-10                                                         |
 | EoP-10 queue poisoning          | **GREEN**                       | 24D-3               | DRILL-10 (+ bulk-reject)                                                  |
 | EoP-11 presentation collapse    | **GREEN** (voice + data-layer)  | 24C-3               | DRILL-3 — _visual UI capstone = cross-phase, encoded in render_hardening_ |
@@ -442,11 +444,18 @@ gateway (DRILL-12). The gateway added ZERO mutation paths.
 - **GATE-5** (enqueue needle's eye): **GREEN** (24C-2; DRILL-7 rejects every
   client-authored field at the boundary).
 
-### The one named residual
+### Residuals — none open
 
-- **E-017 (TRACKED-OPEN → 24D-4):** per-client GRANT revocation is not re-checked
-  at the decision point (the frozen effect is client-agnostic by FC-1 design).
-  Submission-time per-client abuse IS contained (24D-3). Bounded, named, not RED.
+- **E-017 (CLOSED by 24D-4):** per-client GRANT revocation IS now re-checked at the
+  decision point. The approval row persists the gateway's client_id (additive
+  nullable column, no new migration id); the guard re-reads that client's CURRENT
+  grant via the shared canonical-policy leaf (`clientGrantStillAuthorizes`) + an
+  injected `CurrentGrantLookup`, and DENIES (`revalidation_grant_revoked`) before
+  `runtime.runTool` if the grant no longer authorizes the capability. Drilled:
+  I-24D4-1 (revoked → DENIED, runTool not called), I-24D4-2 (still-granted →
+  executes once). Legacy approvals unchanged; sole executor intact (count 2).
+  **Phase 24 has ZERO open residuals.** (E-018 is an APPLIED test-config item, not
+  a threat.)
 
 ### Cross-phase constraints still standing
 

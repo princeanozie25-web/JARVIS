@@ -18,7 +18,10 @@ import {
   recomputeCanonicalEffectHash,
   revalidateGatewayProposal,
 } from "./approval-revalidation";
-import type { ClassificationLookup } from "@/lib/canonical-policy";
+import type {
+  ClassificationLookup,
+  CurrentGrantLookup,
+} from "@/lib/canonical-policy";
 
 const meta: ToolMetadata = {
   capability: "fs.create_file",
@@ -233,5 +236,98 @@ describe("revalidateGatewayProposal — registry-drift re-check (24D-2b)", () =>
         NOW,
       ),
     ).toEqual({ kind: "deny", reason: "effect_unparsable" });
+  });
+});
+
+// ===========================================================================
+// 24D-4 — per-client grant re-check at the decision point (closes E-017)
+//
+// The frozen sample effect is fs.create_file (still classified @ confirm_once, so
+// the hash + 24D-2b policy re-checks pass); these tests exercise the NEW per-client
+// grant re-check that runs after them.
+// ===========================================================================
+describe("revalidateGatewayProposal — per-client grant re-check (24D-4)", () => {
+  const json = stableStringify(sampleEffect());
+  const hash = recomputeCanonicalEffectHash(json);
+  const NOW = 1_000;
+  const FUTURE = 10_000;
+  const baseRow = {
+    canonical_effect_hash: hash,
+    canonical_effect_json: json,
+    expires_at: FUTURE,
+    client_id: "mcp-client:grant",
+  };
+  const grants =
+    (caps: string[]): CurrentGrantLookup =>
+    () => ({ propose: caps.map((c) => ({ capability: c })) });
+
+  it("I-24D4-2 (still granted): a client still granted the capability proceeds", () => {
+    expect(
+      revalidateGatewayProposal(
+        baseRow,
+        NOW,
+        undefined,
+        grants(["fs.create_file"]),
+      ),
+    ).toEqual({ kind: "ok" });
+  });
+
+  it("I-24D4-1 (client revoked): a null current grant denies grant_revoked", () => {
+    const revoked: CurrentGrantLookup = () => null;
+    expect(revalidateGatewayProposal(baseRow, NOW, undefined, revoked)).toEqual(
+      {
+        kind: "deny",
+        reason: "grant_revoked",
+      },
+    );
+  });
+
+  it("I-24D4-1 (capability narrowed away): a grant without the capability denies", () => {
+    expect(
+      revalidateGatewayProposal(
+        baseRow,
+        NOW,
+        undefined,
+        grants(["memory.note"]),
+      ),
+    ).toEqual({ kind: "deny", reason: "grant_revoked" });
+  });
+
+  it("not applied when no currentGrant lookup is wired (proceeds unchanged)", () => {
+    expect(revalidateGatewayProposal(baseRow, NOW)).toEqual({ kind: "ok" });
+  });
+
+  it("I-24D4-4 (legacy): a row with no/null client_id never triggers the re-check", () => {
+    const revoked: CurrentGrantLookup = () => null; // would deny IF it applied
+    const legacyRow = {
+      canonical_effect_hash: hash,
+      canonical_effect_json: json,
+      expires_at: FUTURE,
+    };
+    expect(
+      revalidateGatewayProposal(legacyRow, NOW, undefined, revoked),
+    ).toEqual({
+      kind: "ok",
+    });
+    expect(
+      revalidateGatewayProposal(
+        { ...legacyRow, client_id: null },
+        NOW,
+        undefined,
+        revoked,
+      ),
+    ).toEqual({ kind: "ok" });
+  });
+
+  it("ordering: a drifted hash denies hash_mismatch even with a revoking lookup", () => {
+    const revoked: CurrentGrantLookup = () => null;
+    expect(
+      revalidateGatewayProposal(
+        { ...baseRow, canonical_effect_json: `${json} DRIFTED` },
+        NOW,
+        undefined,
+        revoked,
+      ),
+    ).toEqual({ kind: "deny", reason: "hash_mismatch" });
   });
 });
