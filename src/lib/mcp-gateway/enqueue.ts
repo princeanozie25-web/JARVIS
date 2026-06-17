@@ -28,6 +28,7 @@ import {
 } from "./proposal";
 import { findForbiddenFields } from "./sanitizer";
 import { checkProposeScope, type ClientScope } from "./scope";
+import type { AdmissionResult, ProposalAdmissionRequest } from "./admission";
 
 /** The injected write boundary. The host wires this to the real
  * createPendingApproval (db), OUTSIDE the gateway import graph. It performs the
@@ -113,6 +114,11 @@ export interface SubmitProposalDeps {
    * the client's identity before freeze (EoP-13 + EoP-4). An FC-3 client always
    * carries one; absent (undefined) is the legacy/unscoped path. */
   scope?: ClientScope | null;
+  /** DoS admission (24D-3). When supplied, the request is rate / standing-quota /
+   * queue-depth / mute checked on the client's identity BEFORE freeze/enqueue —
+   * rejected early, never queued (EoP-9/EoP-10). The host wires this to a shared
+   * GatewayAdmissionController; absent is the legacy/no-DoS-gate path. */
+  admit?: (request: ProposalAdmissionRequest) => AdmissionResult;
   /** Injectable for deterministic tests. */
   proposal_id?: string;
 }
@@ -125,7 +131,7 @@ export type SubmitOutcome =
     }
   | {
       ok: false;
-      stage: "canonicalize" | "scope" | "provenance" | "enqueue";
+      stage: "canonicalize" | "scope" | "admission" | "provenance" | "enqueue";
       reason: string;
     };
 
@@ -163,6 +169,24 @@ export function submitProposalRequest(
 
   if (!deps.clientId || deps.clientId.trim().length === 0) {
     return { ok: false, stage: "provenance", reason: "no_provenance" };
+  }
+
+  // DoS ADMISSION (24D-3): rate / standing-quota / queue-depth / mute, keyed by
+  // the client's identity, BEFORE freeze/enqueue — reject early so a flood never
+  // reaches the queue (EoP-9 stolen token, EoP-10 rogue client). The declared
+  // per-capability rate comes from THIS client's grant; missing => fail-closed.
+  if (deps.admit) {
+    const grant = deps.scope?.propose?.find(
+      (g) => g.capability === canon.canonical_effect.capability,
+    );
+    const admission = deps.admit({
+      clientId: deps.clientId,
+      capability: canon.canonical_effect.capability,
+      rateLimit: grant?.rate_limit,
+    });
+    if (!admission.ok) {
+      return { ok: false, stage: "admission", reason: admission.reason };
+    }
   }
 
   const proposal = buildCanonicalProposal({

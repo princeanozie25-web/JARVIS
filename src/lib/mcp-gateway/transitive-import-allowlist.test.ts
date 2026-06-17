@@ -322,6 +322,12 @@ describe("GATE-2 / EoP-6: MCP gateway transitive import allowlist", () => {
     expect(result.reachableRepo.has("src/lib/canonical-policy/index.ts")).toBe(
       true,
     );
+    // 24D-3: the DoS admission controller is reached (index + server import it).
+    // An in-memory leaf under the allowed gateway prefix — durable mute +
+    // pending-count are INJECTED, so it imports NOTHING and reaches no mutator.
+    expect(result.reachableRepo.has("src/lib/mcp-gateway/admission.ts")).toBe(
+      true,
+    );
     expect(
       result.unresolved,
       `unresolved imports: ${result.unresolved.join(", ")}`,

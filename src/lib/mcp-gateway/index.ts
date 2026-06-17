@@ -152,3 +152,19 @@ export type {
   ScopeCheckResult,
   ScopeDenyReason,
 } from "./scope";
+
+export {
+  GatewayAdmissionController,
+  DEFAULT_ADMISSION_LIMITS,
+} from "./admission";
+export type {
+  RateLimit,
+  AdmissionLimits,
+  AdmissionResult,
+  AdmissionDenyReason,
+  AdmissionControllerOptions,
+  ProposalAdmissionRequest,
+  ClientMuteStore,
+  PendingCountForClient,
+  RecordSuspiciousVolume,
+} from "./admission";

@@ -33,6 +33,12 @@ import {
   type QueueStatusReader,
   type QueueStatusSource,
 } from "./queue-status";
+import {
+  GatewayAdmissionController,
+  type AdmissionLimits,
+  type ClientMuteStore,
+  type PendingCountForClient,
+} from "./admission";
 import { rpcInvalidRequest } from "./schemas";
 
 export interface StartStdioServerOptions {
@@ -53,6 +59,15 @@ export interface StartStdioServerOptions {
   queueStatusSource?: QueueStatusSource;
   /** ID-3 cadence for the queue-status count cache (server-controlled). */
   queueStatusCadenceMs?: number;
+  /** DoS admission policy (24D-3): server-wide standing quota + read-rate + the
+   * per-client queue-depth cap. Defaults apply for any field left unset. */
+  admissionLimits?: Partial<AdmissionLimits>;
+  /** Injected DURABLE mute store (host -> db/file, keyed by client_id). Absent =>
+   * nothing is muted (the other DoS gates still apply). */
+  clientMuteStore?: ClientMuteStore;
+  /** Injected per-client PENDING proposal count (host reads the queue OUTSIDE the
+   * gateway graph). Absent => the queue-depth cap is not enforced. */
+  pendingCountForClient?: PendingCountForClient;
   /** Injectable clock (tests); defaults to Date.now via the reader. */
   now?: () => number;
 }
@@ -108,6 +123,19 @@ export function startStdioServer(
         })
       : null;
 
+  // DoS admission (24D-3), one controller per server session (in-memory counters
+  // + injected durable mute + injected pending-count). The propose path's admit
+  // is wired by the host where it calls submitProposalRequest; here we wire the
+  // read-rate gate (ID-3) into the handler. A muted/over-rate read => uniform denial.
+  const admission = new GatewayAdmissionController({
+    limits: options.admissionLimits,
+    muteStore: options.clientMuteStore,
+    pendingCount: options.pendingCountForClient,
+    now: options.now,
+  });
+  const admitRead = (clientId: string | null): boolean =>
+    admission.admitRead(clientId).ok;
+
   const write = (value: unknown): void => {
     output.write(`${JSON.stringify(value)}\n`);
   };
@@ -120,7 +148,12 @@ export function startStdioServer(
       write(rpcInvalidRequest(null));
       return;
     }
-    const response = handleJsonRpcRequest(parsed, session, queueStatusReader);
+    const response = handleJsonRpcRequest(
+      parsed,
+      session,
+      queueStatusReader,
+      admitRead,
+    );
     if (response !== null) write(response);
   };
 

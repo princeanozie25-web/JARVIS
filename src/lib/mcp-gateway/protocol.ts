@@ -60,11 +60,17 @@ function isNotification(raw: unknown): boolean {
  * `queueStatus` is the injected counts-only reader for the queue-status read; it
  * defaults to null so callers that never wired a counts source (and every
  * 24B-1 call site) see queue-status reads collapse to the uniform denial.
+ *
+ * `admitRead` is the injected per-client read rate gate (24D-3, ID-3): given the
+ * server-derived client_id it returns false when the client is over its read
+ * rate (or muted), and the read collapses to the SAME uniform denial. It defaults
+ * to allow-all so every pre-24D-3 call site is unchanged.
  */
 export function handleJsonRpcRequest(
   raw: unknown,
   session: GatewaySession,
   queueStatus: QueueStatusReader | null = null,
+  admitRead: (clientId: string | null) => boolean = () => true,
 ): JsonRpcResponse | null {
   const parsed = JsonRpcRequestSchema.safeParse(raw);
   if (!parsed.success) {
@@ -103,6 +109,10 @@ export function handleJsonRpcRequest(
     case "resources/read": {
       const params = ResourcesReadParamsSchema.safeParse(request.params);
       if (!params.success) return rpcDenied(id);
+      // ID-3 DoS (24D-3): per-client read rate limit, on top of the queue-status
+      // cadence cache. An over-rate (or muted) client collapses to the SAME
+      // uniform denial — no read served, no cross-client info, no enumeration.
+      if (!admitRead(session.clientId)) return rpcDenied(id);
       // ID-2 read scope (24D-2a): when the session carries a scope, the requested
       // resource must be in it. A scoped client reading out-of-scope (or an unknown
       // URI) gets the SAME uniform denial — no cross-client info, no enumeration.

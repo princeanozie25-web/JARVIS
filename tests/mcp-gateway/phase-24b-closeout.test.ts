@@ -318,6 +318,14 @@ describe("I-24B3-2 (GATE-2): the gateway import graph reaches only the allowed r
     // no external and no new repo module — the non-mutation claim is preserved.
   });
 
+  it("reaches the DoS admission leaf, still under the gateway prefix (24D-3)", () => {
+    expect(GATE2.reachableRepo.has("src/lib/mcp-gateway/admission.ts")).toBe(
+      true,
+    );
+    // in-memory counters; durable mute + pending-count are INJECTED, so the leaf
+    // imports nothing and the freeze's non-mutation claim still holds.
+  });
+
   it("reaches NO mutator tree", () => {
     expect(
       GATE2.denyHits,
