@@ -1,16 +1,20 @@
-# MCP Gateway — Threat Model (v2)
+# MCP Gateway — Threat Model (v3)
 
-- **Phase:** 24A (the load-bearing deliverable; code in 24B–24E demonstrates this holds)
-- **Date:** 2026-06-14
-- **Status:** **Threat-model COMPLETE. Security sign-off NOT GIVEN.** These are
-  different claims and were conflated in v1. The document is complete and
-  strong enough to gate 24B. The gateway is **not safe yet** — most foundational
-  controls are AMBER-PLANNED (designed, not built, not drilled). Safety is
-  earned at the 24E drill, not asserted here.
-- **v2 correction:** v1 labelled unbuilt controls **GREEN**. That is the same
-  aspirational-claim error the project doctrine forbids (a control is real when
-  drilled, not when designed). v2 introduces an honest three-state taxonomy and
-  relabels every unbuilt control AMBER-PLANNED.
+- **Phase:** 24A authored the model (24B–24E built + drilled it).
+- **Date:** 2026-06-14 (v2); **2026-06-17 (v3 — RESOLVED by the 24E drill).**
+- **Status (v3):** **Threat-model COMPLETE. Security SIGN-OFF GIVEN for what is
+  drilled.** The 24E non-bypass drill (`tests/mcp-gateway/phase-24e-nonbypass-drill.test.ts`,
+  DRILL-1..12) exercised every elevation path against the real gateway; each
+  failed closed. Every control that is BUILT + DRILLED is now **GREEN by drill**
+  (resolution table at the end of this document). **One named residual remains:**
+  E-017 (per-client decision-time grant re-validation → 24D-4) — bounded, not
+  RED. The core proof holds: `runtime.runTool` call-site count is **EXACTLY 2**
+  with the whole gateway built (DRILL-12).
+- **v3 method (honest taxonomy preserved):** v2's rule stands — a control is GREEN
+  only when DRILLED, not when designed. v3 does not relax that; it records that
+  the drills HAPPENED (slice + DRILL-N cited per control). The per-control prose
+  below is the original DESIGN rationale with its design-time `[AMBER-PLANNED]`
+  tag; its CURRENT status is the GREEN-by-drill resolution table at the end.
 - **Scope:** JARVIS exposed as a local (stdio) MCP server. External clients
   (Claude Code/Desktop, other local agents) may READ governed surfaces and
   PROPOSE into the approval queue. They may NEVER cross the Human Gate.
@@ -30,12 +34,13 @@
 
 ---
 
-## The two foundational controls (everything depends on these — both AMBER until 24C/24E)
+## The two foundational controls (everything depends on these — both GREEN by drill)
 
-If either is weak, every other control is cosmetic. **Both are AMBER-PLANNED**
-until built (24C) and drilled (24E).
+If either is weak, every other control is cosmetic. **Both are now GREEN** —
+built in 24C and DRILLED in 24E (FC-1 + GATE-3: DRILL-7; FC-2 both halves:
+DRILL-8a/8b).
 
-### FC-1 — Server-derived canonical effect [AMBER-PLANNED]
+### FC-1 — Server-derived canonical effect [GREEN — 24C-1, DRILL-7]
 
 The client submits **untrusted requested intent**, never truth. The server
 canonicalizes the request against JARVIS's own tool registry and **derives**:
@@ -61,7 +66,7 @@ A client claiming `risk: low` is ignored; risk is computed from what the tool
 _actually does_. **Drill (24E):** submit a proposal claiming low risk for a
 high-risk tool; assert the server-derived effect shows the true high risk.
 
-### FC-2 — Hash-frozen canonical proposal + approval-time re-validation [AMBER-PLANNED]
+### FC-2 — Hash-frozen canonical proposal + approval-time re-validation [GREEN — 24C-2/24C-2b/24D-2b, DRILL-8a/8b]
 
 ```
 canonical proposal = {
@@ -86,7 +91,7 @@ canonical proposal = {
 
 ---
 
-## Identity (FC-3) — bound from token, never request body [AMBER-PLANNED]
+## Identity (FC-3) — bound from token, never request body [GREEN — 24D-1, DRILL-5]
 
 `client_id` is derived **server-side** from a token-hash lookup. The request
 body's `client_id` is ignored/rejected. A client can never choose its identity.
@@ -112,7 +117,13 @@ body's `client_id` is ignored/rejected. A client can never choose its identity.
 
 ## Elevation of Privilege
 
-### EoP-1 — Direct execution via the tool runtime [GREEN via existing + AMBER via new]
+> **v3 status:** every `[AMBER-PLANNED]` tag below is the DESIGN-time state. The
+> CURRENT status is in the **24E resolution table** at the end — all of
+> EoP-1..13/15 are **GREEN by drill** except the bounded E-017 residual (the
+> per-client decision-time slice of EoP-8/14, → 24D-4) and EoP-11's future
+> visual-UI capstone (voice + data-layer is GREEN).
+
+### EoP-1 — Direct execution via the tool runtime [GREEN — frozen P18 + 24B GATE-2, DRILL-12]
 
 **Attack:** an MCP tool reaches `runtime.runTool`.
 **Existing control [GREEN]:** `resumeApproval` is the sole executor (Phase 23
@@ -262,6 +273,10 @@ surveillance feed without reading a payload. Three questions per surface:
 2. Payload redaction.
 3. **Shape leakage** — what the structure reveals.
 
+> **v3 status:** ID-0..5 below carry their DESIGN-time tags; CURRENT status is in
+> the **24E resolution table** at the end — all of ID-0..5 are **GREEN by drill**
+> (DRILL-1/6/10/11 + the 24B read-server suites).
+
 ### ID-0 — Default
 
 A surface not in this matrix is NEVER-EXPOSED. New readable surfaces default
@@ -360,54 +375,86 @@ outside repo**. Local-only narrows network surface; it does NOT confer trust.
 
 ---
 
-## 24A overall status
+## 24A overall status (historical — superseded by the 24E resolution below)
 
 - **Threat-model: COMPLETE.** Every threat enumerated, every surface classified,
-  every control assigned. No RED.
-- **Security sign-off: NOT GIVEN.** Under the honest taxonomy, the foundational
-  controls (FC-1, FC-2, FC-3) and nearly all EoP/ID controls are
-  **AMBER-PLANNED** — designed, not built, not drilled. Exactly one control is
-  genuinely GREEN (EoP-2's frozen-Phase-18 auto-execution block), and even it is
-  re-drilled in 24E.
-  **24A closes as threat-model-complete and gates 24B. The gateway is NOT safe
-  until 24E drills every AMBER to GREEN.**
+  every control assigned. No RED. (Unchanged — this remains true.)
+- **Security sign-off (24A): NOT GIVEN** — correct AT 24A, when the controls were
+  designed but not built/drilled. **Resolved at 24E:** see the table below.
 
-### The five 24B close-gates (24B cannot freeze until ALL are proven)
+---
 
-- **GATE-1:** FC-2 wraps the frozen Phase 18 lifecycle additively (no new
-  state). **If it cannot, 24B STOPS** → Enhancement-Registry decision.
-- **GATE-2:** the import allowlist is **transitive** (catches barrels,
-  re-exports, dynamic imports; denies mutator module trees entirely).
-- **GATE-3:** the canonical proposal cannot be **client-forged** (enqueue
-  boundary rejects client-supplied effect/risk/target/hash/status/approval/
-  metadata).
-- **GATE-4:** the human-session authority marker is **unforgeable** (UI-session-
-  only, short-lived, session-bound, never from MCP, non-serializable,
-  non-persisted, audited).
-- **GATE-5 (the enqueue boundary is a needle's eye):** the queue-enqueue
-  boundary — the one write-adjacent capability the allowlist permits — accepts
-  ONLY a server-canonicalized proposal and rejects client canonical_effect,
-  client hash, body client_id, status fields, approval fields, and arbitrary
-  metadata. Otherwise the enqueue boundary becomes the new mutator.
+## 24E — SECURITY SIGN-OFF: every drilled control AMBER → GREEN
 
-### Required drills before any AMBER → GREEN (24E + slice drills)
+The 24E non-bypass drill (`tests/mcp-gateway/phase-24e-nonbypass-drill.test.ts`)
+drove a real external client against the built gateway; each elevation path
+failed closed. This table is the **authoritative current status**; it supersedes
+the design-time `[AMBER-PLANNED]` tags in the prose above.
 
-- FC-1: low-risk-claim-on-high-risk-tool → true risk shown.
-- FC-2: change between review and approval → approval invalidated.
-- EoP-3: social-engineering payload → untrusted-requiring-review.
-- EoP-6: attempted mutator import (incl. transitive) → test fails the build.
-- EoP-11 voice: malicious text → spoken as untrusted proposal, never as
-  recommendation.
-- EoP-15 aux: malicious text summarized → label preserved, risk not softened.
-- ID-5: probe denials → uniform, no surface/scope enumeration.
-- The core proof: `runtime.runTool` call-site count unchanged from Phase 23.
+| Control                         | v3 status                       | Built               | Drilled (24E)                                                             |
+| ------------------------------- | ------------------------------- | ------------------- | ------------------------------------------------------------------------- |
+| **FC-1** server-derived effect  | **GREEN**                       | 24C-1               | DRILL-7                                                                   |
+| **FC-2** hash-freeze            | **GREEN**                       | 24C-2               | DRILL-7, DRILL-8a                                                         |
+| **FC-2** decision re-validation | **GREEN**                       | 24C-2b              | DRILL-8a                                                                  |
+| **FC-3** identity from token    | **GREEN**                       | 24D-1               | DRILL-5                                                                   |
+| EoP-1 direct execution          | **GREEN**                       | frozen P18 + GATE-2 | DRILL-12                                                                  |
+| EoP-2 auto-execution            | **GREEN**                       | frozen P18          | DRILL-2                                                                   |
+| EoP-3 content injection         | **GREEN**                       | 24C-3               | DRILL-3                                                                   |
+| EoP-4 confused deputy           | **GREEN**                       | 24D-2a              | DRILL-6                                                                   |
+| EoP-5 provenance laundering     | **GREEN**                       | 24C-2               | DRILL-4                                                                   |
+| EoP-6 alternate mutator import  | **GREEN**                       | 24B GATE-2          | DRILL-9, DRILL-12                                                         |
+| EoP-7 client-supplied effect    | **GREEN**                       | 24C-1               | DRILL-7                                                                   |
+| EoP-8/14 proposal TOCTOU        | **GREEN** (proposal hash)       | 24C-2b              | DRILL-8a — _per-client revocation = E-017 residual → 24D-4_               |
+| EoP-9 token theft → weapon      | **GREEN**                       | 24D-1 + 24D-3       | DRILL-5, DRILL-10                                                         |
+| EoP-10 queue poisoning          | **GREEN**                       | 24D-3               | DRILL-10 (+ bulk-reject)                                                  |
+| EoP-11 presentation collapse    | **GREEN** (voice + data-layer)  | 24C-3               | DRILL-3 — _visual UI capstone = cross-phase, encoded in render_hardening_ |
+| EoP-12 direct DB/event write    | **GREEN** (gateway unreachable) | 24B GATE-2          | DRILL-8c, DRILL-9                                                         |
+| EoP-13 scope drift              | **GREEN**                       | 24D-2a              | DRILL-6 (+ completeness I-24D2a-7)                                        |
+| EoP-15 aux laundering           | **GREEN** (data-layer)          | 24C-3               | DRILL-3                                                                   |
+| ID-0 default-never              | **GREEN**                       | 24B + completeness  | DRILL-1                                                                   |
+| ID-1 queue-status redaction     | **GREEN**                       | 24B-2               | DRILL-1/6 + queue suite                                                   |
+| ID-2 per-client read scope      | **GREEN**                       | 24D-2a              | DRILL-6                                                                   |
+| ID-3 polling/read-flood         | **GREEN**                       | 24B-2 + 24D-3       | DRILL-10 + cadence suite                                                  |
+| ID-4 static view-model          | **GREEN**                       | 24B                 | server.test I-24B1-6                                                      |
+| ID-5 uniform denial             | **GREEN**                       | 24B                 | DRILL-11                                                                  |
+| Spoofing                        | **GREEN**                       | 24D-1               | DRILL-5                                                                   |
+| Tampering                       | **GREEN**                       | 24C-2/2b            | DRILL-7, DRILL-8                                                          |
+| Repudiation                     | **GREEN**                       | 24C-2 + 24D-1       | DRILL-4 (+ connection audit)                                              |
+| Denial of Service               | **GREEN**                       | 24D-3               | DRILL-10                                                                  |
+| stdio-local-≠-trusted           | **GREEN**                       | 24D-1               | DRILL-5                                                                   |
 
-### Cross-phase constraints this threat model imposes
+**The core proof (EoP-1/EoP-6):** `runtime.runTool` call-site count is **EXACTLY
+2** with the whole gateway built — both in the frozen `chat/` tree, none in the
+gateway (DRILL-12). The gateway added ZERO mutation paths.
 
-- **EoP-11 binds the future UI capstone** (no trusted/untrusted channel
-  collapse) **and the existing voice stack** (never speak untrusted text as
-  JARVIS's own).
-- **EoP-15 binds 21C aux routing.**
-- **EoP-13 + ID-0 impose standing completeness tests** (new mutating capability
-  → non-exposable by default; new readable surface → NEVER-EXPOSED by default;
-  build fails if unclassified).
+### The five close-gates — final status
+
+- **GATE-1** (FC-2 wraps Phase 18 additively): **PASS** (`256048c`, Verdict A).
+- **GATE-2** (transitive import allowlist): **GREEN** (24B; DRILL-9/DRILL-12).
+- **GATE-3** (canonical effect un-forgeable): **GREEN** (24C-1; DRILL-7).
+- **GATE-4** (human-session authority marker): **NOT a gateway control / not
+  built.** The gateway has NO path to emit an approval-decision event — it cannot
+  reach the executor or any lifecycle/event writer (GATE-2; DRILL-8c). The marker
+  would defend the _approval UI's_ own decision emission, a surface the gateway
+  never touches; no drilled gateway control relies on it. It remains a design
+  item for the approval-UI layer, **outside the Phase-24 gateway freeze**, and is
+  honestly NOT claimed as built.
+- **GATE-5** (enqueue needle's eye): **GREEN** (24C-2; DRILL-7 rejects every
+  client-authored field at the boundary).
+
+### The one named residual
+
+- **E-017 (TRACKED-OPEN → 24D-4):** per-client GRANT revocation is not re-checked
+  at the decision point (the frozen effect is client-agnostic by FC-1 design).
+  Submission-time per-client abuse IS contained (24D-3). Bounded, named, not RED.
+
+### Cross-phase constraints still standing
+
+- **EoP-11 visual UI capstone:** the trusted/untrusted channel separation is
+  GREEN in voice + data (DRILL-3); the future UI must honor the encoded
+  `render_hardening` requirement (no channel collapse in pixels).
+- **EoP-13 + ID-0 standing completeness tests** remain build-failing gates (new
+  mutating capability → non-exposable by default; new readable surface →
+  NEVER-EXPOSED by default).
+
+**Phase 24 gateway: FROZEN 2026-06-17.** Closeout: `PHASE24_CLOSEOUT.md`.
