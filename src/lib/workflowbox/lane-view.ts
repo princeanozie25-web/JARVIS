@@ -32,6 +32,11 @@ export interface LaneNodeView {
   /** v1b: every node is display-class, so this is always false — the node is CALM
    * (it never glows amber). Computed from effect_class so the contract is real. */
   touches_gate: boolean;
+  /** v1a persisted map position. The lane ignores it; the v1c map positions nodes
+   * by it. Carried here so ONE projection feeds BOTH views (no second read path). */
+  layout: { x: number; y: number };
+  /** Node ids this node is blocked_by — the v1c map draws one edge per dependency. */
+  depends_on: string[];
 }
 
 export interface LaneProjectView {
@@ -91,6 +96,8 @@ function toNodeView(node: Project["nodes"][number]): LaneNodeView {
       done: item.done,
     })),
     touches_gate: node.effect_class === "side_effecting",
+    layout: { x: node.layout.x, y: node.layout.y },
+    depends_on: [...node.depends_on],
   };
 }
 

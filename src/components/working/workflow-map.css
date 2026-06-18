@@ -1,0 +1,167 @@
+/*
+ * WorkflowBox v1c — the MIND-MAP SVG render.
+ * SVG (not canvas): addressable node groups + accessible labels. Calm, display-
+ * only; consumes the existing --jarvis-* tokens ONLY (no invented tokens, no raw
+ * hex, no purple/blue startup gradient, no card-soup). Every node is display-class,
+ * so NOTHING here renders the amber/Gate state — --jarvis-color-amber-review is
+ * RESERVED and never used as an active value. Reduced-motion neutralizes hover.
+ */
+
+.wfm-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-md);
+  padding-bottom: var(--jarvis-space-sm);
+}
+
+.wfm-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-md);
+  padding: var(--jarvis-space-md);
+}
+
+.wfm-empty {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: var(--jarvis-color-ink);
+  opacity: 0.5;
+}
+
+.wfm-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-sm);
+  padding: var(--jarvis-space-md);
+  border: 1px solid var(--jarvis-color-border-subtle);
+  border-radius: var(--jarvis-radius-lg);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.wfm-project-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--jarvis-space-md);
+}
+
+.wfm-project-title {
+  margin: 0;
+  font-family: var(--jarvis-font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--jarvis-color-ink);
+}
+
+.wfm-project-goal {
+  margin: 0.2em 0 0;
+  font-family: var(--jarvis-font-body);
+  font-size: 0.82rem;
+  color: var(--jarvis-color-ink);
+  opacity: 0.6;
+}
+
+.wfm-project-pct {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.9rem;
+  color: var(--jarvis-color-emerald-local);
+}
+
+/* --- the SVG canvas ------------------------------------------------------- */
+
+.wfm-svg {
+  width: 100%;
+  height: auto;
+  max-height: 60vmin;
+  touch-action: none; /* let pointer-drag own the gesture */
+}
+
+.wfm-edge {
+  stroke: var(--jarvis-color-border-subtle);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.wfm-node {
+  cursor: pointer;
+}
+
+.wfm-node.draggable {
+  cursor: grab;
+}
+
+.wfm-node.draggable:active {
+  cursor: grabbing;
+}
+
+.wfm-node-box {
+  fill: var(--jarvis-color-panel-soft);
+  stroke: var(--jarvis-color-border-subtle);
+  stroke-width: 1;
+  transition: stroke var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth);
+}
+
+.wfm-node:hover .wfm-node-box,
+.wfm-node:focus-visible .wfm-node-box {
+  stroke: var(--jarvis-color-sky-focus);
+}
+
+.wfm-node:focus-visible {
+  outline: none;
+}
+
+.wfm-node-title {
+  fill: var(--jarvis-color-ink);
+  font-family: var(--jarvis-font-display);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wfm-node-status {
+  fill: var(--jarvis-color-ink);
+  font-family: var(--jarvis-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* calm status accents — stone/zone palette, never amber */
+.wfm-status-in_progress {
+  fill: var(--jarvis-color-sky-focus);
+  opacity: 0.9;
+}
+
+.wfm-status-done {
+  fill: var(--jarvis-color-emerald-local);
+  opacity: 0.9;
+}
+
+.wfm-bar-track {
+  fill: var(--jarvis-color-border-subtle);
+}
+
+.wfm-bar-fill {
+  fill: var(--jarvis-color-emerald-local);
+}
+
+.wfm-node-pct {
+  fill: var(--jarvis-color-ink);
+  font-family: var(--jarvis-font-mono);
+  font-size: 10px;
+  text-anchor: end;
+  opacity: 0.75;
+}
+
+.wfm-detail-dock {
+  border-top: 1px solid var(--jarvis-color-border-subtle);
+  margin-top: var(--jarvis-space-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wfm-node-box {
+    transition: none;
+  }
+}

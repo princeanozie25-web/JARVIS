@@ -5,6 +5,7 @@
 @import "../src/components/command-center/liquid-command-center.css";
 @import "../src/components/orb/orb-states.css";
 @import "../src/components/working/workflow-lane.css";
+@import "../src/components/working/workflow-map.css";
 
 :root {
   --background: var(--jarvis-color-void);

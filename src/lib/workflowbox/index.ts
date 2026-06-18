@@ -56,6 +56,14 @@ export type {
   LaneSubItemView,
 } from "./lane-view";
 
+export { buildWorkflowMapViewModel } from "./map-view";
+export type {
+  WorkflowMapViewModel,
+  MapProjectView,
+  MapNodeView,
+  MapEdgeView,
+} from "./map-view";
+
 export {
   materializeProjectFromConversation,
   draftToCreateInput,

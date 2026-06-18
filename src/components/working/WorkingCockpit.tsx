@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
 import { WorkflowLane } from "@/components/working/WorkflowLane";
+import { WorkflowMap } from "@/components/working/WorkflowMap";
 import { SYNTHETIC_WORKFLOW_LANE } from "@/components/working/workflow-lane-fixture";
 import type {
   WorkingActivity,
@@ -13,6 +14,7 @@ import type {
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
 import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
 import { buildSystemVoiceStackRuntimeState } from "@/lib/voice-operating-mode/voice-stack";
+import { buildWorkflowMapViewModel } from "@/lib/workflowbox";
 import type { WorkflowLaneViewModel } from "@/lib/workflowbox";
 
 export interface WorkingCockpitProps {
@@ -291,6 +293,8 @@ export function WorkingCockpit({
         </div>
 
         <WorkflowLane model={lane} />
+
+        <WorkflowMap model={buildWorkflowMapViewModel(lane)} />
 
         <footer className="jcc-statusbar">
           <span>
