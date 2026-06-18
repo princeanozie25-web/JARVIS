@@ -6,9 +6,12 @@ export type {
   NodeStatus,
   EffectClass,
   NodeLayout,
+  SubItem,
   WorkNode,
   Project,
   WorkNodeInput,
+  SubItemInput,
+  UpdateSubItemInput,
   CreateProjectInput,
   UpdateNodeInput,
   ConversationContext,
@@ -21,6 +24,8 @@ export {
   clampPercent,
   reconcileProgress,
   computeRollupPercent,
+  computeNodePercent,
+  binaryDoneFromProgress,
 } from "./types";
 
 export {
@@ -31,10 +36,25 @@ export {
   updateNode,
   removeNode,
   removeProject,
+  addSubItem,
+  toggleSubItem,
+  updateSubItem,
+  removeSubItem,
   findDependencyCycle,
   WorkflowBoxError,
 } from "./store";
 export type { WorkflowBoxErrorCode, WorkflowBoxOptions } from "./store";
+
+export {
+  buildWorkflowLaneViewModel,
+  LANE_GOVERNANCE_CONTRACT,
+} from "./lane-view";
+export type {
+  WorkflowLaneViewModel,
+  LaneProjectView,
+  LaneNodeView,
+  LaneSubItemView,
+} from "./lane-view";
 
 export {
   materializeProjectFromConversation,

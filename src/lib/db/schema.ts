@@ -596,6 +596,25 @@ CREATE TABLE IF NOT EXISTS workflow_nodes (
 CREATE INDEX IF NOT EXISTS idx_workflow_nodes_project
   ON workflow_nodes (project_id, sort_order);
 
+-- WorkflowBox v1b (additive, no new migration id): an optional checklist under a
+-- WorkNode. When a node has sub-items its percent is DERIVED from the done-ratio
+-- (workflow_nodes.percent is kept in sync as a cache; the read derives it). Same
+-- idempotent CREATE TABLE IF NOT EXISTS pattern as the v1a workflow tables; the
+-- pinned migration list 001..018 stays unchanged (schema.test.ts).
+CREATE TABLE IF NOT EXISTS workflow_sub_items (
+  id          TEXT PRIMARY KEY,
+  node_id     TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  done        INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0, 1)),
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL,
+  FOREIGN KEY (node_id) REFERENCES workflow_nodes (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_sub_items_node
+  ON workflow_sub_items (node_id, sort_order);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS long_term_memory_fts
   USING fts5(
     memory_id UNINDEXED,

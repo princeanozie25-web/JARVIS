@@ -34,6 +34,8 @@ interface RawNode {
   title: string;
   detail: string | null;
   depends_on: string[];
+  /** Draft checklist titles (all todo / not-done until the user checks them). */
+  sub_items: string[];
 }
 
 /** Can `start` reach `target` by following depends_on edges in `adjacency`? */
@@ -137,6 +139,7 @@ export function materializeProjectFromConversation(input: {
       title: spec.title,
       detail: spec.detail ?? null,
       depends_on: Array.from(new Set(deps)),
+      sub_items: spec.sub_items ?? [],
     };
   });
 
@@ -148,6 +151,13 @@ export function materializeProjectFromConversation(input: {
     const depth = depths.get(node.id) ?? 0;
     const row = columnCounters.get(depth) ?? 0;
     columnCounters.set(depth, row + 1);
+    // draft sub-items: all not-done, so the node's derived percent is 0 (todo) —
+    // consistent with "a fresh draft does no work yet" (I-WBv1b-6).
+    const sub_items = node.sub_items.map((title) => ({
+      id: newId(),
+      title,
+      done: false,
+    }));
     return {
       id: node.id,
       title: node.title,
@@ -157,6 +167,7 @@ export function materializeProjectFromConversation(input: {
       depends_on: node.depends_on,
       layout: { x: depth * 220, y: row * 120 },
       effect_class: "display", // amber door reserved in the type, not used here
+      sub_items,
     };
   });
 
@@ -186,6 +197,7 @@ export function draftToCreateInput(draft: DraftProject): {
     percent: number;
     depends_on: string[];
     layout: { x: number; y: number };
+    sub_items: Array<{ id: string; title: string; done: boolean }>;
   }>;
 } {
   return {
@@ -199,6 +211,12 @@ export function draftToCreateInput(draft: DraftProject): {
       percent: node.percent,
       depends_on: node.depends_on,
       layout: node.layout,
+      // carry the refined draft checklist straight into the commit (I-WBv1b-6)
+      sub_items: node.sub_items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        done: item.done,
+      })),
     })),
   };
 }

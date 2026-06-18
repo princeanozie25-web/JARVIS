@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
+import { WorkflowLane } from "@/components/working/WorkflowLane";
+import { SYNTHETIC_WORKFLOW_LANE } from "@/components/working/workflow-lane-fixture";
 import type {
   WorkingActivity,
   WorkingCommandCenterModel,
@@ -11,9 +13,12 @@ import type {
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
 import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
 import { buildSystemVoiceStackRuntimeState } from "@/lib/voice-operating-mode/voice-stack";
+import type { WorkflowLaneViewModel } from "@/lib/workflowbox";
 
 export interface WorkingCockpitProps {
   model?: WorkingCommandCenterModel;
+  /** v1b — the WorkflowBox lane (display-only here; the cockpit is synthetic). */
+  lane?: WorkflowLaneViewModel;
 }
 
 const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
@@ -95,6 +100,7 @@ const VOICE_STACK = buildSystemVoiceStackRuntimeState();
 
 export function WorkingCockpit({
   model = FALLBACK_WORKING_MODEL,
+  lane = SYNTHETIC_WORKFLOW_LANE,
 }: WorkingCockpitProps) {
   const clock = useClock();
   const depthRef = useRef<HTMLDivElement>(null);
@@ -283,6 +289,8 @@ export function WorkingCockpit({
             <ContextPanels model={model} events={events} />
           </div>
         </div>
+
+        <WorkflowLane model={lane} />
 
         <footer className="jcc-statusbar">
           <span>

@@ -1,0 +1,333 @@
+/*
+ * WorkflowBox v1b — the LANE LIST view.
+ * Calm, display-only surface for the working cockpit. Consumes the existing
+ * --jarvis-* design tokens only (no invented tokens, no purple/blue startup
+ * gradient, no card-soup). Every v1b node is display-class, so NOTHING here
+ * renders the amber/Gate state: --jarvis-color-amber-review is RESERVED for the
+ * future side_effecting node and is intentionally NOT used by any active rule.
+ */
+
+.wfl-lane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-md);
+  padding-bottom: var(--jarvis-space-sm);
+}
+
+.wfl-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-md);
+  padding: var(--jarvis-space-md);
+}
+
+.wfl-empty {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: var(--jarvis-color-ink);
+  opacity: 0.5;
+}
+
+/* --- project -------------------------------------------------------------- */
+
+.wfl-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-sm);
+  padding: var(--jarvis-space-md);
+  border: 1px solid var(--jarvis-color-border-subtle);
+  border-radius: var(--jarvis-radius-lg);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.wfl-project-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--jarvis-space-md);
+}
+
+.wfl-project-title {
+  margin: 0;
+  font-family: var(--jarvis-font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--jarvis-color-ink);
+}
+
+.wfl-project-goal {
+  margin: 0.2em 0 0;
+  font-family: var(--jarvis-font-body);
+  font-size: 0.82rem;
+  color: var(--jarvis-color-ink);
+  opacity: 0.6;
+}
+
+.wfl-project-overall {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4em;
+  min-width: 9rem;
+}
+
+.wfl-project-pct {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.9rem;
+  color: var(--jarvis-color-emerald-local);
+}
+
+/* --- nodes ---------------------------------------------------------------- */
+
+.wfl-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-xs);
+}
+
+.wfl-node {
+  border: 1px solid transparent;
+  border-radius: var(--jarvis-radius-md);
+  transition: border-color var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth);
+}
+
+.wfl-node.open {
+  border-color: var(--jarvis-color-border-subtle);
+  background: rgba(2, 6, 23, 0.4);
+}
+
+.wfl-node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jarvis-space-md);
+  padding: var(--jarvis-space-sm) var(--jarvis-space-sm);
+  cursor: pointer;
+}
+
+.wfl-node-head:focus-visible {
+  outline: var(--jarvis-focus-ring-width) solid var(--jarvis-focus-ring-color);
+  outline-offset: var(--jarvis-focus-ring-offset);
+}
+
+.wfl-node-main {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-sm);
+  min-width: 0;
+}
+
+.wfl-node-title {
+  font-family: var(--jarvis-font-body);
+  font-size: 0.92rem;
+  color: var(--jarvis-color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wfl-status {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.2em 0.5em;
+  border-radius: var(--jarvis-radius-pill);
+  border: 1px solid var(--jarvis-color-border-subtle);
+  color: var(--jarvis-color-ink);
+  opacity: 0.7;
+}
+
+/* calm status accents — stone/zone palette, never amber */
+.wfl-status-todo {
+  color: var(--jarvis-color-ink);
+  opacity: 0.5;
+}
+
+.wfl-status-in_progress {
+  color: var(--jarvis-color-sky-focus);
+  border-color: color-mix(
+    in srgb,
+    var(--jarvis-color-sky-focus) 35%,
+    transparent
+  );
+}
+
+.wfl-status-done {
+  color: var(--jarvis-color-emerald-local);
+  border-color: color-mix(
+    in srgb,
+    var(--jarvis-color-emerald-local) 35%,
+    transparent
+  );
+}
+
+.wfl-count {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.68rem;
+  color: var(--jarvis-color-ink);
+  opacity: 0.55;
+}
+
+.wfl-node-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-sm);
+  min-width: 10rem;
+}
+
+.wfl-node-pct {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.74rem;
+  color: var(--jarvis-color-ink);
+  opacity: 0.75;
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+/* --- bars (calm fill: emerald -> sky, NOT amber) -------------------------- */
+
+.wfl-bar {
+  flex: 1;
+  height: 0.45vmin;
+  min-height: 4px;
+  overflow: hidden;
+  border-radius: var(--jarvis-radius-pill);
+  background: var(--jarvis-color-border-subtle);
+}
+
+.wfl-bar i {
+  display: block;
+  height: 100%;
+  border-radius: var(--jarvis-radius-pill);
+  background: linear-gradient(
+    90deg,
+    var(--jarvis-color-emerald-local),
+    var(--jarvis-color-sky-focus)
+  );
+  transition: width var(--jarvis-motion-duration-normal)
+    var(--jarvis-motion-easing-smooth);
+}
+
+/* --- detail panel + checklist --------------------------------------------- */
+
+.wfl-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jarvis-space-sm);
+  padding: var(--jarvis-space-sm) var(--jarvis-space-md) var(--jarvis-space-md);
+}
+
+.wfl-detail-text {
+  margin: 0;
+  font-family: var(--jarvis-font-body);
+  font-size: 0.85rem;
+  color: var(--jarvis-color-ink);
+  opacity: 0.8;
+}
+
+.wfl-detail-empty {
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.wfl-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.wfl-subitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jarvis-space-sm);
+}
+
+.wfl-subitem-check {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-sm);
+  font-family: var(--jarvis-font-body);
+  font-size: 0.85rem;
+  color: var(--jarvis-color-ink);
+}
+
+.wfl-subitem[data-done="true"] .wfl-subitem-title {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.wfl-subitem-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-xs);
+}
+
+.wfl-subitem-edit,
+.wfl-add-input {
+  font-family: var(--jarvis-font-body);
+  font-size: 0.8rem;
+  color: var(--jarvis-color-ink);
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--jarvis-color-border-subtle);
+  border-radius: var(--jarvis-radius-sm);
+  padding: 0.3em 0.5em;
+}
+
+.wfl-btn {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jarvis-color-ink);
+  background: transparent;
+  border: 1px solid var(--jarvis-color-border-subtle);
+  border-radius: var(--jarvis-radius-sm);
+  padding: 0.35em 0.7em;
+  cursor: pointer;
+  transition: border-color var(--jarvis-motion-duration-fast)
+    var(--jarvis-motion-easing-smooth);
+}
+
+.wfl-btn:hover {
+  border-color: var(--jarvis-color-sky-focus);
+}
+
+.wfl-btn:focus-visible {
+  outline: var(--jarvis-focus-ring-width) solid var(--jarvis-focus-ring-color);
+  outline-offset: var(--jarvis-focus-ring-offset);
+}
+
+.wfl-derived-note {
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--jarvis-color-emerald-local);
+  opacity: 0.8;
+}
+
+.wfl-binary {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-sm);
+  font-family: var(--jarvis-font-body);
+  font-size: 0.85rem;
+  color: var(--jarvis-color-ink);
+}
+
+.wfl-add {
+  display: flex;
+  align-items: center;
+  gap: var(--jarvis-space-sm);
+  margin-top: 0.2em;
+}
+
+.wfl-add-input {
+  flex: 1;
+}

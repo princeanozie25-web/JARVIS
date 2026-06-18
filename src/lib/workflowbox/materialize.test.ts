@@ -105,6 +105,57 @@ describe("I-WBv1a-6 (materialization drafts; proposes, never executes)", () => {
     expect(committed.goal).toBe("Launch the side project");
   });
 
+  it("I-WBv1b-6: a draft may carry draft sub-items (todo); it proposes, executes nothing", () => {
+    const decomposeWithSubItems: Decomposer = () => ({
+      goal: "Launch the side project",
+      nodes: [
+        {
+          key: "research",
+          title: "Research the space",
+          sub_items: ["read competitors", "survey users"],
+        },
+        { key: "build", title: "Build the MVP", depends_on: ["research"] },
+      ],
+    });
+
+    const draft = materializeProjectFromConversation({
+      conversation,
+      decompose: decomposeWithSubItems,
+      options: { now: 7_000, newId: idGen() },
+    });
+
+    const research = draft.project.nodes.find(
+      (n) => n.title === "Research the space",
+    );
+    const build = draft.project.nodes.find((n) => n.title === "Build the MVP");
+    // drafted sub-items are present, all todo / not-done; the node stays 0% (todo)
+    expect(research?.sub_items.map((s) => s.title)).toEqual([
+      "read competitors",
+      "survey users",
+    ]);
+    expect(research?.sub_items.every((s) => s.done === false)).toBe(true);
+    expect(research?.percent).toBe(0);
+    expect(research?.status).toBe("todo");
+    // a node the decomposer left without sub-items just gets an empty checklist
+    expect(build?.sub_items).toEqual([]);
+
+    // PROPOSES: nothing persisted, nothing executed (no db handle was passed)
+    expect(listProjects(db)).toEqual([]);
+
+    // committing the draft persists the drafted checklist verbatim
+    const committed = createProject(db, draftToCreateInput(draft), {
+      now: 9_000,
+    });
+    const committedResearch = committed.nodes.find(
+      (n) => n.title === "Research the space",
+    );
+    expect(committedResearch?.sub_items.map((s) => s.title)).toEqual([
+      "read competitors",
+      "survey users",
+    ]);
+    expect(getProject(db, committed.id)).toEqual(committed);
+  });
+
   it("produces an ACYCLIC draft even if the decomposer proposes a cycle (the commit then succeeds)", () => {
     const cyclic: Decomposer = () => ({
       goal: "Cyclic plan",

@@ -15,15 +15,19 @@
 import type DatabaseType from "better-sqlite3";
 
 import {
+  binaryDoneFromProgress,
   clampPercent,
+  computeNodePercent,
   computeRollupPercent,
-  reconcileProgress,
   statusFromPercent,
   type CreateProjectInput,
   type EffectClass,
   type NodeLayout,
   type Project,
+  type SubItem,
+  type SubItemInput,
   type UpdateNodeInput,
+  type UpdateSubItemInput,
   type WorkNode,
   type WorkNodeInput,
 } from "./types";
@@ -35,7 +39,9 @@ export type WorkflowBoxErrorCode =
   | "self_dependency"
   | "unknown_dependency"
   | "dependency_cycle"
-  | "side_effecting_not_wired";
+  | "side_effecting_not_wired"
+  | "sub_item_not_found"
+  | "duplicate_sub_item_id";
 
 export class WorkflowBoxError extends Error {
   constructor(
@@ -88,6 +94,16 @@ interface NodeRow {
   updated_at: number;
 }
 
+interface SubItemRow {
+  id: string;
+  node_id: string;
+  title: string;
+  done: number;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
 function parseDependsOn(json: string): string[] {
   try {
     const value = JSON.parse(json) as unknown;
@@ -98,21 +114,54 @@ function parseDependsOn(json: string): string[] {
   }
 }
 
-function mapNodeRow(row: NodeRow): WorkNode {
-  const percent = clampPercent(row.percent);
+function mapSubItemRow(row: SubItemRow): SubItem {
+  return { id: row.id, title: row.title, done: row.done === 1 };
+}
+
+function readSubItemRows(db: DatabaseType.Database, nodeId: string): SubItem[] {
+  return (
+    db
+      .prepare(
+        "SELECT * FROM workflow_sub_items WHERE node_id = ? ORDER BY sort_order ASC, created_at ASC",
+      )
+      .all(nodeId) as SubItemRow[]
+  ).map(mapSubItemRow);
+}
+
+/** Map a node row + its sub-items into a WorkNode with a DERIVED percent
+ * (I-WBv1b-1/-2): the sub-item done-ratio when there are sub-items, else the
+ * BINARY stored mark (>=100 ⇒ done). status follows percent — always consistent,
+ * even if the cached percent column drifted. */
+function mapNodeRow(row: NodeRow, subItems: SubItem[]): WorkNode {
+  const percent = computeNodePercent(
+    subItems,
+    clampPercent(row.percent) >= 100,
+  );
   return {
     id: row.id,
     title: row.title,
     detail: row.detail ?? null,
-    // status is DERIVED from percent on read — always consistent (I-WBv1a-3),
-    // even if a stored row were tampered with.
     status: statusFromPercent(percent),
     percent,
     depends_on: parseDependsOn(row.depends_on_json),
     layout: { x: row.layout_x, y: row.layout_y },
     effect_class:
       row.effect_class === "side_effecting" ? "side_effecting" : "display",
+    sub_items: subItems,
   };
+}
+
+/** Read a single node (with sub-items + derived percent), or undefined. */
+function readNode(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+): WorkNode | undefined {
+  const row = db
+    .prepare("SELECT * FROM workflow_nodes WHERE id = ? AND project_id = ?")
+    .get(nodeId, projectId) as NodeRow | undefined;
+  if (!row) return undefined;
+  return mapNodeRow(row, readSubItemRows(db, nodeId));
 }
 
 function readProjectRow(
@@ -132,6 +181,16 @@ function readNodeRows(db: DatabaseType.Database, projectId: string): NodeRow[] {
     .all(projectId) as NodeRow[];
 }
 
+/** All nodes of a project (each with its sub-items + derived percent). */
+function assembleNodes(
+  db: DatabaseType.Database,
+  projectId: string,
+): WorkNode[] {
+  return readNodeRows(db, projectId).map((row) =>
+    mapNodeRow(row, readSubItemRows(db, row.id)),
+  );
+}
+
 /** Assemble the full Project (nodes + DERIVED rollup) — the canonical read. */
 function assembleProject(
   db: DatabaseType.Database,
@@ -139,7 +198,7 @@ function assembleProject(
 ): Project | null {
   const projectRow = readProjectRow(db, id);
   if (!projectRow) return null;
-  const nodes = readNodeRows(db, id).map(mapNodeRow);
+  const nodes = assembleNodes(db, id);
   return {
     id: projectRow.id,
     title: projectRow.title,
@@ -153,6 +212,19 @@ function assembleProject(
 
 // --- validation (DAG + self + dangling + amber door) -------------------------
 
+function normalizeSubItems(
+  specs: ReadonlyArray<SubItemInput> | undefined,
+  newId: () => string,
+): SubItem[] {
+  const items = (specs ?? []).map((spec) => ({
+    id: spec.id ?? newId(),
+    title: spec.title,
+    done: spec.done ?? false,
+  }));
+  assertUniqueSubItemIds(items);
+  return items;
+}
+
 function normalizeNodeInput(
   spec: WorkNodeInput,
   newId: () => string,
@@ -163,20 +235,25 @@ function normalizeNodeInput(
       "A side_effecting node (the amber door) is not wired in v1 — when built it routes through the Human Gate; nodes are display + user-tracked.",
     );
   }
-  const { percent, status } = reconcileProgress(
+  const sub_items = normalizeSubItems(spec.sub_items, newId);
+  // percent is DERIVED (I-WBv1b-1/-2): the sub-item ratio when present, else the
+  // BINARY mark from the (percent|status) signal. Never authored as a free number.
+  const binaryDone = binaryDoneFromProgress(
     { percent: spec.percent, status: spec.status },
-    spec.percent ?? 0,
+    false,
   );
+  const percent = computeNodePercent(sub_items, binaryDone);
   const layout: NodeLayout = spec.layout ?? { x: 0, y: 0 };
   return {
     id: spec.id ?? newId(),
     title: spec.title,
     detail: spec.detail ?? null,
-    status,
+    status: statusFromPercent(percent),
     percent,
     depends_on: [...(spec.depends_on ?? [])],
     layout,
     effect_class: "display" as EffectClass,
+    sub_items,
   };
 }
 
@@ -286,6 +363,42 @@ function insertNodeRow(
     now,
     now,
   );
+  node.sub_items.forEach((item, index) =>
+    insertSubItemRow(db, node.id, item, index, now),
+  );
+}
+
+function insertSubItemRow(
+  db: DatabaseType.Database,
+  nodeId: string,
+  item: SubItem,
+  sortOrder: number,
+  now: number,
+): void {
+  db.prepare(
+    `INSERT INTO workflow_sub_items (
+       id, node_id, title, done, sort_order, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(item.id, nodeId, item.title, item.done ? 1 : 0, sortOrder, now, now);
+}
+
+/** Recompute + persist a node's DERIVED percent/status from its CURRENT sub-items
+ * (I-WBv1b-1). With sub-items: the done-ratio. With none left: reverts to not-done
+ * (0) — an empty checklist tracks nothing as done. Keeps the cached percent/status
+ * columns in step with the read-time derivation. */
+function recomputeNodePercentFromSubItems(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+  now: number,
+): void {
+  const subItems = readSubItemRows(db, nodeId);
+  const percent = computeNodePercent(subItems, false);
+  db.prepare(
+    `UPDATE workflow_nodes
+       SET percent = ?, status = ?, updated_at = ?
+     WHERE id = ? AND project_id = ?`,
+  ).run(percent, statusFromPercent(percent), now, nodeId, projectId);
 }
 
 function touchProject(
@@ -365,7 +478,7 @@ export function addNode(
 ): Project {
   const { now, newId } = resolveOpts(options);
   requireProject(db, projectId);
-  const existing = readNodeRows(db, projectId).map(mapNodeRow);
+  const existing = assembleNodes(db, projectId);
   const node = normalizeNodeInput(spec, newId);
   if (existing.some((n) => n.id === node.id)) {
     throw new WorkflowBoxError(
@@ -383,8 +496,14 @@ export function addNode(
   return assembleProject(db, projectId) as Project;
 }
 
-/** Update a node (title/detail/percent/status/depends_on/layout). Progress is
- * reconciled to a consistent (percent,status) pair; the DAG is re-validated. */
+/** Update a node (title/detail/depends_on/layout, and — for a NO-SUB-ITEM node
+ * only — its binary done mark). The DAG is re-validated.
+ *
+ * percent is DERIVED, never settable directly:
+ *   * a node WITH sub-items IGNORES any percent/status in the patch (I-WBv1b-1) —
+ *     its percent is the checklist ratio; mark it via the sub-item methods.
+ *   * a node with NO sub-items is BINARY (I-WBv1b-2): a `done` status/`>=100`
+ *     percent marks it done; anything else (incl. `in_progress`) is not-done. */
 export function updateNode(
   db: DatabaseType.Database,
   projectId: string,
@@ -394,7 +513,7 @@ export function updateNode(
 ): Project {
   const { now } = resolveOpts(options);
   requireProject(db, projectId);
-  const existing = readNodeRows(db, projectId).map(mapNodeRow);
+  const existing = assembleNodes(db, projectId);
   const target = existing.find((n) => n.id === nodeId);
   if (!target) {
     throw new WorkflowBoxError(
@@ -403,20 +522,23 @@ export function updateNode(
     );
   }
 
-  const progress =
-    patch.percent !== undefined || patch.status !== undefined
-      ? reconcileProgress(
-          { percent: patch.percent, status: patch.status },
-          target.percent,
-        )
-      : { percent: target.percent, status: target.status };
+  let percent = target.percent;
+  if (target.sub_items.length === 0) {
+    // binary mark only when no checklist drives the node
+    const binaryDone = binaryDoneFromProgress(
+      { percent: patch.percent, status: patch.status },
+      clampPercent(target.percent) >= 100,
+    );
+    percent = computeNodePercent([], binaryDone);
+  }
+  // a sub-item node keeps its derived ratio regardless of any percent/status patch
 
   const updated: WorkNode = {
     ...target,
     title: patch.title ?? target.title,
     detail: patch.detail !== undefined ? patch.detail : target.detail,
-    percent: progress.percent,
-    status: progress.status,
+    percent,
+    status: statusFromPercent(percent),
     depends_on:
       patch.depends_on !== undefined
         ? [...patch.depends_on]
@@ -461,7 +583,7 @@ export function removeNode(
 ): Project {
   const { now } = resolveOpts(options);
   requireProject(db, projectId);
-  const existing = readNodeRows(db, projectId).map(mapNodeRow);
+  const existing = assembleNodes(db, projectId);
   if (!existing.some((n) => n.id === nodeId)) {
     throw new WorkflowBoxError(
       "node_not_found",
@@ -470,6 +592,8 @@ export function removeNode(
   }
 
   const persist = db.transaction(() => {
+    // explicit child cleanup (the workflowbox harness does not enable FK cascade)
+    db.prepare("DELETE FROM workflow_sub_items WHERE node_id = ?").run(nodeId);
     db.prepare(
       "DELETE FROM workflow_nodes WHERE id = ? AND project_id = ?",
     ).run(nodeId, projectId);
@@ -488,13 +612,176 @@ export function removeNode(
   return assembleProject(db, projectId) as Project;
 }
 
-/** Delete a project and all its nodes. */
+/** Delete a project and all its nodes (and their sub-items). */
 export function removeProject(db: DatabaseType.Database, id: string): void {
   const persist = db.transaction(() => {
+    db.prepare(
+      `DELETE FROM workflow_sub_items
+        WHERE node_id IN (SELECT id FROM workflow_nodes WHERE project_id = ?)`,
+    ).run(id);
     db.prepare("DELETE FROM workflow_nodes WHERE project_id = ?").run(id);
     db.prepare("DELETE FROM workflow_projects WHERE id = ?").run(id);
   });
   persist();
+}
+
+// --- the single mutation API: sub-items (v1b) --------------------------------
+//
+// Every sub-item change goes through THIS module too (I-WBv1b-4) — the same one
+// mutation surface as nodes/projects. Each persists the checklist change, then
+// recomputes + persists the node's DERIVED percent, then touches the project, so a
+// subsequent read reflects the new node percent AND the new project rollup
+// (I-WBv1b-3). No second mutation surface; no execution path (effect_class stays
+// "display").
+
+function requireNode(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+): WorkNode {
+  requireProject(db, projectId);
+  const node = readNode(db, projectId, nodeId);
+  if (!node) {
+    throw new WorkflowBoxError(
+      "node_not_found",
+      `No node ${nodeId} in project ${projectId}.`,
+    );
+  }
+  return node;
+}
+
+function nextSubItemSortOrder(
+  db: DatabaseType.Database,
+  nodeId: string,
+): number {
+  const row = db
+    .prepare(
+      "SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM workflow_sub_items WHERE node_id = ?",
+    )
+    .get(nodeId) as { max_order: number };
+  return row.max_order + 1;
+}
+
+/** Add a sub-item to a node. Adding the first sub-item makes the node's percent
+ * the checklist ratio (a previously binary-done node becomes 0% until items are
+ * checked). Returns the assembled project with recomputed percents. */
+export function addSubItem(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+  spec: SubItemInput,
+  options: WorkflowBoxOptions = {},
+): Project {
+  const { now, newId } = resolveOpts(options);
+  requireNode(db, projectId, nodeId);
+  const item: SubItem = {
+    id: spec.id ?? newId(),
+    title: spec.title,
+    done: spec.done ?? false,
+  };
+  if (
+    db.prepare("SELECT 1 FROM workflow_sub_items WHERE id = ?").get(item.id) !==
+    undefined
+  ) {
+    throw new WorkflowBoxError(
+      "duplicate_sub_item_id",
+      `Sub-item ${item.id} already exists.`,
+    );
+  }
+  const persist = db.transaction(() => {
+    insertSubItemRow(db, nodeId, item, nextSubItemSortOrder(db, nodeId), now);
+    recomputeNodePercentFromSubItems(db, projectId, nodeId, now);
+    touchProject(db, projectId, now);
+  });
+  persist();
+  return assembleProject(db, projectId) as Project;
+}
+
+/** Toggle a sub-item's done flag and recompute the node's derived percent. */
+export function toggleSubItem(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+  subItemId: string,
+  options: WorkflowBoxOptions = {},
+): Project {
+  const { now } = resolveOpts(options);
+  const node = requireNode(db, projectId, nodeId);
+  const current = node.sub_items.find((item) => item.id === subItemId);
+  if (!current) {
+    throw new WorkflowBoxError(
+      "sub_item_not_found",
+      `No sub-item ${subItemId} on node ${nodeId}.`,
+    );
+  }
+  const persist = db.transaction(() => {
+    db.prepare(
+      "UPDATE workflow_sub_items SET done = ?, updated_at = ? WHERE id = ? AND node_id = ?",
+    ).run(current.done ? 0 : 1, now, subItemId, nodeId);
+    recomputeNodePercentFromSubItems(db, projectId, nodeId, now);
+    touchProject(db, projectId, now);
+  });
+  persist();
+  return assembleProject(db, projectId) as Project;
+}
+
+/** Patch a sub-item (title and/or done) and recompute the node's derived percent. */
+export function updateSubItem(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+  subItemId: string,
+  patch: UpdateSubItemInput,
+  options: WorkflowBoxOptions = {},
+): Project {
+  const { now } = resolveOpts(options);
+  const node = requireNode(db, projectId, nodeId);
+  const current = node.sub_items.find((item) => item.id === subItemId);
+  if (!current) {
+    throw new WorkflowBoxError(
+      "sub_item_not_found",
+      `No sub-item ${subItemId} on node ${nodeId}.`,
+    );
+  }
+  const title = patch.title ?? current.title;
+  const done = patch.done ?? current.done;
+  const persist = db.transaction(() => {
+    db.prepare(
+      "UPDATE workflow_sub_items SET title = ?, done = ?, updated_at = ? WHERE id = ? AND node_id = ?",
+    ).run(title, done ? 1 : 0, now, subItemId, nodeId);
+    recomputeNodePercentFromSubItems(db, projectId, nodeId, now);
+    touchProject(db, projectId, now);
+  });
+  persist();
+  return assembleProject(db, projectId) as Project;
+}
+
+/** Remove a sub-item and recompute the node's derived percent. Removing the last
+ * sub-item reverts the node to not-done (0) — an empty checklist tracks nothing. */
+export function removeSubItem(
+  db: DatabaseType.Database,
+  projectId: string,
+  nodeId: string,
+  subItemId: string,
+  options: WorkflowBoxOptions = {},
+): Project {
+  const { now } = resolveOpts(options);
+  const node = requireNode(db, projectId, nodeId);
+  if (!node.sub_items.some((item) => item.id === subItemId)) {
+    throw new WorkflowBoxError(
+      "sub_item_not_found",
+      `No sub-item ${subItemId} on node ${nodeId}.`,
+    );
+  }
+  const persist = db.transaction(() => {
+    db.prepare(
+      "DELETE FROM workflow_sub_items WHERE id = ? AND node_id = ?",
+    ).run(subItemId, nodeId);
+    recomputeNodePercentFromSubItems(db, projectId, nodeId, now);
+    touchProject(db, projectId, now);
+  });
+  persist();
+  return assembleProject(db, projectId) as Project;
 }
 
 function assertUniqueIds(nodes: ReadonlyArray<WorkNode>): void {
@@ -507,5 +794,18 @@ function assertUniqueIds(nodes: ReadonlyArray<WorkNode>): void {
       );
     }
     seen.add(node.id);
+  }
+}
+
+function assertUniqueSubItemIds(items: ReadonlyArray<SubItem>): void {
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (seen.has(item.id)) {
+      throw new WorkflowBoxError(
+        "duplicate_sub_item_id",
+        `Duplicate sub-item id ${item.id}.`,
+      );
+    }
+    seen.add(item.id);
   }
 }

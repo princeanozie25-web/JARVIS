@@ -27,13 +27,22 @@ export interface NodeLayout {
   y: number;
 }
 
+/** v1b — an optional checklist item under a WorkNode. The user toggles `done`;
+ * the node's percent is DERIVED from the done-ratio (never hand-typed). */
+export interface SubItem {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface WorkNode {
   id: string;
   title: string;
   /** The work this node represents (sub-steps as free text/list). */
   detail: string | null;
   status: NodeStatus;
-  /** 0..100 per-node. CANONICAL; status is derived from it (statusFromPercent). */
+  /** 0..100 per-node. v1b: DERIVED, never settable — the sub-item done-ratio when
+   * the node has sub-items, else binary (done=100 / todo=0). status follows it. */
   percent: number;
   /** This node is blocked_by these node ids — a DAG (no cycles, no self-dep). */
   depends_on: string[];
@@ -41,6 +50,9 @@ export interface WorkNode {
   layout: NodeLayout;
   /** Always "display" in v1 (the amber-door seam; see EffectClass). */
   effect_class: EffectClass;
+  /** v1b — optional checklist (additive; default []). When non-empty it DRIVES
+   * `percent` (the done-ratio). When empty the node is binary (mark done/not-done). */
+  sub_items: SubItem[];
 }
 
 export interface Project {
@@ -108,19 +120,76 @@ export function computeRollupPercent(
   return Math.round(sum / nodes.length);
 }
 
+/**
+ * DERIVED NODE-PERCENT RULE (v1b — I-WBv1b-1 / I-WBv1b-2). `node.percent` is
+ * never hand-typed; it is computed:
+ *
+ *   * a node WITH sub-items → `round(done / total * 100)` (the checklist ratio).
+ *     This is the ONLY way a node reaches a partial (in_progress) percent.
+ *   * a node with NO sub-items → BINARY: `binaryDone ? 100 : 0` (done/todo). There
+ *     is no in_progress without sub-items.
+ *
+ * The whole tree is derived: node percents roll up to `rollup_percent` (the mean),
+ * so nothing in the model is authored as a number — the user only toggles done-ness.
+ */
+export function computeNodePercent(
+  subItems: ReadonlyArray<{ done: boolean }>,
+  binaryDone: boolean,
+): number {
+  if (subItems.length > 0) {
+    const done = subItems.reduce((acc, item) => acc + (item.done ? 1 : 0), 0);
+    return Math.round((done / subItems.length) * 100);
+  }
+  return binaryDone ? 100 : 0;
+}
+
+/**
+ * The binary done-ness for a NO-SUB-ITEM node from a progress signal (I-WBv1b-2).
+ * `status` wins when given (`done` ⇒ done; any other ⇒ not-done, so marking such a
+ * node `in_progress` collapses to todo); else `percent >= 100` ⇒ done; else the
+ * node keeps its current done-ness. Sub-item nodes ignore this (ratio-derived).
+ */
+export function binaryDoneFromProgress(
+  signal: { percent?: number; status?: NodeStatus },
+  currentDone: boolean,
+): boolean {
+  if (signal.status !== undefined) return signal.status === "done";
+  if (signal.percent !== undefined) return clampPercent(signal.percent) >= 100;
+  return currentDone;
+}
+
 // --- inputs (the single mutation API's argument shapes) ----------------------
+
+/** A sub-item to seed onto a node at create/add time (or from a committed draft).
+ * `done` defaults false. `percent`/`status` on the parent node are ignored when
+ * sub-items are present (the node percent is the derived ratio). */
+export interface SubItemInput {
+  id?: string;
+  title: string;
+  done?: boolean;
+}
 
 export interface WorkNodeInput {
   /** Reuse a draft/known id, or omit to generate one. */
   id?: string;
   title: string;
   detail?: string | null;
+  /** Binary signal for a NO-SUB-ITEM node (>=100 ⇒ done). Ignored when `sub_items`
+   * is non-empty — percent is then DERIVED from the checklist (I-WBv1b-1). */
   percent?: number;
   status?: NodeStatus;
   depends_on?: string[];
   layout?: NodeLayout;
   /** Defaults to "display". "side_effecting" is rejected in v1 (not wired). */
   effect_class?: EffectClass;
+  /** v1b — optional checklist to seed (additive; default []). */
+  sub_items?: SubItemInput[];
+}
+
+/** A patch for one sub-item (any subset). */
+export interface UpdateSubItemInput {
+  title?: string;
+  done?: boolean;
 }
 
 export interface CreateProjectInput {
@@ -155,6 +224,9 @@ export interface DraftNodeSpec {
   detail?: string | null;
   /** keys of other draft nodes this one is blocked_by. */
   depends_on?: string[];
+  /** v1b — the decomposer MAY also draft a checklist (all todo / not-done). The
+   * user refines (add/edit/remove) before/while the draft lives. Just titles. */
+  sub_items?: string[];
 }
 
 /** The injected decomposition (a model call in production; a stub in tests). It

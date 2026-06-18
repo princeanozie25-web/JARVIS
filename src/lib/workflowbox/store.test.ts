@@ -106,12 +106,22 @@ describe("I-WBv1a-2 (rollup derived)", () => {
         goal: "G",
         nodes: [
           { id: "a", percent: 0, title: "A" },
-          { id: "b", percent: 50, title: "B" },
+          // v1b: a mid-range (50%) node percent is reached via a sub-item ratio
+          // (1 of 2 done), never by typing a number — percent is derived.
+          {
+            id: "b",
+            title: "B",
+            sub_items: [
+              { id: "b1", title: "x", done: true },
+              { id: "b2", title: "y", done: false },
+            ],
+          },
           { id: "c", percent: 100, title: "C" },
         ],
       },
       OPTS(),
     );
+    expect(p.nodes.find((n) => n.id === "b")?.percent).toBe(50); // 1/2 done
     expect(p.rollup_percent).toBe(50); // round((0+50+100)/3)
 
     const after = updateNode(db, "p1", "a", { percent: 100 }, { now: 2_000 });
@@ -146,7 +156,15 @@ describe("I-WBv1a-3 (status/percent consistency)", () => {
         goal: "G",
         nodes: [
           { id: "a", percent: 0, title: "A" },
-          { id: "b", percent: 50, title: "B" },
+          // v1b: in_progress (50%) comes from a sub-item ratio, not a typed percent
+          {
+            id: "b",
+            title: "B",
+            sub_items: [
+              { id: "b1", title: "x", done: true },
+              { id: "b2", title: "y", done: false },
+            ],
+          },
           { id: "c", percent: 100, title: "C" },
         ],
       },
@@ -156,7 +174,7 @@ describe("I-WBv1a-3 (status/percent consistency)", () => {
     expect(byId).toEqual({ a: "todo", b: "in_progress", c: "done" });
   });
 
-  it("setting status maps to a consistent canonical percent", () => {
+  it("a no-sub-item node is BINARY: status maps to done=100 / todo=0 (I-WBv1b-2)", () => {
     createProject(
       db,
       { id: "p1", title: "T", goal: "G", nodes: [{ id: "a", title: "A" }] },
@@ -169,7 +187,7 @@ describe("I-WBv1a-3 (status/percent consistency)", () => {
     after = updateNode(db, "p1", "a", { status: "todo" }, { now: 3_000 });
     expect(after.nodes[0]).toMatchObject({ status: "todo", percent: 0 });
 
-    // in_progress from a boundary (0/100) lands at a sensible mid value
+    // in_progress is UNREACHABLE without sub-items — marking it collapses to todo.
     after = updateNode(
       db,
       "p1",
@@ -177,9 +195,11 @@ describe("I-WBv1a-3 (status/percent consistency)", () => {
       { status: "in_progress" },
       { now: 4_000 },
     );
-    expect(after.nodes[0].status).toBe("in_progress");
-    expect(after.nodes[0].percent).toBeGreaterThan(0);
-    expect(after.nodes[0].percent).toBeLessThan(100);
+    expect(after.nodes[0]).toMatchObject({ status: "todo", percent: 0 });
+
+    // a typed mid-range percent on a binary node is not-done (only >=100 is done).
+    after = updateNode(db, "p1", "a", { percent: 50 }, { now: 5_000 });
+    expect(after.nodes[0]).toMatchObject({ status: "todo", percent: 0 });
   });
 });
 
@@ -321,9 +341,17 @@ describe("I-WBv1a-5 (persistence)", () => {
             {
               id: "b",
               title: "B",
-              percent: 40,
               depends_on: ["a"],
               layout: { x: 200, y: 20 },
+              // v1b: 40% is a derived 2-of-5 sub-item ratio (also pins I-WBv1b-5:
+              // the checklist + the percent it drives both survive a reconnect).
+              sub_items: [
+                { id: "b1", title: "1", done: true },
+                { id: "b2", title: "2", done: true },
+                { id: "b3", title: "3", done: false },
+                { id: "b4", title: "4", done: false },
+                { id: "b5", title: "5", done: false },
+              ],
             },
           ],
         },
@@ -338,6 +366,10 @@ describe("I-WBv1a-5 (persistence)", () => {
 
       expect(reread).toEqual<Project>(created);
       expect(reread?.rollup_percent).toBe(70); // round((100+40)/2)
+      expect(reread?.nodes.find((n) => n.id === "b")?.percent).toBe(40); // 2/5
+      expect(
+        reread?.nodes.find((n) => n.id === "b")?.sub_items.map((s) => s.done),
+      ).toEqual([true, true, false, false, false]);
       expect(reread?.nodes.find((n) => n.id === "b")?.depends_on).toEqual([
         "a",
       ]);
@@ -457,6 +489,7 @@ describe("I-WBv1a-8 (primitive subset)", () => {
         "layout",
         "percent",
         "status",
+        "sub_items",
         "title",
       ].sort(),
     );
