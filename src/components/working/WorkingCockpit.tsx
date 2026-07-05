@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
 import { WorkflowLane } from "@/components/working/WorkflowLane";
-import { WorkflowMap } from "@/components/working/WorkflowMap";
+import {
+  WorkflowMap,
+  type WorkflowMapActions,
+} from "@/components/working/WorkflowMap";
 import { SYNTHETIC_WORKFLOW_LANE } from "@/components/working/workflow-lane-fixture";
 import type {
   WorkingActivity,
@@ -19,8 +22,16 @@ import type { WorkflowLaneViewModel } from "@/lib/workflowbox";
 
 export interface WorkingCockpitProps {
   model?: WorkingCommandCenterModel;
-  /** v1b — the WorkflowBox lane (display-only here; the cockpit is synthetic). */
+  /** v1b — the WorkflowBox lane view-model. E-019: the route passes the LIVE
+   * store projection when real projects exist; the default is the fixture,
+   * labelled "sample" via `laneProvenance`. */
   lane?: WorkflowLaneViewModel;
+  /** E-019 per-panel provenance: "live" iff `lane` came from the live store. */
+  laneProvenance?: "live" | "sample";
+  /** E-019: the ONE mutation-callback object (host-wired to the v1a store's
+   * single API — server actions from the route). Passed to BOTH the lane and
+   * the map so a mark from either is the SAME store op. Omitted => display. */
+  laneActions?: WorkflowMapActions;
 }
 
 const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
@@ -107,6 +118,8 @@ const VOICE_STACK = buildSystemVoiceStackRuntimeState();
 export function WorkingCockpit({
   model = FALLBACK_WORKING_MODEL,
   lane = SYNTHETIC_WORKFLOW_LANE,
+  laneProvenance = "sample",
+  laneActions,
 }: WorkingCockpitProps) {
   const clock = useClock();
   const depthRef = useRef<HTMLDivElement>(null);
@@ -300,9 +313,25 @@ export function WorkingCockpit({
           </div>
         </div>
 
-        <WorkflowLane model={lane} />
+        {/* E-019: ONE lane view-model + ONE actions object feed BOTH views —
+            the single-source-of-truth / mark-from-either guarantee, now over
+            the live store when provenance is "live". */}
+        <div
+          data-workflowbox-provenance={laneProvenance}
+          data-panel-provenance={
+            laneProvenance === "live" ? "live" : "synthetic"
+          }
+        >
+          <div className="jcc-label wfl-provenance">
+            WORKFLOWBOX - {laneProvenance.toUpperCase()}
+          </div>
+          <WorkflowLane model={lane} actions={laneActions} />
 
-        <WorkflowMap model={buildWorkflowMapViewModel(lane)} />
+          <WorkflowMap
+            model={buildWorkflowMapViewModel(lane)}
+            actions={laneActions}
+          />
+        </div>
 
         <footer className="jcc-statusbar">
           <span>

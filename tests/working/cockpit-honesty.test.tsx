@@ -188,13 +188,16 @@ describe("I-H3 — per-panel provenance matches the actual source at render", ()
   });
 
   it("renders the provenance on each panel (label + data attribute)", () => {
+    // 3 observability panels + the WorkflowBox wrapper (E-019) = 4 labelled.
     const html = renderToStaticMarkup(<WorkingCockpit />);
-    expect(html.match(/data-panel-provenance="synthetic"/g)).toHaveLength(3);
+    expect(html.match(/data-panel-provenance="synthetic"/g)).toHaveLength(4);
     expect(html).toContain("OBSERVABILITY - SYNTHETIC");
 
     const liveHtml = renderToStaticMarkup(
       <WorkingCockpit model={buildWorkingCommandCenterModel(liveHandle())} />,
     );
+    // The 3 observability panels go live; WorkflowBox provenance is its own
+    // wire (E-019) and stays sample here (no lane prop passed).
     expect(liveHtml.match(/data-panel-provenance="live"/g)).toHaveLength(3);
     expect(liveHtml).toContain("OBSERVABILITY - LIVE");
   });
