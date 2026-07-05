@@ -20,6 +20,8 @@ export type {
 export { validateTtsSynthesisRequest } from "./provider";
 export type { TtsProvider } from "./provider";
 
+export { ttsProviderAsSynthesisEngine } from "./engine-adapter";
+
 export {
   PIPER_CONFIG_VALIDATION_REASONS,
   PIPER_CONTRACT_LIMITS,

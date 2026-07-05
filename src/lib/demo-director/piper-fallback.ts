@@ -5,6 +5,10 @@ import { parse } from "yaml";
 import { z } from "zod";
 
 import {
+  CANONICAL_TERMINAL_ENGINE_ID,
+  CANONICAL_TTS_ENGINE_PRIORITIES,
+} from "@/lib/voice/tts-engine";
+import {
   createPiperTtsProvider,
   DEFAULT_PIPER_TTS_TIMEOUT_MS,
   type PiperProcessRunner,
@@ -33,7 +37,9 @@ import type {
 // as the sole source. The failover EVENT and telemetry sink are out of scope
 // here (slice 23G-3); this slice only makes the terminal provider speak.
 
-export const PIPER_FALLBACK_PROVIDER_ID = "existing-local-fallback" as const;
+// E-011: the drilled terminal slot id is owned by the canonical engine
+// registry; this alias keeps the demo-director's public surface unchanged.
+export const PIPER_FALLBACK_PROVIDER_ID = CANONICAL_TERMINAL_ENGINE_ID;
 
 export const DEFAULT_PIPER_FALLBACK_CONFIG_PATH = resolve(
   process.cwd(),
@@ -180,7 +186,7 @@ export function createPiperNarrationFallbackProvider(
 
   return {
     provider_id: PIPER_FALLBACK_PROVIDER_ID,
-    priority: 2,
+    priority: CANONICAL_TTS_ENGINE_PRIORITIES[PIPER_FALLBACK_PROVIDER_ID],
     async health(): Promise<DemoNarrationProviderHealth> {
       const config = resolveProviderConfig();
       const reachable =

@@ -1,3 +1,8 @@
+import {
+  synthesizeOverEngineChain,
+  type VoiceSynthesisEngine,
+} from "@/lib/voice/tts-engine";
+
 import type { MicCaptureResultMetadata } from "./capture";
 import type { PlaybackQueue, PlaybackQueueItem } from "./playback";
 import type {
@@ -11,7 +16,14 @@ import type {
   SttProvider,
   SttTranscriptionOptions,
 } from "./stt";
-import type { TtsContentClass, TtsProvider, TtsSynthesisOptions } from "./tts";
+import { ttsProviderAsSynthesisEngine } from "./tts/engine-adapter";
+import type {
+  TtsContentClass,
+  TtsProvider,
+  TtsSynthesisOptions,
+  TtsSynthesisRequest,
+  TtsSynthesisResult,
+} from "./tts";
 
 export type VoiceRuntimeBridgeStatus =
   | "idle"
@@ -316,20 +328,22 @@ export function createVoiceRuntimeBridge(
         updated_at: timestamp(nowMs()),
       };
 
-      const health = await options.tts_provider.health();
-      if (!health.ok) {
-        snapshot = {
-          ...snapshot,
-          tts_status: "failed",
-          last_error_class: "tts_unavailable",
-          degraded: true,
-          updated_at: timestamp(nowMs()),
-        };
-        return failure(["tts_unavailable"]);
-      }
-
-      try {
-        const result = await options.tts_provider.synthesize(
+      // E-011: synthesis is obtained through the ONE canonical engine layer
+      // (@/lib/voice/tts-engine) — the same failover mechanism the
+      // demo-director chain uses — instead of the bridge's former inline
+      // health-gate. The PTT runtime's chain is its single injected local
+      // provider; live-voice policy (consent, autoplay, barge-in) stays here.
+      const engine = ttsProviderAsSynthesisEngine(
+        options.tts_provider,
+        ttsOptions ?? { metadata_only: true },
+      );
+      const outcome = await synthesizeOverEngineChain<
+        TtsSynthesisRequest,
+        TtsSynthesisResult,
+        VoiceSynthesisEngine<TtsSynthesisRequest, TtsSynthesisResult>
+      >(
+        [engine],
+        [
           {
             request_id: input.request_id,
             text: input.text,
@@ -340,9 +354,29 @@ export function createVoiceRuntimeBridge(
               input.requested_voice_id ?? options.tts_provider.config.voice_id,
             allow_sensitive_content: false,
             metadata_only: true,
-          },
-          ttsOptions ?? { metadata_only: true },
-        );
+          } satisfies TtsSynthesisRequest,
+        ],
+        { now: nowMs },
+      );
+
+      if (outcome.exhausted) {
+        const reason: VoiceRuntimeBridgeFailureReason =
+          outcome.last_failure === "synth_error"
+            ? "tts_failed"
+            : "tts_unavailable";
+        snapshot = {
+          ...snapshot,
+          tts_status: "failed",
+          last_error_class: reason,
+          degraded: true,
+          updated_at: timestamp(nowMs()),
+        };
+        return failure([reason]);
+      }
+
+      {
+        const result = outcome.cues[0]!;
+        const health = outcome.health[outcome.health.length - 1]!;
         const item: PlaybackQueueItem = {
           item_id: `voice-playback-${result.chunk.chunk_id}`,
           session_id: input.session_id,
@@ -390,15 +424,6 @@ export function createVoiceRuntimeBridge(
           updated_at: timestamp(nowMs()),
         };
         return success(request);
-      } catch {
-        snapshot = {
-          ...snapshot,
-          tts_status: "failed",
-          last_error_class: "tts_failed",
-          degraded: true,
-          updated_at: timestamp(nowMs()),
-        };
-        return failure(["tts_failed"]);
       }
     },
     reset: () => {

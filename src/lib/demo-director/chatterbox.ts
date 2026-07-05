@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { CANONICAL_TTS_ENGINE_PRIORITIES } from "@/lib/voice/tts-engine";
+
 import type {
   DemoNarrationAudioCue,
   DemoNarrationLine,
@@ -36,7 +38,7 @@ export function createChatterboxNarrationProvider(
 ): DemoNarrationProvider {
   return createHttpNarrationProvider({
     provider_id: "chatterbox-tts-server",
-    priority: 0,
+    priority: CANONICAL_TTS_ENGINE_PRIORITIES["chatterbox-tts-server"],
     base_url: input.base_url ?? DEFAULT_CHATTERBOX_URL,
     health_path: "/api/ui/initial-data",
     synthesize_path: "/tts",
@@ -58,7 +60,7 @@ export function createKokoroNarrationProvider(
 ): DemoNarrationProvider {
   return createHttpNarrationProvider({
     provider_id: "kokoro",
-    priority: 1,
+    priority: CANONICAL_TTS_ENGINE_PRIORITIES.kokoro,
     base_url: input.base_url ?? DEFAULT_KOKORO_URL,
     health_path: "/health",
     synthesize_path: "/v1/audio/speech",

@@ -1,3 +1,10 @@
+import {
+  CANONICAL_TTS_ENGINE_IDS,
+  CANONICAL_TTS_ENGINE_PRIORITIES,
+  selectVoiceEngine,
+  synthesizeOverEngineChain,
+} from "@/lib/voice/tts-engine";
+
 import type {
   DemoAudience,
   DemoCue,
@@ -13,11 +20,10 @@ export interface NarrationTelemetryOptions {
   readonly now?: () => number;
 }
 
-export const DEMO_NARRATION_PROVIDER_IDS = [
-  "chatterbox-tts-server",
-  "kokoro",
-  "existing-local-fallback",
-] as const;
+// E-011: the id set and chain order are owned by the canonical engine
+// registry (@/lib/voice/tts-engine); this alias keeps the demo-director's
+// public surface unchanged.
+export const DEMO_NARRATION_PROVIDER_IDS = CANONICAL_TTS_ENGINE_IDS;
 
 export type DemoNarrationProviderId =
   (typeof DEMO_NARRATION_PROVIDER_IDS)[number];
@@ -135,6 +141,11 @@ export function buildNarrationLines(script: DemoScript): DemoNarrationLine[] {
   return lines.sort((left, right) => left.at_ms - right.at_ms);
 }
 
+// E-011: selection + failover are delegated to the ONE canonical engine layer
+// (@/lib/voice/tts-engine). The demo-director keeps only its policy wrapper:
+// recording-only narration lines/cues/track flags. Behaviour (chain order,
+// telemetry events, terminal-with-zero-cues on exhaustion) is the Phase 23
+// drilled behaviour, unchanged — the mechanism merely moved.
 export async function selectNarrationProvider(
   providers: readonly DemoNarrationProvider[] = defaultDemoNarrationProviders(),
   options: NarrationTelemetryOptions = {},
@@ -142,46 +153,11 @@ export async function selectNarrationProvider(
   provider: DemoNarrationProvider;
   health: DemoNarrationProviderHealth[];
 }> {
-  const now = options.now ?? (() => Date.now());
-  const ordered = [...providers].sort(
-    (left, right) => left.priority - right.priority,
-  );
-  const health: DemoNarrationProviderHealth[] = [];
-  let position = 0;
-  for (const provider of ordered) {
-    const checked = await provider.health();
-    health.push(checked);
-    if (checked.ok) {
-      options.telemetry?.recordSelected({
-        provider_id: provider.provider_id,
-        chain_position: position,
-        occurred_at_ms: now(),
-      });
-      return { provider, health };
-    }
-    const next = ordered[position + 1];
-    if (next) {
-      options.telemetry?.recordFailover({
-        from_provider_id: provider.provider_id,
-        to_provider_id: next.provider_id,
-        reason: "health_probe_failed",
-        chain_position: position,
-        occurred_at_ms: now(),
-      });
-    }
-    position += 1;
-  }
-
-  const fallback = ordered[ordered.length - 1];
-  if (!fallback) {
+  if (providers.length === 0) {
     throw new Error("No narration providers configured.");
   }
-  options.telemetry?.recordSelected({
-    provider_id: fallback.provider_id,
-    chain_position: ordered.length - 1,
-    occurred_at_ms: now(),
-  });
-  return { provider: fallback, health };
+  const selection = await selectVoiceEngine(providers, options);
+  return { provider: selection.engine, health: selection.health };
 }
 
 export async function prepareDemoNarration(input: {
@@ -191,81 +167,21 @@ export async function prepareDemoNarration(input: {
   now?: () => number;
 }): Promise<DemoNarrationTrack> {
   const providers = input.providers ?? defaultDemoNarrationProviders();
-  const now = input.now ?? (() => Date.now());
-  const lines = buildNarrationLines(input.script);
-  const ordered = [...providers].sort(
-    (left, right) => left.priority - right.priority,
-  );
-  const provider_health: DemoNarrationProviderHealth[] = [];
-
-  const recordFailover = (
-    fromProvider: DemoNarrationProvider,
-    position: number,
-    reason: "health_probe_failed" | "synth_error",
-  ): void => {
-    const next = ordered[position + 1];
-    if (next) {
-      input.telemetry?.recordFailover({
-        from_provider_id: fromProvider.provider_id,
-        to_provider_id: next.provider_id,
-        reason,
-        chain_position: position,
-        occurred_at_ms: now(),
-      });
-    }
-  };
-
-  let position = 0;
-  for (const provider of ordered) {
-    const checked = await provider.health();
-    provider_health.push(checked);
-    if (!checked.ok) {
-      recordFailover(provider, position, "health_probe_failed");
-      position += 1;
-      continue;
-    }
-
-    try {
-      const audio_cues: DemoNarrationAudioCue[] = [];
-      if (provider.synthesize) {
-        for (const lineItem of lines) {
-          audio_cues.push(await provider.synthesize(lineItem));
-        }
-      }
-      input.telemetry?.recordSelected({
-        provider_id: provider.provider_id,
-        chain_position: position,
-        occurred_at_ms: now(),
-      });
-      return narrationTrack({
-        script: input.script,
-        provider,
-        provider_health,
-        lines,
-        audio_cues,
-      });
-    } catch {
-      recordFailover(provider, position, "synth_error");
-      position += 1;
-      continue;
-    }
-  }
-
-  const fallback = ordered[ordered.length - 1];
-  if (!fallback) {
+  if (providers.length === 0) {
     throw new Error("No narration providers configured.");
   }
-  input.telemetry?.recordSelected({
-    provider_id: fallback.provider_id,
-    chain_position: ordered.length - 1,
-    occurred_at_ms: now(),
-  });
+  const lines = buildNarrationLines(input.script);
+  const outcome = await synthesizeOverEngineChain<
+    DemoNarrationLine,
+    DemoNarrationAudioCue,
+    DemoNarrationProvider
+  >(providers, lines, { telemetry: input.telemetry, now: input.now });
   return narrationTrack({
     script: input.script,
-    provider: fallback,
-    provider_health,
+    provider: outcome.engine,
+    provider_health: outcome.health,
     lines,
-    audio_cues: [],
+    audio_cues: [...outcome.cues],
   });
 }
 
@@ -298,8 +214,12 @@ export function defaultDemoNarrationProviders(
   now: () => number = () => Date.now(),
 ): DemoNarrationProvider[] {
   return [
-    unavailableProvider("chatterbox-tts-server", 0, now),
-    unavailableProvider("kokoro", 1, now),
+    unavailableProvider(
+      "chatterbox-tts-server",
+      CANONICAL_TTS_ENGINE_PRIORITIES["chatterbox-tts-server"],
+      now,
+    ),
+    unavailableProvider("kokoro", CANONICAL_TTS_ENGINE_PRIORITIES.kokoro, now),
     createExistingLocalFallbackNarrationProvider({ now }),
   ];
 }
@@ -310,7 +230,7 @@ export function createExistingLocalFallbackNarrationProvider(
   const now = input.now ?? (() => Date.now());
   return {
     provider_id: "existing-local-fallback",
-    priority: 2,
+    priority: CANONICAL_TTS_ENGINE_PRIORITIES["existing-local-fallback"],
     async health() {
       return {
         provider_id: "existing-local-fallback",
