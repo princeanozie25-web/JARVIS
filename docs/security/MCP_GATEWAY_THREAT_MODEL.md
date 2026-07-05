@@ -329,7 +329,7 @@ v1 accepted the count-timing leak too casually. Hardened controls:
   resolution. Residual after hardening: a slow coarse count — bounded, documented,
   not a feed.
 
-### ID-4 — Pipeline view-model static-only [AMBER-PLANNED]
+### ID-4 — Pipeline view-model static-only [GREEN]
 
 The pipeline view-model exposes **static topology ONLY**. Any live pipeline
 state — provider status, current route, recent failures, active clients,
@@ -337,13 +337,14 @@ pending phase, model health, cost, latency — requires SEPARATE classification
 and is NEVER-EXPOSED by default. **24B recon verifies the view-model is truly
 static, not just structurally static.**
 
-### ID-5 — Uniform denial responses (error-channel side channel) [AMBER-PLANNED]
+### ID-5 — Uniform denial responses (error-channel side channel) [GREEN]
 
 Denial responses are **uniform and uninformative**: "request denied", never
 "scope insufficient for queue-status" (which leaks that queue-status exists) or
 "no such surface" vs "forbidden" (which enumerates the surface map). The error
-text must not let an attacker map the surfaces or scopes by probing. AMBER until
-built + a probing drill confirms uniform denials.
+text must not let an attacker map the surfaces or scopes by probing. Built in
+24B; the probing drill (DRILL-11) confirmed uniform denials — GREEN per the
+status table below.
 
 ---
 

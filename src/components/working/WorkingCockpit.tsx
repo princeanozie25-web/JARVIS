@@ -26,8 +26,11 @@ export interface WorkingCockpitProps {
 const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
   marker: SYNTHETIC_OBSERVABILITY_MARKER,
   gateCount: 1,
-  phase: "Phase 21 active",
-  testCount: "4,930 PASS",
+  // Capstone honesty pass: non-staling truths — no phase number that rots, no
+  // hardcoded test count shaped like a live claim (the gate is a property:
+  // every commit runs the full suite in the pre-commit hook).
+  phase: "Expansion Era - post-Phase-24",
+  testCount: "full suite gated in-hook",
   chat: {
     operator: "Can you set the office for deep work?",
     assistant:
@@ -73,6 +76,7 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
     { label: "LOCAL", value: "76%" },
     { label: "CLOUD", value: "24%" },
   ],
+  provenance: { room: "synthetic", cost: "synthetic", activity: "synthetic" },
   activity: [
     {
       ts: "09:31",
@@ -130,28 +134,32 @@ export function WorkingCockpit({
     if (resolved) return;
     const now = clock === "00:00" ? "now" : clock;
     setPending(0);
+    // Capstone honesty pass (SI-3): this gate is an interactive DEMO — it
+    // writes NO audit row and performs NO action, and its copy must say so.
+    // The real Human Gate lifecycle (Phase 18) persists its audit elsewhere;
+    // this surface must never claim that work as its own.
     if (approved) {
       setResolved(
         model.proposal.executionAvailable
           ? "Approved - executed - verified"
-          : "Approved - execution blocked pending real service - audit recorded",
+          : "Approved (demo) - execution blocked pending real service - no audit row written",
       );
       setEvents((current) => [
         {
           ts: now,
-          tag: "AUDIT",
-          text: `${model.proposal.id} approval lifecycle recorded: dry-run -> approval -> execute -> verify`,
+          tag: "INFO",
+          text: `${model.proposal.id} demo lifecycle simulated - not persisted: dry-run -> approval -> execute -> verify`,
         },
         ...current,
       ]);
       return;
     }
-    setResolved("Denied - no side effect taken");
+    setResolved("Denied (demo) - no side effect taken - nothing persisted");
     setEvents((current) => [
       {
         ts: now,
-        tag: "DENY",
-        text: `${model.proposal.id} denied through Human Gate`,
+        tag: "INFO",
+        text: `${model.proposal.id} denied in the demo gate - not persisted`,
       },
       ...current,
     ]);
@@ -368,8 +376,12 @@ function ContextPanels({
       <section
         className="jcc-context jcc-glass"
         data-read-only-context-panel="room"
+        data-panel-provenance={model.provenance.room}
       >
-        <PanelHead label="ROOM" tag="OBSERVABILITY" />
+        <PanelHead
+          label="ROOM"
+          tag={`OBSERVABILITY - ${model.provenance.room.toUpperCase()}`}
+        />
         <div className="jcc-context-body">
           {model.room.map((device) => (
             <div key={`${device.zone}-${device.name}`} className="jcc-device">
@@ -395,8 +407,12 @@ function ContextPanels({
       <section
         className="jcc-context two jcc-glass"
         data-read-only-context-panel="cost"
+        data-panel-provenance={model.provenance.cost}
       >
-        <PanelHead label="COST" tag="OBSERVABILITY" />
+        <PanelHead
+          label="COST"
+          tag={`OBSERVABILITY - ${model.provenance.cost.toUpperCase()}`}
+        />
         <div className="jcc-context-body">
           <div className="jcc-cost-grid">
             {model.cost.map((metric) => (
@@ -417,9 +433,13 @@ function ContextPanels({
       <section
         className="jcc-context three jcc-glass"
         data-read-only-context-panel="activity"
+        data-panel-provenance={model.provenance.activity}
         style={{ flex: 1, minHeight: 0 }}
       >
-        <PanelHead label="ACTIVITY" tag="OBSERVABILITY" />
+        <PanelHead
+          label="ACTIVITY"
+          tag={`OBSERVABILITY - ${model.provenance.activity.toUpperCase()}`}
+        />
         <div className="jcc-context-body" style={{ overflowY: "auto" }}>
           <div className="jcc-activity">
             {events.map((event) => (

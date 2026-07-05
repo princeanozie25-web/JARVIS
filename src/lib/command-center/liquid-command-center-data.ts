@@ -88,6 +88,19 @@ export interface WorkingGateProposal {
   readonly executionAvailable: false;
 }
 
+// Capstone honesty pass: per-panel provenance for the projection-backed rows.
+// "live" means the rows came from a REAL observability DB at render; anything
+// else (synthetic readers, withheld, empty, fallback fixture) is "synthetic".
+// The label must match the actual source — a blanket synthetic marker over
+// live rows is as dishonest as the reverse.
+export type WorkingPanelProvenance = "live" | "synthetic";
+
+export interface WorkingPanelProvenanceMap {
+  readonly room: WorkingPanelProvenance;
+  readonly cost: WorkingPanelProvenance;
+  readonly activity: WorkingPanelProvenance;
+}
+
 export interface WorkingCommandCenterModel {
   readonly marker: string;
   readonly gateCount: number;
@@ -102,6 +115,7 @@ export interface WorkingCommandCenterModel {
   readonly room: readonly WorkingRoomDevice[];
   readonly cost: readonly WorkingMetric[];
   readonly activity: readonly WorkingActivity[];
+  readonly provenance: WorkingPanelProvenanceMap;
   readonly voiceActivity: readonly VoicePipelineEvent[];
 }
 
@@ -258,7 +272,7 @@ const SYNTHETIC_READERS: ObservabilityProjectionReaders = Object.freeze({
 });
 
 export function buildRestCommandCenterModel(): RestCommandCenterModel {
-  const api = createSafeObservabilityApi();
+  const { api } = createSafeObservabilityApi();
   const orb = safeQuery(() => createOrbProjectionTokens(api), {
     mode: "working",
     load_band: "active",
@@ -313,18 +327,30 @@ export function buildRestCommandCenterModel(): RestCommandCenterModel {
   );
 }
 
-export function buildWorkingCommandCenterModel(): WorkingCommandCenterModel {
-  const api = createSafeObservabilityApi();
-  const room = safeQuery(() => roomDevices(api), fallbackRoomDevices());
-  const cost = safeQuery(() => costMetrics(api), fallbackCostMetrics());
-  const activity = safeQuery(() => workingActivity(api), fallbackActivity());
+// `handle` is an injection seam for tests (fake api + declared source); the
+// route calls this with no arguments and gets the env-resolved handle.
+export function buildWorkingCommandCenterModel(
+  handle?: SafeObservabilityHandle,
+): WorkingCommandCenterModel {
+  const { api, source } = handle ?? createSafeObservabilityApi();
+  const roomRows = safeQuery(() => roomDevicesOrNull(api), null);
+  const costRows = safeQuery(() => costMetricsOrNull(api), null);
+  const activityRows = safeQuery(() => workingActivityOrNull(api), null);
+  // Honest per-panel provenance: "live" ONLY when the rows came from a real
+  // observability DB AND the projection actually produced them (no fallback).
+  const provenanceOf = (rows: unknown): WorkingPanelProvenance =>
+    source === "live_db" && rows !== null ? "live" : "synthetic";
 
   return safeModel(
     {
       marker: SYNTHETIC_OBSERVABILITY_MARKER,
       gateCount: 1,
-      phase: "Phase 21 active",
-      testCount: "4,930 PASS",
+      // Non-staling truths (capstone honesty pass): no phase number that rots
+      // and no hardcoded test count shaped like a live claim — the suite gate
+      // is a PROPERTY (every commit runs the full suite in the pre-commit
+      // hook), not a number frozen at authoring time.
+      phase: "Expansion Era - post-Phase-24",
+      testCount: "full suite gated in-hook",
       chat: {
         operator: "Can you set the office for deep work?",
         assistant:
@@ -344,9 +370,14 @@ export function buildWorkingCommandCenterModel(): WorkingCommandCenterModel {
         approvalService: "phase_18_contract",
         executionAvailable: false,
       },
-      room,
-      cost,
-      activity,
+      room: roomRows ?? fallbackRoomDevices(),
+      cost: costRows ?? fallbackCostMetrics(),
+      activity: activityRows ?? fallbackActivity(),
+      provenance: {
+        room: provenanceOf(roomRows),
+        cost: provenanceOf(costRows),
+        activity: provenanceOf(activityRows),
+      },
       voiceActivity: buildVoicePipelineVisibilityModel().events,
     },
     fallbackWorkingModel(),
@@ -354,7 +385,7 @@ export function buildWorkingCommandCenterModel(): WorkingCommandCenterModel {
 }
 
 export function buildAuditCommandCenterModel(): AuditCommandCenterModel {
-  const api = createSafeObservabilityApi();
+  const { api } = createSafeObservabilityApi();
   const traces = safeQuery(() => auditTraces(api), fallbackAuditTraces());
   const telemetry = safeQuery(
     () => auditTelemetry(api),
@@ -407,28 +438,40 @@ export function buildAuditCommandCenterModel(): AuditCommandCenterModel {
   );
 }
 
-function createSafeObservabilityApi(): ObservabilityApi {
+export type ObservabilitySource = "live_db" | "synthetic_readers";
+
+export interface SafeObservabilityHandle {
+  readonly api: ObservabilityApi;
+  readonly source: ObservabilitySource;
+}
+
+function createSafeObservabilityApi(): SafeObservabilityHandle {
   const databasePath =
     process.env.JARVIS_OBSERVABILITY_DB_PATH ??
     process.env.JARVIS_EVENT_DB_PATH ??
     "";
   if (databasePath && existsSync(databasePath)) {
-    return createObservabilityApi({ databasePath });
+    return { api: createObservabilityApi({ databasePath }), source: "live_db" };
   }
-  return createObservabilityApi({
-    databasePath: "synthetic-command-center.sqlite",
-    projectionReaders: SYNTHETIC_READERS,
-  });
+  return {
+    api: createObservabilityApi({
+      databasePath: "synthetic-command-center.sqlite",
+      projectionReaders: SYNTHETIC_READERS,
+    }),
+    source: "synthetic_readers",
+  };
 }
 
-function roomDevices(api: ObservabilityApi): readonly WorkingRoomDevice[] {
+function roomDevicesOrNull(
+  api: ObservabilityApi,
+): readonly WorkingRoomDevice[] | null {
   const response = api.queryRoomState({ nowMs: Date.now() });
   if (
     response.withheld ||
     !response.data ||
     response.data.summaries.length === 0
   ) {
-    return fallbackRoomDevices();
+    return null;
   }
   return response.data.summaries.slice(0, 3).map((item, index) => ({
     name: titleCase(item.device_id ?? item.sensor_id ?? `device-${index + 1}`),
@@ -438,17 +481,35 @@ function roomDevices(api: ObservabilityApi): readonly WorkingRoomDevice[] {
   }));
 }
 
-function costMetrics(api: ObservabilityApi): readonly WorkingMetric[] {
+function costMetricsOrNull(
+  api: ObservabilityApi,
+): readonly WorkingMetric[] | null {
   const response = api.queryTelemetryRollups();
-  if (response.withheld || !response.data) return fallbackCostMetrics();
+  if (response.withheld || !response.data) return null;
   const providerCount = sum(response.data.model_calls_by_provider);
   const severityCount = sum(response.data.telemetry_by_severity);
   const localCount =
     response.data.model_calls_by_provider.find((bucket) =>
       /local/i.test(bucket.key),
     )?.count ?? 0;
-  const localPct =
-    providerCount === 0 ? 76 : Math.round((localCount / providerCount) * 100);
+  // Honesty: with ZERO recorded model calls there is no split to show —
+  // render "no data" rather than a fabricated percentage (was hardcoded 76).
+  const split: readonly WorkingMetric[] =
+    providerCount === 0
+      ? [
+          { label: "LOCAL", value: "no cost data" },
+          { label: "CLOUD", value: "no cost data" },
+        ]
+      : [
+          {
+            label: "LOCAL",
+            value: `${Math.round((localCount / providerCount) * 100)}%`,
+          },
+          {
+            label: "CLOUD",
+            value: `${Math.max(0, 100 - Math.round((localCount / providerCount) * 100))}%`,
+          },
+        ];
   return [
     {
       label: "TODAY",
@@ -460,19 +521,20 @@ function costMetrics(api: ObservabilityApi): readonly WorkingMetric[] {
       value: `${providerCount} model calls`,
       pct: Math.min(100, providerCount * 20),
     },
-    { label: "LOCAL", value: `${localPct}%` },
-    { label: "CLOUD", value: `${Math.max(0, 100 - localPct)}%` },
+    ...split,
   ];
 }
 
-function workingActivity(api: ObservabilityApi): readonly WorkingActivity[] {
+function workingActivityOrNull(
+  api: ObservabilityApi,
+): readonly WorkingActivity[] | null {
   const response = api.queryRecentTraces({ traceLimit: 3 });
   if (
     response.withheld ||
     !response.data ||
     response.data.traces.length === 0
   ) {
-    return fallbackActivity();
+    return null;
   }
   return [
     {
@@ -640,8 +702,8 @@ function fallbackWorkingModel(): WorkingCommandCenterModel {
   return {
     marker: SYNTHETIC_OBSERVABILITY_MARKER,
     gateCount: 1,
-    phase: "Phase 21 active",
-    testCount: "4,930 PASS",
+    phase: "Expansion Era - post-Phase-24",
+    testCount: "full suite gated in-hook",
     chat: {
       operator: "Can you set the office for deep work?",
       assistant:
@@ -664,6 +726,7 @@ function fallbackWorkingModel(): WorkingCommandCenterModel {
     room: fallbackRoomDevices(),
     cost: fallbackCostMetrics(),
     activity: fallbackActivity(),
+    provenance: { room: "synthetic", cost: "synthetic", activity: "synthetic" },
     voiceActivity: buildVoicePipelineVisibilityModel().events,
   };
 }
