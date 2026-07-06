@@ -180,8 +180,8 @@ describe("I-WBv1c-2 (renders the graph)", () => {
     expect(attrAfter(html, 'data-node-id="b"', "data-node-x")).toBe(280);
     expect(html).toContain('transform="translate(40, 40)"');
 
-    // one dependency edge a -> b
-    expect(html.match(/<line\b/g)).toHaveLength(1);
+    // one dependency edge a -> b (AP-J3: a calm branch curve, same endpoints)
+    expect(html.match(/class="wfm-edge"/g)).toHaveLength(1);
     expect(html).toContain('data-edge-from="a"');
     expect(html).toContain('data-edge-to="b"');
 

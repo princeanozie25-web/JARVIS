@@ -204,6 +204,27 @@ a human decides here, and the decision is accountable.
 - **Motion:** inherited only — gateResolve on the verdict, calmFade on the
   proposal exit, gateArrival on arrival; nothing new.
 
+### AP-J3 — WorkflowBox (lane + mind-map)
+
+WorkflowBox is DISPLAY-CLASS — not Gate-touching — so under the color law it
+carries **no amber anywhere**: it is the calm read+track surface where the
+language breathes over E-019's live data.
+
+- **Progress = the one range:** lane bars keep the emerald->sky gradient;
+  the SVG map bars now fill with the same range via a per-project
+  `<linearGradient id="wfm-progress-<project>">` whose stops consume the
+  base tokens. Both bars bind the measured fill through
+  `--jarvis-motion-vocab-fill` (the vocabulary beat; reduced motion zeroes
+  it) — the two-layer derived rollup fills measuredly from ONE store.
+- **Registers:** node titles in the DATA register (lane and map agree);
+  project titles keep display; ids, statuses, sub-item counts (`3/5`), and
+  percents in JetBrains Mono. No model-voice italic on system data.
+- **The map reads at a glance:** dependency edges are calm branch curves
+  (cubic, round caps, neutral stone — structure, not signal); node boxes
+  carry the lane's calm status accents on their strokes (sky in-progress,
+  emerald done). SVG, addressable, draggable (layout-only via the same
+  store); the empty map joins the honest-state family.
+
 ## 7. What later AP-J slices inherit
 
 1. Consume tokens/registers — never raw hex (new values join `tokens.css`

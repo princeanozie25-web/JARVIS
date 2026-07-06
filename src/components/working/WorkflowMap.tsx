@@ -71,6 +71,7 @@ function MapNode({
   position,
   open,
   draggable,
+  gradientId,
   onToggle,
   onPointerDown,
 }: Readonly<{
@@ -78,6 +79,8 @@ function MapNode({
   position: { x: number; y: number };
   open: boolean;
   draggable: boolean;
+  /** AP-J3: the per-project emerald->sky progress gradient (SVG defs id). */
+  gradientId: string;
   onToggle: () => void;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
 }>) {
@@ -138,6 +141,7 @@ function MapNode({
         height={6}
         rx={3}
         data-node-percent={node.percent}
+        fill={`url(#${gradientId})`}
       />
       <text className="wfm-node-pct" x={mapNode.width - 12} y={58}>
         {node.percent}%
@@ -258,17 +262,30 @@ function MapProjectSvg({
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
+        {/* AP-J3: the ONE progress range — emerald->sky — as a per-project
+            gradient (unique defs id per SVG; stops consume the base tokens). */}
+        <defs>
+          <linearGradient
+            id={`wfm-progress-${project.id}`}
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="0"
+          >
+            <stop offset="0%" stopColor="var(--jarvis-color-emerald-local)" />
+            <stop offset="100%" stopColor="var(--jarvis-color-sky-focus)" />
+          </linearGradient>
+        </defs>
         <g className="wfm-edges">
+          {/* AP-J3: dependency edges as calm branch curves (roadmap look) —
+              same edge model, same endpoints; a cubic ease between them. */}
           {project.edges.map((edge) => (
-            <line
+            <path
               key={`${edge.from_id}->${edge.to_id}`}
               className="wfm-edge"
               data-edge-from={edge.from_id}
               data-edge-to={edge.to_id}
-              x1={edge.x1}
-              y1={edge.y1}
-              x2={edge.x2}
-              y2={edge.y2}
+              d={`M ${edge.x1} ${edge.y1} C ${(edge.x1 + edge.x2) / 2} ${edge.y1}, ${(edge.x1 + edge.x2) / 2} ${edge.y2}, ${edge.x2} ${edge.y2}`}
             />
           ))}
         </g>
@@ -280,6 +297,7 @@ function MapProjectSvg({
               position={positionOf(mapNode)}
               open={openNodeId === mapNode.node.id}
               draggable={canDrag}
+              gradientId={`wfm-progress-${project.id}`}
               onToggle={() => {
                 if (movedRef.current) return; // a drag, not a click
                 onToggleNode(mapNode.node.id);
@@ -336,7 +354,10 @@ export function WorkflowMap({
       </div>
       <div className="wfm-body">
         {model.projects.length === 0 ? (
-          <p className="wfm-empty">No projects yet.</p>
+          // AP-J3 honest-state family: an empty map is honest, not an error.
+          <p className="wfm-empty jcc-honest" data-honest-state="empty">
+            No projects yet.
+          </p>
         ) : (
           model.projects.map((project) => (
             <MapProjectSvg

@@ -77,9 +77,12 @@
   touch-action: none; /* let pointer-drag own the gesture */
 }
 
+/* AP-J3: dependency edges as calm branch curves — a clearer stone line
+   (still neutral: edges are structure, not signal), round caps. */
 .wfm-edge {
-  stroke: var(--jarvis-color-border-subtle);
+  stroke: color-mix(in srgb, var(--jarvis-color-ink) 22%, transparent);
   stroke-width: 1.5;
+  stroke-linecap: round;
   fill: none;
 }
 
@@ -103,6 +106,21 @@
     var(--jarvis-motion-easing-smooth);
 }
 
+/* AP-J3: node state reads at a glance — the box stroke carries the same calm
+   status accents the lane chips use (sky in-progress, emerald done; never
+   amber — WorkflowBox is display-class, not Gate-touching). */
+.wfm-node[data-node-status="in_progress"] .wfm-node-box {
+  stroke: color-mix(in srgb, var(--jarvis-color-sky-focus) 35%, transparent);
+}
+
+.wfm-node[data-node-status="done"] .wfm-node-box {
+  stroke: color-mix(
+    in srgb,
+    var(--jarvis-color-emerald-local) 35%,
+    transparent
+  );
+}
+
 .wfm-node:hover .wfm-node-box,
 .wfm-node:focus-visible .wfm-node-box {
   stroke: var(--jarvis-color-sky-focus);
@@ -114,9 +132,11 @@
 
 .wfm-node-title {
   fill: var(--jarvis-color-ink);
-  font-family: var(--jarvis-font-display);
+  /* AP-J3 registers: node titles are operational copy — the DATA register
+     (same as the lane's node titles); project titles keep display. */
+  font-family: var(--jarvis-font-body);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .wfm-node-status {
@@ -143,8 +163,13 @@
   fill: var(--jarvis-color-border-subtle);
 }
 
+/* AP-J3: the fill color is the per-project emerald->sky gradient, set as an
+   SVG fill attribute (url(#wfm-progress-<project>)) — CSS must not override
+   it. The measured fill is the inherited motion-vocabulary beat: geometry
+   (width) transitions at the vocab duration; reduced motion zeroes it. */
 .wfm-bar-fill {
-  fill: var(--jarvis-color-emerald-local);
+  transition: width var(--jarvis-motion-vocab-fill)
+    var(--jarvis-motion-easing-smooth);
 }
 
 .wfm-node-pct {
@@ -161,7 +186,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wfm-node-box {
+  .wfm-node-box,
+  .wfm-bar-fill {
     transition: none;
   }
 }

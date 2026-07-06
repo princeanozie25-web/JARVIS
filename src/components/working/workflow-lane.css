@@ -207,7 +207,9 @@
     var(--jarvis-color-emerald-local),
     var(--jarvis-color-sky-focus)
   );
-  transition: width var(--jarvis-motion-duration-normal)
+  /* AP-J3: the measured fill is the inherited motion-vocabulary beat —
+     bound through the vocab token (same value, the documented contract). */
+  transition: width var(--jarvis-motion-vocab-fill)
     var(--jarvis-motion-easing-smooth);
 }
 
