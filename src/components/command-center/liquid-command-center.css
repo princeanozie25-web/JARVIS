@@ -974,7 +974,8 @@
 
 .jcc-chip {
   display: inline-flex;
-  border: 1px solid rgba(255, 178, 77, 0.35);
+  /* AP-J2: exact-alpha token consumption — this IS var(--jcc-amber) at 35% */
+  border: 1px solid color-mix(in srgb, var(--jcc-amber) 35%, transparent);
   border-radius: 0.7vmin;
   padding: 0.8vmin 1.2vmin;
   background: rgba(255, 150, 40, 0.06);
@@ -1043,7 +1044,8 @@
 }
 
 .jcc-gate-only {
-  border: 1px solid rgba(255, 178, 77, 0.4);
+  /* AP-J2: exact-alpha token consumption — this IS var(--jcc-amber) at 40% */
+  border: 1px solid color-mix(in srgb, var(--jcc-amber) 40%, transparent);
   border-radius: 0.5vmin;
   padding: 0.4vmin 0.8vmin;
   color: var(--jcc-amber);
@@ -1058,6 +1060,86 @@
   flex-direction: column;
   gap: 1.6vmin;
   padding: 1.8vmin;
+}
+
+/* AP-J2 amber law on the Gate: amber marks the PENDING (Gate-touching)
+   state; a RESOLVED gate is calm — the decision is done, nothing pends.
+   These overrides neutralize the base amber wash; they carry NO amber. */
+.jcc-gate[data-gate-state="resolved"] {
+  border-color: var(--jcc-stroke-hi);
+  background: var(--jcc-glass);
+  box-shadow:
+    0 2vmin 6vmin rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.jcc-gate[data-gate-state="resolved"] .jcc-panel-head {
+  border-bottom-color: var(--jcc-stroke);
+}
+
+.jcc-gate[data-gate-state="resolved"] .jcc-label {
+  color: var(--jcc-dim);
+}
+
+.jcc-gate[data-gate-state="resolved"] .jcc-gate-title {
+  color: var(--jcc-txt);
+}
+
+.jcc-gate[data-gate-state="resolved"] .jcc-gate-sub {
+  color: var(--jcc-faint);
+}
+
+.jcc-gate[data-gate-state="resolved"] .jcc-gate-only {
+  border-color: var(--jcc-stroke-hi);
+  color: var(--jcc-dim);
+}
+
+/* AP-J2 / EoP-11 rendered on the Gate panel: the TRUSTED server-derived
+   channel is the decision anchor (prominent, system-fact roman); untrusted
+   client text is FENCED — quarantine stone, MONOSPACED (presentation.ts
+   render-hardening), labelled — never styled as the system's own
+   recommendation. The fence is neutral, not amber: quarantine, not state. */
+.jcc-gate-anchor {
+  display: flex;
+  flex-direction: column;
+  gap: 1vmin;
+}
+
+.jcc-anchor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1vmin;
+}
+
+.jcc-gate-anchor .jcc-diff .d {
+  /* the effect IS the decision anchor — promoted, system-fact roman */
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.jcc-gate-fence {
+  border: 1px dashed color-mix(in srgb, var(--jcc-dim) 35%, transparent);
+  border-radius: 0.9vmin;
+  padding: 1vmin 1.2vmin;
+  background: color-mix(in srgb, var(--jarvis-color-panel) 45%, transparent);
+}
+
+.jcc-fence-label {
+  margin-bottom: 0.6vmin;
+  color: var(--jcc-faint);
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.22em;
+}
+
+.jcc-fence-text {
+  color: var(--jcc-dim);
+  /* EoP-11 hardening: monospace; plain text (no markup, no links) */
+  font-family: var(--jarvis-font-mono);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .jcc-prop-meta {
@@ -1154,7 +1236,9 @@
   display: grid;
   flex: 1;
   place-items: center;
-  color: #cfe;
+  /* AP-J2 (SI-3 styled): the verdict is calm ink — an honest demo outcome
+     must not wear a persistence-implying success green nor error styling. */
+  color: var(--jcc-txt);
   font-size: 1.3rem;
   /* roman: the verdict is SYSTEM FACT, not model voice (AP-J1 registers) */
   text-align: center;

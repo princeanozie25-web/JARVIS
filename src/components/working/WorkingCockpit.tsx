@@ -317,6 +317,7 @@ export function WorkingCockpit({
             <section
               ref={gateRef}
               className={`jcc-gate jcc-glass ${resolved ? "resolved" : ""}`}
+              data-gate-state={resolved ? "resolved" : "pending"}
               data-human-gate-panel="true"
               data-only-path-to-side-effects="true"
               data-mutator-entrypoint="human-gate-approval-lifecycle"
@@ -350,18 +351,50 @@ export function WorkingCockpit({
                       animate="visible"
                       exit="exit"
                     >
-                      <div className="jcc-prop-meta">
-                        {model.proposal.id} - {model.proposal.kind} -{" "}
-                        {model.proposal.tier} - {model.proposal.trustClass}
+                      {/* AP-J2 / EoP-11 rendered: the TRUSTED server-derived
+                          channel is the DECISION ANCHOR — the human decides on
+                          the canonical effect, never on client framing. */}
+                      <div
+                        className="jcc-gate-anchor"
+                        data-gate-channel="server-derived"
+                      >
+                        <div className="jcc-anchor-head">
+                          <span className="jcc-label">CANONICAL EFFECT</span>
+                          <span className="jcc-tag">
+                            SERVER-DERIVED - TRUSTED
+                          </span>
+                        </div>
+                        <div className="jcc-prop-meta">
+                          {model.proposal.id} - {model.proposal.kind} -{" "}
+                          {model.proposal.tier} - {model.proposal.trustClass}
+                        </div>
+                        <div
+                          className="jcc-diff"
+                          data-text-register="system-fact"
+                        >
+                          <div className="h">DRY-RUN DIFF</div>
+                          <div className="d">
+                            {model.proposal.diffBefore} <b>-&gt;</b>{" "}
+                            {model.proposal.diffAfter}
+                          </div>
+                        </div>
                       </div>
-                      <div className="jcc-prop-title">
-                        {model.proposal.title}
-                      </div>
-                      <div className="jcc-diff">
-                        <div className="h">DRY-RUN DIFF</div>
-                        <div className="d">
-                          {model.proposal.diffBefore} <b>-&gt;</b>{" "}
-                          {model.proposal.diffAfter}
+                      {/* The client's framing is UNTRUSTED: fenced, labelled,
+                          monospaced (presentation.ts render-hardening; React
+                          text rendering gives escape_html) — visually
+                          quarantined, never styled as the system's own
+                          recommendation. The label string mirrors
+                          UNTRUSTED_CLIENT_TEXT_LABEL (pinned by test). */}
+                      <div
+                        className="jcc-gate-fence"
+                        data-gate-channel="untrusted-client"
+                        data-render-hardened="true"
+                      >
+                        <div className="jcc-fence-label">
+                          UNTRUSTED_CLIENT_INPUT
+                        </div>
+                        <div className="jcc-fence-text">
+                          {model.proposal.title}
                         </div>
                       </div>
                       <div className="jcc-gate-foot">

@@ -82,9 +82,10 @@ registers — the parallel palette is gone.
   accents; the rest-surface AP-J slice decides their roles.
 - `--tc-observe: #6b7a90` — observe-tier stone between `ink-dim` and
   `ink-faint`; fold into the stone scale in a later surface slice.
-- The gate panel's interior warm rgba washes are raw values inside
-  gate-scoped rules (legal under the amber law); the Gate-panel AP-J slice
-  tokenizes them.
+- The gate panel's interior warm washes: AP-J2 converted the exact-amber
+  sites to token consumption (`color-mix` over `--jcc-amber`); the remaining
+  warm cream tints are the pending gate's light identity — gate-scoped,
+  legal under the amber law, deliberately kept.
 - DD.0 stone/pulse tokens (`--jarvis-color-stone-*`, gold/flame/ruby) are the
   demo-director gauntlet palette — demo-scoped, not cockpit language.
 
@@ -177,6 +178,31 @@ Structural contracts (markup, not styling — asserted):
   in the topbar (above the fold, before the grid in DOM order) and may never
   be demoted below the fold or into decoration; per-panel provenance renders
   on every labelled panel (`data-panel-provenance` + the honest-state family).
+
+## Surface passes applying this language
+
+### AP-J2 — the Human Gate panel
+
+The Gate panel is the thesis made visible: the only place anything changes,
+a human decides here, and the decision is accountable.
+
+- **Amber law refined on the Gate:** amber marks the PENDING (Gate-touching)
+  state — `data-gate-state="pending"`. A RESOLVED gate is calm (stroke +
+  stone inks, no amber): the decision is done, nothing pends. The exact-amber
+  wash sites consume the token via `color-mix`.
+- **EoP-11 rendered:** the panel splits the two presentation channels
+  structurally — `data-gate-channel="server-derived"` (the CANONICAL EFFECT
+  anchor: mono ids, the dry-run diff promoted in system-fact roman) vs
+  `data-gate-channel="untrusted-client"` (the client framing FENCED: dashed
+  stone quarantine, MONOSPACED per the `presentation.ts` render-hardening,
+  labelled `UNTRUSTED_CLIENT_INPUT` — never styled as the system's own
+  recommendation). Model-voice italic stays reserved for JARVIS's own chat
+  reply; client text is NOT the model's voice.
+- **Honest verdict (SI-3 styled):** the resolved demo copy stays honest and
+  renders in calm ink (system-fact roman) — no persistence-implying success
+  green, no error styling.
+- **Motion:** inherited only — gateResolve on the verdict, calmFade on the
+  proposal exit, gateArrival on arrival; nothing new.
 
 ## 7. What later AP-J slices inherit
 
