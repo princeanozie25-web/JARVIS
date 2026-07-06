@@ -2,6 +2,7 @@ import { WorkingCockpit } from "@/components/working/WorkingCockpit";
 import type { WorkflowMapActions } from "@/components/working/WorkflowMap";
 import { buildWorkingCommandCenterModel } from "@/lib/command-center/liquid-command-center-data";
 
+import { readVoiceHealthAction } from "./voice-health-action";
 import {
   addSubItemAction,
   markNodeAction,
@@ -45,6 +46,7 @@ export default function WorkingPage() {
             ? LIVE_WORKFLOWBOX_ACTIONS
             : undefined
         }
+        voiceHealthReader={readVoiceHealthAction}
       />
     </main>
   );

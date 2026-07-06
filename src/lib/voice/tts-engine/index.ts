@@ -18,3 +18,6 @@ export {
   CANONICAL_TTS_ENGINE_PRIORITIES,
 } from "./registry";
 export type { CanonicalTtsEngineId } from "./registry";
+
+export { snapshotVoiceEngineHealth } from "./health-snapshot";
+export type { VoiceEngineHealthSnapshot } from "./health-snapshot";

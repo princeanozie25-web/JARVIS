@@ -43,6 +43,7 @@ const SHARED_LAYER_FILES = [
   "src/lib/voice/tts-engine/types.ts",
   "src/lib/voice/tts-engine/failover.ts",
   "src/lib/voice/tts-engine/registry.ts",
+  "src/lib/voice/tts-engine/health-snapshot.ts",
   "src/lib/voice/tts-engine/index.ts",
 ] as const;
 

@@ -10,13 +10,16 @@ import {
   type WorkflowMapActions,
 } from "@/components/working/WorkflowMap";
 import { SYNTHETIC_WORKFLOW_LANE } from "@/components/working/workflow-lane-fixture";
+import {
+  syntheticCockpitVoiceView,
+  type CockpitVoiceView,
+} from "@/components/working/voice-view";
 import type {
   WorkingActivity,
   WorkingCommandCenterModel,
 } from "@/lib/command-center/liquid-command-center-data";
 import { SYNTHETIC_OBSERVABILITY_MARKER } from "@/lib/observability/synthetic-data";
 import { buildVoicePipelineVisibilityModel } from "@/lib/voice-operating-mode/pipeline-visibility";
-import { buildSystemVoiceStackRuntimeState } from "@/lib/voice-operating-mode/voice-stack";
 import { buildWorkflowMapViewModel } from "@/lib/workflowbox";
 import type { WorkflowLaneViewModel } from "@/lib/workflowbox";
 
@@ -32,6 +35,13 @@ export interface WorkingCockpitProps {
    * single API — server actions from the route). Passed to BOTH the lane and
    * the map so a mark from either is the SAME store op. Omitted => display. */
   laneActions?: WorkflowMapActions;
+  /** E-020: initial voice-pill view (tests/SSR). Defaults to the honest
+   * synthetic Phase 22 picture until real probes report. */
+  voiceView?: CockpitVoiceView;
+  /** E-020: read-only health reader (a server action from the route). Called
+   * once after mount to upgrade the pill to the REAL probed engine status.
+   * Strictly display: it returns data and can trigger no synthesis. */
+  voiceHealthReader?: () => Promise<CockpitVoiceView>;
 }
 
 const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
@@ -113,13 +123,13 @@ const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
   voiceActivity: buildVoicePipelineVisibilityModel().events,
 };
 
-const VOICE_STACK = buildSystemVoiceStackRuntimeState();
-
 export function WorkingCockpit({
   model = FALLBACK_WORKING_MODEL,
   lane = SYNTHETIC_WORKFLOW_LANE,
   laneProvenance = "sample",
   laneActions,
+  voiceView,
+  voiceHealthReader,
 }: WorkingCockpitProps) {
   const clock = useClock();
   const depthRef = useRef<HTMLDivElement>(null);
@@ -129,6 +139,26 @@ export function WorkingCockpit({
   const [events, setEvents] = useState<readonly WorkingActivity[]>(
     model.activity,
   );
+  // E-020: the pill starts on the honest synthetic default and upgrades to
+  // the REAL probed engine picture when the read-only reader reports.
+  const [voice, setVoice] = useState<CockpitVoiceView>(
+    voiceView ?? syntheticCockpitVoiceView(),
+  );
+
+  useEffect(() => {
+    if (!voiceHealthReader) return;
+    let alive = true;
+    voiceHealthReader()
+      .then((view) => {
+        if (alive && view) setVoice(view);
+      })
+      .catch(() => {
+        // fail-closed: keep the labelled synthetic default
+      });
+    return () => {
+      alive = false;
+    };
+  }, [voiceHealthReader]);
 
   useBackgroundParallax(depthRef);
 
@@ -187,7 +217,9 @@ export function WorkingCockpit({
       data-working-cockpit="working-cockpit"
       data-working-shell="approval-gated"
       data-only-mutator="human-gate"
-      data-voice-tts-provider={VOICE_STACK.selected_provider}
+      data-voice-tts-provider={voice.selected_provider}
+      data-voice-tts-provenance={voice.provenance}
+      data-voice-tts-failed-over={String(voice.failed_over)}
       data-observability-marker={model.marker}
     >
       <CommandCenterField depthRef={depthRef} />
@@ -207,7 +239,18 @@ export function WorkingCockpit({
               warn={pending > 0}
             />
             <StatusPill label="MODEL" value="local-primary" />
-            <StatusPill label="TTS" value={VOICE_STACK.selected_provider} />
+            {/* E-020: real probed engine status, honestly labelled — LIVE
+                when probes ran (even if they say "down"), SYNTHETIC when the
+                Phase 22 default picture is all we have. */}
+            <StatusPill
+              label={`TTS - ${voice.provenance.toUpperCase()}`}
+              value={voicePillValue(voice)}
+              warn={
+                voice.provenance === "live" &&
+                (voice.failed_over ||
+                  !voice.providers.some((entry) => entry.ok))
+              }
+            />
             <StatusPill label="CLOCK" value={clock} />
           </div>
         </header>
@@ -506,6 +549,19 @@ function Message({
       <div className="txt">{text}</div>
     </div>
   );
+}
+
+// E-020: the pill headline stays honest in every live state — "(failover)"
+// when a lower engine is the live pick, "(down)" when NO engine probed
+// healthy. The synthetic default renders unadorned (it is labelled by the
+// pill's SYNTHETIC tag, not disguised as a probe result).
+function voicePillValue(voice: CockpitVoiceView): string {
+  if (voice.provenance !== "live") return voice.selected_provider;
+  if (!voice.providers.some((entry) => entry.ok)) {
+    return `${voice.selected_provider} (down)`;
+  }
+  if (voice.failed_over) return `${voice.selected_provider} (failover)`;
+  return voice.selected_provider;
 }
 
 function StatusPill({
