@@ -1,25 +1,39 @@
 .jcc {
-  --jcc-txt: #eaf1fb;
-  --jcc-dim: #8ea4c4;
-  --jcc-faint: #46587a;
-  --jcc-blue: #86bcff;
-  --jcc-cyan: #5fe6e0;
-  --jcc-cyan-deep: #1ea7a0;
-  --jcc-amber: #ffb24d;
-  --jcc-amber-deep: #ff8a1f;
-  --jcc-green: #74e8b4;
+  /* AP-J1: the cockpit palette resolves through the ONE token system — the
+     --jarvis-shell-* registers in src/lib/design-tokens/tokens.css (each the
+     documented on-glass rendering of a base role). No parallel palette.
+     Color law: --jcc-amber* is the Gate hue and appears ONLY on
+     Gate-touching elements (asserted by tests/working/design-language.test.tsx);
+     --jcc-blue is THE interactive accent; progress fills use the emerald->sky
+     base range; the stone inks (txt/dim/faint) carry everything else. */
+  --jcc-txt: var(--jarvis-shell-ink);
+  --jcc-dim: var(--jarvis-shell-ink-dim);
+  --jcc-faint: var(--jarvis-shell-ink-faint);
+  --jcc-blue: var(--jarvis-shell-accent);
+  --jcc-cyan: var(--jarvis-shell-signal);
+  --jcc-cyan-deep: var(--jarvis-shell-signal-deep);
+  --jcc-amber: var(--jarvis-shell-gate);
+  --jcc-amber-deep: var(--jarvis-shell-gate-deep);
+  --jcc-green: var(--jarvis-color-emerald-local);
+  /* rest-room card accents — residue pending the rest-surface AP-J slice
+     (documented in docs/capstone/JARVIS_DESIGN_LANGUAGE.md, "known residue") */
   --jcc-lav: #b6a4ff;
-  --jcc-red: #ff6b6b;
+  --jcc-red: var(--jarvis-shell-blocked);
   --jcc-coach: #f2cf86;
-  --jcc-glass: linear-gradient(150deg, rgba(120, 160, 220, 0.09), rgba(30, 52, 96, 0.05));
-  --jcc-glass-hi: linear-gradient(150deg, rgba(140, 180, 235, 0.15), rgba(40, 64, 112, 0.07));
-  --jcc-stroke: rgba(150, 190, 255, 0.13);
-  --jcc-stroke-hi: rgba(170, 205, 255, 0.26);
+  --jcc-glass: var(--jarvis-shell-glass);
+  --jcc-glass-hi: var(--jarvis-shell-glass-hi);
+  --jcc-stroke: var(--jarvis-shell-stroke);
+  --jcc-stroke-hi: var(--jarvis-shell-stroke-hi);
+  /* shell entrance ease — used only by the one-time entrance choreography
+     and hover transitions documented in the design-language doc */
   --jcc-ease: cubic-bezier(0.16, 0.84, 0.34, 1);
+  /* trust-class tones. RESTRICTED requires the Gate, so it wears the Gate
+     register (amber-law member); observe is a stone residue to fold into
+     the stone scale in a later surface slice. */
   --tc-observe: #6b7a90;
-  --tc-safe: #86bcff;
-  --tc-restricted: #ffb24d;
-  --tc-forbidden: #ff6b6b;
+  --tc-safe: var(--jarvis-shell-accent);
+  --tc-restricted: var(--jarvis-shell-gate);
+  --tc-forbidden: var(--jarvis-shell-blocked);
   --gx: 32%;
   --gy: 26%;
   position: relative;
@@ -283,7 +297,15 @@
   letter-spacing: 0.04em;
 }
 
+/* AP-J1 amber law: `warn` alone is calm attention — bright ink, meaning
+   carried by the value TEXT ("(down)", "(failover)", "2 pending"), not by
+   alarm color. Amber is reserved for the Gate: only a `warn gate` pill
+   (the GATE pill's pending state) may wear it. */
 .jcc-pill-value.warn {
+  color: var(--jcc-txt);
+}
+
+.jcc-pill-value.warn.gate {
   color: var(--jcc-amber);
 }
 
@@ -782,6 +804,10 @@
 }
 
 /* Working and Audit grid */
+/* AP-J1 shell contract — GATE CENTRALITY: the Human Gate column is the
+   WIDEST flexible track (1.35fr vs the chat's 1fr; the rails are fixed), so
+   the gate is the visual center of gravity of the working shell. The grid
+   carries data-shell-center="human-gate"; do not demote the gate column. */
 .jcc-work-grid {
   flex: 1;
   min-height: 0;
@@ -884,7 +910,16 @@
   display: block;
   height: 100%;
   border-radius: 1vmin;
-  background: linear-gradient(90deg, var(--jcc-green), var(--jcc-blue));
+  /* AP-J1 color law: progress is ALWAYS the emerald->sky base range (the
+     same fill the WorkflowBox bars use) — never amber, never the accent. */
+  background: linear-gradient(
+    90deg,
+    var(--jarvis-color-emerald-local),
+    var(--jarvis-color-sky-focus)
+  );
+  /* measured fill — the motion-vocabulary beat; zeroed by reduced motion */
+  transition: width var(--jarvis-motion-vocab-fill)
+    var(--jarvis-motion-easing-smooth);
 }
 
 .jcc-chat,
@@ -969,7 +1004,7 @@
   background: rgba(120, 160, 220, 0.04);
   color: var(--jcc-faint);
   font-size: 0.86rem;
-  font-style: italic;
+  /* roman: italic is the model-voice register, not a hint style (AP-J1) */
 }
 
 .jcc-gate {
@@ -1113,21 +1148,15 @@
   box-shadow: 0 0 2vmin rgba(80, 220, 150, 0.3);
 }
 
-.jcc-gate.resolved .jcc-live-prop {
-  display: none;
-}
-
+/* AP-J1: proposal/verdict presence is React-conditional (the AnimatePresence
+   swap driven by the motion vocabulary) — no display toggling here. */
 .jcc-resolved-msg {
-  display: none;
-}
-
-.jcc-gate.resolved .jcc-resolved-msg {
   display: grid;
   flex: 1;
   place-items: center;
   color: #cfe;
   font-size: 1.3rem;
-  font-style: italic;
+  /* roman: the verdict is SYSTEM FACT, not model voice (AP-J1 registers) */
   text-align: center;
 }
 
@@ -1579,6 +1608,48 @@
 
 .jcc-voice-row span:last-child {
   color: var(--jcc-cyan);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Type registers — AP-J1 (capstone design language).
+ * Model-GENERATED text is visibly distinct from system fact: the model-voice
+ * register is italic light serif; system fact is roman. Elements opt in via
+ * data-text-register. Registers documented in
+ * docs/capstone/JARVIS_DESIGN_LANGUAGE.md.
+ * ------------------------------------------------------------------------ */
+
+.jcc [data-text-register="model-voice"] {
+  font-family: var(--jarvis-text-voice-font);
+  font-style: var(--jarvis-text-voice-style);
+  font-weight: var(--jarvis-text-voice-weight);
+}
+
+.jcc [data-text-register="system-fact"] {
+  font-style: normal;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Honest-state family — AP-J1 (capstone design language).
+ * live / derived / synthetic / empty / unavailable markers render CALM:
+ * mono, roman, stone inks. The system being honest about its limits is
+ * correct behavior — these states never wear error styling (no blocked-red,
+ * no gate-amber, no alarm). Asserted by tests/working/design-language.test.tsx.
+ * ------------------------------------------------------------------------ */
+
+.jcc-honest {
+  font-family: var(--jarvis-font-mono);
+  font-style: normal;
+}
+
+.jcc-honest[data-honest-state="live"],
+.jcc-honest[data-honest-state="derived"] {
+  color: var(--jcc-dim);
+}
+
+.jcc-honest[data-honest-state="synthetic"],
+.jcc-honest[data-honest-state="empty"],
+.jcc-honest[data-honest-state="unavailable"] {
+  color: var(--jcc-faint);
 }
 
 @keyframes jcc-drift1 {

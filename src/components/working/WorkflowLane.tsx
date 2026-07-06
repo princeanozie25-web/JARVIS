@@ -200,7 +200,11 @@ export function WorkflowLane({
       </div>
       <div className="wfl-body">
         {model.projects.length === 0 ? (
-          <p className="wfl-empty">No projects yet.</p>
+          // AP-J1 honest-state family: an empty lane is honest, not an error —
+          // it renders calm (stone ink), never error-styled.
+          <p className="wfl-empty jcc-honest" data-honest-state="empty">
+            No projects yet.
+          </p>
         ) : (
           model.projects.map((project) => (
             <ProjectBlock

@@ -27,6 +27,42 @@
   --jarvis-color-review: var(--jarvis-color-amber-review);
   --jarvis-color-blocked: var(--jarvis-color-rose-blocked);
 
+  /* Shell registers — AP-J1 (capstone design language).
+     The cockpit shell renders on deep glass, where several base roles need a
+     lifted (higher-luminance) rendering to stay readable. Each register below
+     is the DOCUMENTED on-glass rendering of exactly one base role — not a new
+     palette. The cockpit's former private palette (--jcc-*) now resolves
+     through these registers, so there is ONE token system.
+
+     Color law (mirrors the charter discipline in JARVIS's palette):
+     - AMBER (--jarvis-shell-gate*) is reserved for Gate-touching state and
+       means nothing else. If an element is amber, it touches the Human Gate.
+     - Progress fills use the emerald->sky range (base tokens, no register).
+     - THE one interactive accent is --jarvis-shell-accent (sky-focus
+       register): selection, focus, active navigation.
+     - Neutrals (surface/ink/stone) carry everything else. */
+  --jarvis-shell-ink: #eaf1fb; /* ink on glass */
+  --jarvis-shell-ink-dim: #8ea4c4; /* stone: secondary ink */
+  --jarvis-shell-ink-faint: #46587a; /* stone: metadata ink */
+  --jarvis-shell-accent: #86bcff; /* sky-focus register — THE interactive accent */
+  --jarvis-shell-signal: #5fe6e0; /* cyan-signal register — live/evidence, read-only */
+  --jarvis-shell-signal-deep: #1ea7a0; /* cyan-signal register (deep end) */
+  --jarvis-shell-gate: #ffb24d; /* amber-review register — GATE-TOUCHING ONLY */
+  --jarvis-shell-gate-deep: #ff8a1f; /* amber-review register (deep end) — GATE ONLY */
+  --jarvis-shell-blocked: #ff6b6b; /* rose-blocked register */
+  --jarvis-shell-glass: linear-gradient(
+    150deg,
+    rgba(120, 160, 220, 0.09),
+    rgba(30, 52, 96, 0.05)
+  ); /* panel register — glass surface */
+  --jarvis-shell-glass-hi: linear-gradient(
+    150deg,
+    rgba(140, 180, 235, 0.15),
+    rgba(40, 64, 112, 0.07)
+  ); /* panel-soft register — raised glass */
+  --jarvis-shell-stroke: rgba(150, 190, 255, 0.13); /* border-subtle register */
+  --jarvis-shell-stroke-hi: rgba(170, 205, 255, 0.26); /* border-subtle register (focused) */
+
   /* Theme — UI.7 default (blue). ThemeProvider overrides these on the root. */
   --color-theme-primary: var(--jarvis-color-sky-focus);
   --color-theme-glow: rgba(56, 189, 248, 0.32);
@@ -136,6 +172,13 @@
   --jarvis-text-label-letter-spacing: 0.16em;
   --jarvis-text-label-text-transform: uppercase;
 
+  /* Model-voice register — AP-J1. Model-GENERATED text renders visibly
+     distinct from system fact: italic light serif. System fact is roman.
+     Applied via data-text-register="model-voice" | "system-fact". */
+  --jarvis-text-voice-font: var(--jarvis-font-display);
+  --jarvis-text-voice-style: italic;
+  --jarvis-text-voice-weight: 300;
+
   /* Motion — UI.5 */
   --jarvis-motion-duration-instant: 0ms;
   --jarvis-motion-duration-fast: 120ms;
@@ -148,6 +191,17 @@
   --jarvis-motion-easing-enter: cubic-bezier(0, 0, 0.2, 1);
   --jarvis-motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
   --jarvis-motion-easing-orbit: cubic-bezier(0.45, 0, 0.55, 1);
+
+  /* Motion vocabulary — AP-J1. The capstone's SMALL set of intentional
+     motions; surfaces pull from these, they do not invent ad-hoc animation.
+     Motion marks GOVERNANCE MOMENTS. JS mirror + framer-motion primitives:
+     src/lib/design-language/motion-vocabulary.ts (kept in lockstep by test).
+     Budget: core beats 120-240ms; ONE signature moment (gate resolution)
+     may settle to 480ms. Everything else is still. */
+  --jarvis-motion-vocab-fade: 160ms; /* calm fade — state/panel transitions */
+  --jarvis-motion-vocab-fill: 240ms; /* measured fill — rollup/progress bars (non-bouncy) */
+  --jarvis-motion-vocab-gate: 220ms; /* gate resolution core beat */
+  --jarvis-motion-vocab-gate-settle: 480ms; /* the ONE cinematic allowance: gate afterglow */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -157,6 +211,10 @@
     --jarvis-motion-duration-normal: 0ms;
     --jarvis-motion-duration-slow: 0ms;
     --jarvis-motion-duration-cinematic: 0ms;
+    --jarvis-motion-vocab-fade: 0ms;
+    --jarvis-motion-vocab-fill: 0ms;
+    --jarvis-motion-vocab-gate: 0ms;
+    --jarvis-motion-vocab-gate-settle: 0ms;
     --jarvis-pulse-duration-short: 0ms;
     --jarvis-pulse-duration-normal: 0ms;
     --jarvis-pulse-duration-long: 0ms;

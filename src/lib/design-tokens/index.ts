@@ -43,6 +43,37 @@ export const jarvisSemanticColors = {
 
 export type JarvisSemanticColor = keyof typeof jarvisSemanticColors;
 
+/**
+ * Shell registers — AP-J1 (capstone design language).
+ *
+ * The cockpit shell renders on deep glass; each register is the documented
+ * on-glass rendering of exactly ONE base role — not a parallel palette. The
+ * cockpit's former private `--jcc-*` palette resolves through these.
+ *
+ * Color law: amber registers (`gate`, `gate-deep`) are reserved for
+ * Gate-touching state; progress uses the emerald->sky base range; the one
+ * interactive accent is `accent`; neutrals carry everything else.
+ */
+export const jarvisShellRegisters = {
+  ink: { value: "#eaf1fb", roleOf: "ink" },
+  "ink-dim": { value: "#8ea4c4", roleOf: "ink" },
+  "ink-faint": { value: "#46587a", roleOf: "ink" },
+  accent: { value: "#86bcff", roleOf: "sky-focus" },
+  signal: { value: "#5fe6e0", roleOf: "cyan-signal" },
+  "signal-deep": { value: "#1ea7a0", roleOf: "cyan-signal" },
+  gate: { value: "#ffb24d", roleOf: "amber-review" },
+  "gate-deep": { value: "#ff8a1f", roleOf: "amber-review" },
+  blocked: { value: "#ff6b6b", roleOf: "rose-blocked" },
+} as const satisfies Record<string, { value: string; roleOf: JarvisColorRole }>;
+
+export type JarvisShellRegister = keyof typeof jarvisShellRegisters;
+
+/** The only shell registers allowed to render amber — the Gate hue. */
+export const AMBER_SHELL_REGISTERS = [
+  "gate",
+  "gate-deep",
+] as const satisfies readonly JarvisShellRegister[];
+
 export const jarvisRadii = {
   sm: "4px",
   md: "6px",
@@ -84,6 +115,7 @@ export interface JarvisTextStyle {
   lineHeight: string;
   letterSpacing: string;
   textTransform?: "uppercase";
+  fontStyle?: "italic";
 }
 
 export const jarvisTypography = {
@@ -122,6 +154,16 @@ export const jarvisTypography = {
     lineHeight: "1.2",
     letterSpacing: "0.16em",
     textTransform: "uppercase",
+  },
+  /** Model-voice register — AP-J1: model-GENERATED text renders visibly
+   * distinct from system fact (italic light serif; fact stays roman). */
+  voice: {
+    fontFamily: jarvisFonts.display,
+    fontSize: "1rem",
+    fontWeight: 300,
+    lineHeight: "1.5",
+    letterSpacing: "normal",
+    fontStyle: "italic",
   },
 } as const satisfies Record<string, JarvisTextStyle>;
 
@@ -209,6 +251,7 @@ export const jarvisPulse = {
 export const jarvisTokens = {
   colors: jarvisColors,
   semanticColors: jarvisSemanticColors,
+  shellRegisters: jarvisShellRegisters,
   radii: jarvisRadii,
   space: jarvisSpace,
   shadows: jarvisShadows,

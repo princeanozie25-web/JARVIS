@@ -3,7 +3,18 @@
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+
 import { CommandCenterNav } from "@/components/command-center/CommandCenterNav";
+import {
+  honestStateOf,
+  type HonestState,
+} from "@/lib/design-language/honest-states";
+import {
+  calmFade,
+  gateArrival,
+  gateResolve,
+} from "@/lib/design-language/motion-vocabulary";
 import { WorkflowLane } from "@/components/working/WorkflowLane";
 import {
   WorkflowMap,
@@ -162,15 +173,14 @@ export function WorkingCockpit({
 
   useBackgroundParallax(depthRef);
 
+  // AP-J1 motion vocabulary: reduced-motion disables every vocabulary beat
+  // (the CSS side zeroes --jarvis-motion-vocab-* in the same media query).
+  const reducedMotion = useReducedMotion() ?? false;
+
+  // gateArrival — a proposal pointing at the Gate (vocabulary beat; amber
+  // afterglow is legal here because the gate panel IS the Gate).
   function flashGate() {
-    gateRef.current?.animate(
-      [
-        { boxShadow: "0 0 6vmin rgba(255,150,40,.10)" },
-        { boxShadow: "0 0 9vmin rgba(255,170,70,.50)" },
-        { boxShadow: "0 0 6vmin rgba(255,150,40,.10)" },
-      ],
-      { duration: 900 },
-    );
+    gateArrival(gateRef.current, { reduced: reducedMotion });
   }
 
   function resolveGate(approved: boolean) {
@@ -228,20 +238,32 @@ export function WorkingCockpit({
         <header className="jcc-topbar">
           <div className="jcc-brand">
             <div className="jcc-brand-name">Working Cockpit</div>
-            <div className="jcc-brand-sub">SYNTHETIC - METADATA-ONLY</div>
+            {/* structural provenance marker — stays in the header, above the
+                fold, styled by the calm honest-state family (never error) */}
+            <div
+              className="jcc-brand-sub jcc-honest"
+              data-honest-state="synthetic"
+            >
+              SYNTHETIC - METADATA-ONLY
+            </div>
           </div>
           <CommandCenterNav active="working" />
           <div className="jcc-pills">
             <StatusPill label="PIPELINE" value="no-int" />
+            {/* amber law: the GATE pill is the ONLY pill allowed to wear
+                amber when it warns — it IS the Gate's pending state. */}
             <StatusPill
               label="GATE"
               value={pending === 0 ? "clear" : `${pending} pending`}
               warn={pending > 0}
+              tone="gate"
             />
             <StatusPill label="MODEL" value="local-primary" />
             {/* E-020: real probed engine status, honestly labelled — LIVE
                 when probes ran (even if they say "down"), SYNTHETIC when the
-                Phase 22 default picture is all we have. */}
+                Phase 22 default picture is all we have. AP-J1: a degraded
+                voice stack is honest health, not a Gate state — its warn
+                renders calm (bright ink), never amber, never error-styled. */}
             <StatusPill
               label={`TTS - ${voice.provenance.toUpperCase()}`}
               value={voicePillValue(voice)}
@@ -250,12 +272,15 @@ export function WorkingCockpit({
                 (voice.failed_over ||
                   !voice.providers.some((entry) => entry.ok))
               }
+              honestState={voice.provenance}
             />
             <StatusPill label="CLOCK" value={clock} />
           </div>
         </header>
 
-        <div className="jcc-work-grid">
+        {/* AP-J1 shell contract: the Human Gate column is the widest flexible
+            track — the visual center of gravity (see .jcc-work-grid). */}
+        <div className="jcc-work-grid" data-shell-center="human-gate">
           <div className="jcc-col">
             <LeftRail phase={model.phase} />
           </div>
@@ -311,42 +336,69 @@ export function WorkingCockpit({
                 <span className="jcc-gate-only">GATED</span>
               </div>
               <div className="jcc-gate-body">
-                <div className="jcc-live-prop">
-                  <div className="jcc-prop-meta">
-                    {model.proposal.id} - {model.proposal.kind} -{" "}
-                    {model.proposal.tier} - {model.proposal.trustClass}
-                  </div>
-                  <div className="jcc-prop-title">{model.proposal.title}</div>
-                  <div className="jcc-diff">
-                    <div className="h">DRY-RUN DIFF</div>
-                    <div className="d">
-                      {model.proposal.diffBefore} <b>-&gt;</b>{" "}
-                      {model.proposal.diffAfter}
-                    </div>
-                  </div>
-                  <div className="jcc-gate-foot">
-                    <div className="jcc-expiry">
-                      EXPIRES IN <span>{model.proposal.expiresIn}</span>
-                    </div>
-                    <div className="jcc-buttons">
-                      <button
-                        type="button"
-                        className="jcc-btn deny wc-gate-deny"
-                        onClick={() => resolveGate(false)}
-                      >
-                        DENY
-                      </button>
-                      <button
-                        type="button"
-                        className="jcc-btn approve wc-gate-approve"
-                        onClick={() => resolveGate(true)}
-                      >
-                        APPROVE
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="jcc-resolved-msg">{resolved}</div>
+                {/* AP-J1 signature beat: the ONE cinematic moment is the Gate
+                    resolving — the proposal leaves on a calm fade, the verdict
+                    materializes on the gateResolve beat. Reduced motion makes
+                    both instant. The verdict is SYSTEM FACT (roman register). */}
+                <AnimatePresence mode="wait" initial={false}>
+                  {resolved === null ? (
+                    <motion.div
+                      key="proposal"
+                      className="jcc-live-prop"
+                      variants={calmFade(reducedMotion)}
+                      initial={false}
+                      animate="visible"
+                      exit="exit"
+                    >
+                      <div className="jcc-prop-meta">
+                        {model.proposal.id} - {model.proposal.kind} -{" "}
+                        {model.proposal.tier} - {model.proposal.trustClass}
+                      </div>
+                      <div className="jcc-prop-title">
+                        {model.proposal.title}
+                      </div>
+                      <div className="jcc-diff">
+                        <div className="h">DRY-RUN DIFF</div>
+                        <div className="d">
+                          {model.proposal.diffBefore} <b>-&gt;</b>{" "}
+                          {model.proposal.diffAfter}
+                        </div>
+                      </div>
+                      <div className="jcc-gate-foot">
+                        <div className="jcc-expiry">
+                          EXPIRES IN <span>{model.proposal.expiresIn}</span>
+                        </div>
+                        <div className="jcc-buttons">
+                          <button
+                            type="button"
+                            className="jcc-btn deny wc-gate-deny"
+                            onClick={() => resolveGate(false)}
+                          >
+                            DENY
+                          </button>
+                          <button
+                            type="button"
+                            className="jcc-btn approve wc-gate-approve"
+                            onClick={() => resolveGate(true)}
+                          >
+                            APPROVE
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="verdict"
+                      className="jcc-resolved-msg"
+                      data-text-register="system-fact"
+                      variants={gateResolve(reducedMotion)}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      {resolved}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </section>
           </div>
@@ -365,7 +417,10 @@ export function WorkingCockpit({
             laneProvenance === "live" ? "live" : "synthetic"
           }
         >
-          <div className="jcc-label wfl-provenance">
+          <div
+            className="jcc-label wfl-provenance jcc-honest"
+            data-honest-state={honestStateOf(laneProvenance)}
+          >
             WORKFLOWBOX - {laneProvenance.toUpperCase()}
           </div>
           <WorkflowLane model={lane} actions={laneActions} />
@@ -453,6 +508,7 @@ function ContextPanels({
         <PanelHead
           label="ROOM"
           tag={`OBSERVABILITY - ${model.provenance.room.toUpperCase()}`}
+          honestState={model.provenance.room}
         />
         <div className="jcc-context-body">
           {model.room.map((device) => (
@@ -484,6 +540,7 @@ function ContextPanels({
         <PanelHead
           label="COST"
           tag={`OBSERVABILITY - ${model.provenance.cost.toUpperCase()}`}
+          honestState={model.provenance.cost}
         />
         <div className="jcc-context-body">
           <div className="jcc-cost-grid">
@@ -511,6 +568,7 @@ function ContextPanels({
         <PanelHead
           label="ACTIVITY"
           tag={`OBSERVABILITY - ${model.provenance.activity.toUpperCase()}`}
+          honestState={model.provenance.activity}
         />
         <div className="jcc-context-body" style={{ overflowY: "auto" }}>
           <div className="jcc-activity">
@@ -529,11 +587,22 @@ function ContextPanels({
   );
 }
 
-function PanelHead({ label, tag }: Readonly<{ label: string; tag?: string }>) {
+function PanelHead({
+  label,
+  tag,
+  honestState,
+}: Readonly<{ label: string; tag?: string; honestState?: HonestState }>) {
   return (
     <div className="jcc-panel-head">
       <span className="jcc-label">{label}</span>
-      {tag ? <span className="jcc-tag">{tag}</span> : null}
+      {tag ? (
+        <span
+          className={`jcc-tag${honestState ? " jcc-honest" : ""}`}
+          {...(honestState ? { "data-honest-state": honestState } : {})}
+        >
+          {tag}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -543,10 +612,18 @@ function Message({
   text,
   jarvis = false,
 }: Readonly<{ who: string; text: string; jarvis?: boolean }>) {
+  // AP-J1 type registers: JARVIS's reply is model-GENERATED text, so it
+  // renders in the model-voice register (italic light serif) — visibly
+  // distinct from system fact, which stays roman.
   return (
     <div className={`jcc-msg ${jarvis ? "jarvis" : ""}`}>
       <div className="who">{who}</div>
-      <div className="txt">{text}</div>
+      <div
+        className="txt"
+        {...(jarvis ? { "data-text-register": "model-voice" } : {})}
+      >
+        {text}
+      </div>
     </div>
   );
 }
@@ -568,11 +645,34 @@ function StatusPill({
   label,
   value,
   warn = false,
-}: Readonly<{ label: string; value: string; warn?: boolean }>) {
+  tone = "neutral",
+  honestState,
+}: Readonly<{
+  label: string;
+  value: string;
+  warn?: boolean;
+  /** AP-J1 amber law: only a `gate` pill may render its warn state amber —
+   * amber means Gate-touching and nothing else. Neutral warns stay calm
+   * (bright ink); the value TEXT carries the meaning. */
+  tone?: "gate" | "neutral";
+  /** Marks the pill's label as an honest-state marker (calm family). */
+  honestState?: HonestState;
+}>) {
   return (
     <div className="jcc-pill">
-      <div className="jcc-pill-key">{label}</div>
-      <div className={`jcc-pill-value ${warn ? "warn" : ""}`}>{value}</div>
+      <div
+        className={`jcc-pill-key${honestState ? " jcc-honest" : ""}`}
+        {...(honestState ? { "data-honest-state": honestState } : {})}
+      >
+        {label}
+      </div>
+      <div
+        className={`jcc-pill-value ${warn ? "warn" : ""}${
+          warn && tone === "gate" ? " gate" : ""
+        }`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
