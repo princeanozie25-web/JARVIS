@@ -1,7 +1,11 @@
 /* SHOWCASE — the cinematic field's DOM layers.
  * Consumes the app's real font variables and mirrors the token DNA
  * (amber = Gate, emerald->sky = life, cyan = evidence, stone = structure).
- * This surface is display-only; nothing here styles an affordance. */
+ * This surface is display-only; nothing here styles an affordance.
+ *
+ * Typography law (R3 polish): cinematic AND legible — every label sits on a
+ * quiet glass pill; chrome (masthead/badge/chips) stacks above the engine's
+ * labels (z 50 vs the Html layer's zIndexRange cap of 40). */
 
 .showcase-stage {
   position: fixed;
@@ -28,7 +32,7 @@
   position: absolute;
   top: 2.4rem;
   left: 2.8rem;
-  z-index: 3;
+  z-index: 50;
   pointer-events: none;
   max-width: 34rem;
 }
@@ -47,9 +51,10 @@
   font-family: var(--font-jarvis-display), serif;
   font-weight: 300;
   font-size: clamp(0.85rem, 1.4vw, 1.05rem);
-  color: #8ea4c4; /* --jarvis-shell-ink-dim */
+  color: #a9bcd8;
   margin: 0.55rem 0 0;
   line-height: 1.5;
+  text-shadow: 0 1px 14px rgba(2, 6, 23, 0.95);
 }
 
 /* --- the honest-data badge (truth is the flex) --------------------------- */
@@ -58,27 +63,27 @@
   position: absolute;
   top: 2.4rem;
   right: 2.8rem;
-  z-index: 3;
+  z-index: 50;
   pointer-events: none;
   text-align: right;
   font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .showcase-badge-state {
   display: inline-block;
-  padding: 0.35rem 0.7rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(95, 230, 224, 0.35); /* signal stroke */
+  border: 1px solid rgba(95, 230, 224, 0.4); /* signal stroke */
   color: #5fe6e0; /* --jarvis-shell-signal */
-  background: rgba(2, 6, 23, 0.55);
-  backdrop-filter: blur(6px);
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
 }
 
 .showcase-badge-state[data-live="true"] {
-  border-color: rgba(110, 231, 183, 0.45);
+  border-color: rgba(110, 231, 183, 0.5);
   color: #6ee7b7; /* --jarvis-color-emerald-local */
 }
 
@@ -86,48 +91,52 @@
   list-style: none;
   margin: 0.6rem 0 0;
   padding: 0;
-  color: #46587a; /* --jarvis-shell-ink-faint */
+  color: #6d82a6;
   letter-spacing: 0.08em;
-  line-height: 1.7;
+  line-height: 1.75;
+  font-size: 0.6rem;
 }
 
 /* --- telemetry chips ------------------------------------------------------ */
 
 .showcase-chips {
   position: absolute;
-  bottom: 2rem;
+  bottom: 2.2rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 3;
+  z-index: 50;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   pointer-events: none;
-  max-width: 80vw;
+  max-width: 84vw;
 }
 
 .showcase-chip {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.5rem;
-  padding: 0.32rem 0.75rem;
+  gap: 0.55rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid rgba(142, 164, 196, 0.22);
-  background: rgba(2, 6, 23, 0.55);
-  backdrop-filter: blur(6px);
+  border: 1px solid rgba(142, 164, 196, 0.3);
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(8px);
   font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.64rem;
-  letter-spacing: 0.1em;
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
+  box-shadow: 0 2px 18px rgba(2, 6, 23, 0.6);
 }
 
 .showcase-chip-label {
-  color: #46587a;
+  color: #6d82a6;
   text-transform: uppercase;
+  font-size: 0.62rem;
 }
 
 .showcase-chip-value {
-  color: #eaf1fb;
+  color: #f4f8ff;
+  font-weight: 500;
 }
 
 /* --- node labels (shared by the engine's Html layer and the fallback) ---- */
@@ -140,37 +149,88 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.14rem;
+  gap: 0.16rem;
   text-align: center;
   pointer-events: none;
   user-select: none;
+  padding: 0.32rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.62);
+  border: 1px solid rgba(142, 164, 196, 0.13);
+  backdrop-filter: blur(5px);
 }
 
 .showcase-label-title {
   font-family: var(--font-jarvis-display), serif;
-  font-weight: 400;
-  font-size: 0.82rem;
-  color: #eaf1fb;
-  text-shadow: 0 1px 12px rgba(2, 6, 23, 0.95);
-  white-space: nowrap;
-}
-
-.showcase-label-hero .showcase-label-title {
   font-weight: 500;
-  font-size: 1.35rem;
-  letter-spacing: 0.02em;
+  font-size: 1.02rem;
+  color: #f4f8ff;
+  text-shadow: 0 1px 10px rgba(2, 6, 23, 0.95);
+  white-space: nowrap;
 }
 
 .showcase-label-sub {
   font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.55rem;
-  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: #8ea4c4;
+  color: #a9bcd8;
   white-space: nowrap;
 }
 
+/* The measured fill inside a label — the terminal-card read: a REAL rollup
+ * percent rendered as a thin emerald->sky bar (the one progress range). */
+.showcase-label-bar {
+  display: block;
+  width: 100%;
+  min-width: 5.5rem;
+  height: 3px;
+  margin-top: 0.28rem;
+  border-radius: 2px;
+  background: rgba(142, 164, 196, 0.18);
+  overflow: hidden;
+}
+
+.showcase-label-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6ee7b7, #38bdf8);
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.7);
+}
+
+/* Depth hierarchy in type: ring-3 leaves recede in the typography too. */
+.showcase-label[data-showcase-ring="3"] {
+  background: rgba(2, 6, 23, 0.45);
+  border-color: rgba(142, 164, 196, 0.08);
+}
+
+.showcase-label[data-showcase-ring="3"] .showcase-label-title {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: #c7d5ea;
+}
+
+.showcase-label[data-showcase-ring="3"] .showcase-label-sub {
+  font-size: 0.56rem;
+  color: #6d82a6;
+}
+
+/* The hero (the Gate) dominates the type hierarchy. */
+.showcase-label-hero {
+  background: rgba(2, 6, 23, 0.55);
+  border-color: rgba(255, 178, 77, 0.22);
+  padding: 0.45rem 1.05rem;
+}
+
+.showcase-label-hero .showcase-label-title {
+  font-weight: 500;
+  font-size: 1.9rem;
+  letter-spacing: 0.02em;
+}
+
 .showcase-label-hero .showcase-label-sub {
+  font-size: 0.72rem;
   color: #ffb24d; /* the Gate's chip stays amber — Gate-touching only */
 }
 

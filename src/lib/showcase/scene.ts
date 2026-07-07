@@ -84,6 +84,10 @@ export interface ScenePosition {
 
 export const RING_RADIUS_STEP = 2.6;
 
+/** Vertical squish of the orbital ellipse — shared with the renderer so ring
+ * inference from a position never drifts from the layout that produced it. */
+export const ELLIPSE_Y = 0.56;
+
 /** Deterministic hash -> [0,1) for stable per-node depth jitter. */
 function unitHash(id: string): number {
   let h = 2166136261;
@@ -120,7 +124,7 @@ export function layoutScene(scene: SceneDescription): readonly ScenePosition[] {
       positions.push({
         id: node.id,
         x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius * 0.62, // gentle ellipse — cinematic tilt
+        y: Math.sin(angle) * radius * ELLIPSE_Y, // gentle ellipse — cinematic tilt; flat enough that bottom-ring labels clear the chip strip
         z: (unitHash(node.id) - 0.5) * 1.8,
       });
     }
