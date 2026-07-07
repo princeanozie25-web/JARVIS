@@ -1,0 +1,307 @@
+/* AP-J4 — pipeline / operating-map surface, in the AP-J1 language.
+ *
+ * COLOR LAW (inherited, not restated): amber (--jarvis-shell-gate /
+ * --jarvis-color-pipeline-human-gate) may appear ONLY in gate-scoped
+ * selectors — a stage awaiting the Gate, a pending checkpoint, the gated
+ * approach edge. Pipeline flow/progress rides the emerald->sky range.
+ * Denied-by-design edges use the blocked register. Neutrals (glass /
+ * stroke / ink tiers) carry all structure.
+ *
+ * MOTION LAW: the only durations in this file are the shared vocabulary
+ * (--jarvis-motion-vocab-fade for calm state fades,
+ * --jarvis-motion-vocab-fill for flow-tone fills). No @keyframes. The
+ * vocabulary variables collapse to 0ms under prefers-reduced-motion in
+ * tokens.css; the media block below is defense in depth. */
+
+.plm-root {
+  position: relative;
+  display: grid;
+  gap: 2rem;
+  width: 100%;
+  padding: 1.5rem;
+  background: var(--jarvis-shell-glass);
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-radius: 14px;
+  color: var(--jarvis-shell-ink);
+}
+
+@media (min-width: 640px) {
+  .plm-root {
+    padding: 2.5rem;
+  }
+}
+
+/* --- registers -------------------------------------------------------- */
+
+.plm-eyebrow {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-ink-dim);
+}
+
+.plm-title {
+  font-family: var(--jarvis-font-display), serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--jarvis-shell-ink);
+}
+
+.plm-body {
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  color: var(--jarvis-shell-ink-dim);
+  max-width: 65ch;
+}
+
+.plm-data {
+  font-family: var(--jarvis-font-display), serif;
+  color: var(--jarvis-shell-ink);
+}
+
+.plm-mono {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-ink-faint);
+}
+
+/* --- honest-state chips (calm, never error-styled) -------------------- */
+
+.plm-honest {
+  justify-self: start;
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-ink-faint);
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  transition: opacity var(--jarvis-motion-vocab-fade) ease;
+}
+
+.plm-honest[data-honest-state="live"] {
+  color: var(--jarvis-shell-signal-deep);
+  border-color: color-mix(in srgb, var(--jarvis-shell-signal) 30%, transparent);
+}
+
+/* --- the operating map (SVG) ------------------------------------------ */
+
+.plm-map {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 1rem;
+  background: var(--jarvis-shell-glass-hi);
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-radius: 12px;
+}
+
+.plm-map svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.plm-node-box {
+  fill: color-mix(in srgb, var(--jarvis-shell-ink) 4%, transparent);
+  stroke: var(--jarvis-shell-stroke-hi);
+  stroke-width: 1;
+  transition: stroke var(--jarvis-motion-vocab-fade) ease;
+}
+
+/* The Gate's position in the flow — the one amber structure on the map. */
+.plm-node-box--gate {
+  fill: color-mix(in srgb, var(--jarvis-shell-gate) 7%, transparent);
+  stroke: var(--jarvis-shell-gate);
+  stroke-width: 1.5;
+}
+
+.plm-node-glyph {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 13px;
+  fill: var(--jarvis-shell-ink-dim);
+}
+
+.plm-node-id {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--jarvis-shell-ink-faint);
+}
+
+.plm-node-label {
+  font-family: var(--jarvis-font-display), serif;
+  font-size: 14px;
+  fill: var(--jarvis-shell-ink);
+}
+
+.plm-node-status {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: var(--jarvis-shell-ink-faint);
+}
+
+.plm-node-tag--gate {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  fill: var(--jarvis-shell-gate);
+}
+
+/* Flow edges ride the emerald->sky gradient (url(#plm-flow), defined in
+ * the SVG defs from the same base tokens). Stroke-tone changes fill at
+ * the measured rate. */
+.plm-edge-flow {
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+  transition: stroke var(--jarvis-motion-vocab-fill) ease;
+}
+
+/* The gated approach — the pending checkpoint INTO the Gate. Amber,
+ * because this state is Gate-touching. */
+.plm-edge-gated {
+  stroke: var(--jarvis-shell-gate);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+  transition: stroke var(--jarvis-motion-vocab-fill) ease;
+}
+
+.plm-checkpoint--gate {
+  fill: var(--jarvis-shell-gate);
+}
+
+/* Forbidden shortcuts — denied by design, drawn under the spine. */
+.plm-edge-forbidden {
+  stroke: var(--jarvis-shell-blocked);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 4;
+  fill: none;
+  opacity: 0.75;
+}
+
+.plm-forbidden-mark {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--jarvis-shell-blocked);
+}
+
+/* --- stage cards ------------------------------------------------------- */
+
+.plm-card {
+  position: relative;
+  padding: 1rem;
+  background: var(--jarvis-shell-glass);
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-radius: 12px;
+  transition: border-color var(--jarvis-motion-vocab-fade) ease;
+}
+
+.plm-card--gate {
+  background: var(--jarvis-shell-glass-hi);
+  border: 1.5px solid var(--jarvis-shell-gate);
+}
+
+.plm-badge--gate {
+  position: absolute;
+  top: -0.7rem;
+  left: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0.55rem;
+  background: var(--jarvis-color-panel);
+  border: 1px solid var(--jarvis-shell-gate);
+  border-radius: 999px;
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-gate);
+}
+
+/* --- transition rows / tiles ------------------------------------------- */
+
+.plm-row {
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  background: var(--jarvis-shell-glass);
+  transition: border-color var(--jarvis-motion-vocab-fade) ease;
+}
+
+.plm-row--ok {
+  border-left-color: var(--jarvis-color-local);
+}
+
+.plm-row--gated {
+  border-left-color: var(--jarvis-shell-gate);
+}
+
+.plm-row--blocked {
+  border-color: color-mix(
+    in srgb,
+    var(--jarvis-shell-blocked) 40%,
+    transparent
+  );
+  border-left-width: 4px;
+  padding: 0.75rem;
+}
+
+.plm-mark-ok {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jarvis-color-local);
+}
+
+.plm-mark-gate {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-gate);
+}
+
+.plm-mark-blocked {
+  font-family: var(--jarvis-font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jarvis-shell-blocked);
+}
+
+.plm-tile {
+  border: 1px solid var(--jarvis-shell-stroke);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  background: var(--jarvis-shell-glass);
+}
+
+/* --- defense in depth --------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .plm-root,
+  .plm-root *,
+  .plm-root *::before,
+  .plm-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

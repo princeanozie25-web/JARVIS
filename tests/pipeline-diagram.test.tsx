@@ -51,14 +51,17 @@ describe("UI.10 PipelineDiagram — stage rendering", () => {
 });
 
 describe("UI.10 PipelineDiagram — stage palette via tokens", () => {
-  it("anchors every stage color to a --jarvis-color-pipeline-* token", () => {
+  it("anchors gate emphasis to the human-gate token; non-gate stages stay neutral (AP-J4 amber law)", () => {
     const markup = html();
-    expect(markup).toContain("var(--jarvis-color-pipeline-capture)");
-    expect(markup).toContain("var(--jarvis-color-pipeline-classify)");
-    expect(markup).toContain("var(--jarvis-color-pipeline-route)");
     expect(markup).toContain("var(--jarvis-color-pipeline-human-gate)");
-    expect(markup).toContain("var(--jarvis-color-pipeline-execute)");
-    expect(markup).toContain("var(--jarvis-color-pipeline-audit)");
+    // The per-stage identity palette was retired by the AP-J4 language
+    // pass: amber marks Gate-touching state only, flow rides emerald->sky,
+    // everything else is neutral structure.
+    expect(markup).not.toContain("var(--jarvis-color-pipeline-capture)");
+    expect(markup).not.toContain("var(--jarvis-color-pipeline-classify)");
+    expect(markup).not.toContain("var(--jarvis-color-pipeline-route)");
+    expect(markup).not.toContain("var(--jarvis-color-pipeline-execute)");
+    expect(markup).not.toContain("var(--jarvis-color-pipeline-audit)");
   });
 
   it("does not hardcode the violet hex literal in the rendered diagram", () => {

@@ -9,76 +9,48 @@ import {
   type PipelineLaneViewModel,
 } from "@/lib/pipeline-visualization/lane-registry";
 
+import "./pipeline-map.css";
+
 /**
- * PipelineDiagram — UI.10.
+ * PipelineDiagram — UI.10, restyled to the capstone language (AP-J4).
  *
- * Read-only governance visualization that turns the existing Phase
- * 21K pipeline contract into a visual story:
+ * Read-only governance visualization of the Phase 21K pipeline contract:
  *
  *   Capture → Classify → Route → Human Gate → Execute → Audit
  *
- * Stage palette and emphasis follow the UI Polish Plan:
+ * Color law (inherited from AP-J1, not restated): amber marks
+ * Gate-touching state ONLY — the Human Gate's position in the flow, the
+ * pending checkpoint on its approach, gated transitions. Flow/progress
+ * rides the emerald→sky range. Forbidden edges use the blocked register.
+ * Everything else is neutral structure.
  *
- *   capture        cyan signal
- *   classify       sky focus
- *   route          violet
- *   human_gate     amber review — strongest emphasis, obvious gate
- *   execute        emerald local
- *   audit          neutral ink
- *
- * Forbidden edges are immediately visible in rose. Graphify
- * compatibility is preserved because the diagram consumes the
- * existing `buildPipelineViewModel()` output unchanged.
+ * The map is SVG (addressable, testable), never canvas. Provenance is
+ * honest per panel: this topology is the DESIGN — the map of the rules —
+ * never presented as runtime traffic (real-vs-synthetic ledger, Surface 5).
  *
  * No buttons. No actions. No controls. Read-only.
  */
 
-interface StagePalette {
-  cssVar: string;
-  semanticToken:
-    | "signal"
-    | "focus"
-    | "local"
-    | "review"
-    | "blocked"
-    | "ink"
-    | "violet";
-  glyph: string;
-}
+const STAGE_GLYPH: Readonly<Record<PipelineStageId, string>> = Object.freeze({
+  capture: "●",
+  classify: "◆",
+  route: "◇",
+  human_gate: "■",
+  execute: "▲",
+  audit: "○",
+});
 
-const STAGE_PALETTE: Readonly<Record<PipelineStageId, StagePalette>> =
-  Object.freeze({
-    capture: {
-      cssVar: "var(--jarvis-color-pipeline-capture)",
-      semanticToken: "signal",
-      glyph: "●",
-    },
-    classify: {
-      cssVar: "var(--jarvis-color-pipeline-classify)",
-      semanticToken: "focus",
-      glyph: "◆",
-    },
-    route: {
-      cssVar: "var(--jarvis-color-pipeline-route)",
-      semanticToken: "violet",
-      glyph: "◇",
-    },
-    human_gate: {
-      cssVar: "var(--jarvis-color-pipeline-human-gate)",
-      semanticToken: "review",
-      glyph: "■",
-    },
-    execute: {
-      cssVar: "var(--jarvis-color-pipeline-execute)",
-      semanticToken: "local",
-      glyph: "▲",
-    },
-    audit: {
-      cssVar: "var(--jarvis-color-pipeline-audit)",
-      semanticToken: "ink",
-      glyph: "○",
-    },
-  });
+/* Map geometry — deterministic, derived from stage order alone. */
+const MAP_W = 1240;
+const MAP_H = 300;
+const NODE_W = 168;
+const NODE_H = 96;
+const NODE_Y = 46;
+const NODE_GAP = (MAP_W - 40 * 2 - NODE_W * 6) / 5;
+
+function nodeX(index: number): number {
+  return 40 + index * (NODE_W + NODE_GAP);
+}
 
 export interface PipelineDiagramProps {
   viewModel?: PipelineViewModel;
@@ -94,6 +66,9 @@ export function PipelineDiagram({
   );
   const allowedAndGatedEdges = viewModel.edges.filter(
     (edge) => edge.policy !== "forbidden",
+  );
+  const stageIndex = new Map(
+    viewModel.stages.map((stage, index) => [stage.stage_id, index]),
   );
 
   return (
@@ -111,50 +86,193 @@ export function PipelineDiagram({
       data-mutation-affordance-present={String(
         viewModel.mutation_affordance_present,
       )}
-      className="relative grid w-full gap-8 overflow-hidden border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(8,18,38,0.82),rgba(2,6,23,0.96))] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:p-10"
+      className="plm-root"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-70 motion-safe:animate-[cc-atmosphere-drift_22s_linear_infinite] [background:radial-gradient(circle_at_20%_8%,rgba(34,211,238,0.18),transparent_32%),radial-gradient(circle_at_72%_20%,rgba(245,158,11,0.12),transparent_26%),linear-gradient(90deg,rgba(34,211,238,0.05)_1px,transparent_1px),linear-gradient(rgba(34,211,238,0.04)_1px,transparent_1px)] [background-size:auto,auto,48px_48px,48px_48px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/70 to-transparent opacity-80 blur-[1px]"
-      />
-      <header data-pipeline-region="header" className="relative grid gap-3">
-        <p className="font-mono text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-signal">
-          Pipeline visualization · read only
-        </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          {viewModel.title}
-        </h1>
-        <p className="max-w-prose text-sm leading-6 text-ink/70">
-          {viewModel.subtitle}
+      <header data-pipeline-region="header" className="grid gap-3">
+        <p className="plm-eyebrow">Pipeline visualization · read only</p>
+        <h1 className="plm-title">{viewModel.title}</h1>
+        <p className="plm-body">{viewModel.subtitle}</p>
+        <p
+          className="jcc-honest plm-honest"
+          data-honest-state="synthetic"
+          data-panel-provenance="synthetic-by-design"
+        >
+          governance topology — the map of the rules, not runtime traffic
         </p>
       </header>
+
+      <figure
+        data-pipeline-region="map"
+        aria-label="Operating map — the six-stage governed spine"
+        className="plm-map"
+      >
+        <svg
+          data-pipeline-map="true"
+          viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+          role="img"
+          aria-label="Capture flows to Classify, Route, the Human Gate, Execute, then Audit. Forbidden shortcuts are drawn severed beneath the spine."
+        >
+          <defs>
+            {/* userSpaceOnUse: a bbox gradient on a horizontal line has a
+                zero-height box and vanishes; this also lets the whole spine
+                read emerald at capture -> sky at audit */}
+            <linearGradient
+              id="plm-flow"
+              gradientUnits="userSpaceOnUse"
+              x1="0"
+              y1="0"
+              x2={MAP_W}
+              y2="0"
+            >
+              <stop offset="0%" stopColor="var(--jarvis-color-emerald-local)" />
+              <stop offset="100%" stopColor="var(--jarvis-color-sky-focus)" />
+            </linearGradient>
+          </defs>
+
+          {/* spine edges — flow in emerald→sky; the approach INTO the Gate
+              is the pending checkpoint, so that hop alone is amber */}
+          {viewModel.stages.slice(0, -1).map((stage, index) => {
+            const next = viewModel.stages[index + 1];
+            const gateTouching = next.stage_id === "human_gate";
+            const x1 = nodeX(index) + NODE_W;
+            const x2 = nodeX(index + 1);
+            const y = NODE_Y + NODE_H / 2;
+            return (
+              <g
+                key={`spine-${stage.stage_id}`}
+                data-map-edge={`${stage.stage_id}--${next.stage_id}`}
+                data-map-edge-tone={gateTouching ? "gate" : "flow"}
+              >
+                <line
+                  className={gateTouching ? "plm-edge-gated" : "plm-edge-flow"}
+                  stroke={gateTouching ? undefined : "url(#plm-flow)"}
+                  x1={x1}
+                  y1={y}
+                  x2={x2 - 8}
+                  y2={y}
+                />
+                <polygon
+                  className={gateTouching ? "plm-checkpoint--gate" : undefined}
+                  fill={gateTouching ? undefined : "url(#plm-flow)"}
+                  stroke="none"
+                  points={`${x2 - 8},${y - 5} ${x2},${y} ${x2 - 8},${y + 5}`}
+                />
+                {gateTouching && (
+                  <rect
+                    data-map-checkpoint="pending-approval"
+                    className="plm-checkpoint--gate"
+                    x={(x1 + x2) / 2 - 5}
+                    y={y - 5}
+                    width={10}
+                    height={10}
+                    transform={`rotate(45 ${(x1 + x2) / 2} ${y})`}
+                  />
+                )}
+              </g>
+            );
+          })}
+
+          {/* stage nodes — neutral structure; the Gate alone wears amber */}
+          {viewModel.stages.map((stage, index) => {
+            const isGate = stage.stage_id === "human_gate";
+            const x = nodeX(index);
+            return (
+              <g
+                key={stage.stage_id}
+                data-map-stage={stage.stage_id}
+                data-map-tone={isGate ? "gate" : "calm"}
+              >
+                <rect
+                  className={
+                    isGate ? "plm-node-box plm-node-box--gate" : "plm-node-box"
+                  }
+                  x={x}
+                  y={NODE_Y}
+                  width={NODE_W}
+                  height={NODE_H}
+                  rx={10}
+                />
+                <text className="plm-node-glyph" x={x + 14} y={NODE_Y + 26}>
+                  {STAGE_GLYPH[stage.stage_id]}
+                </text>
+                <text className="plm-node-id" x={x + 34} y={NODE_Y + 25}>
+                  {stage.stage_id.replaceAll("_", " ")}
+                </text>
+                <text className="plm-node-label" x={x + 14} y={NODE_Y + 52}>
+                  {stage.label}
+                </text>
+                <text className="plm-node-status" x={x + 14} y={NODE_Y + 74}>
+                  {stage.status.replaceAll("_", " ")}
+                </text>
+                {isGate && (
+                  <text
+                    className="plm-node-tag--gate"
+                    x={x + NODE_W - 14}
+                    y={NODE_Y + 25}
+                    textAnchor="end"
+                  >
+                    GATE
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* forbidden shortcuts — severed beneath the spine */}
+          {forbiddenEdges.map((edge, index) => {
+            const fromIdx = stageIndex.get(edge.from_stage_id) ?? 0;
+            const toIdx = stageIndex.get(edge.to_stage_id) ?? 0;
+            const x1 = nodeX(fromIdx) + NODE_W / 2;
+            const x2 = nodeX(toIdx) + NODE_W / 2;
+            const yBase = NODE_Y + NODE_H;
+            const dip = 44 + index * 22;
+            const midX = (x1 + x2) / 2;
+            return (
+              <g
+                key={edge.transition_id}
+                data-map-forbidden={edge.transition_id}
+              >
+                <path
+                  className="plm-edge-forbidden"
+                  d={`M ${x1} ${yBase} Q ${midX} ${yBase + dip * 2} ${x2} ${yBase}`}
+                />
+                <text
+                  className="plm-forbidden-mark"
+                  x={midX}
+                  y={yBase + dip + 4}
+                  textAnchor="middle"
+                >
+                  ✕
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        <figcaption
+          className="jcc-honest plm-honest"
+          data-honest-state="synthetic"
+        >
+          static governance topology (phase 21k contract) — positions and edges
+          are the design, not live traffic
+        </figcaption>
+      </figure>
 
       <ol
         aria-label="Pipeline stages"
         data-pipeline-region="stages"
-        className="relative grid gap-4 lg:grid-cols-6"
+        className="grid gap-4 lg:grid-cols-6"
       >
         {viewModel.stages.map((stage) => (
-          <PipelineStageCard
-            key={stage.stage_id}
-            stage={stage}
-            palette={STAGE_PALETTE[stage.stage_id]}
-          />
+          <PipelineStageCard key={stage.stage_id} stage={stage} />
         ))}
       </ol>
 
       <section
         aria-label="Allowed and gated transitions"
         data-pipeline-region="transitions-allowed"
-        className="relative grid gap-3"
+        className="grid gap-3"
       >
-        <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
-          Designed transitions
-        </p>
+        <p className="plm-eyebrow">Designed transitions</p>
         <ul className="grid gap-2">
           {allowedAndGatedEdges.map((edge) => (
             <li
@@ -162,33 +280,24 @@ export function PipelineDiagram({
               data-transition-id={edge.transition_id}
               data-transition-policy={edge.policy}
               data-transition-treatment={edge.visual_treatment}
-              className="group flex flex-col gap-1 border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 text-sm text-ink/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.12)] backdrop-blur-md transition duration-500 hover:border-cyan-200/30 hover:bg-cyan-200/[0.07] sm:flex-row sm:items-center sm:justify-between"
-              style={{
-                borderLeftColor:
-                  edge.policy === "gated"
-                    ? "var(--jarvis-color-pipeline-human-gate)"
-                    : "var(--jarvis-color-pipeline-execute)",
-                borderLeftWidth: "3px",
-              }}
+              className={`flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between ${
+                edge.policy === "gated"
+                  ? "plm-row plm-row--gated"
+                  : "plm-row plm-row--ok"
+              }`}
             >
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="font-mono text-[0.7rem] uppercase tracking-[0.18em]"
-                  style={{
-                    color:
-                      edge.policy === "gated"
-                        ? "var(--jarvis-color-pipeline-human-gate)"
-                        : "var(--jarvis-color-pipeline-execute)",
-                  }}
+                  className={
+                    edge.policy === "gated" ? "plm-mark-gate" : "plm-mark-ok"
+                  }
                 >
                   {edge.policy === "gated" ? "[ GATE ]" : "[ OK ]"}
                 </span>
-                <span className="font-display text-sm transition duration-500 group-hover:text-white">
-                  {edge.label}
-                </span>
+                <span className="plm-data text-sm">{edge.label}</span>
               </div>
-              <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-ink/50">
+              <span className="plm-mono">
                 {edge.from_stage_id} → {edge.to_stage_id}
               </span>
             </li>
@@ -199,17 +308,17 @@ export function PipelineDiagram({
       <section
         aria-label="Forbidden transitions"
         data-pipeline-region="transitions-forbidden"
-        className="relative grid gap-3"
+        className="grid gap-3"
       >
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="inline-flex h-6 w-6 items-center justify-center border border-blocked font-mono text-xs font-bold"
+            className="plm-mark-blocked inline-flex h-6 w-6 items-center justify-center"
             style={{ color: "var(--jarvis-color-pipeline-forbidden)" }}
           >
             ✕
           </span>
-          <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-blocked">
+          <p className="plm-mark-blocked">
             Forbidden edges · disabled by design
           </p>
         </div>
@@ -221,30 +330,26 @@ export function PipelineDiagram({
               data-transition-policy={edge.policy}
               data-transition-treatment={edge.visual_treatment}
               data-forbidden="true"
-              className="relative border border-blocked/50 bg-rose-950/[0.18] px-3 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_44px_rgba(244,63,94,0.12)] backdrop-blur-md"
+              className="plm-row plm-row--blocked text-sm"
               style={{
-                borderLeftWidth: "4px",
                 borderLeftColor: "var(--jarvis-color-pipeline-forbidden)",
               }}
             >
               <div className="flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-blocked"
-                >
+                <span aria-hidden="true" className="plm-mark-blocked">
                   [ BLOCKED ]
                 </span>
                 <span className="sr-only jarvis-sr-only">
                   Forbidden transition:
                 </span>
-                <span className="font-display text-sm text-ink line-through decoration-blocked decoration-2">
+                <span className="plm-data text-sm line-through">
                   {edge.label}
                 </span>
               </div>
-              <p className="mt-2 text-[0.75rem] leading-5 text-ink/65">
+              <p className="plm-body mt-2 text-[0.75rem] leading-5">
                 {edge.governance_note}
               </p>
-              <p className="mt-1 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-blocked/80">
+              <p className="plm-mono mt-1">
                 {edge.from_stage_id} ⇸ {edge.to_stage_id} · disabled
               </p>
             </li>
@@ -255,26 +360,20 @@ export function PipelineDiagram({
       <section
         aria-label="Governance boundaries"
         data-pipeline-region="boundaries"
-        className="relative grid gap-3"
+        className="grid gap-3"
       >
-        <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
-          Governance boundaries
-        </p>
+        <p className="plm-eyebrow">Governance boundaries</p>
         <ul className="grid gap-2 sm:grid-cols-2">
           {viewModel.boundaries.map((boundary) => (
             <li
               key={boundary.boundary_id}
               data-boundary-id={boundary.boundary_id}
               data-boundary-kind={boundary.kind}
-              className="border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.1)] backdrop-blur-md"
+              className="plm-tile"
             >
-              <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-ink/55">
-                {boundary.kind.replaceAll("_", " ")}
-              </p>
-              <p className="mt-1 font-display text-sm text-ink">
-                {boundary.label}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-ink/65">
+              <p className="plm-mono">{boundary.kind.replaceAll("_", " ")}</p>
+              <p className="plm-data mt-1 text-sm">{boundary.label}</p>
+              <p className="plm-body mt-1 text-xs leading-5">
                 {boundary.description}
               </p>
             </li>
@@ -298,11 +397,19 @@ export function PipelineDiagram({
           data-mutation-affordance-present={String(
             lane.mutation_affordance_present,
           )}
-          className="relative grid gap-3"
+          className="grid gap-3"
         >
-          <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-signal">
-            {lane.label} activity
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="plm-eyebrow">{lane.label} activity</p>
+            <p
+              className="jcc-honest plm-honest"
+              data-honest-state={lane.synthetic_fixture ? "synthetic" : "live"}
+            >
+              {lane.synthetic_fixture
+                ? "synthetic — deterministic fixture, labelled by design"
+                : "live — metadata-only projection"}
+            </p>
+          </div>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {lane.items.map((item) => (
               <li
@@ -316,24 +423,19 @@ export function PipelineDiagram({
                 data-executable-payload-included={String(
                   item.executable_payload_included,
                 )}
-                className="border border-cyan-100/10 bg-cyan-100/[0.045] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_38px_rgba(8,47,73,0.1)] backdrop-blur-md"
+                className="plm-tile"
               >
-                <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-ink/55">
+                <p className="plm-mono">
                   {[item.tier, item.state].filter(Boolean).join(" · ")}
                 </p>
-                <p className="mt-1 font-display text-sm text-ink">
-                  {item.label}
-                </p>
+                <p className="plm-data mt-1 text-sm">{item.label}</p>
               </li>
             ))}
           </ul>
         </section>
       ))}
 
-      <footer
-        data-pipeline-region="footer"
-        className="relative font-mono text-[0.62rem] uppercase tracking-[0.24em] text-ink/45"
-      >
+      <footer data-pipeline-region="footer" className="plm-mono">
         Read-only governance surface. No execute, no approve, no mutate.
       </footer>
     </section>
@@ -342,10 +444,9 @@ export function PipelineDiagram({
 
 interface StageCardProps {
   stage: PipelineViewModel["stages"][number];
-  palette: StagePalette;
 }
 
-function PipelineStageCard({ stage, palette }: StageCardProps) {
+function PipelineStageCard({ stage }: StageCardProps) {
   const isGate = stage.stage_id === "human_gate";
   return (
     <li
@@ -354,34 +455,13 @@ function PipelineStageCard({ stage, palette }: StageCardProps) {
       data-approval-gate-visible={String(stage.approval_gate_visible)}
       data-execution-boundary-visible={String(stage.execution_boundary_visible)}
       data-emphasis={isGate ? "primary" : "secondary"}
-      className={`group relative overflow-hidden border bg-[linear-gradient(145deg,rgba(15,23,42,0.7),rgba(2,6,23,0.9))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_18px_55px_rgba(0,0,0,0.32)] backdrop-blur-xl transition duration-700 hover:-translate-y-1 hover:bg-cyan-100/[0.065] ${
-        isGate ? "lg:col-span-2 lg:scale-[1.04] border-2" : "border"
-      }`}
-      style={{
-        borderColor: palette.cssVar,
-        boxShadow: isGate
-          ? `0 0 0 ${"var(--jarvis-focus-ring-width)"} ${palette.cssVar}, 0 0 90px rgba(245,158,11,0.28), 0 24px 80px rgba(2,6,23,0.72)`
-          : `0 0 34px color-mix(in srgb, ${palette.cssVar} 14%, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`,
-      }}
+      className={isGate ? "plm-card plm-card--gate lg:col-span-2" : "plm-card"}
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-50"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rotate-45 opacity-20 blur-2xl transition duration-700 group-hover:opacity-35 motion-safe:animate-pulse"
-        style={{ backgroundColor: palette.cssVar }}
-      />
       {isGate && (
         <span
           aria-label="Approval boundary — strongest emphasis"
           data-emphasis-badge="human-gate"
-          className="absolute -top-3 left-3 inline-flex items-center gap-2 border bg-panel px-2 py-0.5 font-mono text-[0.6rem] font-bold uppercase tracking-[0.22em]"
-          style={{
-            color: palette.cssVar,
-            borderColor: palette.cssVar,
-          }}
+          className="plm-badge--gate"
         >
           <span aria-hidden="true">■</span>
           Approval gate
@@ -390,40 +470,42 @@ function PipelineStageCard({ stage, palette }: StageCardProps) {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="font-mono text-base"
-          style={{ color: palette.cssVar }}
+          className="plm-mono text-base"
+          style={
+            isGate
+              ? { color: "var(--jarvis-color-pipeline-human-gate)" }
+              : undefined
+          }
         >
-          {palette.glyph}
+          {STAGE_GLYPH[stage.stage_id]}
         </span>
         <p
-          className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em]"
-          style={{ color: palette.cssVar }}
+          className="plm-mono"
+          style={
+            isGate
+              ? { color: "var(--jarvis-color-pipeline-human-gate)" }
+              : undefined
+          }
         >
           {stage.stage_id.replaceAll("_", " ")}
         </p>
       </div>
-      <h2
-        className={`mt-2 font-display font-semibold text-ink ${
-          isGate ? "text-2xl" : "text-lg"
-        }`}
-      >
+      <h2 className={`plm-data mt-2 ${isGate ? "text-2xl" : "text-lg"}`}>
         {stage.label}
       </h2>
-      <p className="mt-2 text-xs leading-5 text-ink/72">{stage.description}</p>
+      <p className="plm-body mt-2 text-xs leading-5">{stage.description}</p>
       <dl className="mt-3 grid gap-1 text-[0.7rem]">
         <div className="flex items-center justify-between">
-          <dt className="font-mono uppercase tracking-[0.16em] text-ink/50">
-            Status
-          </dt>
-          <dd className="text-ink">{stage.status.replaceAll("_", " ")}</dd>
+          <dt className="plm-mono">Status</dt>
+          <dd className="plm-data text-xs">
+            {stage.status.replaceAll("_", " ")}
+          </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="font-mono uppercase tracking-[0.16em] text-ink/50">
-            Approval gate
-          </dt>
+          <dt className="plm-mono">Approval gate</dt>
           <dd
             data-approval-required={String(stage.approval_gate_visible)}
-            className="text-ink"
+            className="plm-data text-xs"
             style={{
               color: stage.approval_gate_visible
                 ? "var(--jarvis-color-pipeline-human-gate)"
@@ -434,24 +516,17 @@ function PipelineStageCard({ stage, palette }: StageCardProps) {
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="font-mono uppercase tracking-[0.16em] text-ink/50">
-            Execution boundary
-          </dt>
+          <dt className="plm-mono">Execution boundary</dt>
           <dd
             data-execution-enabled={String(stage.execution_boundary_visible)}
-            className="text-ink"
-            style={{
-              color: stage.execution_boundary_visible
-                ? "var(--jarvis-color-pipeline-execute)"
-                : undefined,
-            }}
+            className="plm-data text-xs"
           >
             {stage.execution_boundary_visible ? "Visible" : "—"}
           </dd>
         </div>
       </dl>
       {stage.governance_notes.length > 0 && (
-        <ul className="mt-3 grid gap-1 text-[0.68rem] text-ink/60">
+        <ul className="plm-body mt-3 grid gap-1 text-[0.68rem]">
           {stage.governance_notes.map((note) => (
             <li key={note}>· {note}</li>
           ))}
@@ -460,10 +535,12 @@ function PipelineStageCard({ stage, palette }: StageCardProps) {
       {stage.disabled_feature_notes.length > 0 && (
         <ul
           aria-label={`${stage.label} disabled features`}
-          className="mt-2 grid gap-1 border border-blocked/30 bg-rose-950/[0.22] px-2 py-1 text-[0.66rem] text-blocked"
+          className="plm-row plm-row--blocked mt-2 grid gap-1 text-[0.66rem]"
         >
           {stage.disabled_feature_notes.map((note) => (
-            <li key={note}>✕ {note}</li>
+            <li key={note} className="plm-mark-blocked normal-case">
+              ✕ {note}
+            </li>
           ))}
         </ul>
       )}
