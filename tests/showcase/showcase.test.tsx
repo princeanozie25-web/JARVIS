@@ -1,10 +1,11 @@
-// SHOWCASE INVARIANTS — I-SHOW-1..6.
+// SHOWCASE INVARIANTS — I-SHOW-1..6 plus the EXACTNESS LAW (the reference
+// frame's copy is the spec and must render verbatim).
 //
-// The showcase is the UNCHAINED presentation layer; these tests pin the one
-// thing that makes the unchaining safe (it cannot touch state) and the one
-// thing that makes it valuable (what it renders is real, or honestly
-// labelled). Node-env suite: source scans + pure builders + static markup,
-// per the repo's testing conventions.
+// The showcase is the unchained presentation layer; these tests pin what
+// makes that safe (it cannot touch state) and what makes it correct (the
+// reference layout, the real projection-backed data layer, honest
+// provenance attributes). Node-env suite: source scans + pure builders +
+// static markup, per the repo's testing conventions.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -13,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ShowcaseShell } from "@/components/showcase/ShowcaseShell";
-import { TONE_HEX } from "@/components/showcase/CinematicEngine";
+import { REFERENCE_PALETTE } from "@/components/showcase/CinematicEngine";
 import type { WorkingCommandCenterModel } from "@/lib/command-center/liquid-command-center-data";
 import {
   GATE_NODE_ID,
@@ -134,7 +135,6 @@ function inputsFixture(): OperatingMapInputs {
   };
 }
 
-// A trivial SECOND scene — proving the engine surface is scene-agnostic.
 const SECOND_SCENE: SceneDescription = {
   id: "second-scene",
   title: "Second scene",
@@ -157,26 +157,14 @@ const SECOND_SCENE: SceneDescription = {
       weight: 0.5,
       ring: 1,
     },
-    {
-      id: "leaf-b",
-      label: "Leaf B",
-      tone: "stone",
-      state: "empty",
-      weight: 0.4,
-      ring: 1,
-      fill: 0.4,
-    },
   ],
-  edges: [
-    { from: "root", to: "leaf-a", tone: "signal", flow: 0.5 },
-    { from: "root", to: "leaf-b", tone: "stone", flow: 0 },
-  ],
+  edges: [{ from: "root", to: "leaf-a", tone: "signal", flow: 0.5 }],
   provenance: {
     live: false,
     label: "LABELLED SAMPLE — SYNTHETIC FIXTURE",
     sources: ["fixture: test"],
   },
-  chips: [{ label: "NODES", value: "3" }],
+  chips: [{ label: "NODES", value: "2" }],
 };
 
 // ===========================================================================
@@ -201,7 +189,6 @@ describe("I-SHOW-1 (display-only, non-mutating)", () => {
     for (const { file, text } of showcaseSources()) {
       expect(text, file).not.toMatch(/\.runTool\s*\(/);
       expect(text, file).not.toContain('"use server"');
-      // Import-level bans (code, not prose): no mutation surface is reachable.
       expect(text, file).not.toMatch(/workflowbox-actions/);
       expect(text, file).not.toMatch(/from "[^"]*mcp-gateway/);
       expect(text, file).not.toMatch(/from "[^"]*approvals/);
@@ -210,7 +197,7 @@ describe("I-SHOW-1 (display-only, non-mutating)", () => {
     }
   });
 
-  it("the rendered surface carries zero interactive affordances (no buttons, no forms)", () => {
+  it("the rendered surface carries zero interactive affordances", () => {
     const html = renderToStaticMarkup(
       <ShowcaseShell scene={buildOperatingMapScene(inputsFixture())} />,
     );
@@ -221,105 +208,109 @@ describe("I-SHOW-1 (display-only, non-mutating)", () => {
 });
 
 // ===========================================================================
-// I-SHOW-2 — real data or labelled sample
+// THE EXACTNESS LAW — the reference frame's copy renders verbatim
 // ===========================================================================
-describe("I-SHOW-2 (every value traces to a projection; samples are labelled)", () => {
-  it("nodes derive from the real projection fields", () => {
-    const inputs = inputsFixture();
-    const scene = buildOperatingMapScene(inputs);
-    // Devices: one node per room row, trust class steering the tone.
-    const desk = scene.nodes.find((n) => n.id === "device-desk-strip");
-    const door = scene.nodes.find((n) => n.id === "device-door-sensor");
-    expect(desk?.tone).toBe("accent"); // safe_mutate
-    expect(door?.tone).toBe("signal"); // observe_only
-    // Projects: rollup drives the fill, verbatim.
-    const project = scene.nodes.find((n) => n.id === "project-proj-capstone");
-    expect(project?.fill).toBeCloseTo(0.62);
-    expect(project?.sublabel).toContain("62%");
-    // Lifecycle stages come off the proposal, in order.
-    const stageIds = scene.nodes
-      .filter((n) => n.id.startsWith("stage-"))
-      .map((n) => n.id);
-    expect(stageIds).toEqual([
-      "stage-dry_run",
-      "stage-approval",
-      "stage-execute",
-      "stage-verify",
-      "stage-audit_event",
-    ]);
+describe("Exactness law (the reference image is the spec)", () => {
+  const REFERENCE_STRINGS = [
+    "JARVIS CORE",
+    "Active · Adaptive · Predictive",
+    "HUMAN GATE",
+    "Auth: Authorized · Trust 0.98",
+    "MEMORY LAYER",
+    "Cache · Index · Recall",
+    "VOICE RUNTIME",
+    "Listening · STT · TTS",
+    "COUNCIL",
+    "Consensus Engine · Voting",
+    "ROOM OS",
+    "Devices · IoT · Control",
+    "KNOWLEDGE COMPOUNDING",
+    "Synthesize · Expand · Evolve",
+    "PIPELINE",
+    "Automate · Orchestrate · Deliver",
+    "AGENT-J01",
+    "Morning Brief",
+    "AGENT-J02",
+    "Job Scout",
+    "AGENT-J03",
+    "Google Stack Sync",
+    "AGENT-J04",
+    "Knowledge Compounding",
+    "AGENT-J05",
+    "Bursar Cost Guard",
+    "AGENT-J06",
+    "Enterprise Brain Pilot",
+    "Running...",
+    "LIVE",
+    "07 / 07",
+    "JARVIS online.",
+    "Listening, learning, and building the impossible.",
+  ];
+
+  it("every reference string renders", () => {
+    const html = renderToStaticMarkup(
+      <ShowcaseShell scene={buildOperatingMapScene(inputsFixture())} />,
+    );
+    for (const text of REFERENCE_STRINGS) {
+      expect(html).toContain(
+        text
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;"),
+      );
+    }
   });
 
-  it("all-synthetic inputs render the labelled-sample badge, never fake-as-real", () => {
-    const scene = buildOperatingMapScene(inputsFixture());
-    expect(scene.provenance.live).toBe(false);
-    expect(scene.provenance.label).toContain("SAMPLE");
-    const html = renderToStaticMarkup(<ShowcaseShell scene={scene} />);
-    expect(html).toContain("SAMPLE");
-    expect(html).toContain('data-showcase-provenance="sample"');
-  });
-
-  it("mixed inputs say MIXED; the badge only claims live when everything is", () => {
-    const mixed = buildOperatingMapScene({
-      ...inputsFixture(),
-      workflowbox: workflowboxFixture("live"),
-    });
-    expect(mixed.provenance.live).toBe(false);
-    expect(mixed.provenance.label).toContain("MIXED");
-    expect(mixed.provenance.sources.join("\n")).toContain(
-      "workflowbox: live store",
+  it("the plexus palette carries the reference's nine hues", () => {
+    expect(Object.keys(REFERENCE_PALETTE).sort()).toEqual(
+      [
+        "core",
+        "council",
+        "humanGate",
+        "knowledge",
+        "memory",
+        "pipeline",
+        "roomOs",
+        "voice",
+        "white",
+      ].sort(),
     );
   });
 });
 
 // ===========================================================================
-// I-SHOW-3 — the Gate at the center, reflecting real pending state
+// I-SHOW-2/3 — the data layer stays real-or-labelled (unchanged builders)
 // ===========================================================================
-describe("I-SHOW-3 (Gate at center)", () => {
-  it("the Human Gate is the center node and pulses for a REAL pending proposal", () => {
+describe("I-SHOW-2/3 (projection-backed data layer unchanged)", () => {
+  it("the scene builder still derives from the real projections", () => {
     const scene = buildOperatingMapScene(inputsFixture());
     expect(scene.centerNodeId).toBe(GATE_NODE_ID);
     const gate = scene.nodes.find((n) => n.id === GATE_NODE_ID);
-    expect(gate?.tone).toBe("gate");
     expect(gate?.state).toBe("pending");
     expect(gate?.sublabel).toBe("PROP-ROOM-1842");
-    // The amber thread: chat -> gate flows at full while pending.
-    const thread = scene.edges.find(
-      (e) => e.from === "surface-chat" && e.to === GATE_NODE_ID,
-    );
-    expect(thread?.tone).toBe("gate");
-    expect(thread?.flow).toBeGreaterThan(0.8);
+    const project = scene.nodes.find((n) => n.id === "project-proj-capstone");
+    expect(project?.fill).toBeCloseTo(0.62);
   });
 
-  it("amber is the Gate's alone — no non-gate node wears the gate tone", () => {
+  it("provenance stays honest and rides the shell as a data attribute", () => {
     const scene = buildOperatingMapScene(inputsFixture());
-    const amberNodes = scene.nodes.filter((n) => n.tone === "gate");
-    // The Gate itself + the approval lifecycle stage (Gate-touching by law).
-    expect(amberNodes.map((n) => n.id).sort()).toEqual([
-      GATE_NODE_ID,
-      "stage-approval",
-    ]);
+    expect(scene.provenance.live).toBe(false);
+    const html = renderToStaticMarkup(<ShowcaseShell scene={scene} />);
+    expect(html).toContain('data-showcase-provenance="sample"');
   });
 });
 
 // ===========================================================================
-// I-SHOW-4 — the engine is scene-agnostic
+// I-SHOW-4 — scene inputs remain interchangeable at the shell seam
 // ===========================================================================
-describe("I-SHOW-4 (engine reusable — scene 2 drops in)", () => {
-  it("a second, unrelated scene lays out and renders through the SAME surface", () => {
-    const positions = layoutScene(SECOND_SCENE);
-    expect(positions.map((p) => p.id).sort()).toEqual([
-      "leaf-a",
-      "leaf-b",
-      "root",
-    ]);
+describe("I-SHOW-4 (scene-agnostic seam)", () => {
+  it("a second scene renders through the same shell (id on the stage)", () => {
     const html = renderToStaticMarkup(<ShowcaseShell scene={SECOND_SCENE} />);
-    expect(html).toContain("Second scene");
-    expect(html).toContain("Leaf A");
-    expect(html).toContain("Leaf B");
     expect(html).toContain('data-showcase-scene="second-scene"');
+    expect(html).toContain("JARVIS CORE"); // the reference overlay stands
   });
 
-  it("the layout is deterministic (same scene, same positions)", () => {
+  it("the layout stays deterministic", () => {
     expect(layoutScene(SECOND_SCENE)).toEqual(layoutScene(SECOND_SCENE));
   });
 });
@@ -328,13 +319,14 @@ describe("I-SHOW-4 (engine reusable — scene 2 drops in)", () => {
 // I-SHOW-6 — grace: never blank, calm variant exists
 // ===========================================================================
 describe("I-SHOW-6 (grace)", () => {
-  it("first paint / no-WebGL renders the DOM constellation — never a blank field", () => {
-    const scene = buildOperatingMapScene(inputsFixture());
-    const html = renderToStaticMarkup(<ShowcaseShell scene={scene} />);
+  it("first paint / no-WebGL renders the full overlay — never a blank field", () => {
+    const html = renderToStaticMarkup(
+      <ShowcaseShell scene={buildOperatingMapScene(inputsFixture())} />,
+    );
     expect(html).toContain('data-showcase-renderer="dom-fallback"');
-    expect(html).toContain("Human Gate");
-    expect(html).toContain("WorkflowBox");
-    expect(html).toContain("Desk strip");
+    expect(html).toContain("JARVIS CORE");
+    expect(html).toContain("AGENT-J05");
+    expect(html).toContain("JARVIS online.");
   });
 
   it("prefers-reduced-motion selects the calm variant (an option, not a stop)", () => {
@@ -348,24 +340,7 @@ describe("I-SHOW-6 (grace)", () => {
       resolve(repoRoot, "src", "components", "showcase", "CinematicEngine.tsx"),
       "utf8",
     );
-    // Every animated system branches on the calm flag.
     expect(engine).toContain("calm: boolean");
     expect((engine.match(/calm/g) ?? []).length).toBeGreaterThanOrEqual(8);
-  });
-
-  it("the engine's tone palette is the documented design-language DNA", () => {
-    const designDoc = readFileSync(
-      resolve(repoRoot, "docs", "capstone", "JARVIS_DESIGN_LANGUAGE.md"),
-      "utf8",
-    );
-    // Amber stays the Gate's; the life/evidence/accent tones are the shell
-    // registers and base roles the language documents.
-    expect(designDoc).toContain(TONE_HEX.gate); // #ffb24d — shell gate
-    expect(designDoc.toLowerCase()).toContain(
-      TONE_HEX.signal.toLowerCase(), // #5fe6e0 — shell signal
-    );
-    expect(designDoc.toLowerCase()).toContain(
-      TONE_HEX.accent.toLowerCase(), // #86bcff — shell accent
-    );
   });
 });

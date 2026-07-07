@@ -1,25 +1,19 @@
 "use client";
 
-// SHOWCASE SHELL — the presentation frame around the cinematic engine.
+// SHOWCASE SHELL — the reference frame, replicated exactly: the multi-color
+// plexus burst behind a fixed overlay of terminal-style region boxes, six
+// AGENT-J cards with progress bars, the LIVE counter chip, and the boot line.
+// The copy below is VERBATIM from the reference image — it is the spec.
 //
-// Display-only (I-SHOW-1): no buttons, no approve/deny, no mutation path —
-// the ONLY interactive surface is pointer parallax inside the engine. The
-// shell owns the honest layers around the spectacle:
-//   * the HONEST-DATA BADGE (I-SHOW-2): says plainly whether the field is
-//     live governed state or a labelled sample, per source;
-//   * the mono telemetry chips (real cost/gate/voice values);
-//   * graceful degradation (I-SHOW-6): SSR / WebGL-less / first paint render
-//     a static DOM constellation from the SAME layout math, so the scene is
-//     never blank and never blocks; prefers-reduced-motion selects the calm
-//     engine variant (still rendered, nothing travels).
+// Display-only (I-SHOW-1): no buttons, no approve/deny, no mutation path.
+// The page still builds the real projection-backed scene (the data layer is
+// unchanged); the shell renders the reference layout and carries the scene's
+// provenance on data attributes. Reduced motion selects the calm engine
+// variant; without WebGL the overlay stands alone on black (never blank).
 
 import { useSyncExternalStore } from "react";
 
-import {
-  layoutScene,
-  positionIndex,
-  type SceneDescription,
-} from "@/lib/showcase/scene";
+import type { SceneDescription } from "@/lib/showcase/scene";
 
 import { CinematicEngine } from "./CinematicEngine";
 import "./showcase.css";
@@ -27,6 +21,95 @@ import "./showcase.css";
 export interface ShowcaseShellProps {
   readonly scene: SceneDescription;
 }
+
+// --- the reference copy, verbatim -------------------------------------------
+
+const REGIONS: ReadonlyArray<{
+  id: string;
+  title: string;
+  tagline: string;
+  /** viewport position (percent) */
+  left: number;
+  top: number;
+  prominent?: boolean;
+}> = [
+  {
+    id: "core",
+    title: "JARVIS CORE",
+    tagline: "Active · Adaptive · Predictive",
+    left: 44,
+    top: 27,
+    prominent: true,
+  },
+  {
+    id: "humanGate",
+    title: "HUMAN GATE",
+    tagline: "Auth: Authorized · Trust 0.98",
+    left: 66,
+    top: 17,
+  },
+  {
+    id: "memory",
+    title: "MEMORY LAYER",
+    tagline: "Cache · Index · Recall",
+    left: 26,
+    top: 32,
+  },
+  {
+    id: "voice",
+    title: "VOICE RUNTIME",
+    tagline: "Listening · STT · TTS",
+    left: 64,
+    top: 33,
+  },
+  {
+    id: "council",
+    title: "COUNCIL",
+    tagline: "Consensus Engine · Voting",
+    left: 26,
+    top: 69,
+  },
+  {
+    id: "roomOs",
+    title: "ROOM OS",
+    tagline: "Devices · IoT · Control",
+    left: 42,
+    top: 70,
+  },
+  {
+    id: "knowledge",
+    title: "KNOWLEDGE COMPOUNDING",
+    tagline: "Synthesize · Expand · Evolve",
+    left: 63,
+    top: 74,
+  },
+  {
+    id: "pipeline",
+    title: "PIPELINE",
+    tagline: "Automate · Orchestrate · Deliver",
+    left: 53,
+    top: 81,
+  },
+];
+
+const AGENTS: ReadonlyArray<{
+  id: string;
+  title: string;
+  progress: number;
+}> = [
+  { id: "AGENT-J01", title: "Morning Brief", progress: 82 },
+  { id: "AGENT-J02", title: "Job Scout", progress: 68 },
+  { id: "AGENT-J03", title: "Google Stack Sync", progress: 74 },
+  { id: "AGENT-J04", title: "Knowledge Compounding", progress: 55 },
+  { id: "AGENT-J05", title: "Bursar Cost Guard", progress: 71 },
+  { id: "AGENT-J06", title: "Enterprise Brain Pilot", progress: 64 },
+];
+
+// LIVE counter: the agents plus the core itself — derived from what renders.
+const LIVE_COUNT = AGENTS.length + 1;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// --- shell -------------------------------------------------------------------
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -47,10 +130,6 @@ function useCalmPreferred(): boolean {
   );
 }
 
-/** WebGL + mount gate, following the orb atmosphere's pattern: the canvas
- * layer only takes over client-side when a context is actually available.
- * The probe runs once and is cached; the server snapshot is false, so first
- * paint is the DOM constellation and the engine takes over after hydration. */
 let webglProbeResult: boolean | null = null;
 
 function probeWebgl(): boolean {
@@ -79,90 +158,60 @@ export function ShowcaseShell({ scene }: ShowcaseShellProps) {
   return (
     <main
       className="showcase-stage"
-      aria-label={scene.title}
+      aria-label="JARVIS live system map"
       data-showcase-scene={scene.id}
       data-showcase-motion={calm ? "calm" : "full"}
       data-showcase-renderer={engineEnabled ? "webgl" : "dom-fallback"}
       data-showcase-provenance={scene.provenance.live ? "live" : "sample"}
     >
-      {engineEnabled ? (
-        <CinematicEngine scene={scene} calm={calm} />
-      ) : (
-        <FallbackConstellation scene={scene} />
-      )}
+      {engineEnabled && <CinematicEngine calm={calm} />}
 
-      <header className="showcase-masthead">
-        <h1 className="showcase-title">{scene.title}</h1>
-        <p className="showcase-subtitle">{scene.subtitle}</p>
-      </header>
-
-      <aside className="showcase-badge" data-showcase-badge>
-        <span
-          className="showcase-badge-state"
-          data-live={scene.provenance.live}
-        >
-          {scene.provenance.label}
-        </span>
-        <ul className="showcase-badge-sources">
-          {scene.provenance.sources.map((source) => (
-            <li key={source}>{source}</li>
-          ))}
-        </ul>
-      </aside>
-
-      <footer className="showcase-chips" aria-label="Telemetry">
-        {scene.chips.map((chip) => (
-          <span className="showcase-chip" key={`${chip.label}-${chip.value}`}>
-            <span className="showcase-chip-label">{chip.label}</span>
-            <span className="showcase-chip-value">{chip.value}</span>
+      <div className="showcase-overlay">
+        <div className="showcase-live" data-showcase-live>
+          <span className="showcase-live-dot" aria-hidden="true" />
+          <span className="showcase-live-word">LIVE</span>
+          <span className="showcase-live-count">
+            {pad2(LIVE_COUNT)} / {pad2(LIVE_COUNT)}
           </span>
-        ))}
-      </footer>
-    </main>
-  );
-}
+        </div>
 
-/** The no-WebGL / first-paint constellation: same scene, same layout math,
- * rendered as positioned DOM. Still, dark, depth-lit by CSS — honest and
- * never blank. */
-function FallbackConstellation({ scene }: { scene: SceneDescription }) {
-  const positions = layoutScene(scene);
-  const index = positionIndex(positions);
-  // Project layout space (x ~ [-9,9], y ~ [-6,6]) onto viewport percentages.
-  const toLeft = (x: number) => 50 + x * 4.6;
-  const toTop = (y: number) => 46 - y * 6.2;
-
-  return (
-    <div
-      className="showcase-fallback"
-      data-showcase-fallback
-      aria-hidden="true"
-    >
-      {scene.nodes.map((node) => {
-        const at = index.get(node.id);
-        if (!at) return null;
-        const isCenter = node.id === scene.centerNodeId;
-        return (
+        {REGIONS.map((region) => (
           <div
-            key={node.id}
-            className={`showcase-fallback-node showcase-tone-${node.tone}${isCenter ? " showcase-fallback-center" : ""}`}
-            data-showcase-node={node.id}
-            data-showcase-state={node.state}
-            style={{
-              left: `${toLeft(at.x)}%`,
-              top: `${toTop(at.y)}%`,
-            }}
+            key={region.id}
+            className={`showcase-region showcase-region-${region.id}${region.prominent ? " showcase-region-prominent" : ""}`}
+            style={{ left: `${region.left}%`, top: `${region.top}%` }}
+            data-showcase-region={region.id}
           >
-            <span className="showcase-fallback-dot" />
-            <span className="showcase-label">
-              <span className="showcase-label-title">{node.label}</span>
-              {node.sublabel !== undefined && (
-                <span className="showcase-label-sub">{node.sublabel}</span>
-              )}
-            </span>
+            <span className="showcase-region-title">{region.title}</span>
+            <span className="showcase-region-tagline">{region.tagline}</span>
           </div>
-        );
-      })}
-    </div>
+        ))}
+
+        <div className="showcase-agents" data-showcase-agents>
+          {AGENTS.map((agent) => (
+            <div
+              key={agent.id}
+              className="showcase-agent"
+              data-showcase-agent={agent.id}
+            >
+              <span className="showcase-agent-id">{agent.id}</span>
+              <span className="showcase-agent-title">{agent.title}</span>
+              <span className="showcase-agent-bar" aria-hidden="true">
+                <span
+                  className="showcase-agent-bar-fill"
+                  style={{ width: `${agent.progress}%` }}
+                />
+              </span>
+              <span className="showcase-agent-state">Running...</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="showcase-terminal" data-showcase-terminal>
+          <span>&gt; JARVIS online.</span>
+          <span>Listening, learning, and building the impossible.</span>
+        </div>
+      </div>
+    </main>
   );
 }

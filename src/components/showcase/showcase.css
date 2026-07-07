@@ -1,319 +1,226 @@
-/* SHOWCASE — the cinematic field's DOM layers.
- * Consumes the app's real font variables and mirrors the token DNA
- * (amber = Gate, emerald->sky = life, cyan = evidence, stone = structure).
- * This surface is display-only; nothing here styles an affordance.
- *
- * Typography law (R3 polish): cinematic AND legible — every label sits on a
- * quiet glass pill; chrome (masthead/badge/chips) stacks above the engine's
- * labels (z 50 vs the Html layer's zIndexRange cap of 40). */
+/* SHOWCASE — the reference frame's overlay, replicated exactly.
+ * Pure black void; terminal-style mono boxes; per-region border/title hues
+ * matching the plexus clusters behind them. Display-only: nothing here
+ * styles an affordance. */
 
 .showcase-stage {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background:
-    radial-gradient(
-      ellipse 90% 70% at 50% 42%,
-      rgba(56, 189, 248, 0.05),
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 60% 50% at 50% 46%,
-      rgba(255, 178, 77, 0.05),
-      transparent 55%
-    ),
-    #020617; /* --jarvis-color-panel */
-  color: #eaf1fb; /* --jarvis-shell-ink */
-}
-
-/* --- masthead ----------------------------------------------------------- */
-
-.showcase-masthead {
-  position: absolute;
-  top: 2.4rem;
-  left: 2.8rem;
-  z-index: 50;
-  pointer-events: none;
-  max-width: 34rem;
-}
-
-.showcase-title {
-  font-family: var(--font-jarvis-display), serif;
-  font-weight: 500;
-  font-size: clamp(1.6rem, 3.2vw, 2.6rem);
-  line-height: 1.08;
-  margin: 0;
-  letter-spacing: 0.01em;
-  text-shadow: 0 2px 24px rgba(2, 6, 23, 0.9);
-}
-
-.showcase-subtitle {
-  font-family: var(--font-jarvis-display), serif;
-  font-weight: 300;
-  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
-  color: #a9bcd8;
-  margin: 0.55rem 0 0;
-  line-height: 1.5;
-  text-shadow: 0 1px 14px rgba(2, 6, 23, 0.95);
-}
-
-/* --- the honest-data badge (truth is the flex) --------------------------- */
-
-.showcase-badge {
-  position: absolute;
-  top: 2.4rem;
-  right: 2.8rem;
-  z-index: 50;
-  pointer-events: none;
-  text-align: right;
+  background: #000;
+  color: #eaf1fb;
   font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 
-.showcase-badge-state {
-  display: inline-block;
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid rgba(95, 230, 224, 0.4); /* signal stroke */
-  color: #5fe6e0; /* --jarvis-shell-signal */
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(8px);
-}
-
-.showcase-badge-state[data-live="true"] {
-  border-color: rgba(110, 231, 183, 0.5);
-  color: #6ee7b7; /* --jarvis-color-emerald-local */
-}
-
-.showcase-badge-sources {
-  list-style: none;
-  margin: 0.6rem 0 0;
-  padding: 0;
-  color: #6d82a6;
-  letter-spacing: 0.08em;
-  line-height: 1.75;
-  font-size: 0.6rem;
-}
-
-/* --- telemetry chips ------------------------------------------------------ */
-
-.showcase-chips {
-  position: absolute;
-  bottom: 2.2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
-  pointer-events: none;
-  max-width: 84vw;
-}
-
-.showcase-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid rgba(142, 164, 196, 0.3);
-  background: rgba(2, 6, 23, 0.78);
-  backdrop-filter: blur(8px);
-  font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.76rem;
-  letter-spacing: 0.09em;
-  box-shadow: 0 2px 18px rgba(2, 6, 23, 0.6);
-}
-
-.showcase-chip-label {
-  color: #6d82a6;
-  text-transform: uppercase;
-  font-size: 0.62rem;
-}
-
-.showcase-chip-value {
-  color: #f4f8ff;
-  font-weight: 500;
-}
-
-/* --- node labels (shared by the engine's Html layer and the fallback) ---- */
-
-.showcase-label-wrap {
-  pointer-events: none;
-}
-
-/* Label chips: small clean terminal boxes over the mesh (the reference's
- * read). Chips are rule-like -> MONO register per the type-register law;
- * the Gate's hero chip keeps the one Fraunces display moment. A thin
- * tone-keyed left border ties each chip to its region's color family. */
-.showcase-label {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.18rem;
-  text-align: left;
-  pointer-events: none;
-  user-select: none;
-  padding: 0.34rem 0.62rem;
-  border-radius: 4px;
-  background: rgba(1, 4, 9, 0.82);
-  border: 1px solid rgba(142, 164, 196, 0.22);
-  border-left-width: 2px;
-  backdrop-filter: blur(4px);
-}
-
-.showcase-label[data-showcase-tone="gate"] {
-  border-left-color: #ffb24d;
-}
-.showcase-label[data-showcase-tone="life"] {
-  border-left-color: #6ee7b7;
-}
-.showcase-label[data-showcase-tone="signal"] {
-  border-left-color: #5fe6e0;
-}
-.showcase-label[data-showcase-tone="accent"] {
-  border-left-color: #86bcff;
-}
-.showcase-label[data-showcase-tone="stone"] {
-  border-left-color: #8ea4c4;
-}
-
-.showcase-label-title {
-  font-family: var(--font-jarvis-mono), monospace;
-  font-weight: 500;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  color: #f4f8ff;
-  text-shadow: 0 1px 8px rgba(1, 4, 9, 0.95);
-  white-space: nowrap;
-}
-
-.showcase-label-sub {
-  font-family: var(--font-jarvis-mono), monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #a9bcd8;
-  white-space: nowrap;
-}
-
-/* The measured fill inside a label — the terminal-card read: a REAL rollup
- * percent rendered as a thin emerald->sky bar (the one progress range). */
-.showcase-label-bar {
-  display: block;
-  width: 100%;
-  min-width: 5.5rem;
-  height: 3px;
-  margin-top: 0.28rem;
-  border-radius: 2px;
-  background: rgba(142, 164, 196, 0.18);
-  overflow: hidden;
-}
-
-.showcase-label-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #6ee7b7, #38bdf8);
-  box-shadow: 0 0 8px rgba(110, 231, 183, 0.7);
-}
-
-/* Depth hierarchy in type: ring-3 leaves recede in the typography too. */
-.showcase-label[data-showcase-ring="3"] {
-  background: rgba(2, 6, 23, 0.45);
-  border-color: rgba(142, 164, 196, 0.08);
-}
-
-.showcase-label[data-showcase-ring="3"] .showcase-label-title {
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: #c7d5ea;
-}
-
-.showcase-label[data-showcase-ring="3"] .showcase-label-sub {
-  font-size: 0.56rem;
-  color: #6d82a6;
-}
-
-/* The hero (the Gate) dominates the type hierarchy — the one display-face
- * moment over the mesh. */
-.showcase-label-hero {
-  background: rgba(1, 4, 9, 0.7);
-  border-color: rgba(255, 178, 77, 0.35);
-  border-left-color: #ffb24d;
-  padding: 0.5rem 0.95rem;
-  align-items: center;
-  text-align: center;
-}
-
-.showcase-label-hero .showcase-label-title {
-  font-family: var(--font-jarvis-display), serif;
-  font-weight: 500;
-  font-size: 1.7rem;
-  letter-spacing: 0.02em;
-}
-
-.showcase-label-hero .showcase-label-sub {
-  font-size: 0.68rem;
-  color: #ffb24d; /* the Gate's chip stays amber — Gate-touching only */
-}
-
-/* --- the DOM fallback constellation (no WebGL / first paint) ------------- */
-
-.showcase-fallback {
+.showcase-overlay {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.showcase-fallback-node {
+/* --- the LIVE chip, top center -------------------------------------------- */
+
+.showcase-live {
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.42rem 0.9rem;
+  background: rgba(8, 8, 12, 0.88);
+  border: 1px solid rgba(160, 170, 190, 0.35);
+  border-radius: 3px;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+}
+
+.showcase-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ff4d4d;
+  box-shadow: 0 0 8px #ff4d4d;
+}
+
+.showcase-live-word {
+  color: #ff4d4d;
+  font-weight: 700;
+}
+
+.showcase-live-count {
+  color: #eaf1fb;
+  font-weight: 500;
+}
+
+/* --- region boxes ----------------------------------------------------------- */
+
+.showcase-region {
   position: absolute;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.16rem;
+  padding: 0.36rem 0.7rem;
+  background: rgba(6, 6, 10, 0.86);
+  border: 1px solid;
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
-.showcase-fallback-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: currentColor;
-  box-shadow:
-    0 0 12px currentColor,
-    0 0 34px currentColor;
+.showcase-region-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 
-.showcase-fallback-center .showcase-fallback-dot {
-  width: 26px;
-  height: 26px;
-  box-shadow:
-    0 0 22px currentColor,
-    0 0 70px currentColor;
+.showcase-region-tagline {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: #c9d4e6;
 }
 
-.showcase-tone-gate {
-  color: #ffb24d;
-}
-.showcase-tone-life {
-  color: #6ee7b7;
-}
-.showcase-tone-signal {
-  color: #5fe6e0;
-}
-.showcase-tone-accent {
-  color: #86bcff;
-}
-.showcase-tone-stone {
-  color: #8ea4c4;
+.showcase-region-prominent {
+  padding: 0.5rem 1.1rem;
 }
 
-/* Calm variant is selected in JS (data-showcase-motion="calm"); the CSS side
- * also stills the one CSS shimmer for defense in depth. */
+.showcase-region-prominent .showcase-region-title {
+  font-size: 1.05rem;
+  letter-spacing: 0.16em;
+}
+
+.showcase-region-prominent .showcase-region-tagline {
+  font-size: 0.68rem;
+}
+
+/* Per-region hues — exact to the reference frame. */
+.showcase-region-core {
+  border-color: rgba(255, 77, 77, 0.75);
+}
+.showcase-region-core .showcase-region-title {
+  color: #ff4d4d;
+}
+.showcase-region-humanGate {
+  border-color: rgba(140, 140, 255, 0.75);
+}
+.showcase-region-humanGate .showcase-region-title {
+  color: #8c8cff;
+}
+.showcase-region-memory {
+  border-color: rgba(92, 140, 255, 0.75);
+}
+.showcase-region-memory .showcase-region-title {
+  color: #5c8cff;
+}
+.showcase-region-voice {
+  border-color: rgba(255, 162, 77, 0.75);
+}
+.showcase-region-voice .showcase-region-title {
+  color: #ffa24d;
+}
+.showcase-region-council {
+  border-color: rgba(255, 107, 77, 0.75);
+}
+.showcase-region-council .showcase-region-title {
+  color: #ff6b4d;
+}
+.showcase-region-roomOs {
+  border-color: rgba(92, 200, 255, 0.75);
+}
+.showcase-region-roomOs .showcase-region-title {
+  color: #5cc8ff;
+}
+.showcase-region-knowledge {
+  border-color: rgba(255, 184, 56, 0.75);
+}
+.showcase-region-knowledge .showcase-region-title {
+  color: #ffb838;
+}
+.showcase-region-pipeline {
+  border-color: rgba(88, 216, 88, 0.75);
+}
+.showcase-region-pipeline .showcase-region-title {
+  color: #58d858;
+}
+
+/* --- agent cards (2 rows x 3 columns across the middle) --------------------- */
+
+.showcase-agents {
+  position: absolute;
+  left: 50%;
+  top: 51%;
+  transform: translate(-50%, -50%);
+  width: min(78vw, 74rem);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem 1.4rem;
+}
+
+.showcase-agent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.8rem 0.6rem;
+  background: rgba(5, 5, 9, 0.88);
+  border: 1px solid rgba(190, 200, 220, 0.4);
+  border-radius: 2px;
+}
+
+.showcase-agent-id {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: #9aa8c0;
+}
+
+.showcase-agent-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f4f8ff;
+}
+
+.showcase-agent-bar {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-top: 0.2rem;
+  background: rgba(160, 170, 190, 0.22);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.showcase-agent-bar-fill {
+  display: block;
+  height: 100%;
+  background: #eef3ff;
+  box-shadow: 0 0 6px rgba(238, 243, 255, 0.8);
+}
+
+.showcase-agent-state {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: #9aa8c0;
+}
+
+/* --- the boot line, bottom left --------------------------------------------- */
+
+.showcase-terminal {
+  position: absolute;
+  left: 4%;
+  bottom: 9%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: #cfd8e6;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
+/* Reduced motion: the JS side selects the calm engine variant; kill any CSS
+ * motion for defense in depth. */
 @media (prefers-reduced-motion: reduce) {
   .showcase-stage * {
     animation: none !important;
