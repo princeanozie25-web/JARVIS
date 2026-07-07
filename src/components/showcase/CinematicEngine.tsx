@@ -1,22 +1,27 @@
 "use client";
 
-// THE PLEXUS ENGINE — the reference frame's background, ALIVE.
+// THE PLEXUS ENGINE — the reference frame's background, ALIVE, rendered as a
+// VOLUMETRIC FIBER FIELD.
 //
-// MOTION PASS (matched to the reference clips): the mesh never sits still —
-//   1. TRAVELING PULSES: hundreds of staggered light beads run the threads
-//      continuously, flowing along the bridges and feeder filaments INTO the
-//      bright center;
-//   2. SPARK SPRAY: the mass continuously throws off bright sparks that
-//      shoot outward on gently curving paths, each trailing a fading ribbon
-//      of light, respawning forever;
-//   3. BREATHING + DRIFT: the core heat swells and contracts (harder and
-//      faster while a REAL proposal is pending), and the whole web drifts
-//      in a slow oscillating idle — a living pause, never a paused frame.
+// PRIMITIVE (the fiber pass): connections are NOT line segments. Every
+// connective stroke is a fine CURVED RIBBON-FIBER — a bezier curve extruded
+// into a thin camera-facing strip, textured with a gaussian cross-section
+// (soft, feathered edges) and tapered ends, additive-blended at low
+// per-fiber brightness. ~1,200 fibers overlap into a continuous luminous
+// substance: dendrite wisps inside each region, axon BUNDLES that pinch
+// mid-flight and fan at both ends between regions, and feeder fibers that
+// splay from every region and converge on the core. No straight
+// point-to-point geometry anywhere in the connective field.
+//
+// MOTION (kept from the motion pass): traveling pulses ride the SAME fiber
+// curves (arc-length parameterized), the spark spray keeps streaming with
+// ribbon trails, the core heat breathes (harder while a REAL proposal is
+// pending), and the whole web sways in a living idle.
 //
 // DISPLAY-ONLY (I-SHOW-1): renders props; no store, no fetch, no mutation,
 // no runtime access, zero interactive affordances (pointer movement only
 // steers the parallax camera). Reduced-motion renders the fully assembled
-// field, still and at reduced density (calm).
+// field, still (calm).
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
@@ -62,7 +67,7 @@ const CLUSTERS: ReadonlyArray<{
   { id: "pipeline", x: 0.9, y: -3.3, z: 0.1, count: 46, reach: 2.0 },
 ];
 
-/** Bridges between visually adjacent regions. */
+/** Bundles between visually adjacent regions. */
 const BRIDGES: ReadonlyArray<[number, number]> = [
   [0, 1],
   [0, 2],
@@ -81,6 +86,13 @@ const BRIDGES: ReadonlyArray<[number, number]> = [
 ];
 
 const CORE = new THREE.Vector3(0, 0.9, 0);
+
+// Fiber population (the density IS the look).
+const CLUSTER_FIBERS = 110; // dendrite wisps per region
+const BUNDLE_FIBERS = 16; // axons per inter-region bundle
+const FEEDER_FIBERS = 12; // fibers each region sends to the core
+const STREAK_FIBERS = 30; // long white escaping streamers
+const FIBER_STEPS = 22; // samples along each fiber
 
 export interface CinematicEngineProps {
   /** Reduced-motion calm variant: fully assembled, still. */
@@ -125,26 +137,6 @@ function cloudOf(
   return out;
 }
 
-function pushSegment(
-  pos: number[],
-  col: number[],
-  a: THREE.Vector3,
-  b: THREE.Vector3,
-  color: THREE.Color,
-  alphaA: number,
-  alphaB: number,
-) {
-  pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
-  col.push(
-    color.r * alphaA,
-    color.g * alphaA,
-    color.b * alphaA,
-    color.r * alphaB,
-    color.g * alphaB,
-    color.b * alphaB,
-  );
-}
-
 /** A polyline a pulse can ride: waypoints + cumulative arc lengths. */
 interface PulseTrack {
   readonly points: readonly THREE.Vector3[];
@@ -176,11 +168,147 @@ function sampleTrack(track: PulseTrack, t01: number, out: THREE.Vector3) {
   out.copy(track.points[i - 1]).lerp(track.points[i], f);
 }
 
-/** All static geometry + the pulse tracks + spark spawn points, built once. */
+// ---------------------------------------------------------------------------
+// THE FIBER PRIMITIVE — a curved ribbon strip with soft gaussian edges.
+// Each fiber: a bezier curve sampled into FIBER_STEPS points, extruded into a
+// thin two-vertex strip facing the (near-fixed) camera, width tapering at the
+// ends and wavering slightly along the run. All fibers merge into ONE
+// geometry + ONE soft-brush texture = one draw call.
+// ---------------------------------------------------------------------------
+
+interface FiberAccumulator {
+  positions: number[];
+  colors: number[];
+  uvs: number[];
+  indices: number[];
+  vertCount: number;
+}
+
+const VIEW = new THREE.Vector3(0, 0, 1); // camera direction approximation
+
+function pushFiber(
+  acc: FiberAccumulator,
+  curve: THREE.Curve<THREE.Vector3>,
+  color: THREE.Color,
+  brightness: number,
+  width: number,
+  seed: number,
+) {
+  const pts = curve.getPoints(FIBER_STEPS);
+  const base = acc.vertCount;
+  const tangent = new THREE.Vector3();
+  const side = new THREE.Vector3();
+  for (let i = 0; i < pts.length; i++) {
+    const t01 = i / (pts.length - 1);
+    // tangent from neighbors
+    if (i === 0) tangent.subVectors(pts[1], pts[0]);
+    else if (i === pts.length - 1) tangent.subVectors(pts[i], pts[i - 1]);
+    else tangent.subVectors(pts[i + 1], pts[i - 1]);
+    side.crossVectors(tangent, VIEW).normalize();
+    if (side.lengthSq() < 0.5) side.set(0, 1, 0);
+    // taper both ends + gentle width waver along the run
+    const taper = Math.sin(Math.PI * t01) ** 0.65;
+    const waver = 0.75 + 0.5 * hash01(seed, i);
+    const w = (width * taper * waver) / 2;
+    acc.positions.push(
+      pts[i].x - side.x * w,
+      pts[i].y - side.y * w,
+      pts[i].z - side.z * w,
+      pts[i].x + side.x * w,
+      pts[i].y + side.y * w,
+      pts[i].z + side.z * w,
+    );
+    const r = color.r * brightness;
+    const g = color.g * brightness;
+    const b = color.b * brightness;
+    acc.colors.push(r, g, b, r, g, b);
+    acc.uvs.push(t01, 0, t01, 1);
+    if (i > 0) {
+      const a = base + (i - 1) * 2;
+      acc.indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  acc.vertCount += pts.length * 2;
+}
+
+/** Round soft-bloom point sprite — every particle in the field is a round
+ * glow, never a hard square vertex (the wireframe tell). */
+function makePointTexture(): THREE.Texture {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const gradient = ctx.createRadialGradient(
+      size / 2,
+      size / 2,
+      0,
+      size / 2,
+      size / 2,
+      size / 2,
+    );
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(0.35, "#ffffff88");
+    gradient.addColorStop(1, "#ffffff00");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** The soft brush: gaussian across the ribbon, faded tips along it. */
+function makeFiberTexture(): THREE.Texture {
+  const w = 128;
+  const h = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      const across = (y + 0.5) / h - 0.5;
+      const gauss = Math.exp(-((across / 0.21) ** 2));
+      for (let x = 0; x < w; x++) {
+        const along = (x + 0.5) / w;
+        const tip = Math.min(1, Math.min(along, 1 - along) / 0.12);
+        const v = Math.round(255 * gauss * tip);
+        const idx = (y * w + x) * 4;
+        img.data[idx] = v;
+        img.data[idx + 1] = v;
+        img.data[idx + 2] = v;
+        img.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Random unit-ish offset vector, flattened toward the view plane. */
+function jitterVec(seed: number, i: number, scale: number): THREE.Vector3 {
+  return new THREE.Vector3(
+    (hash01(seed, i) - 0.5) * scale,
+    (hash01(seed + 1, i) - 0.5) * scale * 0.85,
+    (hash01(seed + 2, i) - 0.5) * scale * 0.6,
+  );
+}
+
+/** All fiber geometry + pulse tracks + spark spawn points, built once. */
 function useMeshData() {
   return useMemo(() => {
-    const tPos: number[] = [];
-    const tCol: number[] = [];
+    const acc: FiberAccumulator = {
+      positions: [],
+      colors: [],
+      uvs: [],
+      indices: [],
+      vertCount: 0,
+    };
     const gPos: number[] = [];
     const gCol: number[] = [];
     const tracks: PulseTrack[] = [];
@@ -188,6 +316,7 @@ function useMeshData() {
     const clusterClouds: THREE.Vector3[][] = [];
     const white = new THREE.Color(REFERENCE_PALETTE.white);
 
+    // junction glints + spawn points (the sparkle nodes ON the fibers)
     CLUSTERS.forEach((cluster, c) => {
       const color = new THREE.Color(REFERENCE_PALETTE[cluster.id]);
       const seed = 100 + c * 37;
@@ -202,103 +331,196 @@ function useMeshData() {
       clusterClouds.push(js);
       js.forEach((j, i) => {
         gPos.push(j.x, j.y, j.z);
-        const gl = 0.55 + hash01(seed + 3, i) * 0.45;
+        const gl = 0.5 + hash01(seed + 3, i) * 0.5;
         gCol.push(color.r * gl, color.g * gl, color.b * gl);
-        const near = js
-          .map((other, k) => ({
-            k,
-            d: k === i ? Infinity : j.distanceTo(other),
-          }))
-          .sort((a, b) => a.d - b.d)
-          .slice(0, 3);
-        for (const { k } of near) {
-          if (k < i) continue;
-          const lum = 0.32 + hash01(seed + 4, i * 31 + k) * 0.38;
-          pushSegment(tPos, tCol, j, js[k], color, lum, lum * 0.75);
-        }
         if (hash01(seed + 9, i) < 0.3) spawns.push({ pos: j, color });
       });
     });
 
-    // inter-cluster threads — each one is also a pulse track
-    BRIDGES.forEach(([a, b], e) => {
-      const ja = clusterClouds[a];
-      const jb = clusterClouds[b];
-      const colorA = new THREE.Color(REFERENCE_PALETTE[CLUSTERS[a].id]);
-      const colorB = new THREE.Color(REFERENCE_PALETTE[CLUSTERS[b].id]);
-      for (let s = 0; s < 7; s++) {
-        const p = ja[Math.floor(hash01(500 + e, s) * ja.length)];
-        const q = jb[Math.floor(hash01(501 + e, s) * jb.length)];
-        const k1 = p
+    // 1. DENDRITE WISPS — fine curved fibers filling each region: arcs from
+    // junction to junction THROUGH an organic control point, never straight.
+    CLUSTERS.forEach((cluster, c) => {
+      const color = new THREE.Color(REFERENCE_PALETTE[cluster.id]);
+      const js = clusterClouds[c];
+      const center = new THREE.Vector3(cluster.x, cluster.y, cluster.z);
+      const seed = 3000 + c * 101;
+      for (let f = 0; f < CLUSTER_FIBERS; f++) {
+        const a = js[Math.floor(hash01(seed, f) * js.length)];
+        const b = js[Math.floor(hash01(seed + 1, f) * js.length)];
+        if (a === b) continue;
+        // 40% of wisps are DIRECTIONAL strokes (inner -> outer, dendrite
+        // flow); the rest arc junction-to-junction around the center.
+        const directional = hash01(seed + 10, f) < 0.4;
+        const from = directional
+          ? a.clone().lerp(center, 0.75 + hash01(seed + 11, f) * 0.2)
+          : a;
+        const mid = from
           .clone()
-          .lerp(q, 0.34)
+          .add(b)
+          .multiplyScalar(0.5)
+          .lerp(center, (hash01(seed + 2, f) - 0.5) * (directional ? 0.3 : 0.8))
           .add(
-            new THREE.Vector3(
-              (hash01(503 + e, s) - 0.5) * 1.1,
-              (hash01(504 + e, s) - 0.5) * 0.9,
-              (hash01(505 + e, s) - 0.5) * 0.9,
-            ),
+            jitterVec(seed + 3, f, cluster.reach * (directional ? 0.55 : 0.9)),
           );
-        const k2 = p
-          .clone()
-          .lerp(q, 0.67)
-          .add(
-            new THREE.Vector3(
-              (hash01(506 + e, s) - 0.5) * 1.1,
-              (hash01(507 + e, s) - 0.5) * 0.9,
-              (hash01(508 + e, s) - 0.5) * 0.9,
-            ),
-          );
-        const mixed = colorA.clone().lerp(colorB, 0.5).lerp(white, 0.3);
-        const lum = 0.2 + hash01(502 + e, s) * 0.22;
-        pushSegment(tPos, tCol, p, k1, mixed, lum, lum);
-        pushSegment(tPos, tCol, k1, k2, mixed, lum, lum);
-        pushSegment(tPos, tCol, k2, q, mixed, lum, lum);
-        tracks.push(makeTrack([p, k1, k2, q], mixed));
+        const curve = new THREE.QuadraticBezierCurve3(from, mid, b);
+        pushFiber(
+          acc,
+          curve,
+          color,
+          0.1 + hash01(seed + 6, f) * 0.12,
+          0.02 + hash01(seed + 7, f) * 0.03,
+          seed + 8 + f,
+        );
+        if (hash01(seed + 9, f) < 0.12)
+          tracks.push(makeTrack(curve.getPoints(FIBER_STEPS), color));
       }
     });
 
-    // feeder filaments — every cluster streams into the core; faint static
-    // lines whose pulses carry the visible current inward
+    // 2. AXON BUNDLES — fibers between regions that FAN at both ends and
+    // PINCH mid-flight (a shared cubic spine, per-fiber lateral spread that
+    // shrinks toward the middle).
+    BRIDGES.forEach(([ai, bi], e) => {
+      const A = CLUSTERS[ai];
+      const B = CLUSTERS[bi];
+      const ja = clusterClouds[ai];
+      const jb = clusterClouds[bi];
+      const colorA = new THREE.Color(REFERENCE_PALETTE[A.id]);
+      const colorB = new THREE.Color(REFERENCE_PALETTE[B.id]);
+      const seed = 5000 + e * 211;
+      const spineBend = jitterVec(seed, 0, 2.6);
+      for (let f = 0; f < BUNDLE_FIBERS; f++) {
+        const start = ja[Math.floor(hash01(seed + 1, f) * ja.length)];
+        const end = jb[Math.floor(hash01(seed + 2, f) * jb.length)];
+        // lateral spread: full at the ends (fan), pinched at the middle
+        const lat = jitterVec(seed + 3, f, 1.0);
+        const c1 = start
+          .clone()
+          .lerp(end, 0.33)
+          .add(spineBend)
+          .add(lat.clone().multiplyScalar(0.35));
+        const c2 = start
+          .clone()
+          .lerp(end, 0.66)
+          .add(spineBend)
+          .add(lat.clone().multiplyScalar(0.35));
+        const color = colorA.clone().lerp(colorB, 0.5).lerp(white, 0.28);
+        const curve = new THREE.CubicBezierCurve3(start, c1, c2, end);
+        pushFiber(
+          acc,
+          curve,
+          color,
+          0.09 + hash01(seed + 4, f) * 0.1,
+          0.022 + hash01(seed + 5, f) * 0.03,
+          seed + 6 + f,
+        );
+        if (hash01(seed + 7, f) < 0.45)
+          tracks.push(makeTrack(curve.getPoints(FIBER_STEPS), color));
+      }
+    });
+
+    // 3. FEEDER FIBERS — every region splays fibers that arc home and
+    // converge on the core (brightening arrival is the pulses' job).
     CLUSTERS.forEach((cluster, c) => {
       if (cluster.id === "core") return;
-      const js = clusterClouds[c];
       const color = new THREE.Color(REFERENCE_PALETTE[cluster.id]);
-      const seed = 900 + c * 53;
-      for (let s = 0; s < 6; s++) {
-        const start = js[Math.floor(hash01(seed, s) * js.length)];
-        const kink = start
+      const js = clusterClouds[c];
+      const seed = 7000 + c * 131;
+      for (let f = 0; f < FEEDER_FIBERS; f++) {
+        const start = js[Math.floor(hash01(seed, f) * js.length)];
+        const c1 = start
           .clone()
-          .lerp(CORE, 0.5)
-          .add(
-            new THREE.Vector3(
-              (hash01(seed + 1, s) - 0.5) * 1.6,
-              (hash01(seed + 2, s) - 0.5) * 1.3,
-              (hash01(seed + 3, s) - 0.5) * 1.3,
-            ),
-          );
-        const lum = 0.14 + hash01(seed + 4, s) * 0.1;
-        pushSegment(tPos, tCol, start, kink, color, lum, lum * 1.3);
-        pushSegment(tPos, tCol, kink, CORE, color, lum * 1.3, lum * 1.9);
-        tracks.push(makeTrack([start, kink, CORE], color));
+          .lerp(CORE, 0.35)
+          .add(jitterVec(seed + 1, f, 2.2));
+        const c2 = start
+          .clone()
+          .lerp(CORE, 0.72)
+          .add(jitterVec(seed + 2, f, 1.1));
+        const curve = new THREE.CubicBezierCurve3(start, c1, c2, CORE);
+        pushFiber(
+          acc,
+          curve,
+          color,
+          0.08 + hash01(seed + 3, f) * 0.09,
+          0.02 + hash01(seed + 4, f) * 0.024,
+          seed + 5 + f,
+        );
+        if (hash01(seed + 6, f) < 0.5)
+          tracks.push(makeTrack(curve.getPoints(FIBER_STEPS), color));
       }
     });
 
-    const build = (pos: number[], col: number[]) => {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(pos, 3),
+    // 4. ESCAPING STREAMERS — long white fibers CURLING away from the mass.
+    // The curl is mandatory: control points swing hard PERPENDICULAR to the
+    // launch direction (alternating sides), so no streamer ever reads as a
+    // straight ray; the tip also hooks like the reference's streamers.
+    for (let f = 0; f < STREAK_FIBERS; f++) {
+      const seed = 9000;
+      const src = CLUSTERS[Math.floor(hash01(seed, f) * CLUSTERS.length)];
+      const angle = hash01(seed + 1, f) * Math.PI * 2;
+      const dir = new THREE.Vector3(
+        Math.cos(angle),
+        Math.sin(angle) * 0.7,
+        (hash01(seed + 2, f) - 0.5) * 0.5,
+      ).normalize();
+      const perp = new THREE.Vector3(-dir.y, dir.x, 0)
+        .normalize()
+        .multiplyScalar(hash01(seed + 9, f) < 0.5 ? 1 : -1);
+      const start = new THREE.Vector3(src.x, src.y, src.z).add(
+        dir.clone().multiplyScalar(0.5),
       );
-      geometry.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-      return geometry;
-    };
-    return {
-      tissue: build(tPos, tCol),
-      glints: build(gPos, gCol),
-      tracks,
-      spawns,
-    };
+      const len = 4.5 + hash01(seed + 3, f) * 6.0;
+      const sweep = 1.4 + hash01(seed + 10, f) * 2.2;
+      const c1 = start
+        .clone()
+        .add(dir.clone().multiplyScalar(len * 0.35))
+        .add(perp.clone().multiplyScalar(sweep * 0.7))
+        .add(jitterVec(seed + 4, f, 0.8));
+      const c2 = start
+        .clone()
+        .add(dir.clone().multiplyScalar(len * 0.75))
+        .add(perp.clone().multiplyScalar(sweep * 1.6))
+        .add(jitterVec(seed + 5, f, 1.0));
+      const end = start
+        .clone()
+        .add(dir.clone().multiplyScalar(len))
+        .add(perp.clone().multiplyScalar(sweep * 0.9));
+      const curve = new THREE.CubicBezierCurve3(start, c1, c2, end);
+      pushFiber(
+        acc,
+        curve,
+        white,
+        0.11 + hash01(seed + 6, f) * 0.13,
+        0.03 + hash01(seed + 7, f) * 0.034,
+        seed + 8 + f,
+      );
+    }
+
+    const fiberGeometry = new THREE.BufferGeometry();
+    fiberGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(acc.positions, 3),
+    );
+    fiberGeometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(acc.colors, 3),
+    );
+    fiberGeometry.setAttribute(
+      "uv",
+      new THREE.Float32BufferAttribute(acc.uvs, 2),
+    );
+    fiberGeometry.setIndex(acc.indices);
+
+    const glintGeometry = new THREE.BufferGeometry();
+    glintGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(gPos, 3),
+    );
+    glintGeometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(gCol, 3),
+    );
+
+    return { fiberGeometry, glintGeometry, tracks, spawns };
   }, []);
 }
 
@@ -326,9 +548,9 @@ export function CinematicEngine({
       {calm ? (
         <EffectComposer>
           <Bloom
-            intensity={0.95}
-            luminanceThreshold={0.24}
-            luminanceSmoothing={0.3}
+            intensity={1.05}
+            luminanceThreshold={0.18}
+            luminanceSmoothing={0.35}
             mipmapBlur
           />
           <Vignette eskil={false} offset={0.18} darkness={0.9} />
@@ -336,9 +558,9 @@ export function CinematicEngine({
       ) : (
         <EffectComposer>
           <Bloom
-            intensity={0.95}
-            luminanceThreshold={0.24}
-            luminanceSmoothing={0.3}
+            intensity={1.05}
+            luminanceThreshold={0.18}
+            luminanceSmoothing={0.35}
             mipmapBlur
           />
           <Vignette eskil={false} offset={0.18} darkness={0.9} />
@@ -356,18 +578,15 @@ function SceneBody({ calm, pending }: { calm: boolean; pending: boolean }) {
   return (
     <ParallaxRig calm={calm}>
       <CoreGlow calm={calm} pending={pending} />
-      <PlexusField data={data} calm={calm} />
+      <FiberField data={data} calm={calm} />
       <PulseFlow data={data} calm={calm} />
       <SparkSpray data={data} calm={calm} />
-      <RadiantStreaks calm={calm} />
       <DustField calm={calm} />
     </ParallaxRig>
   );
 }
 
-/** Pointer parallax + the living idle: slow oscillating drift and a barely
- * perceptible breathing of the whole web — never frozen, never wandering
- * away from the fixed DOM overlay. */
+/** Pointer parallax + the living idle: the whole web SWIMS. */
 function ParallaxRig({
   calm,
   children,
@@ -380,7 +599,6 @@ function ParallaxRig({
     const rig = group.current;
     if (!rig) return;
     const t = clock.elapsedTime;
-    // the whole web SWIMS — a visible slow sway, never a locked camera
     const driftY = calm ? 0 : Math.sin(t * 0.14) * 0.11;
     const driftX = calm ? 0 : Math.cos(t * 0.1) * 0.05;
     rig.rotation.y += (pointer.x * 0.16 + driftY - rig.rotation.y) * 0.03;
@@ -394,40 +612,47 @@ function ParallaxRig({
   return <group ref={group}>{children}</group>;
 }
 
-/** Static tissue + junction glints (with a gentle shimmer). */
-function PlexusField({ data, calm }: { data: MeshData; calm: boolean }) {
-  const tissueMat = useRef<THREE.LineBasicMaterial>(null);
+/** The fiber substance + junction glints, breathing gently. */
+function FiberField({ data, calm }: { data: MeshData; calm: boolean }) {
+  const fiberMat = useRef<THREE.MeshBasicMaterial>(null);
   const glintMat = useRef<THREE.PointsMaterial>(null);
+  const brush = useMemo(() => makeFiberTexture(), []);
+  const dot = useMemo(() => makePointTexture(), []);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (tissueMat.current)
-      tissueMat.current.opacity =
-        ramp(t, 0.1, 1.3, calm) * (calm ? 1 : 0.9 + Math.sin(t * 0.8) * 0.1);
+    if (fiberMat.current)
+      fiberMat.current.opacity =
+        ramp(t, 0.1, 1.4, calm) *
+        (calm ? 0.9 : 0.88 + Math.sin(t * 0.8) * 0.12);
     if (glintMat.current)
       glintMat.current.opacity =
-        ramp(t, 0.5, 1.3, calm) * (calm ? 1 : 0.82 + Math.sin(t * 1.5) * 0.18);
+        ramp(t, 0.5, 1.4, calm) *
+        (calm ? 0.8 : 0.78 + Math.sin(t * 1.5) * 0.22);
   });
 
   return (
     <group>
-      <lineSegments geometry={data.tissue}>
-        <lineBasicMaterial
-          ref={tissueMat}
+      <mesh geometry={data.fiberGeometry}>
+        <meshBasicMaterial
+          ref={fiberMat}
+          map={brush}
           vertexColors
           transparent
-          opacity={calm ? 1 : 0}
+          opacity={calm ? 0.9 : 0}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          side={THREE.DoubleSide}
         />
-      </lineSegments>
-      <points geometry={data.glints}>
+      </mesh>
+      <points geometry={data.glintGeometry}>
         <pointsMaterial
           ref={glintMat}
+          map={dot}
           vertexColors
-          size={0.05}
+          size={0.07}
           transparent
-          opacity={calm ? 1 : 0}
+          opacity={calm ? 0.8 : 0}
           sizeAttenuation
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -438,7 +663,7 @@ function PlexusField({ data, calm }: { data: MeshData; calm: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. TRAVELING PULSES — light beads riding every thread, staggered, endless.
+// TRAVELING PULSES — light beads riding the CURVED fibers, staggered, endless.
 // ---------------------------------------------------------------------------
 
 const PULSES_PER_TRACK = 2;
@@ -446,6 +671,7 @@ const PULSES_PER_TRACK = 2;
 function PulseFlow({ data, calm }: { data: MeshData; calm: boolean }) {
   const points = useRef<THREE.Points>(null);
   const scratch = useMemo(() => new THREE.Vector3(), []);
+  const dot = useMemo(() => makePointTexture(), []);
   const { positions, colors, meta } = useMemo(() => {
     const n = data.tracks.length * PULSES_PER_TRACK;
     const pos = new Float32Array(n * 3);
@@ -455,7 +681,6 @@ function PulseFlow({ data, calm }: { data: MeshData; calm: boolean }) {
     data.tracks.forEach((track, ti) => {
       for (let s = 0; s < PULSES_PER_TRACK; s++) {
         const i = ti * PULSES_PER_TRACK + s;
-        // heads run hot — tone lifted toward white so they read as light
         const hot = track.color.clone().lerp(white, 0.55);
         col.set([hot.r, hot.g, hot.b], i * 3);
         m.push({
@@ -493,8 +718,9 @@ function PulseFlow({ data, calm }: { data: MeshData; calm: boolean }) {
         <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
       <pointsMaterial
+        map={dot}
         vertexColors
-        size={0.12}
+        size={0.14}
         transparent
         opacity={0}
         sizeAttenuation
@@ -507,8 +733,8 @@ function PulseFlow({ data, calm }: { data: MeshData; calm: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. SPARK SPRAY — a continuous outward spray of bright sparks, each with a
-//    fading ribbon trail, curving gently as they fly. Respawn forever.
+// SPARK SPRAY — continuous outward sparks; each trails a chain of soft round
+// motes that shrink down the tail (a comet, never a hard line).
 // ---------------------------------------------------------------------------
 
 const SPARKS = 84;
@@ -547,7 +773,6 @@ function respawnSpark(
   sim.pos[i * 3] = p.x;
   sim.pos[i * 3 + 1] = p.y;
   sim.pos[i * 3 + 2] = p.z;
-  // outward from the core, with lateral jitter — the reference's spray
   const dir = p.clone().sub(CORE);
   if (dir.lengthSq() < 0.01) dir.set(1, 0, 0);
   dir.normalize();
@@ -564,7 +789,6 @@ function respawnSpark(
   sim.colorArr[i * 3] = hot.r;
   sim.colorArr[i * 3 + 1] = hot.g;
   sim.colorArr[i * 3 + 2] = hot.b;
-  // collapse the trail to the spawn point
   for (let k = 0; k < TRAIL; k++) {
     sim.trail[(i * TRAIL + k) * 3] = p.x;
     sim.trail[(i * TRAIL + k) * 3 + 1] = p.y;
@@ -574,8 +798,9 @@ function respawnSpark(
 
 function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
   const heads = useRef<THREE.Points>(null);
-  const trails = useRef<THREE.LineSegments>(null);
+  const trails = useRef<THREE.Points>(null);
   const white = useMemo(() => new THREE.Color(REFERENCE_PALETTE.white), []);
+  const dot = useMemo(() => makePointTexture(), []);
   // Sim state lives in a ref (the sanctioned mutable escape hatch) and is
   // created + mutated ONLY inside the frame callback, never during render.
   const simRef = useRef<SparkSim | null>(null);
@@ -587,7 +812,6 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
       const fresh = makeSparkSim();
       for (let i = 0; i < SPARKS; i++) {
         respawnSpark(fresh, data.spawns, white, i, 0);
-        // pre-age so the field starts mid-spray, not synchronized
         fresh.age[i] = hash01(2010, i) * fresh.life[i];
       }
       simRef.current = fresh;
@@ -600,17 +824,14 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
       if (!calm) {
         sim.age[i] += dt;
         if (sim.age[i] >= sim.life[i]) respawn(i, Math.floor(t));
-        // gentle curvature: rotate velocity a touch around z
         const vx = sim.vel[i * 3];
         const vy = sim.vel[i * 3 + 1];
         const curve = 0.22 * dt * (hash01(2020, i) - 0.5) * 2;
         sim.vel[i * 3] = vx - vy * curve;
         sim.vel[i * 3 + 1] = vy + vx * curve;
-        // integrate
         sim.pos[i * 3] += sim.vel[i * 3] * dt;
         sim.pos[i * 3 + 1] += sim.vel[i * 3 + 1] * dt;
         sim.pos[i * 3 + 2] += sim.vel[i * 3 + 2] * dt;
-        // shift the trail ring (simple shift — TRAIL is tiny)
         for (let k = TRAIL - 1; k > 0; k--) {
           sim.trail[(i * TRAIL + k) * 3] = sim.trail[(i * TRAIL + k - 1) * 3];
           sim.trail[(i * TRAIL + k) * 3 + 1] =
@@ -622,9 +843,7 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
         sim.trail[i * TRAIL * 3 + 1] = sim.pos[i * 3 + 1];
         sim.trail[i * TRAIL * 3 + 2] = sim.pos[i * 3 + 2];
       }
-      // fade over life
       const fade = 1 - sim.age[i] / sim.life[i];
-      // write head
       const headAttr = heads.current.geometry.getAttribute(
         "position",
       ) as THREE.BufferAttribute;
@@ -643,42 +862,26 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
         sim.colorArr[i * 3 + 1] * fade,
         sim.colorArr[i * 3 + 2] * fade,
       );
-      // write trail segments with fading luminance down the ribbon
       const tp = trails.current.geometry.getAttribute(
         "position",
       ) as THREE.BufferAttribute;
       const tc = trails.current.geometry.getAttribute(
         "color",
       ) as THREE.BufferAttribute;
-      for (let k = 0; k < TRAIL - 1; k++) {
-        const v = (i * (TRAIL - 1) + k) * 2;
+      for (let k = 0; k < TRAIL; k++) {
         const a = i * TRAIL + k;
-        const b = a + 1;
         tp.setXYZ(
-          v,
+          a,
           sim.trail[a * 3],
           sim.trail[a * 3 + 1],
           sim.trail[a * 3 + 2],
         );
-        tp.setXYZ(
-          v + 1,
-          sim.trail[b * 3],
-          sim.trail[b * 3 + 1],
-          sim.trail[b * 3 + 2],
-        );
-        const lumA = fade * (1 - k / TRAIL) * 0.9;
-        const lumB = fade * (1 - (k + 1) / TRAIL) * 0.9;
+        const lum = fade * (1 - k / TRAIL) * 0.85;
         tc.setXYZ(
-          v,
-          sim.colorArr[i * 3] * lumA,
-          sim.colorArr[i * 3 + 1] * lumA,
-          sim.colorArr[i * 3 + 2] * lumA,
-        );
-        tc.setXYZ(
-          v + 1,
-          sim.colorArr[i * 3] * lumB,
-          sim.colorArr[i * 3 + 1] * lumB,
-          sim.colorArr[i * 3 + 2] * lumB,
+          a,
+          sim.colorArr[i * 3] * lum,
+          sim.colorArr[i * 3 + 1] * lum,
+          sim.colorArr[i * 3 + 2] * lum,
         );
       }
     }
@@ -696,20 +899,16 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
     ).needsUpdate = true;
     const appear = ramp(t, 1.4, 1.2, calm) * (calm ? 0.4 : 1);
     (heads.current.material as THREE.PointsMaterial).opacity = appear;
-    (trails.current.material as THREE.LineBasicMaterial).opacity =
-      appear * 0.85;
+    (trails.current.material as THREE.PointsMaterial).opacity = appear * 0.85;
   });
 
   const headPositions = useMemo(() => new Float32Array(SPARKS * 3), []);
   const headColors = useMemo(() => new Float32Array(SPARKS * 3), []);
   const trailPositions = useMemo(
-    () => new Float32Array(SPARKS * (TRAIL - 1) * 2 * 3),
+    () => new Float32Array(SPARKS * TRAIL * 3),
     [],
   );
-  const trailColors = useMemo(
-    () => new Float32Array(SPARKS * (TRAIL - 1) * 2 * 3),
-    [],
-  );
+  const trailColors = useMemo(() => new Float32Array(SPARKS * TRAIL * 3), []);
 
   return (
     <group>
@@ -722,8 +921,9 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
           <bufferAttribute attach="attributes-color" args={[headColors, 3]} />
         </bufferGeometry>
         <pointsMaterial
+          map={dot}
           vertexColors
-          size={0.13}
+          size={0.15}
           transparent
           opacity={0}
           sizeAttenuation
@@ -732,7 +932,7 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
           toneMapped={false}
         />
       </points>
-      <lineSegments ref={trails}>
+      <points ref={trails}>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
@@ -740,21 +940,24 @@ function SparkSpray({ data, calm }: { data: MeshData; calm: boolean }) {
           />
           <bufferAttribute attach="attributes-color" args={[trailColors, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial
+        <pointsMaterial
+          map={dot}
           vertexColors
+          size={0.1}
           transparent
           opacity={0}
-          blending={THREE.AdditiveBlending}
+          sizeAttenuation
           depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
-      </lineSegments>
+      </points>
     </group>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 3. CORE BREATHING — the heat behind the core swells and contracts; a REAL
-//    pending proposal breathes harder and faster.
+// CORE BREATHING — the heat behind the core swells and contracts; a REAL
+// pending proposal breathes harder and faster.
 // ---------------------------------------------------------------------------
 
 function CoreGlow({ calm, pending }: { calm: boolean; pending: boolean }) {
@@ -839,113 +1042,10 @@ function makeGlowTexture(hex: string): THREE.Texture {
   return texture;
 }
 
-/** Long white rays escaping the burst, sparkle points riding them. */
-function RadiantStreaks({ calm }: { calm: boolean }) {
-  const lineMat = useRef<THREE.LineBasicMaterial>(null);
-  const sparkMat = useRef<THREE.PointsMaterial>(null);
-
-  const { rays, sparks } = useMemo(() => {
-    const pos: number[] = [];
-    const col: number[] = [];
-    const sPos: number[] = [];
-    const sCol: number[] = [];
-    const white = new THREE.Color(REFERENCE_PALETTE.white);
-    const COUNT = 26;
-    for (let i = 0; i < COUNT; i++) {
-      const angle = hash01(700, i) * Math.PI * 2;
-      const tilt = (hash01(701, i) - 0.5) * 0.9;
-      const dir = new THREE.Vector3(
-        Math.cos(angle),
-        Math.sin(angle) * 0.7,
-        tilt,
-      ).normalize();
-      const src = CLUSTERS[Math.floor(hash01(702, i) * CLUSTERS.length)];
-      const start = new THREE.Vector3(src.x, src.y, src.z).add(
-        dir.clone().multiplyScalar(0.6),
-      );
-      const len = 4.5 + hash01(703, i) * 6.5;
-      const elbow = start
-        .clone()
-        .add(dir.clone().multiplyScalar(len * 0.45))
-        .add(
-          new THREE.Vector3(
-            (hash01(704, i) - 0.5) * 1.2,
-            (hash01(705, i) - 0.5) * 1.0,
-            0,
-          ),
-        );
-      const end = start.clone().add(dir.clone().multiplyScalar(len));
-      const lum = 0.28 + hash01(706, i) * 0.3;
-      pushSegment(pos, col, start, elbow, white, lum, lum * 0.7);
-      pushSegment(pos, col, elbow, end, white, lum * 0.7, 0.04);
-      const beads = 2 + Math.floor(hash01(707, i) * 3);
-      for (let b = 0; b < beads; b++) {
-        const p = start.clone().lerp(end, 0.25 + hash01(708 + b, i) * 0.7);
-        sPos.push(p.x, p.y, p.z);
-        const gl = 0.7 + hash01(709 + b, i) * 0.3;
-        sCol.push(white.r * gl, white.g * gl, white.b * gl);
-      }
-    }
-    const rayGeometry = new THREE.BufferGeometry();
-    rayGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(pos, 3),
-    );
-    rayGeometry.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    const sparkGeometry = new THREE.BufferGeometry();
-    sparkGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(sPos, 3),
-    );
-    sparkGeometry.setAttribute(
-      "color",
-      new THREE.Float32BufferAttribute(sCol, 3),
-    );
-    return { rays: rayGeometry, sparks: sparkGeometry };
-  }, []);
-
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
-    if (lineMat.current)
-      lineMat.current.opacity =
-        ramp(t, 0.9, 1.4, calm) * (calm ? 1 : 0.85 + Math.sin(t * 0.6) * 0.15);
-    if (sparkMat.current)
-      sparkMat.current.opacity =
-        ramp(t, 1.2, 1.4, calm) * (calm ? 1 : 0.75 + Math.sin(t * 1.9) * 0.25);
-  });
-
-  return (
-    <group>
-      <lineSegments geometry={rays}>
-        <lineBasicMaterial
-          ref={lineMat}
-          vertexColors
-          transparent
-          opacity={calm ? 1 : 0}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </lineSegments>
-      <points geometry={sparks}>
-        <pointsMaterial
-          ref={sparkMat}
-          vertexColors
-          size={0.09}
-          transparent
-          opacity={calm ? 1 : 0}
-          sizeAttenuation
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </points>
-    </group>
-  );
-}
-
 /** Faint dust behind everything. */
 function DustField({ calm }: { calm: boolean }) {
   const points = useRef<THREE.Points>(null);
+  const dot = useMemo(() => makePointTexture(), []);
   const COUNT = 500;
   const positions = useMemo(() => {
     const out = new Float32Array(COUNT * 3);
@@ -968,12 +1068,14 @@ function DustField({ calm }: { calm: boolean }) {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
+        map={dot}
         color="#8ea4c4"
-        size={0.02}
+        size={0.03}
         transparent
         opacity={0.3}
         sizeAttenuation
         depthWrite={false}
+        blending={THREE.AdditiveBlending}
       />
     </points>
   );
