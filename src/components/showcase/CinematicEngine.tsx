@@ -2,32 +2,27 @@
 
 // THE CINEMATIC ENGINE — scene-agnostic showreel renderer (I-SHOW-4).
 //
-// Takes ANY SceneDescription and renders it as a living, depth-lit organism:
-// the center node as a pulsing heart wrapped in radiant streaks, every core a
-// crisp faceted solid growing a synaptic dendrite burst, edges as energy
-// threads with comet-trains firing along them, all over a deep dust field
-// with selective bloom. It knows NOTHING about scenes' meaning — Scene 1
-// (the operating map) and Scene 2 (the WorkflowBox mind-map) are just inputs.
+// SYNAPSE-WEB PASS 2 (per the strict visual review): the scene renders as
+// REGIONAL NEURAL TISSUE, not a constellation of long arcs. Every labelled
+// node grows a local cloud of tiny junction points; short segments
+// triangulate each cloud into a webbed region in the node's tone family;
+// kinked bridges hop cluster-to-cluster through junctions; every region
+// feeds filaments INWARD that BRIGHTEN toward the center, where an amber
+// tissue cluster wraps a compact white-hot core — the brightest knot of the
+// web, not a soft sun. Junction glints put the sparks ON the threads.
+//
+// It knows NOTHING about scenes' meaning — Scene 1 (the operating map) and
+// Scene 2 (the WorkflowBox mind-map) are just SceneDescription inputs.
 //
 // DISPLAY-ONLY (I-SHOW-1): renders props; no store, no fetch, no mutation,
-// no runtime access, zero interactive affordances (no buttons, no handlers
-// that change anything — pointer movement only steers the parallax camera).
+// no runtime access, zero interactive affordances (pointer movement only
+// steers the parallax camera).
 //
-// UNCHAINED by design: this surface is non-mutating, so the cockpit's audit
-// constraints (SVG-only, motion vocabulary, flat amber) do not bind it. The
-// DNA is inherited expressively: amber is still ONLY the Gate — here it may
-// bloom, pulse, and throw streaks. Colors mirror
-// src/lib/design-tokens/tokens.css (WebGL materials cannot consume CSS custom
-// properties, so the hex is restated with its token name — the lockstep is
-// asserted in the showcase suite).
-//
-// COMPOSITION LAW (the R3 polish passes): deliberate depth hierarchy — the
-// Gate dominates; ring-2 primaries sit bright and close; ring-3 leaves
-// recede dim and deep. Bloom is SELECTIVE (high threshold): the Gate,
-// pending states, and comet heads bloom — cores stay crisp. Density comes
-// from the dendrite plexus, whose color families are the scene's tones.
+// UNCHAINED by design (non-mutating), DNA inherited: amber is still ONLY the
+// Gate's — the warm tissue grows solely at the center. Colors mirror
+// src/lib/design-tokens/tokens.css (lockstep asserted in the suite).
 
-import { Html, Line } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Bloom,
@@ -39,12 +34,9 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import {
-  ELLIPSE_Y,
-  RING_RADIUS_STEP,
   layoutScene,
   positionIndex,
   type SceneDescription,
-  type SceneEdge,
   type SceneNode,
   type ScenePosition,
   type SceneTone,
@@ -59,16 +51,16 @@ export const TONE_HEX: Record<SceneTone, string> = {
   stone: "#8ea4c4", // --jarvis-shell-ink-dim
 };
 const GATE_DEEP = "#ff8a1f"; // --jarvis-shell-gate-deep
-const SKY = "#38bdf8"; // --jarvis-color-sky-focus (the life range's far end)
-const FIELD_BG = "#020617"; // --jarvis-color-panel (the void the field sits in)
-const INK = "#eaf1fb"; // --jarvis-shell-ink (neutral white for streaks)
+const SKY = "#38bdf8"; // --jarvis-color-sky-focus
+const FIELD_BG = "#010409"; // deep end of --jarvis-color-panel's void
+const INK = "#eaf1fb"; // --jarvis-shell-ink
 
-/** Depth hierarchy per ring (world z): primaries forward, leaves receding. */
+/** Depth emphasis per ring: primaries forward/bright, leaves receding. */
 const RING_EMPHASIS: Record<number, { z: number; dim: number; scale: number }> =
   {
-    1: { z: 0.1, dim: 0.78, scale: 0.92 }, // pipeline stages — supporting cast
-    2: { z: 0.7, dim: 1.0, scale: 1.0 }, // governed surfaces — the primaries
-    3: { z: -1.7, dim: 0.55, scale: 0.82 }, // leaves — recede into the field
+    1: { z: 0.1, dim: 0.8, scale: 0.92 },
+    2: { z: 0.7, dim: 1.0, scale: 1.0 },
+    3: { z: -1.7, dim: 0.6, scale: 0.85 },
   };
 
 function emphasisFor(ring: number): { z: number; dim: number; scale: number } {
@@ -77,28 +69,85 @@ function emphasisFor(ring: number): { z: number; dim: number; scale: number } {
 
 export interface CinematicEngineProps {
   readonly scene: SceneDescription;
-  /** Reduced-motion calm variant: the field still renders depth-lit, but
-   * nothing travels — no pulse, no particle flow, no camera breathing. */
+  /** Reduced-motion calm variant: fully assembled, depth-lit, still —
+   * no materialization sweep, no flow, no pulse, no camera breathing. */
   readonly calm: boolean;
 }
 
-/** Deterministic [0,1) per (seed,i) — stable dust/particles, no Math.random. */
+/** Deterministic [0,1) per (seed,i) — stable geometry, no Math.random. */
 function hash01(seed: number, i: number): number {
   let h = (seed * 374761393 + i * 668265263) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** Deterministic numeric seed from a node id. */
 function seedOf(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return (h >>> 0) % 100000;
 }
 
+function worldOf(p: ScenePosition, ring: number): THREE.Vector3 {
+  return new THREE.Vector3(p.x, p.y, p.z + emphasisFor(ring).z);
+}
+
+interface PlacedNode {
+  readonly node: SceneNode;
+  readonly at: THREE.Vector3;
+  readonly color: THREE.Color;
+  /** The node's local junction cloud — the tissue's joints. */
+  readonly junctions: readonly THREE.Vector3[];
+}
+
+/** Scatter a flattened ellipsoid junction cloud around a node. */
+function cloudOf(
+  at: THREE.Vector3,
+  seed: number,
+  count: number,
+  reach: number,
+): THREE.Vector3[] {
+  const out: THREE.Vector3[] = [];
+  for (let i = 0; i < count; i++) {
+    const theta = hash01(seed, i) * Math.PI * 2;
+    const phi = Math.acos(2 * hash01(seed + 1, i) - 1);
+    const r = reach * (0.25 + 0.75 * Math.cbrt(hash01(seed + 2, i)));
+    out.push(
+      new THREE.Vector3(
+        at.x + Math.sin(phi) * Math.cos(theta) * r,
+        at.y + Math.sin(phi) * Math.sin(theta) * r * 0.7,
+        at.z + Math.cos(phi) * r * 0.8,
+      ),
+    );
+  }
+  return out;
+}
+
 export function CinematicEngine({ scene, calm }: CinematicEngineProps) {
-  const positions = useMemo(() => layoutScene(scene), [scene]);
-  const index = useMemo(() => positionIndex(positions), [positions]);
+  const placed = useMemo<readonly PlacedNode[]>(() => {
+    const index = positionIndex(layoutScene(scene));
+    return scene.nodes.flatMap((node) => {
+      const p = index.get(node.id);
+      if (!p) return [];
+      const isCenter = node.id === scene.centerNodeId;
+      const ring = isCenter ? 0 : node.ring;
+      const at = worldOf(p, ring);
+      const seed = seedOf(node.id);
+      const count = isCenter ? 34 : node.ring === 3 ? 14 : 24;
+      const reach = isCenter ? 2.1 : 0.9 + node.weight * 1.0;
+      return [
+        {
+          node,
+          at,
+          color: new THREE.Color(TONE_HEX[node.tone]),
+          junctions: cloudOf(at, seed + 50, count, reach),
+        },
+      ];
+    });
+  }, [scene]);
+  const byId = useMemo(
+    () => new Map(placed.map((entry) => [entry.node.id, entry])),
+    [placed],
+  );
 
   return (
     <Canvas
@@ -110,54 +159,39 @@ export function CinematicEngine({ scene, calm }: CinematicEngineProps) {
       style={{ position: "absolute", inset: 0 }}
     >
       <color attach="background" args={[FIELD_BG]} />
-      <fog attach="fog" args={[FIELD_BG, 16, 34]} />
-      <ambientLight intensity={0.32} />
-      <pointLight position={[0, 6, 6]} intensity={0.55} color={SKY} />
+      <fog attach="fog" args={[FIELD_BG, 18, 40]} />
+      <ambientLight intensity={0.25} />
+      <pointLight position={[0, 6, 6]} intensity={0.4} color={SKY} />
 
       <ParallaxRig calm={calm}>
         <DustField calm={calm} />
-        {scene.edges.map((edge) => {
-          const from = index.get(edge.from);
-          const to = index.get(edge.to);
-          if (!from || !to) return null;
-          return (
-            <FlowEdge
-              key={`${edge.from}->${edge.to}`}
-              edge={edge}
-              from={from}
-              to={to}
-              calm={calm}
-            />
-          );
-        })}
-        {scene.nodes.map((node) => {
-          const at = index.get(node.id);
-          if (!at) return null;
-          return node.id === scene.centerNodeId ? (
-            <GateHeart key={node.id} node={node} calm={calm} />
+        <TissueMesh scene={scene} placed={placed} byId={byId} calm={calm} />
+        <InwardFlow scene={scene} byId={byId} calm={calm} />
+        {placed.map((entry) =>
+          entry.node.id === scene.centerNodeId ? (
+            <GateCore key={entry.node.id} node={entry.node} calm={calm} />
           ) : (
-            <OrbNode key={node.id} node={node} at={at} calm={calm} />
-          );
-        })}
+            <NodePoint key={entry.node.id} entry={entry} calm={calm} />
+          ),
+        )}
       </ParallaxRig>
 
       <EffectComposer>
         <Bloom
-          intensity={1.05}
-          luminanceThreshold={0.3}
-          luminanceSmoothing={0.22}
+          intensity={1.0}
+          luminanceThreshold={0.28}
+          luminanceSmoothing={0.25}
           mipmapBlur
         />
-        <Vignette eskil={false} offset={0.22} darkness={0.85} />
-        <Noise opacity={0.025} />
+        <Vignette eskil={false} offset={0.2} darkness={0.88} />
+        <Noise opacity={0.03} />
       </EffectComposer>
     </Canvas>
   );
 }
 
-/** Pointer parallax + camera breathing. Pointer input only STEERS the view —
- * it changes nothing but the camera, which is the one interaction a
- * display-only surface may honestly offer. */
+/** Pointer parallax + camera breathing — the one honest interaction. The rig
+ * sits slightly high so the bottom ring's chips clear the telemetry strip. */
 function ParallaxRig({
   calm,
   children,
@@ -169,214 +203,569 @@ function ParallaxRig({
   useFrame(({ camera, pointer, clock }) => {
     const rig = group.current;
     if (!rig) return;
-    const targetY = pointer.x * 0.22;
-    const targetX = -0.32 + pointer.y * 0.12;
+    const targetY = pointer.x * 0.24;
+    const targetX = -0.3 + pointer.y * 0.12;
     rig.rotation.y += (targetY - rig.rotation.y) * 0.04;
     rig.rotation.x += (targetX - rig.rotation.x) * 0.04;
     if (!calm) {
       const t = clock.elapsedTime;
-      rig.rotation.y += Math.sin(t * 0.05) * 0.0008; // slow ambient drift
-      camera.position.z = 10.8 + Math.sin(t * 0.24) * 0.3; // breathing
-      camera.lookAt(0, 0, 0);
+      rig.rotation.y += Math.sin(t * 0.045) * 0.0008;
+      // breathing varies position ONLY — no re-aim, so the full variant keeps
+      // the calm variant's exact framing (bottom chips stay clear).
+      camera.position.z = 10.8 + Math.sin(t * 0.22) * 0.28;
     }
   });
   return (
-    <group ref={group} rotation={[-0.32, 0, 0]}>
+    <group ref={group} rotation={[-0.3, 0, 0]} position={[0, 0.35, 0]}>
       {children}
     </group>
   );
 }
 
-/** The center of gravity: the Gate as a pulsing amber heart — a crisp
- * faceted core inside two gyroscope rings, wrapped in its own synaptic
- * burst and radiant streaks. DOMINANT in the hierarchy. Pending state
- * (REAL proposal) drives the pulse. */
-function GateHeart({ node, calm }: { node: SceneNode; calm: boolean }) {
-  const core = useRef<THREE.Mesh>(null);
-  const ringA = useRef<THREE.Mesh>(null);
-  const ringB = useRef<THREE.Mesh>(null);
-  const pending = node.state === "pending";
-  const outerHalo = useMemo(() => makeHaloTexture(TONE_HEX.gate), []);
+function ramp(t: number, delay: number, duration: number, calm: boolean) {
+  if (calm) return 1;
+  return THREE.MathUtils.clamp((t - delay) / duration, 0, 1);
+}
+
+// ---------------------------------------------------------------------------
+// THE TISSUE — regional neural mesh. Per-vertex-colored static systems:
+//   1. REGION TISSUE: each cluster's junctions triangulated by short straight
+//      segments (nearest neighbors + spokes to the anchor) — the webbing;
+//   2. BRIDGES: for each scene edge, kinked threads hopping junction ->
+//      junction between the two clusters (no smooth long-haul arcs);
+//   3. INWARD FILAMENTS: junctions stream to the core, BRIGHTENING as they
+//      arrive (the moat is tissue, not emptiness);
+//   4. JUNCTION GLINTS: every junction is a tiny bright point — the sparks
+//      live ON the threads.
+// Luminance is jittered per segment so each family reads as living tissue.
+// ---------------------------------------------------------------------------
+
+function pushSegment(
+  pos: number[],
+  col: number[],
+  a: THREE.Vector3,
+  b: THREE.Vector3,
+  color: THREE.Color,
+  alphaA: number,
+  alphaB: number,
+) {
+  pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
+  col.push(
+    color.r * alphaA,
+    color.g * alphaA,
+    color.b * alphaA,
+    color.r * alphaB,
+    color.g * alphaB,
+    color.b * alphaB,
+  );
+}
+
+function TissueMesh({
+  scene,
+  placed,
+  byId,
+  calm,
+}: {
+  scene: SceneDescription;
+  placed: readonly PlacedNode[];
+  byId: ReadonlyMap<string, PlacedNode>;
+  calm: boolean;
+}) {
+  const tissueMat = useRef<THREE.LineBasicMaterial>(null);
+  const bridgeMat = useRef<THREE.LineBasicMaterial>(null);
+  const inwardMat = useRef<THREE.LineBasicMaterial>(null);
+  const glintMat = useRef<THREE.PointsMaterial>(null);
+
+  const { tissue, bridges, inward, glints, glintColors } = useMemo(() => {
+    const tPos: number[] = [];
+    const tCol: number[] = [];
+    const gPos: number[] = [];
+    const gCol: number[] = [];
+    const origin = new THREE.Vector3(0, 0, 0);
+    const gateColor = new THREE.Color(TONE_HEX.gate);
+
+    // 1. REGION TISSUE — triangulate every cluster with short segments.
+    for (const entry of placed) {
+      const isCenter = entry.node.id === scene.centerNodeId;
+      const color = isCenter ? gateColor : entry.color;
+      const dim = isCenter ? 1 : emphasisFor(entry.node.ring).dim;
+      const seed = seedOf(entry.node.id);
+      const js = entry.junctions;
+      js.forEach((j, i) => {
+        // glint at every junction
+        gPos.push(j.x, j.y, j.z);
+        const gl = (0.65 + hash01(seed + 3, i) * 0.35) * dim;
+        gCol.push(color.r * gl, color.g * gl, color.b * gl);
+        // nearest-2 neighbor links (the local web)
+        const near = js
+          .map((other, k) => ({
+            k,
+            d: k === i ? Infinity : j.distanceTo(other),
+          }))
+          .sort((x, y) => x.d - y.d)
+          .slice(0, 2);
+        for (const { k } of near) {
+          if (k < i) continue; // dedupe
+          const lum = (0.28 + hash01(seed + 4, i * 31 + k) * 0.3) * dim;
+          pushSegment(tPos, tCol, j, js[k], color, lum, lum * 0.7);
+        }
+        // spoke to the anchor for ~55% of junctions
+        if (hash01(seed + 5, i) < 0.55) {
+          const lum = (0.3 + hash01(seed + 6, i) * 0.25) * dim;
+          pushSegment(tPos, tCol, j, entry.at, color, lum * 0.8, lum);
+        }
+      });
+    }
+
+    // 2. BRIDGES — kinked junction-to-junction threads per real edge.
+    const bPos: number[] = [];
+    const bCol: number[] = [];
+    scene.edges.forEach((edge, e) => {
+      const from = byId.get(edge.from);
+      const to = byId.get(edge.to);
+      if (!from || !to) return;
+      const color = new THREE.Color(TONE_HEX[edge.tone]);
+      const threads = 3 + Math.round(edge.flow * 2);
+      for (let s = 0; s < threads; s++) {
+        const a =
+          from.junctions[
+            Math.floor(hash01(60 + e, s) * from.junctions.length)
+          ] ?? from.at;
+        const b =
+          to.junctions[Math.floor(hash01(61 + e, s) * to.junctions.length)] ??
+          to.at;
+        // two kinks make it a thread through the web, not a smooth arc
+        const k1 = a
+          .clone()
+          .lerp(b, 0.33)
+          .add(
+            new THREE.Vector3(
+              (hash01(62 + e, s) - 0.5) * 1.2,
+              (hash01(63 + e, s) - 0.5) * 1.0,
+              (hash01(64 + e, s) - 0.5) * 1.0,
+            ),
+          );
+        const k2 = a
+          .clone()
+          .lerp(b, 0.66)
+          .add(
+            new THREE.Vector3(
+              (hash01(65 + e, s) - 0.5) * 1.2,
+              (hash01(66 + e, s) - 0.5) * 1.0,
+              (hash01(67 + e, s) - 0.5) * 1.0,
+            ),
+          );
+        const strength = 0.3 + edge.flow * 0.35;
+        const l1 = strength * (0.7 + hash01(68 + e, s) * 0.3);
+        pushSegment(bPos, bCol, a, k1, color, l1, l1 * 0.85);
+        pushSegment(bPos, bCol, k1, k2, color, l1 * 0.85, l1 * 0.85);
+        pushSegment(bPos, bCol, k2, b, color, l1 * 0.85, l1);
+      }
+    });
+
+    // 3. INWARD FILAMENTS — junctions stream home, brightening on arrival.
+    const iPos: number[] = [];
+    const iCol: number[] = [];
+    for (const entry of placed) {
+      if (entry.node.id === scene.centerNodeId) continue;
+      const seed = seedOf(entry.node.id);
+      const count = entry.node.ring === 3 ? 3 : 5;
+      for (let s = 0; s < count; s++) {
+        const start =
+          entry.junctions[
+            Math.floor(hash01(seed + 12, s) * entry.junctions.length)
+          ] ?? entry.at;
+        const kink = start
+          .clone()
+          .multiplyScalar(0.5)
+          .add(
+            new THREE.Vector3(
+              (hash01(seed + 13, s) - 0.5) * 1.8,
+              (hash01(seed + 14, s) - 0.5) * 1.5,
+              (hash01(seed + 15, s) - 0.5) * 1.5,
+            ),
+          );
+        // the thread walks in: node tone at the rim, warming as it arrives
+        const lumOut = 0.2 + hash01(seed + 16, s) * 0.12;
+        pushSegment(iPos, iCol, start, kink, entry.color, lumOut, lumOut * 1.4);
+        // arrival segment brightens INTO the core (no moat) and hands the
+        // last step to the gate family
+        const arrival = kink.clone().lerp(origin, 0.86);
+        pushSegment(
+          iPos,
+          iCol,
+          kink,
+          arrival,
+          entry.color,
+          lumOut * 1.4,
+          lumOut * 2.1,
+        );
+        pushSegment(iPos, iCol, arrival, origin, gateColor, 0.5, 0.75);
+      }
+    }
+
+    const build = (pos: number[], col: number[]) => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(pos, 3),
+      );
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+      return geometry;
+    };
+    const glintGeometry = new THREE.BufferGeometry();
+    glintGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(gPos, 3),
+    );
+    glintGeometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(gCol, 3),
+    );
+    return {
+      tissue: build(tPos, tCol),
+      bridges: build(bPos, bCol),
+      inward: build(iPos, iCol),
+      glints: glintGeometry,
+      glintColors: gCol.length / 3,
+    };
+  }, [scene, placed, byId]);
+
+  // MATERIALIZATION (tissue -> bridges -> inward -> glints) + breathing.
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (tissueMat.current)
+      tissueMat.current.opacity =
+        ramp(t, 0.1, 1.2, calm) * (calm ? 1 : 0.92 + Math.sin(t * 0.9) * 0.08);
+    if (bridgeMat.current)
+      bridgeMat.current.opacity =
+        ramp(t, 0.8, 1.2, calm) *
+        (calm ? 1 : 0.92 + Math.sin(t * 1.1 + 2) * 0.08);
+    if (inwardMat.current)
+      inwardMat.current.opacity =
+        ramp(t, 1.4, 1.4, calm) *
+        (calm ? 1 : 0.9 + Math.sin(t * 0.7 + 4) * 0.1);
+    if (glintMat.current)
+      glintMat.current.opacity =
+        ramp(t, 0.4, 1.4, calm) *
+        (calm ? 1 : 0.85 + Math.sin(t * 1.6 + 1) * 0.15);
+  });
+
+  return (
+    <group>
+      <lineSegments geometry={tissue}>
+        <lineBasicMaterial
+          ref={tissueMat}
+          vertexColors
+          transparent
+          opacity={calm ? 1 : 0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </lineSegments>
+      <lineSegments geometry={bridges}>
+        <lineBasicMaterial
+          ref={bridgeMat}
+          vertexColors
+          transparent
+          opacity={calm ? 1 : 0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </lineSegments>
+      <lineSegments geometry={inward}>
+        <lineBasicMaterial
+          ref={inwardMat}
+          vertexColors
+          transparent
+          opacity={calm ? 1 : 0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </lineSegments>
+      <points geometry={glints}>
+        <pointsMaterial
+          ref={glintMat}
+          vertexColors
+          size={0.055}
+          transparent
+          opacity={calm ? 1 : 0}
+          sizeAttenuation
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+      {glintColors === 0 && null}
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// INWARD FLOW — sparks ride the web home to the core (HDR, they bloom).
+// ---------------------------------------------------------------------------
+
+interface SparkTrack {
+  readonly curve: THREE.QuadraticBezierCurve3;
+  readonly color: THREE.Color;
+  readonly speed: number;
+  readonly offset: number;
+}
+
+function InwardFlow({
+  scene,
+  byId,
+  calm,
+}: {
+  scene: SceneDescription;
+  byId: ReadonlyMap<string, PlacedNode>;
+  calm: boolean;
+}) {
+  const points = useRef<THREE.Points>(null);
+  const { tracks, positions, colors } = useMemo(() => {
+    const list: SparkTrack[] = [];
+    const origin = new THREE.Vector3(0, 0, 0);
+    scene.edges.forEach((edge, e) => {
+      const from = byId.get(edge.from);
+      const to = byId.get(edge.to);
+      if (!from || !to) return;
+      const inwardAB = to.at.length() <= from.at.length();
+      const a = inwardAB ? from.at : to.at;
+      const b = inwardAB ? to.at : from.at;
+      const mid = a
+        .clone()
+        .add(b)
+        .multiplyScalar(0.5)
+        .add(new THREE.Vector3(0, 0.4 + a.distanceTo(b) * 0.07, 0.2));
+      const n = Math.max(2, Math.round(2 + edge.flow * 6));
+      for (let s = 0; s < n; s++) {
+        list.push({
+          curve: new THREE.QuadraticBezierCurve3(a, mid, b),
+          color: new THREE.Color(TONE_HEX[edge.tone]),
+          speed: 0.1 + edge.flow * 0.22 + hash01(31 + e, s) * 0.05,
+          offset: hash01(32 + e, s),
+        });
+      }
+    });
+    for (const entry of byId.values()) {
+      if (entry.node.id === scene.centerNodeId) continue;
+      const seed = seedOf(entry.node.id);
+      const n = entry.node.ring === 3 ? 2 : 4;
+      for (let s = 0; s < n; s++) {
+        const mid = entry.at
+          .clone()
+          .multiplyScalar(0.5)
+          .add(
+            new THREE.Vector3(
+              (hash01(seed + 7, s) - 0.5) * 2.2,
+              (hash01(seed + 8, s) - 0.5) * 1.8,
+              (hash01(seed + 9, s) - 0.5) * 1.8,
+            ),
+          );
+        list.push({
+          curve: new THREE.QuadraticBezierCurve3(entry.at, mid, origin),
+          color: entry.color.clone(),
+          speed: 0.07 + hash01(seed + 10, s) * 0.06,
+          offset: hash01(seed + 11, s),
+        });
+      }
+    }
+    const pos = new Float32Array(list.length * 3);
+    const col = new Float32Array(list.length * 3);
+    list.forEach((track, i) => {
+      col.set([track.color.r, track.color.g, track.color.b], i * 3);
+    });
+    return { tracks: list, positions: pos, colors: col };
+  }, [scene, byId]);
+
+  useFrame(({ clock }) => {
+    const cloud = points.current;
+    if (!cloud) return;
+    const t = clock.elapsedTime;
+    const attr = cloud.geometry.getAttribute(
+      "position",
+    ) as THREE.BufferAttribute;
+    const appear = ramp(t, 1.6, 1.2, calm);
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i];
+      const phase = calm ? track.offset : (track.offset + t * track.speed) % 1;
+      const p = track.curve.getPoint(phase);
+      attr.setXYZ(i, p.x, p.y, p.z);
+    }
+    attr.needsUpdate = true;
+    (cloud.material as THREE.PointsMaterial).opacity = appear;
+  });
+
+  return (
+    <points ref={points}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        vertexColors
+        size={0.1}
+        transparent
+        opacity={0}
+        sizeAttenuation
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NODES — crisp anchor points where the tissue converges.
+// ---------------------------------------------------------------------------
+
+function NodePoint({ entry, calm }: { entry: PlacedNode; calm: boolean }) {
+  const { node, at, color } = entry;
+  const group = useRef<THREE.Group>(null);
+  const flare = useRef<THREE.Sprite>(null);
+  const seed = seedOf(node.id);
+  const emphasis = emphasisFor(node.ring);
+  const lit = node.state === "active" || node.state === "pending";
+  const size = (0.07 + node.weight * 0.07) * emphasis.scale;
+  const dim = emphasis.dim * (node.state === "empty" ? 0.55 : 1);
+  const flareTexture = useMemo(
+    () => makeFlareTexture(`#${color.getHexString()}`),
+    [color],
+  );
+  const birthDelay = 0.4 + hash01(seed, 1) * 1.6;
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (!calm && core.current) {
-      const beat = pending ? 1 + Math.sin(t * 2.6) * 0.06 : 1;
-      core.current.scale.setScalar(beat);
-      core.current.rotation.y = t * 0.12;
-      const material = core.current.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = pending
-        ? 1.9 + Math.sin(t * 2.6) * 0.7
-        : 1.2;
+    const appear = ramp(t, birthDelay, 0.5, calm);
+    if (group.current) {
+      const overshoot = calm ? 1 : 1 + Math.sin(appear * Math.PI) * 0.4;
+      group.current.scale.setScalar(Math.max(0.0001, appear * overshoot));
     }
-    if (!calm && ringA.current && ringB.current) {
-      ringA.current.rotation.z = t * 0.21;
-      ringA.current.rotation.x = 0.6 + Math.sin(t * 0.11) * 0.2;
-      ringB.current.rotation.z = -t * 0.16;
-      ringB.current.rotation.y = 0.8 + Math.cos(t * 0.09) * 0.2;
+    if (flare.current) {
+      const cycle = calm ? 0.5 : (t * 0.14 + hash01(seed, 2)) % 1;
+      const glint = calm ? 0 : Math.max(0, 1 - Math.abs(cycle - 0.5) * 10);
+      const base = lit ? 1.1 : 0.75;
+      flare.current.scale.setScalar(size * (6 + glint * 4.5) * base);
+      (flare.current.material as THREE.SpriteMaterial).opacity =
+        appear * (lit ? 0.8 : 0.5) * dim * (1 + glint * 0.6);
+    }
+  });
+
+  return (
+    <group position={at}>
+      <group ref={group}>
+        <mesh>
+          <octahedronGeometry args={[size, 0]} />
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={(lit ? 2.2 : 1.3) * dim}
+            roughness={0.3}
+            flatShading
+          />
+        </mesh>
+        <sprite ref={flare} scale={size * 6}>
+          <spriteMaterial
+            map={flareTexture}
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </sprite>
+        {node.fill !== undefined && (
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry
+              args={[
+                size * 2.6,
+                0.013,
+                6,
+                40,
+                Math.max(0.02, node.fill) * Math.PI * 2,
+              ]}
+            />
+            <meshStandardMaterial
+              color={TONE_HEX.life}
+              emissive={TONE_HEX.life}
+              emissiveIntensity={1.6}
+              toneMapped={false}
+            />
+          </mesh>
+        )}
+      </group>
+      <NodeLabel node={node} />
+    </group>
+  );
+}
+
+/** The core: the brightest KNOT of the web — a compact white-hot point in a
+ * tight faceted shell and one thin ring. Pulses with the REAL pending
+ * proposal. No wide soft halo: its amber tissue cluster (TissueMesh) is the
+ * corona. */
+function GateCore({ node, calm }: { node: SceneNode; calm: boolean }) {
+  const hot = useRef<THREE.Mesh>(null);
+  const shell = useRef<THREE.Mesh>(null);
+  const ring = useRef<THREE.Mesh>(null);
+  const pending = node.state === "pending";
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const appear = ramp(t, 0, 0.9, calm);
+    const beat = calm ? 1 : pending ? 1 + Math.sin(t * 2.6) * 0.1 : 1;
+    if (hot.current) hot.current.scale.setScalar(appear * beat);
+    if (shell.current) {
+      shell.current.scale.setScalar(appear);
+      shell.current.rotation.y = calm ? 0 : t * 0.16;
+      (shell.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        pending && !calm ? 1.8 + Math.sin(t * 2.6) * 0.6 : 1.3;
+    }
+    if (ring.current && !calm) {
+      ring.current.rotation.z = t * 0.2;
+      ring.current.rotation.x = 0.6 + Math.sin(t * 0.1) * 0.22;
     }
   });
 
   return (
     <group>
-      <mesh ref={core}>
-        <icosahedronGeometry args={[0.95, 1]} />
+      <mesh ref={hot}>
+        <sphereGeometry args={[0.17, 20, 20]} />
+        <meshBasicMaterial color="#fff3dd" toneMapped={false} />
+      </mesh>
+      <mesh ref={shell}>
+        <icosahedronGeometry args={[0.4, 1]} />
         <meshStandardMaterial
           color={GATE_DEEP}
           emissive={TONE_HEX.gate}
-          emissiveIntensity={pending ? 2.1 : 1.2}
+          emissiveIntensity={pending ? 1.8 : 1.3}
           roughness={0.3}
           metalness={0.2}
           flatShading
+          transparent
+          opacity={0.85}
         />
       </mesh>
-      <mesh ref={ringA} rotation={[0.6, 0, 0]}>
-        <torusGeometry args={[1.55, 0.02, 12, 96]} />
+      <mesh ref={ring} rotation={[0.6, 0, 0]}>
+        <torusGeometry args={[0.85, 0.01, 10, 96]} />
         <meshStandardMaterial
           color={TONE_HEX.gate}
           emissive={TONE_HEX.gate}
-          emissiveIntensity={1.1}
+          emissiveIntensity={1.2}
           transparent
-          opacity={0.9}
+          opacity={0.85}
         />
       </mesh>
-      <mesh ref={ringB} rotation={[1.4, 0.5, 0]}>
-        <torusGeometry args={[1.95, 0.013, 12, 96]} />
-        <meshStandardMaterial
-          color={GATE_DEEP}
-          emissive={GATE_DEEP}
-          emissiveIntensity={0.75}
-          transparent
-          opacity={0.65}
-        />
-      </mesh>
-      <DendriteBurst
-        color={TONE_HEX.gate}
-        seed={7}
-        reach={2.7}
-        count={110}
-        dim={pending ? 1 : 0.7}
-        calm={calm}
-      />
-      <RadiantStreaks calm={calm} />
-      <sprite scale={7.5}>
-        <spriteMaterial
-          map={outerHalo}
-          transparent
-          opacity={pending ? 0.5 : 0.32}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </sprite>
       <pointLight
         color={TONE_HEX.gate}
-        intensity={pending ? 3.2 : 1.8}
-        distance={10}
+        intensity={pending ? 2.6 : 1.6}
+        distance={9}
       />
       <NodeLabel node={node} hero />
     </group>
   );
 }
 
-/** A ring node: crisp faceted core + hairline equator + synaptic dendrite
- * burst + disciplined halo + optional progress arc (the life range) + its
- * label in the app's real type registers. Emphasis (brightness/scale/depth)
- * follows the ring hierarchy. */
-function OrbNode({
-  node,
-  at,
-  calm,
-}: {
-  node: SceneNode;
-  at: ScenePosition;
-  calm: boolean;
-}) {
-  const halo = useRef<THREE.Sprite>(null);
-  const emphasis = emphasisFor(node.ring);
-  const radius = (0.16 + node.weight * 0.3) * emphasis.scale;
-  const color = TONE_HEX[node.tone];
-  const lit = node.state === "active" || node.state === "pending";
-  const dim = emphasis.dim * (node.state === "empty" ? 0.55 : 1);
-
-  const haloTexture = useMemo(() => makeHaloTexture(color), [color]);
-
-  useFrame(({ clock }) => {
-    if (calm || !halo.current) return;
-    const t = clock.elapsedTime + at.x * 2.1; // desynchronize the shimmer
-    const s = 1 + Math.sin(t * 1.4) * (lit ? 0.1 : 0.04);
-    halo.current.scale.setScalar(radius * 5.2 * s);
-  });
-
-  return (
-    <group position={[at.x, at.y, at.z + emphasis.z]}>
-      <mesh rotation={[0.4, 0.7, 0]}>
-        <icosahedronGeometry args={[radius, 1]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={(lit ? 1.15 : 0.55) * dim}
-          roughness={0.42}
-          metalness={0.12}
-          flatShading
-        />
-      </mesh>
-      {/* crisp structural equator — the line that keeps the core an object,
-          not a blob */}
-      <mesh rotation={[Math.PI / 2.4, 0.4, 0]}>
-        <torusGeometry args={[radius * 1.28, 0.008, 8, 64]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={(lit ? 1.6 : 0.9) * dim}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      <DendriteBurst
-        color={color}
-        seed={seedOf(node.id)}
-        reach={radius * 4.4}
-        count={node.ring === 3 ? 22 : 46}
-        dim={dim * (lit ? 1 : 0.72)}
-        calm={calm}
-      />
-      <sprite ref={halo} scale={radius * 5.2}>
-        <spriteMaterial
-          map={haloTexture}
-          transparent
-          opacity={(lit ? 0.34 : 0.16) * emphasis.dim}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </sprite>
-      {node.fill !== undefined && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry
-            args={[
-              radius + 0.16,
-              0.022,
-              8,
-              48,
-              Math.max(0.02, node.fill) * Math.PI * 2,
-            ]}
-          />
-          <meshStandardMaterial
-            color={TONE_HEX.life}
-            emissive={TONE_HEX.life}
-            emissiveIntensity={1.5}
-            toneMapped={false}
-          />
-        </mesh>
-      )}
-      <NodeLabel node={node} />
-    </group>
-  );
-}
-
-/** DOM label riding the 3D node — the app's REAL fonts and registers
- * (Fraunces display, JetBrains Mono for the id chip) on a legibility pill,
- * with a measured progress bar when the node carries a REAL fill (the
- * terminal-card read). zIndexRange keeps every label under the chrome. */
+/** Label chip: small clean terminal box over the mesh — mono chip register,
+ * real values only, measured fill bar when the node carries a REAL rollup. */
 function NodeLabel({
   node,
   hero = false,
@@ -387,8 +776,8 @@ function NodeLabel({
   return (
     <Html
       center
-      distanceFactor={hero ? 6.5 : 8.5}
-      position={[0, hero ? 2.05 : -0.62, 0]}
+      distanceFactor={hero ? 6.8 : 9}
+      position={[0, hero ? 1.35 : -0.42, 0]}
       wrapperClass="showcase-label-wrap"
       zIndexRange={[40, 0]}
     >
@@ -397,11 +786,13 @@ function NodeLabel({
         data-showcase-node={node.id}
         data-showcase-state={node.state}
         data-showcase-ring={node.ring}
+        data-showcase-tone={node.tone}
       >
         <span className="showcase-label-title">{node.label}</span>
-        {node.sublabel !== undefined && (
-          <span className="showcase-label-sub">{node.sublabel}</span>
-        )}
+        <span className="showcase-label-sub">
+          {node.sublabel !== undefined ? `${node.sublabel} · ` : ""}
+          {node.state}
+        </span>
         {node.fill !== undefined && (
           <span className="showcase-label-bar" aria-hidden="true">
             <span
@@ -415,311 +806,30 @@ function NodeLabel({
   );
 }
 
-/** An edge: an energy thread + a comet-train FIRING along it. Flow intensity
- * comes from the scene (REAL state — a pending proposal pushes the
- * chat->gate thread to full fire). The train is two layers: a bead stream
- * and brighter comet heads that punch past the bloom threshold. */
-function FlowEdge({
-  edge,
-  from,
-  to,
-  calm,
-}: {
-  edge: SceneEdge;
-  from: ScenePosition;
-  to: ScenePosition;
-  calm: boolean;
-}) {
-  const color = TONE_HEX[edge.tone];
-  const { curve, linePoints } = useMemo(() => {
-    const a = new THREE.Vector3(
-      from.x,
-      from.y,
-      from.z + emphasisFor(ringOfPosition(from)).z,
-    );
-    const b = new THREE.Vector3(
-      to.x,
-      to.y,
-      to.z + emphasisFor(ringOfPosition(to)).z,
-    );
-    const mid = a
-      .clone()
-      .add(b)
-      .multiplyScalar(0.5)
-      .add(new THREE.Vector3(0, 0.35 + a.distanceTo(b) * 0.08, 0.25));
-    const bezier = new THREE.QuadraticBezierCurve3(a, mid, b);
-    return { curve: bezier, linePoints: bezier.getPoints(40) };
-  }, [from, to]);
-
-  const beadCount = Math.max(2, Math.round(3 + edge.flow * 9));
-  const headCount = Math.max(1, Math.round(edge.flow * 2));
-  const beads = useRef<THREE.Points>(null);
-  const heads = useRef<THREE.Points>(null);
-  const beadPositions = useMemo(
-    () => new Float32Array(beadCount * 3),
-    [beadCount],
-  );
-  const headPositions = useMemo(
-    () => new Float32Array(headCount * 3),
-    [headCount],
-  );
-
-  useFrame(({ clock }) => {
-    const t = calm ? 0.37 : clock.elapsedTime;
-    const speed = 0.16 + edge.flow * 0.34;
-    const write = (
-      cloud: THREE.Points | null,
-      count: number,
-      trail: number,
-    ) => {
-      if (!cloud) return;
-      const attr = cloud.geometry.getAttribute(
-        "position",
-      ) as THREE.BufferAttribute;
-      for (let i = 0; i < count; i++) {
-        const phase = calm
-          ? (i + 0.5) / count
-          : (t * speed + i / count + trail) % 1;
-        const p = curve.getPoint(phase);
-        attr.setXYZ(i, p.x, p.y, p.z);
-      }
-      attr.needsUpdate = true;
-    };
-    write(beads.current, beadCount, 0);
-    write(heads.current, headCount, 0.04);
-  });
-
-  return (
-    <group>
-      <Line
-        points={linePoints}
-        color={color}
-        transparent
-        opacity={0.18 + edge.flow * 0.3}
-        lineWidth={0.7 + edge.flow * 1.6}
-      />
-      <points ref={beads}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[beadPositions, 3]}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          color={color}
-          size={0.13 + edge.flow * 0.05}
-          transparent
-          opacity={0.85}
-          sizeAttenuation
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </points>
-      <points ref={heads}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[headPositions, 3]}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          color={color}
-          size={0.24 + edge.flow * 0.1}
-          transparent
-          opacity={1}
-          sizeAttenuation
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </points>
-    </group>
-  );
-}
-
-/** Ring lookup for edge endpoint depth — positions carry no ring, so infer
- * from radius (the layout's own geometry, via the SHARED constants). */
-function ringOfPosition(p: ScenePosition): number {
-  const radius = Math.hypot(p.x, p.y / ELLIPSE_Y);
-  return Math.round(radius / RING_RADIUS_STEP);
-}
-
-/** A synaptic filament burst — the plexus of kinked dendrites that makes a
- * core read as ALIVE tissue, not a lone orb. Deterministic per seed; each
- * dendrite is two chained segments (core->kink->tip) with a sparkle at the
- * tip. Additive, tone-colored: the field's color families are the scene's
- * tones, so the amber family still only ever grows from the Gate. */
-function DendriteBurst({
-  color,
-  seed,
-  reach,
-  count,
-  dim,
-  calm,
-}: {
-  color: string;
-  seed: number;
-  reach: number;
-  count: number;
-  dim: number;
-  calm: boolean;
-}) {
-  const lines = useRef<THREE.LineSegments>(null);
-  const { segments, tips } = useMemo(() => {
-    const segs = new Float32Array(count * 4 * 3); // 2 segments x 2 points each
-    const tipPts = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const theta = hash01(seed, i * 3) * Math.PI * 2;
-      const phi = Math.acos(2 * hash01(seed + 1, i * 3 + 1) - 1);
-      const dir = new THREE.Vector3(
-        Math.sin(phi) * Math.cos(theta),
-        Math.sin(phi) * Math.sin(theta) * 0.8,
-        Math.cos(phi),
-      );
-      const kinkLen = reach * (0.35 + hash01(seed + 2, i) * 0.4);
-      const tipLen = reach * (0.85 + hash01(seed + 3, i) * 0.9);
-      const kink = dir.clone().multiplyScalar(kinkLen);
-      // the kink bends each dendrite off its ray — organic, not spoked
-      kink.x += (hash01(seed + 4, i) - 0.5) * reach * 0.5;
-      kink.y += (hash01(seed + 5, i) - 0.5) * reach * 0.5;
-      const tip = dir.clone().multiplyScalar(tipLen);
-      tip.y += (hash01(seed + 6, i) - 0.5) * reach * 0.6;
-      const base = i * 12;
-      segs.set([0, 0, 0, kink.x, kink.y, kink.z], base);
-      segs.set([kink.x, kink.y, kink.z, tip.x, tip.y, tip.z], base + 6);
-      tipPts.set([tip.x, tip.y, tip.z], i * 3);
-    }
-    return { segments: segs, tips: tipPts };
-  }, [seed, reach, count]);
-
-  useFrame(({ clock }) => {
-    if (calm || !lines.current) return;
-    const t = clock.elapsedTime;
-    lines.current.rotation.y = Math.sin(t * 0.07 + seed) * 0.14;
-    const material = lines.current.material as THREE.LineBasicMaterial;
-    material.opacity = (0.3 + Math.sin(t * 1.1 + seed) * 0.08) * dim;
-  });
-
-  return (
-    <group>
-      <lineSegments ref={lines}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[segments, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial
-          color={color}
-          transparent
-          opacity={0.3 * dim}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </lineSegments>
-      <points>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[tips, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          color={color}
-          size={0.05}
-          transparent
-          opacity={0.8 * dim}
-          sizeAttenuation
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </points>
-    </group>
-  );
-}
-
-/** The Gate's radiant streaks — long thin rays exploding from the heart,
- * the starburst energy. Gate-scoped, so the warm family stays legal under
- * the amber law; every third ray is neutral ink-white. */
-function RadiantStreaks({ calm }: { calm: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  const STREAKS = 30;
-  const { warm, white } = useMemo(() => {
-    const warmSegs: number[] = [];
-    const whiteSegs: number[] = [];
-    for (let i = 0; i < STREAKS; i++) {
-      const theta = hash01(90, i) * Math.PI * 2;
-      const phi = Math.acos(2 * hash01(91, i) - 1);
-      const dir = new THREE.Vector3(
-        Math.sin(phi) * Math.cos(theta),
-        Math.sin(phi) * Math.sin(theta) * 0.7,
-        Math.cos(phi) * 0.8,
-      );
-      const inner = dir.clone().multiplyScalar(1.2 + hash01(92, i) * 0.6);
-      const outer = dir.clone().multiplyScalar(3.6 + hash01(93, i) * 5.4);
-      const target = i % 3 === 0 ? whiteSegs : warmSegs;
-      target.push(inner.x, inner.y, inner.z, outer.x, outer.y, outer.z);
-    }
-    return {
-      warm: new Float32Array(warmSegs),
-      white: new Float32Array(whiteSegs),
-    };
-  }, []);
-
-  useFrame(({ clock }) => {
-    if (calm || !group.current) return;
-    group.current.rotation.z = clock.elapsedTime * 0.014;
-  });
-
-  return (
-    <group ref={group}>
-      <lineSegments>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[warm, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial
-          color={TONE_HEX.gate}
-          transparent
-          opacity={0.22}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </lineSegments>
-      <lineSegments>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[white, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial
-          color={INK}
-          transparent
-          opacity={0.16}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </lineSegments>
-    </group>
-  );
-}
-
-/** The ambient dust the organism floats in — deterministic, slow, deep.
- * Two layers: a broad faint field and sparse bright motes for depth. */
+/** The spark field behind the organism — quiet, so the tissue dominates. */
 function DustField({ calm }: { calm: boolean }) {
   const points = useRef<THREE.Points>(null);
-  const COUNT = 760;
+  const COUNT = 700;
   const MOTES = 120;
   const { positions, motes } = useMemo(() => {
     const out = new Float32Array(COUNT * 3);
     for (let i = 0; i < COUNT; i++) {
-      out[i * 3] = (hash01(1, i) - 0.5) * 26;
-      out[i * 3 + 1] = (hash01(2, i) - 0.5) * 14;
-      out[i * 3 + 2] = (hash01(3, i) - 0.5) * 16;
+      out[i * 3] = (hash01(1, i) - 0.5) * 28;
+      out[i * 3 + 1] = (hash01(2, i) - 0.5) * 15;
+      out[i * 3 + 2] = (hash01(3, i) - 0.5) * 17;
     }
     const bright = new Float32Array(MOTES * 3);
     for (let i = 0; i < MOTES; i++) {
-      bright[i * 3] = (hash01(4, i) - 0.5) * 22;
-      bright[i * 3 + 1] = (hash01(5, i) - 0.5) * 12;
-      bright[i * 3 + 2] = (hash01(6, i) - 0.5) * 14;
+      bright[i * 3] = (hash01(4, i) - 0.5) * 23;
+      bright[i * 3 + 1] = (hash01(5, i) - 0.5) * 13;
+      bright[i * 3 + 2] = (hash01(6, i) - 0.5) * 15;
     }
     return { positions: out, motes: bright };
   }, []);
 
   useFrame(({ clock }) => {
     if (calm || !points.current) return;
-    points.current.rotation.y = clock.elapsedTime * 0.008;
+    points.current.rotation.y = clock.elapsedTime * 0.007;
   });
 
   return (
@@ -730,9 +840,9 @@ function DustField({ calm }: { calm: boolean }) {
         </bufferGeometry>
         <pointsMaterial
           color={TONE_HEX.stone}
-          size={0.03}
+          size={0.02}
           transparent
-          opacity={0.42}
+          opacity={0.32}
           sizeAttenuation
           depthWrite={false}
         />
@@ -742,10 +852,10 @@ function DustField({ calm }: { calm: boolean }) {
           <bufferAttribute attach="attributes-position" args={[motes, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          color={SKY}
-          size={0.06}
+          color={INK}
+          size={0.045}
           transparent
-          opacity={0.55}
+          opacity={0.5}
           sizeAttenuation
           depthWrite={false}
           blending={THREE.AdditiveBlending}
@@ -755,27 +865,38 @@ function DustField({ calm }: { calm: boolean }) {
   );
 }
 
-/** Radial-gradient halo sprite texture, built once per tone. */
-function makeHaloTexture(hex: string): THREE.Texture {
+/** Thin 4-point cross flare — the crisp materializing-point signature. */
+function makeFlareTexture(hex: string): THREE.Texture {
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    const gradient = ctx.createRadialGradient(
-      size / 2,
-      size / 2,
-      0,
-      size / 2,
-      size / 2,
-      size / 2,
-    );
-    gradient.addColorStop(0, `${hex}cc`);
-    gradient.addColorStop(0.4, `${hex}44`);
-    gradient.addColorStop(1, `${hex}00`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
+    const c = size / 2;
+    const arm = (angle: number) => {
+      ctx.save();
+      ctx.translate(c, c);
+      ctx.rotate(angle);
+      const gradient = ctx.createLinearGradient(0, 0, c, 0);
+      gradient.addColorStop(0, `${hex}ee`);
+      gradient.addColorStop(0.25, `${hex}55`);
+      gradient.addColorStop(1, `${hex}00`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, -1.2, c, 2.4);
+      ctx.restore();
+    };
+    arm(0);
+    arm(Math.PI / 2);
+    arm(Math.PI);
+    arm(-Math.PI / 2);
+    const core = ctx.createRadialGradient(c, c, 0, c, c, 9);
+    core.addColorStop(0, "#ffffffee");
+    core.addColorStop(1, `${hex}00`);
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(c, c, 9, 0, Math.PI * 2);
+    ctx.fill();
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
