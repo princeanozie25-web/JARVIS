@@ -1,0 +1,235 @@
+/* SHOWCASE — the cinematic field's DOM layers.
+ * Consumes the app's real font variables and mirrors the token DNA
+ * (amber = Gate, emerald->sky = life, cyan = evidence, stone = structure).
+ * This surface is display-only; nothing here styles an affordance. */
+
+.showcase-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse 90% 70% at 50% 42%,
+      rgba(56, 189, 248, 0.05),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 50% 46%,
+      rgba(255, 178, 77, 0.05),
+      transparent 55%
+    ),
+    #020617; /* --jarvis-color-panel */
+  color: #eaf1fb; /* --jarvis-shell-ink */
+}
+
+/* --- masthead ----------------------------------------------------------- */
+
+.showcase-masthead {
+  position: absolute;
+  top: 2.4rem;
+  left: 2.8rem;
+  z-index: 3;
+  pointer-events: none;
+  max-width: 34rem;
+}
+
+.showcase-title {
+  font-family: var(--font-jarvis-display), serif;
+  font-weight: 500;
+  font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+  line-height: 1.08;
+  margin: 0;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 24px rgba(2, 6, 23, 0.9);
+}
+
+.showcase-subtitle {
+  font-family: var(--font-jarvis-display), serif;
+  font-weight: 300;
+  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+  color: #8ea4c4; /* --jarvis-shell-ink-dim */
+  margin: 0.55rem 0 0;
+  line-height: 1.5;
+}
+
+/* --- the honest-data badge (truth is the flex) --------------------------- */
+
+.showcase-badge {
+  position: absolute;
+  top: 2.4rem;
+  right: 2.8rem;
+  z-index: 3;
+  pointer-events: none;
+  text-align: right;
+  font-family: var(--font-jarvis-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.showcase-badge-state {
+  display: inline-block;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 230, 224, 0.35); /* signal stroke */
+  color: #5fe6e0; /* --jarvis-shell-signal */
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.showcase-badge-state[data-live="true"] {
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #6ee7b7; /* --jarvis-color-emerald-local */
+}
+
+.showcase-badge-sources {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  color: #46587a; /* --jarvis-shell-ink-faint */
+  letter-spacing: 0.08em;
+  line-height: 1.7;
+}
+
+/* --- telemetry chips ------------------------------------------------------ */
+
+.showcase-chips {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  pointer-events: none;
+  max-width: 80vw;
+}
+
+.showcase-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(142, 164, 196, 0.22);
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-jarvis-mono), monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+}
+
+.showcase-chip-label {
+  color: #46587a;
+  text-transform: uppercase;
+}
+
+.showcase-chip-value {
+  color: #eaf1fb;
+}
+
+/* --- node labels (shared by the engine's Html layer and the fallback) ---- */
+
+.showcase-label-wrap {
+  pointer-events: none;
+}
+
+.showcase-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.14rem;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.showcase-label-title {
+  font-family: var(--font-jarvis-display), serif;
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: #eaf1fb;
+  text-shadow: 0 1px 12px rgba(2, 6, 23, 0.95);
+  white-space: nowrap;
+}
+
+.showcase-label-hero .showcase-label-title {
+  font-weight: 500;
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.showcase-label-sub {
+  font-family: var(--font-jarvis-mono), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8ea4c4;
+  white-space: nowrap;
+}
+
+.showcase-label-hero .showcase-label-sub {
+  color: #ffb24d; /* the Gate's chip stays amber — Gate-touching only */
+}
+
+/* --- the DOM fallback constellation (no WebGL / first paint) ------------- */
+
+.showcase-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.showcase-fallback-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.showcase-fallback-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    0 0 12px currentColor,
+    0 0 34px currentColor;
+}
+
+.showcase-fallback-center .showcase-fallback-dot {
+  width: 26px;
+  height: 26px;
+  box-shadow:
+    0 0 22px currentColor,
+    0 0 70px currentColor;
+}
+
+.showcase-tone-gate {
+  color: #ffb24d;
+}
+.showcase-tone-life {
+  color: #6ee7b7;
+}
+.showcase-tone-signal {
+  color: #5fe6e0;
+}
+.showcase-tone-accent {
+  color: #86bcff;
+}
+.showcase-tone-stone {
+  color: #8ea4c4;
+}
+
+/* Calm variant is selected in JS (data-showcase-motion="calm"); the CSS side
+ * also stills the one CSS shimmer for defense in depth. */
+@media (prefers-reduced-motion: reduce) {
+  .showcase-stage * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
