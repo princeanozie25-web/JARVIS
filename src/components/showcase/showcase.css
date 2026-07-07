@@ -29,10 +29,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.42rem 0.9rem;
-  background: rgba(8, 8, 12, 0.88);
-  border: 1px solid rgba(160, 170, 190, 0.35);
-  border-radius: 3px;
+  padding: 0.42rem 1rem;
+  background: rgba(8, 8, 12, 0.82);
+  border: 1px solid rgba(160, 170, 190, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.55);
   font-size: 0.8rem;
   letter-spacing: 0.12em;
 }
@@ -63,10 +64,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.16rem;
-  padding: 0.36rem 0.7rem;
-  background: rgba(6, 6, 10, 0.86);
+  padding: 0.42rem 0.8rem;
+  background: rgba(6, 6, 10, 0.8);
   border: 1px solid;
-  border-radius: 2px;
+  border-radius: 9px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
   white-space: nowrap;
 }
 
@@ -162,10 +165,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  padding: 0.55rem 0.8rem 0.6rem;
-  background: rgba(5, 5, 9, 0.88);
-  border: 1px solid rgba(190, 200, 220, 0.4);
-  border-radius: 2px;
+  padding: 0.65rem 0.95rem 0.7rem;
+  background: rgba(5, 5, 9, 0.82);
+  border: 1px solid rgba(190, 200, 220, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
 }
 
 .showcase-agent-id {
@@ -193,9 +198,49 @@
 
 .showcase-agent-bar-fill {
   display: block;
+  position: relative;
   height: 100%;
   background: #eef3ff;
   box-shadow: 0 0 6px rgba(238, 243, 255, 0.8);
+  overflow: hidden;
+}
+
+/* the bar is RUNNING — a light sweep rides it continuously (killed by the
+ * reduced-motion block below) */
+.showcase-agent-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(120, 140, 180, 0.9),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: showcase-bar-sheen 2.4s linear infinite;
+}
+
+.showcase-agent:nth-child(2) .showcase-agent-bar-fill::after {
+  animation-delay: 0.4s;
+}
+.showcase-agent:nth-child(3) .showcase-agent-bar-fill::after {
+  animation-delay: 0.8s;
+}
+.showcase-agent:nth-child(4) .showcase-agent-bar-fill::after {
+  animation-delay: 1.2s;
+}
+.showcase-agent:nth-child(5) .showcase-agent-bar-fill::after {
+  animation-delay: 1.6s;
+}
+.showcase-agent:nth-child(6) .showcase-agent-bar-fill::after {
+  animation-delay: 2s;
+}
+
+@keyframes showcase-bar-sheen {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .showcase-agent-state {
@@ -222,7 +267,9 @@
 /* Reduced motion: the JS side selects the calm engine variant; kill any CSS
  * motion for defense in depth. */
 @media (prefers-reduced-motion: reduce) {
-  .showcase-stage * {
+  .showcase-stage *,
+  .showcase-stage *::before,
+  .showcase-stage *::after {
     animation: none !important;
     transition: none !important;
   }

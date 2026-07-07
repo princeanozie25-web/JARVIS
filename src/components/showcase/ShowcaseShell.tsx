@@ -154,6 +154,9 @@ function useEngineEnabled(): boolean {
 export function ShowcaseShell({ scene }: ShowcaseShellProps) {
   const calm = useCalmPreferred();
   const engineEnabled = useEngineEnabled();
+  // REAL Gate state drives the core's breathing (data layer unchanged).
+  const pending =
+    scene.nodes.find((n) => n.id === scene.centerNodeId)?.state === "pending";
 
   return (
     <main
@@ -164,7 +167,7 @@ export function ShowcaseShell({ scene }: ShowcaseShellProps) {
       data-showcase-renderer={engineEnabled ? "webgl" : "dom-fallback"}
       data-showcase-provenance={scene.provenance.live ? "live" : "sample"}
     >
-      {engineEnabled && <CinematicEngine calm={calm} />}
+      {engineEnabled && <CinematicEngine calm={calm} pending={pending} />}
 
       <div className="showcase-overlay">
         <div className="showcase-live" data-showcase-live>
