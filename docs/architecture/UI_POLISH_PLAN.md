@@ -117,7 +117,14 @@ Exit criteria:
 
 ## 7. UI.3 — Typography System
 
-Font decision: **Syne** for display, **JetBrains Mono** for label/mono. Both are loaded via `next/font/google`. Inter is rejected: JARVIS identity takes precedence over generic UI convention.
+> **Correction (2026-09-01):** UI.3 SHIPPED with **Fraunces** (a bundled Quincy stand-in),
+> not Syne, loaded via **`next/font/local`** (bundled TTFs, no network), not `next/font/google`.
+> The typography contract test (`tests/typography-tokens.test.ts`) asserts this reality
+> (Fraunces for display/headline/title/body; JetBrains Mono for label; local, not google).
+> Treat every "Syne" / "next/font/google" reference below as superseded by the shipped
+> implementation. See docs/audits/V5_ENTRY_AUDIT.md §5.
+
+Font decision (shipped): **Fraunces** (bundled Quincy stand-in) for display/body, **JetBrains Mono** for label/mono, both loaded via `next/font/local`. Inter is rejected: JARVIS identity takes precedence over generic UI convention. _(Original plan named Syne via `next/font/google`; the build diverged to bundled Fraunces to avoid network-time font loading.)_
 
 Goal: replace the Arial/Helvetica fallback stack with the authoritative JARVIS type voice and expose a rem-based scale.
 

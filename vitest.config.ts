@@ -22,7 +22,14 @@ export default defineConfig({
     // hung test still fails (just later). Per-test/file vi.setConfig overrides
     // from E-013/E-015 still apply where set. Assertions are unchanged.
     testTimeout: 120_000,
-    hookTimeout: 30_000,
+    // E-022 (R.2a): extend E-018's load-tolerance doctrine to the setup-HOOK ceiling.
+    // E-018 raised testTimeout to 120s + single-worker but left hookTimeout at a
+    // comparatively tight 30s. The sqlite ":memory:" beforeEach + whole-repo-scan setup
+    // hooks are exactly what a cold-cache fresh clone (Phase 25D, the Mac's first run)
+    // and the pre-commit eslint->vitest memory pressure stress hardest. 60s gives ~2x
+    // headroom; a genuinely hung hook still fails, just later. Test budget only —
+    // assertions, behavior, and the mutation-path count are unchanged.
+    hookTimeout: 60_000,
     // E-018 (concurrency cap): the timeout ceilings alone did not make the suite
     // load-tolerant IN-HOOK. The pre-commit machine is MEMORY-STARVED (observed
     // ~0.7 GB free of 16 GB; 8 cores) — at the stock fork count a worker OOM-

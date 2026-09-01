@@ -1,5 +1,14 @@
 # Expansion Era Refresh
 
+> **SUPERSEDED (2026-09-01)** by the JARVIS Master Architecture & Delivery Roadmap v5.1.
+> This 03-Jun-2026 status-normalization doc predates the Phase 22/23/24 execution and its
+> forward numbering (24 = "local T2 model promotion", 25 = "RuView sensing / Real CAI",
+> 26 = "mobile JARVIS via Tauri iOS") was superseded when Phase 24 opened and froze as the
+> MCP Gateway. Retained for history only; do NOT use its phase numbering. Authoritative v5
+> numbering: 25 = Productionization, 26 = Presence/Voice, 27 = Vision/Spatial,
+> 28 = Local Intelligence/Council, 29 = Smart Room, 30 = Mobile/Node Fabric.
+> See docs/audits/V5_ENTRY_AUDIT.md §1.
+
 Status: complete after Phase 21 closeout  
 Date: 03 June 2026  
 Scope: documentation and status normalization only

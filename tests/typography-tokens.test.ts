@@ -100,7 +100,10 @@ describe("UI.3 typography — wiring", () => {
 
   it("removes Arial from app/globals.css and DESIGN.md token block", () => {
     expect(globalsCss.toLowerCase()).not.toContain("arial");
-    const frontmatter = designMd.match(/^---\n([\s\S]*?)\n---/);
+    // E-005: EOL-agnostic frontmatter match so a fresh CRLF checkout (Windows
+    // core.autocrlf=true, or any clone without .gitattributes normalization)
+    // does not break the delimiter regex. No behavioral change on LF.
+    const frontmatter = designMd.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     expect(frontmatter).not.toBeNull();
     expect(frontmatter![1].toLowerCase()).not.toContain("arial");
   });

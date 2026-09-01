@@ -1,5 +1,14 @@
 # Expansion Era v2 Roadmap
 
+> **SUPERSEDED (2026-09-01)** by the JARVIS Master Architecture & Delivery Roadmap v5.1.
+> This 03-Jun-2026 planning doc predates the Phase 22/23/24 execution and numbers the
+> future differently — it assigns 24 = "Local T2 Promotion", 25 = "Sensing/Security",
+> 26 = "Mobile JARVIS" — a sequence already invalidated when Phase 24 opened and froze as
+> the MCP Gateway. Retained for history only; do NOT use its phase numbering. Authoritative
+> v5 numbering: 25 = Productionization, 26 = Presence/Voice, 27 = Vision/Spatial,
+> 28 = Local Intelligence/Council, 29 = Smart Room, 30 = Mobile/Node Fabric.
+> See docs/audits/V5_ENTRY_AUDIT.md §1.
+
 Status: active after Phase 21 refresh  
 Date: 03 June 2026
 

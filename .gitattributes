@@ -1,0 +1,24 @@
+# Fresh-clone line-ending consistency (Windows + macOS).
+# Text files normalize to LF in the repo and on checkout, so a fresh clone on
+# any platform (including the Mac's first clone) never materializes CRLF that
+# would break EOL-fragile parsers/tests. Companion to E-005 (the EOL-agnostic
+# frontmatter regex); together they defuse the CRLF landmine at the source and
+# at the point of use.
+* text=auto eol=lf
+
+# Keep genuinely-binary assets untouched (belt-and-suspenders; main has none of
+# these today, but this prevents accidental normalization if any are added).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.wav binary
+*.mp3 binary
+*.mp4 binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.onnx binary
