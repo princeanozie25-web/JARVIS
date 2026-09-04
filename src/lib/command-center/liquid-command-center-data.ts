@@ -446,9 +446,11 @@ export interface SafeObservabilityHandle {
 }
 
 function createSafeObservabilityApi(): SafeObservabilityHandle {
+  // E-038: an EMPTY env value must fall through (the .env template ships the
+  // observability path blank); `??` only skips null/undefined.
   const databasePath =
-    process.env.JARVIS_OBSERVABILITY_DB_PATH ??
-    process.env.JARVIS_EVENT_DB_PATH ??
+    process.env.JARVIS_OBSERVABILITY_DB_PATH?.trim() ||
+    process.env.JARVIS_EVENT_DB_PATH?.trim() ||
     "";
   if (databasePath && existsSync(databasePath)) {
     return { api: createObservabilityApi({ databasePath }), source: "live_db" };

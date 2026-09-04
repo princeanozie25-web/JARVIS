@@ -12,6 +12,7 @@ import {
 } from "@/lib/db";
 import { loadSystemPrompt } from "@/lib/prompts";
 import { registry } from "@/lib/providers";
+import { getAppEventStore, recordChatModelCall } from "@/store/app-event-store";
 import type { ProviderId } from "@/lib/providers";
 import { clientKeyFromRequest, rateLimiter } from "@/lib/rate-limit";
 import { enforceRouterSafety, routeMessages } from "@/lib/router";
@@ -259,6 +260,23 @@ export async function POST(req: Request) {
               );
               scheduleRollingSummary(sessionId, providerId);
               usage.record(final.costUsd);
+              // E-038: one metadata-only row into the Phase 11 event store so
+              // the cockpit's COST feed is real. Never blocks the stream.
+              const stored = recordChatModelCall(getAppEventStore(), {
+                sessionId,
+                assistantMessageId,
+                providerId,
+                runtimeClass: providerId === "ollama" ? "local" : "cloud",
+                modelId: final.modelId,
+                latencyMs: final.latencyMs,
+                timeToFirstTokenMs: final.timeToFirstTokenMs,
+                inputTokens: final.inputTokens,
+                outputTokens: final.outputTokens,
+                costUsd: final.costUsd,
+                intent: routerDecision.intent.intent,
+                tier: routerDecision.capability.tier,
+                safetyTag: routerDecision.safety.safetyTag,
+              });
               recordEvent({
                 event_type: "model_call",
                 success: true,
@@ -280,7 +298,7 @@ export async function POST(req: Request) {
                   final.outputTokens !== undefined
                     ? ` output_tokens=${final.outputTokens}`
                     : ""
-                }`,
+                } event_store=${stored.ok ? "appended" : stored.reason}`,
               });
             } else if (event.type === "error") {
               if (ac.signal.aborted) {
