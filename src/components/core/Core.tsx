@@ -48,7 +48,7 @@ export function Core({ presence, theme = "night" }: CoreProps) {
         data-core-status-line="true"
         className="absolute font-cc-sans text-cc-ink-muted"
         style={{
-          top: "calc(50% + var(--jarvis-cc-core-size) / 2 + 24px)",
+          top: "calc(50% + var(--jarvis-cc-core-size) / 2 + 12px)",
           fontSize: "var(--jarvis-cc-text-body-size)",
           letterSpacing: "0.02em",
         }}

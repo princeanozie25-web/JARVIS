@@ -247,6 +247,9 @@
   --jarvis-cc-accent: #2f7bff;
   --jarvis-cc-accent-glow: rgba(47, 123, 255, 0.45);
   --jarvis-cc-core: #9fdcff; /* the reactor's cyan-white heart */
+  --jarvis-cc-cyan: #38d8ff; /* neon rails, turbine tips */
+  --jarvis-cc-copper: #c8742a; /* coil packs, gyro ring */
+  --jarvis-cc-gunmetal: #1b2230; /* housing, spokes */
   --jarvis-cc-gate: #f5a524; /* GATE ONLY */
   --jarvis-cc-gate-glow: rgba(245, 165, 36, 0.4); /* GATE ONLY */
   --jarvis-cc-ok: #34d399;
@@ -280,7 +283,7 @@
   /* Layout */
   --jarvis-cc-rail-left: 64px;
   --jarvis-cc-rail-right: 240px;
-  --jarvis-cc-core-size: 56vh;
+  --jarvis-cc-core-size: 62vh;
 }
 
 /* Wide-gamut panels (the M1 Max is P3): push the blues past sRGB. Amber is

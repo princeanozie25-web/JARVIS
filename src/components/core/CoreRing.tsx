@@ -3,7 +3,13 @@
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, type Group, type Mesh } from "three";
+import {
+  AdditiveBlending,
+  CanvasTexture,
+  DoubleSide,
+  type Group,
+  type Mesh,
+} from "three";
 
 import {
   CAPSTONE_TOKEN_NAMES,
@@ -12,13 +18,17 @@ import {
 } from "@/lib/design-tokens/capstone";
 import type { CoreState } from "@/lib/core";
 
-// Program U.3 / v3.2 amendment (E-032) — THE REACTOR. The Core's WebGL
-// layer is an arc reactor: an outer housing ring, a ring of segmented
-// blades, an inner bright ring, and a cyan-white heart, all emissive with
-// bloom. Purely presentational: it receives a resolved CoreState and paints
-// it. The truth layer is the DOM around it (data attributes + status line).
-// No pointer events, no controls, no camera helpers. Reduced motion or no
-// WebGL → a static SVG reactor, never blank.
+// Program U.3 / v3.2 amendment (E-032, fidelity pass E-033) — THE REACTOR.
+// Built from the operator's reference image, layer by layer, outside → in:
+//   1 housing     gunmetal torus, rectangular cutouts glowing cyan, twin neon rails
+//   2 sectors     translucent plasma ring split by dark spokes, copper coil packs
+//   3 gyro        copper ring + thin white ring, slightly tilted
+//   4 turbine     24 slats, white at the hub → cyan at the tips, slow spin
+//   5 heart       white-cyan disc with a soft halo
+// All emissive layers feed a bloom pass; the group is tilted for depth.
+// Purely presentational: it receives a resolved CoreState and paints it. The
+// truth layer is the DOM around it. No pointer events, no controls, no
+// camera helpers. Reduced motion or no WebGL → a static SVG reactor.
 
 export interface CoreRingProps {
   readonly state: CoreState;
@@ -26,84 +36,85 @@ export interface CoreRingProps {
 }
 
 interface RingProfile {
-  readonly color: keyof CapstonePalette;
+  /** the electric colour of rails, plasma, turbine tips */
+  readonly glow: keyof CapstonePalette;
+  /** the heart / hub colour */
   readonly heart: keyof CapstonePalette;
   readonly intensity: number;
-  /** ms per breath/pulse cycle; 0 = still */
   readonly cycleMs: number;
   readonly amplitude: number;
-  /** radians per second of blade rotation */
   readonly spin: number;
   readonly bloom: number;
 }
 
-// Brief §2 + v3.2: idle 4 s breath; listening tighter/brighter; working slow
-// rotation; waiting amber 1.2 s pulse; blocked amber hold; error red hold.
 const RING_PROFILES: Readonly<Record<CoreState, RingProfile>> = {
   idle: {
-    color: "accent",
+    glow: "accent",
     heart: "core",
-    intensity: 1.6,
+    intensity: 1.5,
     cycleMs: 4000,
-    amplitude: 0.04,
-    spin: 0.06,
-    bloom: 1.4,
+    amplitude: 0.03,
+    spin: 0.08,
+    bloom: 1.5,
   },
   listening: {
-    color: "accent",
+    glow: "cyan",
     heart: "core",
-    intensity: 2.2,
+    intensity: 2.0,
     cycleMs: 1600,
-    amplitude: 0.025,
-    spin: 0.14,
+    amplitude: 0.02,
+    spin: 0.16,
     bloom: 1.8,
   },
   working: {
-    color: "accent",
+    glow: "accent",
     heart: "core",
-    intensity: 1.9,
+    intensity: 1.8,
     cycleMs: 0,
     amplitude: 0,
     spin: 0.7,
     bloom: 1.5,
   },
   waiting: {
-    color: "gate",
+    glow: "gate",
     heart: "gate",
-    intensity: 2.6,
+    intensity: 2.4,
     cycleMs: 1200,
-    amplitude: 0.08,
-    spin: 0.18,
-    bloom: 2.2,
+    amplitude: 0.07,
+    spin: 0.2,
+    bloom: 2.1,
   },
   blocked: {
-    color: "gate",
+    glow: "gate",
     heart: "gate",
-    intensity: 2.0,
+    intensity: 1.9,
     cycleMs: 0,
     amplitude: 0,
     spin: 0,
     bloom: 1.6,
   },
   error: {
-    color: "fail",
+    glow: "fail",
     heart: "fail",
-    intensity: 2.2,
+    intensity: 2.0,
     cycleMs: 0,
     amplitude: 0,
     spin: 0,
-    bloom: 1.8,
+    bloom: 1.7,
   },
 };
 
-const BLADES = 18;
+const CUTOUTS = 28;
+const SPOKES = 10;
+const COILS = 6;
+const SLATS = 24;
+/** base scale so the outer rail sits inside the Core box (the canvas is 1.9x the box) */
+const BASE_SCALE = 0.74;
 
 export function CoreRing({ state, enabled = true }: CoreRingProps) {
   const canvasEnabled = useCanvasEnabled(enabled);
   const palette = useLivePalette();
   const profile = RING_PROFILES[state];
-  const color = palette[profile.color];
-  const heart = palette[profile.heart];
 
   return (
     <div
@@ -116,7 +127,7 @@ export function CoreRing({ state, enabled = true }: CoreRingProps) {
         <Canvas
           data-core-ring-canvas="threejs"
           className="pointer-events-none h-full w-full"
-          camera={{ position: [0, 0, 9.9], fov: 40 }}
+          camera={{ position: [0, 0.6, 9.9], fov: 40 }}
           dpr={[1, 2]}
           gl={{
             alpha: true,
@@ -124,44 +135,120 @@ export function CoreRing({ state, enabled = true }: CoreRingProps) {
             powerPreference: "high-performance",
           }}
         >
-          {/* the composer renders opaque, so paint the field colour behind the
-              reactor (true black at night, the canvas colour by day); the canvas
-              is oversized so the bloom halo fades inside it */}
+          {/* the composer renders opaque, so paint the live field colour behind
+              the reactor; the canvas is oversized so the halo fades inside it */}
           <color attach="background" args={[palette.field]} />
-          <ReactorScene profile={profile} color={color} heart={heart} />
+          <ReactorScene profile={profile} palette={palette} />
           <EffectComposer>
             <Bloom
               intensity={profile.bloom}
-              luminanceThreshold={0.2}
-              luminanceSmoothing={0.6}
+              luminanceThreshold={0.38}
+              luminanceSmoothing={0.35}
+              radius={0.55}
               mipmapBlur
             />
           </EffectComposer>
         </Canvas>
       ) : (
-        <StaticReactor color={color} heart={heart} />
+        <StaticReactor
+          glow={palette[profile.glow]}
+          heart={palette[profile.heart]}
+          copper={palette.copper}
+        />
       )}
     </div>
   );
 }
 
+function angles(n: number): number[] {
+  return Array.from({ length: n }, (_, i) => (i / n) * Math.PI * 2);
+}
+
+/** A soft radial-gradient alpha texture, generated in-browser (no assets). */
+function useRadialTexture(stops: readonly [number, string][]): CanvasTexture {
+  return useMemo(() => {
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    const gradient = ctx.createRadialGradient(
+      size / 2,
+      size / 2,
+      0,
+      size / 2,
+      size / 2,
+      size / 2,
+    );
+    for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    return new CanvasTexture(canvas);
+  }, [stops]);
+}
+
+/** Blotchy plasma alpha, generated in-browser: many soft discs of random size. */
+function usePlasmaTexture(seed: number): CanvasTexture {
+  return useMemo(() => {
+    const size = 512;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "rgba(0,0,0,1)";
+    ctx.fillRect(0, 0, size, size);
+    let s = seed;
+    const rand = () => {
+      s = (s * 1664525 + 1013904223) % 4294967296;
+      return s / 4294967296;
+    };
+    for (let i = 0; i < 90; i++) {
+      const x = rand() * size;
+      const y = rand() * size;
+      const r = 14 + rand() * 46;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(255,255,255,${0.35 + rand() * 0.45})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = 1000; // RepeatWrapping
+    return texture;
+  }, [seed]);
+}
+
+const HALO_STOPS: readonly [number, string][] = [
+  [0, "rgba(255,255,255,1)"],
+  [0.35, "rgba(255,255,255,0.55)"],
+  [1, "rgba(255,255,255,0)"],
+];
+
 function ReactorScene({
   profile,
-  color,
-  heart,
+  palette,
 }: {
   profile: RingProfile;
-  color: string;
-  heart: string;
+  palette: CapstonePalette;
 }) {
+  const glow = palette[profile.glow];
+  const heart = palette[profile.heart];
   const group = useRef<Group>(null);
-  const blades = useRef<Group>(null);
-  const counter = useRef<Group>(null);
+  const turbine = useRef<Group>(null);
+  const plasmaA = useRef<Mesh>(null);
+  const plasmaB = useRef<Mesh>(null);
+  const gyro = useRef<Group>(null);
   const heartMesh = useRef<Mesh>(null);
-  const bladeAngles = useMemo(
-    () => Array.from({ length: BLADES }, (_, i) => (i / BLADES) * Math.PI * 2),
+  const halo = useRadialTexture(HALO_STOPS);
+  const plasma1 = usePlasmaTexture(7);
+  const plasma2 = usePlasmaTexture(23);
+  const cutouts = useMemo(() => angles(CUTOUTS), []);
+  const spokes = useMemo(() => angles(SPOKES), []);
+  const coils = useMemo(
+    () => angles(COILS).map((a) => a + Math.PI / COILS),
     [],
   );
+  const slats = useMemo(() => angles(SLATS), []);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
@@ -171,132 +258,291 @@ function ReactorScene({
           Math.sin((t * 1000 * Math.PI * 2) / profile.cycleMs) *
             profile.amplitude
         : 1;
-    if (group.current) group.current.scale.setScalar(breath);
-    if (blades.current) blades.current.rotation.z = t * profile.spin;
-    if (counter.current) counter.current.rotation.z = -t * profile.spin * 0.6;
+    if (group.current) group.current.scale.setScalar(BASE_SCALE * breath);
+    if (turbine.current) turbine.current.rotation.z = t * profile.spin;
+    if (plasmaA.current) plasmaA.current.rotation.z = t * 0.05;
+    if (plasmaB.current) plasmaB.current.rotation.z = -t * 0.035;
+    if (gyro.current) gyro.current.rotation.z = -t * profile.spin * 0.25;
     if (heartMesh.current)
-      heartMesh.current.scale.setScalar(1 + (breath - 1) * 2);
+      heartMesh.current.scale.setScalar(1 + (breath - 1) * 2.5);
   });
 
   return (
-    <group ref={group}>
-      {/* outer housing — two thin rings with a dark gap */}
-      <mesh>
-        <torusGeometry args={[1.86, 0.025, 16, 200]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.55}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh>
-        <torusGeometry args={[1.72, 0.05, 16, 200]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={profile.intensity * 0.5}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* segmented blade ring (rotates) */}
-      <group ref={blades}>
-        {bladeAngles.map((angle, i) => (
-          <mesh
-            key={i}
-            rotation={[0, 0, angle]}
-            position={[Math.cos(angle) * 1.32, Math.sin(angle) * 1.32, 0]}
-          >
-            <boxGeometry args={[0.34, 0.085, 0.06]} />
-            <meshStandardMaterial
-              color={color}
-              emissive={color}
-              emissiveIntensity={profile.intensity}
-              toneMapped={false}
-            />
-          </mesh>
-        ))}
-      </group>
-
-      {/* counter-rotating inner tick ring */}
-      <group ref={counter}>
-        {bladeAngles.map((angle, i) => (
-          <mesh
-            key={i}
-            rotation={[0, 0, angle]}
-            position={[Math.cos(angle) * 0.98, Math.sin(angle) * 0.98, 0]}
-          >
-            <boxGeometry args={[0.12, 0.05, 0.04]} />
-            <meshStandardMaterial
-              color={heart}
-              emissive={heart}
-              emissiveIntensity={profile.intensity * 0.9}
-              toneMapped={false}
-            />
-          </mesh>
-        ))}
-      </group>
-
-      {/* inner bright ring */}
-      <mesh>
-        <torusGeometry args={[0.8, 0.04, 16, 160]} />
-        <meshStandardMaterial
-          color={heart}
-          emissive={heart}
-          emissiveIntensity={profile.intensity * 1.2}
-          toneMapped={false}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* the heart: additive glow disc + hot centre */}
-      <mesh>
-        <circleGeometry args={[0.62, 64]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.35}
-          blending={AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh ref={heartMesh}>
-        <circleGeometry args={[0.3, 64]} />
-        <meshBasicMaterial
-          color={heart}
-          transparent
-          opacity={0.95}
-          blending={AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh>
-        <circleGeometry args={[0.12, 48]} />
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.9}
-          blending={AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-
-      <ambientLight intensity={0.15} />
-      <pointLight
-        color={color}
-        intensity={profile.intensity * 2}
-        position={[0, 0, 2.5]}
-        distance={8}
+    // a slight top-down tilt gives the rings depth, like the reference
+    <group ref={group} rotation={[-0.22, 0, 0]} scale={BASE_SCALE}>
+      <ambientLight intensity={0.18} />
+      <hemisphereLight
+        color={palette.cyan}
+        groundColor={palette.accent}
+        intensity={0.8}
       />
+      <pointLight
+        color={heart}
+        intensity={profile.intensity * 6}
+        position={[0, 0, 1.2]}
+        distance={7}
+        decay={2}
+      />
+      <pointLight
+        color={glow}
+        intensity={profile.intensity * 3}
+        position={[0, 0, 3]}
+        distance={10}
+        decay={2}
+      />
+      <directionalLight color="#ffffff" intensity={0.55} position={[3, 5, 4]} />
+      <directionalLight
+        color={palette.cyan}
+        intensity={0.4}
+        position={[-4, -2, 3]}
+      />
+      <spotLight
+        color="#ffffff"
+        intensity={2.2}
+        position={[0, 6, 6]}
+        angle={0.5}
+        penumbra={0.8}
+      />
+
+      {/* 1 — housing: gunmetal torus + cyan cutouts + twin neon rails */}
+      <group position={[0, 0, -0.1]}>
+        <mesh>
+          <torusGeometry args={[2.05, 0.27, 32, 220]} />
+          <meshStandardMaterial
+            color={palette.gunmetal}
+            metalness={0.9}
+            roughness={0.35}
+          />
+        </mesh>
+        {cutouts.map((a, i) => (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * 2.05, Math.sin(a) * 2.05, 0.27]}
+            rotation={[0, 0, a]}
+          >
+            <boxGeometry args={[i % 2 === 0 ? 0.26 : 0.12, 0.07, 0.02]} />
+            <meshStandardMaterial
+              color={glow}
+              emissive={glow}
+              emissiveIntensity={profile.intensity * 1.4}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+        <mesh position={[0, 0, -0.12]}>
+          <torusGeometry args={[2.36, 0.09, 24, 220]} />
+          <meshStandardMaterial
+            color={palette.gunmetal}
+            metalness={0.95}
+            roughness={0.3}
+          />
+        </mesh>
+        <mesh>
+          <torusGeometry args={[2.3, 0.014, 12, 220]} />
+          <meshStandardMaterial
+            color={palette.cyan}
+            emissive={palette.cyan}
+            emissiveIntensity={profile.intensity * 1.2}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh>
+          <torusGeometry args={[1.82, 0.012, 12, 220]} />
+          <meshStandardMaterial
+            color={palette.cyan}
+            emissive={palette.cyan}
+            emissiveIntensity={profile.intensity * 1.2}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      {/* 2 — sectors: plasma between dark spokes, copper coil packs */}
+      <group position={[0, 0, -0.05]}>
+        <mesh position={[0, 0, -0.04]}>
+          <ringGeometry args={[1.16, 1.8, 128]} />
+          <meshStandardMaterial
+            color={palette.gunmetal}
+            metalness={0.7}
+            roughness={0.5}
+            side={DoubleSide}
+          />
+        </mesh>
+        <mesh ref={plasmaA}>
+          <ringGeometry args={[1.18, 1.78, 128]} />
+          <meshBasicMaterial
+            color={glow}
+            alphaMap={plasma1}
+            transparent
+            opacity={1}
+            blending={AdditiveBlending}
+            depthWrite={false}
+            side={DoubleSide}
+          />
+        </mesh>
+        <mesh ref={plasmaB} position={[0, 0, 0.02]}>
+          <ringGeometry args={[1.18, 1.78, 128]} />
+          <meshBasicMaterial
+            color={palette.cyan}
+            alphaMap={plasma2}
+            transparent
+            opacity={0.75}
+            blending={AdditiveBlending}
+            depthWrite={false}
+            side={DoubleSide}
+          />
+        </mesh>
+        {spokes.map((a, i) => (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * 1.48, Math.sin(a) * 1.48, 0.06]}
+            rotation={[0, 0, a]}
+          >
+            <boxGeometry args={[0.62, 0.11, 0.1]} />
+            <meshStandardMaterial
+              color={palette.gunmetal}
+              metalness={0.85}
+              roughness={0.4}
+            />
+          </mesh>
+        ))}
+        {coils.map((a, i) => (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * 1.48, Math.sin(a) * 1.48, 0.1]}
+            rotation={[0, 0, a]}
+          >
+            <cylinderGeometry args={[0.09, 0.09, 0.42, 16]} />
+            <meshStandardMaterial
+              color={palette.copper}
+              metalness={0.95}
+              roughness={0.3}
+              emissive={palette.copper}
+              emissiveIntensity={0.35}
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 3 — gyro: copper ring + thin white ring, tilted */}
+      <group ref={gyro} position={[0, 0, 0.12]}>
+        <mesh rotation={[0.18, 0.1, 0]}>
+          <torusGeometry args={[1.12, 0.03, 16, 180]} />
+          <meshStandardMaterial
+            color={palette.copper}
+            metalness={0.95}
+            roughness={0.25}
+            emissive={palette.copper}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+        <mesh rotation={[-0.12, 0.05, 0]}>
+          <torusGeometry args={[1.02, 0.014, 12, 180]} />
+          <meshStandardMaterial
+            color="#ffffff"
+            emissive="#ffffff"
+            emissiveIntensity={profile.intensity * 0.9}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      {/* 4 — turbine: 24 slats, white hub → cyan tips */}
+      <group ref={turbine} position={[0, 0, 0.22]}>
+        {slats.map((a, i) => (
+          <group key={i} rotation={[0, 0, a]}>
+            <mesh position={[0.5, 0, 0]}>
+              <boxGeometry args={[0.2, 0.075, 0.03]} />
+              <meshStandardMaterial
+                color={heart}
+                emissive={heart}
+                emissiveIntensity={profile.intensity * 1.6}
+                toneMapped={false}
+              />
+            </mesh>
+            <mesh position={[0.76, 0, 0]}>
+              <boxGeometry args={[0.28, 0.06, 0.03]} />
+              <meshStandardMaterial
+                color={glow}
+                emissive={glow}
+                emissiveIntensity={profile.intensity * 1.3}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
+        ))}
+        <mesh>
+          <torusGeometry args={[0.92, 0.02, 12, 160]} />
+          <meshStandardMaterial
+            color={glow}
+            emissive={glow}
+            emissiveIntensity={profile.intensity}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      {/* 5 — heart: halo + disc + hot centre */}
+      <group position={[0, 0, 0.3]}>
+        <mesh>
+          <circleGeometry args={[0.95, 64]} />
+          <meshBasicMaterial
+            color={glow}
+            alphaMap={halo}
+            transparent
+            opacity={0.55}
+            blending={AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh ref={heartMesh}>
+          <circleGeometry args={[0.27, 64]} />
+          <meshBasicMaterial
+            color={heart}
+            alphaMap={halo}
+            transparent
+            opacity={0.85}
+            blending={AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh>
+          <torusGeometry args={[0.25, 0.01, 12, 120]} />
+          <meshStandardMaterial
+            color="#ffffff"
+            emissive="#ffffff"
+            emissiveIntensity={profile.intensity * 1.4}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh>
+          <circleGeometry args={[0.09, 48]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={1}
+            blending={AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
     </group>
   );
 }
 
-function StaticReactor({ color, heart }: { color: string; heart: string }) {
-  const blades = Array.from({ length: BLADES }, (_, i) => (i / BLADES) * 360);
+function StaticReactor({
+  glow,
+  heart,
+  copper,
+}: {
+  glow: string;
+  heart: string;
+  copper: string;
+}) {
+  const slats = Array.from({ length: SLATS }, (_, i) => (i / SLATS) * 360);
+  const cut = Array.from({ length: CUTOUTS }, (_, i) => (i / CUTOUTS) * 360);
   return (
     <svg
       viewBox="0 0 200 200"
@@ -307,44 +553,80 @@ function StaticReactor({ color, heart }: { color: string; heart: string }) {
       <circle
         cx="100"
         cy="100"
-        r="92"
+        r="94"
         fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        opacity="0.55"
+        stroke={glow}
+        strokeWidth="1"
+        opacity="0.9"
       />
       <circle
         cx="100"
         cy="100"
-        r="85"
+        r="86"
         fill="none"
-        stroke={color}
-        strokeWidth="3"
-        opacity="0.8"
+        stroke="#1b2230"
+        strokeWidth="9"
       />
-      {blades.map((deg) => (
+      {cut.map((deg) => (
         <rect
           key={deg}
-          x="57"
-          y="97"
-          width="17"
-          height="5"
+          x="94"
+          y="12"
+          width="12"
+          height="4"
           rx="1"
-          fill={color}
+          fill={glow}
           transform={`rotate(${deg} 100 100)`}
         />
       ))}
       <circle
         cx="100"
         cy="100"
-        r="40"
+        r="76"
         fill="none"
-        stroke={heart}
-        strokeWidth="2.5"
+        stroke={glow}
+        strokeWidth="1"
+        opacity="0.9"
       />
-      <circle cx="100" cy="100" r="30" fill={color} opacity="0.35" />
-      <circle cx="100" cy="100" r="15" fill={heart} opacity="0.95" />
-      <circle cx="100" cy="100" r="6" fill="#ffffff" opacity="0.9" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={glow}
+        strokeWidth="22"
+        opacity="0.28"
+      />
+      <circle
+        cx="100"
+        cy="100"
+        r="47"
+        fill="none"
+        stroke={copper}
+        strokeWidth="2"
+      />
+      <circle
+        cx="100"
+        cy="100"
+        r="43"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="1"
+      />
+      {slats.map((deg) => (
+        <rect
+          key={deg}
+          x="118"
+          y="98"
+          width="20"
+          height="3.5"
+          rx="1"
+          fill={heart}
+          transform={`rotate(${deg} 100 100)`}
+        />
+      ))}
+      <circle cx="100" cy="100" r="16" fill={heart} opacity="0.95" />
+      <circle cx="100" cy="100" r="6" fill="#ffffff" />
     </svg>
   );
 }
@@ -370,8 +652,7 @@ function canUseWebGL(): boolean {
 
 /** Re-reads the live CSS variables so a Day/Night switch reaches WebGL.
  *  P3 `color()` values cannot be parsed by three.js; when a token resolves
- *  to one we keep the sRGB mirror (three renders in sRGB anyway — the P3
- *  lift applies to the DOM around the reactor). */
+ *  to one we keep the sRGB mirror. */
 function useLivePalette(): CapstonePalette {
   const [palette, setPalette] = useState<CapstonePalette>(capstonePalette);
   useEffect(() => {
@@ -388,6 +669,8 @@ function useLivePalette(): CapstonePalette {
       ) as (keyof CapstonePalette)[]) {
         const value = style.getPropertyValue(CAPSTONE_TOKEN_NAMES[key]).trim();
         if (/^#[0-9a-f]{6}$/i.test(value)) next[key] = value;
+        else if (/^#[0-9a-f]{3}$/i.test(value))
+          next[key] = value.replace(/^#(.)(.)(.)$/, "#$1$1$2$2$3$3");
       }
       setPalette(next);
     });
