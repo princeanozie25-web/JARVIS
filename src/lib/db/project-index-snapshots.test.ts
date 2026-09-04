@@ -175,6 +175,38 @@ describe("project index snapshot persistence", () => {
     expect(hasActiveProjectIndexSnapshot(db, "proj_jarvis")).toBe(false);
   });
 
+  it("orders same-millisecond snapshots by insertion (later insert first) — E-027", () => {
+    // Ids chosen so an `id ASC` tiebreak would return the EARLIER insert first.
+    const base = {
+      projectId: "proj_jarvis",
+      startedAt: 5_000,
+      finishedAt: 5_000,
+      sourcesSeen: 1,
+      triggeredBy: "manual",
+      status: "completed",
+    } as const;
+    insertProjectIndexSnapshot(db, {
+      ...base,
+      id: "pidx_b",
+      artifactsExtracted: 1,
+    });
+    insertProjectIndexSnapshot(db, {
+      ...base,
+      id: "pidx_a",
+      artifactsExtracted: 0,
+    });
+
+    expect(
+      listProjectIndexSnapshots(db, "proj_jarvis").map((row) => [
+        row.id,
+        row.artifacts_extracted,
+      ]),
+    ).toEqual([
+      ["pidx_a", 0],
+      ["pidx_b", 1],
+    ]);
+  });
+
   it("sources_seen can be based on known source rows without content fields", () => {
     insertProjectSource(db, {
       id: "psrc_1",

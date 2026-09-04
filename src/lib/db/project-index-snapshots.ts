@@ -121,6 +121,11 @@ export function getProjectIndexSnapshot(
     .get(id) as ProjectIndexSnapshotRow | undefined;
 }
 
+// E-027 (R.2, 2026-09-04): newest-first with a MONOTONIC tiebreak. Two
+// snapshots can share a started_at millisecond on fast hardware (observed on
+// the M1 Max in the Phase 5 project.index idempotency test); the previous
+// `id ASC` tiebreak over opaque ids was nondeterministic. rowid is insertion
+// order, so the later insert always sorts first.
 export function listProjectIndexSnapshots(
   db: DatabaseType.Database,
   projectId: string,
@@ -130,7 +135,7 @@ export function listProjectIndexSnapshots(
       `SELECT *
        FROM project_index_snapshot
        WHERE project_id = ?
-       ORDER BY started_at DESC, id ASC`,
+       ORDER BY started_at DESC, rowid DESC`,
     )
     .all(projectId) as ProjectIndexSnapshotRow[];
 }
