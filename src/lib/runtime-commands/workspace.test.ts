@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import {
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -20,7 +21,9 @@ let db: Database.Database;
 const tempRoots: string[] = [];
 
 function tempDir(prefix: string): string {
-  const root = mkdtempSync(join(tmpdir(), prefix));
+  // E-025: the resolver returns realpath'd directories; macOS aliases the
+  // temp root (/var -> /private/var), Windows returns it unchanged.
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
   tempRoots.push(root);
   return root;
 }

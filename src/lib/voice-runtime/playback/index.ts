@@ -55,13 +55,18 @@ export type {
 } from "./supervisor";
 
 export {
+  LOCAL_PLAYBACK_DARWIN_COMMAND,
   LOCAL_PLAYBACK_DEFAULT_COMMAND,
   LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS,
   LocalPlaybackDriverError,
+  buildDarwinPlaybackArgs,
+  buildLocalPlaybackArgs,
   buildWindowsPlaybackArgs,
   createLocalPlaybackDriver,
   createNodePlaybackCommandRunner,
+  defaultLocalPlaybackCommand,
   isSafeLocalAudioRef,
+  resolveLocalPlaybackPlatform,
 } from "./local-driver";
 export type {
   LocalPlaybackCommandOptions,
@@ -69,4 +74,5 @@ export type {
   LocalPlaybackCommandRunner,
   LocalPlaybackDriverFailureReason,
   LocalPlaybackDriverOptions,
+  LocalPlaybackPlatform,
 } from "./local-driver";

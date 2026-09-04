@@ -13,6 +13,20 @@ import {
   type LocalPlaybackCommandRunner,
 } from "../../../src/lib/voice-runtime";
 
+// E-025: the safe-ref validator requires an ABSOLUTE local .wav on the
+// running platform; "C:/..." is relative on POSIX. The Windows driver shape
+// itself is pinned with platform: "win32" so its argv contract is asserted on
+// every platform.
+const WAV_REF =
+  process.platform === "win32"
+    ? "C:/tmp/jarvis-output.wav"
+    : "/tmp/jarvis-output.wav";
+const MP3_REF =
+  process.platform === "win32"
+    ? "C:/tmp/jarvis-output.mp3"
+    : "/tmp/jarvis-output.mp3";
+const WIN32 = { platform: "win32" as const };
+
 function localDriverSource(): string {
   return readFileSync(
     join(process.cwd(), "src/lib/voice-runtime/playback/local-driver.ts"),
@@ -77,9 +91,10 @@ describe("Phase 14E.4 local playback driver", () => {
       runner,
       command: "powershell.exe",
       timeout_ms: 5000,
+      ...WIN32,
     });
 
-    await driver.loadAudioRef("C:/tmp/jarvis-output.wav");
+    await driver.loadAudioRef(WAV_REF);
     await driver.playLoaded();
 
     expect(runner.calls.commands).toEqual(["powershell.exe"]);
@@ -92,12 +107,12 @@ describe("Phase 14E.4 local playback driver", () => {
       "-Command",
       expect.stringContaining("System.Media.SoundPlayer"),
     ]);
-    expect(runner.calls.args[0]?.[5]).toContain("'C:/tmp/jarvis-output.wav'");
+    expect(runner.calls.args[0]?.[5]).toContain(`'${WAV_REF}'`);
     expect(runner.calls.args[0]?.length).toBe(6);
-    expect(runner.calls.args[0]).not.toContain("C:/tmp/jarvis-output.wav");
+    expect(runner.calls.args[0]).not.toContain(WAV_REF);
     expect(runner.run).toHaveBeenCalledWith(
       LOCAL_PLAYBACK_DEFAULT_COMMAND,
-      buildWindowsPlaybackArgs("C:/tmp/jarvis-output.wav"),
+      buildWindowsPlaybackArgs(WAV_REF),
       {
         shell: false,
         timeout_ms: 5000,
@@ -139,9 +154,9 @@ describe("Phase 14E.4 local playback driver", () => {
   });
 
   it("accepts only explicit local WAV refs", async () => {
-    expect(isSafeLocalAudioRef("C:/tmp/jarvis-output.wav")).toBe(true);
+    expect(isSafeLocalAudioRef(WAV_REF)).toBe(true);
     expect(isSafeLocalAudioRef("https://example.com/audio.wav")).toBe(false);
-    expect(isSafeLocalAudioRef("C:/tmp/jarvis-output.mp3")).toBe(false);
+    expect(isSafeLocalAudioRef(MP3_REF)).toBe(false);
     expect(isSafeLocalAudioRef("relative-output.wav")).toBe(false);
 
     const driver = createLocalPlaybackDriver({ runner: fakeRunner() });
@@ -162,8 +177,9 @@ describe("Phase 14E.4 local playback driver", () => {
 
     const failing = createLocalPlaybackDriver({
       runner: fakeRunner(1),
+      ...WIN32,
     });
-    await failing.loadAudioRef("C:/tmp/jarvis-output.wav");
+    await failing.loadAudioRef(WAV_REF);
     await expect(failing.playLoaded()).rejects.toMatchObject({
       reason: "playback_failed",
       diagnostics: {
@@ -191,8 +207,9 @@ describe("Phase 14E.4 local playback driver", () => {
   it("bounds diagnostics and strips raw traceback frames", async () => {
     const failing = createLocalPlaybackDriver({
       runner: fakeRunner(1),
+      ...WIN32,
     });
-    await failing.loadAudioRef("C:/tmp/jarvis-output.wav");
+    await failing.loadAudioRef(WAV_REF);
 
     try {
       await failing.playLoaded();

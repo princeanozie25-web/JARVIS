@@ -294,12 +294,20 @@ describe("Phase 14E playback closeout audit", () => {
       }),
       stop: vi.fn(async () => undefined),
     };
-    const audioRef = "C:/tmp/jarvis's output.wav";
+    // E-025 (fixture only; assertions unchanged): an ABSOLUTE local WAV for the
+    // running platform — "C:/..." is relative on POSIX. The Windows driver is
+    // pinned with platform: "win32" so its argv contract is asserted anywhere.
+    const audioRef =
+      process.platform === "win32"
+        ? "C:/tmp/jarvis's output.wav"
+        : "/tmp/jarvis's output.wav";
+    const mp3Ref =
+      process.platform === "win32" ? "C:/tmp/jarvis.mp3" : "/tmp/jarvis.mp3";
     const args = buildWindowsPlaybackArgs(audioRef);
 
     expect(isSafeLocalAudioRef(audioRef)).toBe(true);
     expect(isSafeLocalAudioRef("https://example.com/jarvis.wav")).toBe(false);
-    expect(isSafeLocalAudioRef("C:/tmp/jarvis.mp3")).toBe(false);
+    expect(isSafeLocalAudioRef(mp3Ref)).toBe(false);
     expect(Array.isArray(args)).toBe(true);
     expect(args).toHaveLength(6);
     expect(args[4]).toBe("-Command");
@@ -307,7 +315,7 @@ describe("Phase 14E playback closeout audit", () => {
     expect(args[5]).not.toContain("jarvis's output.wav");
     expect(args[5]).not.toMatch(/\$args|\$\(|`/);
 
-    const driver = createLocalPlaybackDriver({ runner });
+    const driver = createLocalPlaybackDriver({ runner, platform: "win32" });
     await driver.loadAudioRef(audioRef);
     await driver.playLoaded();
     expect(calls.commands).toEqual(["powershell.exe"]);
@@ -338,8 +346,13 @@ describe("Phase 14E playback closeout audit", () => {
       })),
       stop: vi.fn(async () => undefined),
     };
-    const driver = createLocalPlaybackDriver({ runner });
-    await driver.loadAudioRef("C:/tmp/jarvis-output.wav");
+    // E-025 (fixture only): absolute WAV for the running platform; Windows driver pinned.
+    const driver = createLocalPlaybackDriver({ runner, platform: "win32" });
+    await driver.loadAudioRef(
+      process.platform === "win32"
+        ? "C:/tmp/jarvis-output.wav"
+        : "/tmp/jarvis-output.wav",
+    );
 
     await expect(driver.playLoaded()).rejects.toMatchObject({
       reason: "playback_failed",

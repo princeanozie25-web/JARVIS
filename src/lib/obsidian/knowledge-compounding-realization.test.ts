@@ -228,6 +228,11 @@ describe("Knowledge Compounding realization", () => {
   });
 
   it("resolves vault targets deterministically and rejects absolute paths", () => {
+    // E-025: an ABSOLUTE outside path for the running platform — "C:/..." is
+    // relative on POSIX, so the Windows literal alone would not exercise the
+    // absolute-path rejection there.
+    const outsideAbsolute =
+      process.platform === "win32" ? "C:/outside/test.md" : "/outside/test.md";
     expect(
       resolveKnowledgeVaultTarget({
         vault_root_path: "C:/vault",
@@ -241,7 +246,7 @@ describe("Knowledge Compounding realization", () => {
     expect(
       resolveKnowledgeVaultTarget({
         vault_root_path: "C:/vault",
-        relative_vault_path: "C:/outside/test.md",
+        relative_vault_path: outsideAbsolute,
       }).inside_vault,
     ).toBe(false);
   });

@@ -3,12 +3,17 @@ import { vectorStoreConfigFromEnv } from "./vector-config";
 
 describe("vectorStoreConfigFromEnv", () => {
   it("loads disabled LanceDB defaults", () => {
-    expect(
-      vectorStoreConfigFromEnv({} as NodeJS.ProcessEnv, "C:\\jarvis"),
-    ).toEqual({
+    // E-025: an absolute cwd fixture for the running platform (Windows drive
+    // path / POSIX root path); the joined default is asserted for both.
+    const cwd = process.platform === "win32" ? "C:\\jarvis" : "/jarvis";
+    const expectedPath =
+      process.platform === "win32"
+        ? "C:\\jarvis\\data\\lancedb"
+        : "/jarvis/data/lancedb";
+    expect(vectorStoreConfigFromEnv({} as NodeJS.ProcessEnv, cwd)).toEqual({
       enabled: false,
       provider: "lancedb",
-      path: "C:\\jarvis\\data\\lancedb",
+      path: expectedPath,
       tableName: "memory_embeddings",
       dimension: 768,
     });

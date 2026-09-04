@@ -4,7 +4,14 @@ import { extname, isAbsolute } from "node:path";
 import type { PlaybackDriver, PlaybackDriverHealth } from "./adapter";
 
 export const LOCAL_PLAYBACK_DEFAULT_COMMAND = "powershell.exe";
+// E-024 (runway R.2): the macOS playback command. `afplay` ships with macOS,
+// needs no permission grant, takes the WAV path as a single argv element, and
+// exits non-zero on failure. Selected by platform at construction; the Windows
+// path above is unchanged.
+export const LOCAL_PLAYBACK_DARWIN_COMMAND = "afplay";
 export const LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS = 120_000;
+
+export type LocalPlaybackPlatform = "win32" | "darwin";
 
 function buildWindowsPlaybackScript(audioRef: string): string {
   // powershell.exe -Command does not populate $args from trailing argv;
@@ -63,6 +70,13 @@ export interface LocalPlaybackDriverOptions {
   readonly command?: string;
   readonly runner?: LocalPlaybackCommandRunner;
   readonly timeout_ms?: number;
+  // E-024: which platform's command/argv shape to use. Defaults to the running
+  // platform; non-darwin platforms keep the original Windows shape so the
+  // Windows path is byte-for-byte the pre-E-024 behaviour.
+  readonly platform?: NodeJS.Platform;
+  // E-024: optional cancellation. Abort -> runner.stop() -> SIGTERM to the
+  // playback child. Never starts playback; only ends it.
+  readonly signal?: AbortSignal;
 }
 
 export class LocalPlaybackDriverError extends Error {
@@ -81,15 +95,47 @@ export class LocalPlaybackDriverError extends Error {
   }
 }
 
+export function resolveLocalPlaybackPlatform(
+  platform: NodeJS.Platform = process.platform,
+): LocalPlaybackPlatform {
+  return platform === "darwin" ? "darwin" : "win32";
+}
+
+export function defaultLocalPlaybackCommand(
+  platform: NodeJS.Platform = process.platform,
+): string {
+  return resolveLocalPlaybackPlatform(platform) === "darwin"
+    ? LOCAL_PLAYBACK_DARWIN_COMMAND
+    : LOCAL_PLAYBACK_DEFAULT_COMMAND;
+}
+
+export function buildLocalPlaybackArgs(
+  audioRef: string,
+  platform: NodeJS.Platform = process.platform,
+): readonly string[] {
+  return resolveLocalPlaybackPlatform(platform) === "darwin"
+    ? buildDarwinPlaybackArgs(audioRef)
+    : buildWindowsPlaybackArgs(audioRef);
+}
+
 export function createLocalPlaybackDriver(
   options: LocalPlaybackDriverOptions = {},
 ): PlaybackDriver {
-  const command = options.command ?? LOCAL_PLAYBACK_DEFAULT_COMMAND;
+  const platform = options.platform ?? process.platform;
+  const command = options.command ?? defaultLocalPlaybackCommand(platform);
   const runner = options.runner ?? createNodePlaybackCommandRunner();
   const timeoutMs = options.timeout_ms ?? LOCAL_PLAYBACK_DEFAULT_TIMEOUT_MS;
   let loadedAudioRef: string | null = null;
   let degraded = false;
   let lastError: PlaybackDriverHealth["error_class"];
+
+  options.signal?.addEventListener(
+    "abort",
+    () => {
+      void runner.stop().catch(() => undefined);
+    },
+    { once: true },
+  );
 
   return {
     loadAudioRef: async (audioRef) => {
@@ -107,7 +153,7 @@ export function createLocalPlaybackDriver(
 
       const result = await runner.run(
         command,
-        buildWindowsPlaybackArgs(loadedAudioRef),
+        buildLocalPlaybackArgs(loadedAudioRef, platform),
         {
           shell: false,
           timeout_ms: timeoutMs,
@@ -119,7 +165,7 @@ export function createLocalPlaybackDriver(
         degraded = true;
         throw new LocalPlaybackDriverError(
           "playback_failed",
-          withCommandDiagnostics(result, command, timeoutMs),
+          withCommandDiagnostics(result, command, timeoutMs, platform),
         );
       }
     },
@@ -152,6 +198,13 @@ export function buildWindowsPlaybackArgs(audioRef: string): readonly string[] {
   ];
 }
 
+// E-024: afplay takes the file path as ONE argv element (no shell, no script
+// text), so there is nothing to escape — isSafeLocalAudioRef has already
+// bounded the value to an absolute local .wav path.
+export function buildDarwinPlaybackArgs(audioRef: string): readonly string[] {
+  return [audioRef];
+}
+
 export function isSafeLocalAudioRef(audioRef: unknown): audioRef is string {
   if (typeof audioRef !== "string") return false;
   const trimmed = audioRef.trim();
@@ -174,6 +227,7 @@ export function createNodePlaybackCommandRunner(): LocalPlaybackCommandRunner {
           windowsHide: true,
         });
         active = {
+          // Default signal is SIGTERM on POSIX; on Windows kill() terminates.
           kill: () => child.kill(),
         };
         let stderr = "";
@@ -222,6 +276,7 @@ function withCommandDiagnostics(
   result: LocalPlaybackCommandResult,
   command: string,
   timeoutMs: number,
+  platform: NodeJS.Platform,
 ): LocalPlaybackCommandResult {
   return {
     error_class: result.error_class ?? "driver_error",
@@ -232,7 +287,7 @@ function withCommandDiagnostics(
       : { stderr_preview: safeDiagnosticPreview(result.stderr_preview) }),
     command_metadata:
       result.command_metadata ??
-      commandMetadata(command, buildWindowsPlaybackArgs("").length, {
+      commandMetadata(command, buildLocalPlaybackArgs("", platform).length, {
         shell: false,
         timeout_ms: timeoutMs,
         metadata_only: true,

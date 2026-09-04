@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -23,7 +23,11 @@ describe("Obsidian vault foundation", () => {
   });
 
   it("creates the Phase 3A scaffold safely", async () => {
-    vaultRoot = mkdtempSync(join(tmpdir(), "jarvis-vault-test-"));
+    // E-025: ensureVaultScaffold returns the realpath'd root; macOS aliases
+    // the temp root (/var -> /private/var), Windows returns it unchanged.
+    vaultRoot = realpathSync.native(
+      mkdtempSync(join(tmpdir(), "jarvis-vault-test-")),
+    );
 
     await expect(ensureVaultScaffold(vaultRoot)).resolves.toBe(vaultRoot);
 

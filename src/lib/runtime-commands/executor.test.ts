@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -128,7 +128,11 @@ afterEach(() => {
 });
 
 function tempWorkspace(): string {
-  const root = mkdtempSync(join(tmpdir(), "jarvis-runtime-"));
+  // E-025: spawn cwd is the resolver's realpath'd directory; macOS aliases
+  // the temp root (/var -> /private/var), Windows returns it unchanged.
+  const root = realpathSync.native(
+    mkdtempSync(join(tmpdir(), "jarvis-runtime-")),
+  );
   tempRoots.push(root);
   return root;
 }
