@@ -174,6 +174,8 @@ frozen and drilled** with zero open residuals. What is _not_ claimed:
   the camera path is consent-conditional, indicator-mandatory, and off by default;
   live-capture proof awaits a machine with a camera).
 
+- **First run on M1 Max 32GB: green baseline 2026-09-04 (R.2). Not productionized.**
+
 Residuals are tracked, not hidden, and a control is marked GREEN only when
 drilled. → [`docs/enhancements/REGISTRY.md`](docs/enhancements/REGISTRY.md)
 
