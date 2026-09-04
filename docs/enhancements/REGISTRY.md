@@ -3,6 +3,20 @@
 All post-Phase-20 changes to frozen surfaces enter here before code.
 Format: ID | Title | Frozen surface touched | Justification | Status
 
+**Runway R.2 (Stabilize on the primary machine): COMPLETE 2026-09-04.** Roadmap v5.1 §8.
+First bootstrap of JARVIS on the MacBook Pro M1 Max 32 GB (macOS 26.6.2, Node 24 via
+nvm, brew ffmpeg 9.0.1 / yt-dlp 2026.08.19, faster-whisper 1.2.1 in .venv). Landed on
+main by fast-forward from runway/r2-mac-stabilize (e266fe9..bbc90d3, seven commits, no
+trailers): E-023 bootstrap, E-024 afplay driver (VERIFIED, real spawn), E-025 platform
+parity (12 bucket-A failures fixed, zero skipped on darwin), E-026 docs, E-027 snapshot
+ordering fix, 23F-CAMERA-PROOF VERIFIED (last Phase 23 residual closed). Exit evidence —
+five consecutive green in-hook runs (lint-staged + eslint + full vitest, no --no-verify),
+655 files / 5917 passed / 6 skipped (Windows real-spawn variant, off-platform by design):
+e0e6735 237.2 s · 2d7d6a2 237.7 s · 5b2afb1 241.8 s · 15d76e9 237.5 s · bbc90d3 234.4 s.
+Peak RSS 440 MB (measured on the explicit pre-commit run). Open after R.2: E-009 PROPOSED;
+UI_CAPSTONE_BRIEF.md absent from the tree (Program U.1 input); Phase 25D sidecars not
+installed by design. Next: R.4 already banked → Program U.
+
 **Phase 22 (Voice Authority): FROZEN 2026-06-14 — parity stamp added 2026-09-01.**
 Landed on main via E-001 (voice extraction) + E-006 (rest reactor), both COMPLETE, with the
 fallback truth proven live under E-010 (CLOSED-PROVEN-BY-DRILL 2026-06-14 — the date Phase 23
