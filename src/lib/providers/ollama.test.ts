@@ -189,6 +189,51 @@ describe("OllamaProvider (E-037)", () => {
     ]);
   });
 
+  it("E-042: sends think:false only when set (reasoning-model toggle), model default otherwise", async () => {
+    const cap = (fetchImpl: ReturnType<typeof vi.fn>) =>
+      JSON.parse(
+        (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1]
+          .body as string,
+      ) as Record<string, unknown>;
+    const f1 = vi.fn(async () =>
+      ndjson([
+        {
+          message: { content: "hi" },
+          done: true,
+          prompt_eval_count: 1,
+          eval_count: 1,
+        },
+      ]),
+    );
+    await collect(
+      (
+        await new OllamaProvider({
+          fetchImpl: f1 as unknown as typeof fetch,
+          think: false,
+        }).stream([{ role: "user", content: "x" }], { model: "qwen3.5:9b-mlx" })
+      ).events,
+    );
+    expect(cap(f1).think).toBe(false);
+    const f2 = vi.fn(async () =>
+      ndjson([
+        {
+          message: { content: "hi" },
+          done: true,
+          prompt_eval_count: 1,
+          eval_count: 1,
+        },
+      ]),
+    );
+    await collect(
+      (
+        await new OllamaProvider({
+          fetchImpl: f2 as unknown as typeof fetch,
+        }).stream([{ role: "user", content: "x" }], { model: "qwen3.5:9b-mlx" })
+      ).events,
+    );
+    expect("think" in cap(f2)).toBe(false);
+  });
+
   it("honours the caller's AbortSignal as a recoverable stop", async () => {
     const controller = new AbortController();
     const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {

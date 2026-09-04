@@ -54,6 +54,11 @@ export interface OllamaProviderOptions {
   readonly baseUrl?: string;
   readonly fetchImpl?: FetchLike;
   readonly timeoutMs?: number;
+  // E-042 (Phase 25C): Ollama's reasoning toggle for thinking models
+  // (qwen3.5 puts its whole answer in `thinking` and leaves `content` empty
+  // unless think:false). Undefined = the model's default; voice sets false so
+  // the assistant answers directly and fast. Additive: unset changes nothing.
+  readonly think?: boolean;
 }
 
 function toOllamaMessages(messages: ProviderMessage[]): OllamaChatMessage[] {
@@ -106,6 +111,7 @@ export class OllamaProvider implements ChatProvider {
   private readonly baseUrl: string;
   private readonly fetchImpl: FetchLike;
   private readonly timeoutMs: number;
+  private readonly think?: boolean;
 
   constructor(options: OllamaProviderOptions = {}) {
     this.baseUrl = (options.baseUrl ?? config.ollama.baseUrl).replace(
@@ -114,6 +120,7 @@ export class OllamaProvider implements ChatProvider {
     );
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? OLLAMA_DEFAULT_TIMEOUT_MS;
+    this.think = options.think;
   }
 
   async generate(
@@ -138,6 +145,7 @@ export class OllamaProvider implements ChatProvider {
     const baseUrl = this.baseUrl;
     const fetchImpl = this.fetchImpl;
     const timeoutMs = this.timeoutMs;
+    const think = this.think;
 
     async function* iterate(): AsyncIterable<StreamEvent> {
       const controller = new AbortController();
@@ -162,6 +170,7 @@ export class OllamaProvider implements ChatProvider {
               model: opts.model,
               messages: toOllamaMessages(messages),
               stream: true,
+              ...(think === undefined ? {} : { think }),
               tools: toOllamaTools(opts.tools),
               options: {
                 ...(opts.temperature === undefined
