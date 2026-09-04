@@ -227,6 +227,33 @@ export type {
   SttValidationResult,
 } from "./stt";
 
+// Phase 25D part 2 (E-039): Apple-native STT engines + shared Python mechanism.
+export {
+  DEFAULT_MLX_WHISPER_MODEL,
+  DEFAULT_PARAKEET_MODEL,
+  MLX_WHISPER_PROVIDER_ID,
+  MLX_WHISPER_PYTHON_HELPER,
+  PARAKEET_MLX_PROVIDER_ID,
+  PARAKEET_PYTHON_HELPER,
+  PythonSttProviderError,
+  STT_PROVIDER_IDS,
+  createMlxSttProviderFromEnv,
+  createMlxWhisperSttProvider,
+  createParakeetMlxSttProvider,
+  createPythonSttProvider,
+  parseFinalJson,
+  resolveSttProviderId,
+} from "./stt";
+export type {
+  MlxSttProviderOptions,
+  PythonSttEngineConfig,
+  PythonSttProcessRunner,
+  PythonSttProviderOptions,
+  PythonSttSpawnOptions,
+  PythonSttSpawnedProcess,
+  SttProviderId,
+} from "./stt";
+
 export {
   CAPTURE_LIFECYCLE_STATES,
   CAPTURE_STATE_EVENTS,

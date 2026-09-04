@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Python virtualenvs (R.2 faster-whisper, 25D MLX voice stack). Some
+    // packages (torch, sklearn) ship vendored .js/.mjs; never lint them.
+    ".venv/**",
+    ".venv-mlx/**",
   ]),
 ]);
 

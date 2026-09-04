@@ -79,3 +79,32 @@ export type {
   FasterWhisperSttLocalConfigResult,
   FasterWhisperSttLocalEnv,
 } from "./local-config";
+
+// Phase 25D part 2 (E-039): Apple-native STT engines on the shared Python
+// mechanism; faster-whisper above stays the frozen fallback.
+export {
+  PythonSttProviderError,
+  createPythonSttProvider,
+  parseFinalJson,
+} from "./python-stt-provider";
+export type {
+  PythonSttEngineConfig,
+  PythonSttProcessRunner,
+  PythonSttProviderOptions,
+  PythonSttSpawnOptions,
+  PythonSttSpawnedProcess,
+} from "./python-stt-provider";
+export {
+  DEFAULT_MLX_WHISPER_MODEL,
+  DEFAULT_PARAKEET_MODEL,
+  MLX_WHISPER_PROVIDER_ID,
+  MLX_WHISPER_PYTHON_HELPER,
+  PARAKEET_MLX_PROVIDER_ID,
+  PARAKEET_PYTHON_HELPER,
+  STT_PROVIDER_IDS,
+  createMlxSttProviderFromEnv,
+  createMlxWhisperSttProvider,
+  createParakeetMlxSttProvider,
+  resolveSttProviderId,
+} from "./mlx-stt-providers";
+export type { MlxSttProviderOptions, SttProviderId } from "./mlx-stt-providers";

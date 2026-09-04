@@ -50,3 +50,4 @@ next-env.d.ts
 
 # python venv (R.2 Mac bootstrap; faster-whisper library only)
 .venv/
+.venv-mlx/

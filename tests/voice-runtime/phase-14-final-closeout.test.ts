@@ -74,6 +74,11 @@ const APPROVED_LOCAL_SUBPROCESS_FILES = new Set([
   "src/lib/voice-runtime/stt/faster-whisper-provider.ts",
   "src/lib/voice-runtime/tts/piper-provider.ts",
   "src/lib/voice-runtime/playback/local-driver.ts",
+  // E-039 (Phase 25D): the SHARED Python-STT mechanism — the one new local
+  // subprocess seam for parakeet-mlx / mlx-whisper. Same fail-closed, bounded,
+  // traceback-sanitized shape as the frozen faster-whisper provider; no new
+  // authority (asserted by tests/phase-25/stt-conformance.test.ts).
+  "src/lib/voice-runtime/stt/python-stt-provider.ts",
 ]);
 
 function readRecursiveTsFiles(root: string): readonly string[] {
