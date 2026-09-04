@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "../src/lib/design-tokens/tokens.css";
 @import "../src/lib/accessibility.css";
 @import "../src/components/command-center/command-center.css";
@@ -57,6 +58,87 @@
   /* Shadow */
   --shadow-orb-atmosphere: var(--jarvis-shadow-orb-atmosphere);
   --shadow-cockpit-depth: var(--jarvis-shadow-cockpit-depth);
+
+  /* ── Capstone (E-029): Deep Blue tokens as Tailwind utilities ── */
+  --color-cc-field: var(--jarvis-cc-field);
+  --color-cc-surface: var(--jarvis-cc-surface);
+  --color-cc-hairline: var(--jarvis-cc-hairline);
+  --color-cc-ink: var(--jarvis-cc-ink);
+  --color-cc-ink-muted: var(--jarvis-cc-ink-muted);
+  --color-cc-accent: var(--jarvis-cc-accent);
+  --color-cc-gate: var(--jarvis-cc-gate);
+  --color-cc-ok: var(--jarvis-cc-ok);
+  --color-cc-fail: var(--jarvis-cc-fail);
+  --color-cc-rail: var(--jarvis-cc-rail);
+  --font-cc-sans: var(--jarvis-font-sans);
+  --font-cc-wordmark: var(--jarvis-font-wordmark);
+  --ease-cc: var(--jarvis-cc-motion-ease);
+
+  /* ── shadcn/ui variable contract (E-029). These resolve to the
+     capstone tokens ONLY inside a [data-capstone-theme] root (see below);
+     outside it --background/--foreground keep their legacy values. ── */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Capstone root — Night is the default; Day overrides the cc tokens in
+   tokens.css and these mappings follow automatically. */
+[data-capstone-theme] {
+  --background: var(--jarvis-cc-field);
+  --foreground: var(--jarvis-cc-ink);
+  --card: var(--jarvis-cc-surface);
+  --card-foreground: var(--jarvis-cc-ink);
+  --popover: var(--jarvis-cc-surface);
+  --popover-foreground: var(--jarvis-cc-ink);
+  --primary: var(--jarvis-cc-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--jarvis-cc-surface);
+  --secondary-foreground: var(--jarvis-cc-ink);
+  --muted: var(--jarvis-cc-surface);
+  --muted-foreground: var(--jarvis-cc-ink-muted);
+  --accent: var(--jarvis-cc-surface);
+  --accent-foreground: var(--jarvis-cc-ink);
+  --destructive: var(--jarvis-cc-fail);
+  --border: var(--jarvis-cc-hairline);
+  --input: var(--jarvis-cc-hairline);
+  --ring: var(--jarvis-cc-accent);
+  --sidebar: var(--jarvis-cc-rail);
+  --sidebar-foreground: var(--jarvis-cc-ink);
+  --sidebar-border: var(--jarvis-cc-hairline);
+  --sidebar-accent: var(--jarvis-cc-surface);
+  --sidebar-accent-foreground: var(--jarvis-cc-ink);
+  --radius: 8px;
+  background: var(--jarvis-cc-field);
+  color: var(--jarvis-cc-ink);
+  font-family: var(--jarvis-font-sans);
+  font-size: var(--jarvis-cc-text-body-size);
+  line-height: var(--jarvis-cc-text-body-line-height);
+  transition:
+    background-color var(--jarvis-cc-motion-theme) var(--jarvis-cc-motion-ease),
+    color var(--jarvis-cc-motion-theme) var(--jarvis-cc-motion-ease);
+}
+[data-capstone-theme="day"] {
+  --primary-foreground: #ffffff;
 }
 
 body {

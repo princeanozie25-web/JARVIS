@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
 import localFont from "next/font/local";
 
 import "./globals.css";
@@ -50,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${jetbrainsMono.variable} ${GeistSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

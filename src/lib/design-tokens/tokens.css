@@ -61,7 +61,12 @@
     rgba(40, 64, 112, 0.07)
   ); /* panel-soft register — raised glass */
   --jarvis-shell-stroke: rgba(150, 190, 255, 0.13); /* border-subtle register */
-  --jarvis-shell-stroke-hi: rgba(170, 205, 255, 0.26); /* border-subtle register (focused) */
+  --jarvis-shell-stroke-hi: rgba(
+    170,
+    205,
+    255,
+    0.26
+  ); /* border-subtle register (focused) */
 
   /* Theme — UI.7 default (blue). ThemeProvider overrides these on the root. */
   --color-theme-primary: var(--jarvis-color-sky-focus);
@@ -104,18 +109,8 @@
   --jarvis-pulse-easing: var(--jarvis-motion-easing-orbit);
 
   /* Font - local-first. Fraunces is the bundled Quincy stand-in. */
-  --jarvis-font-display: var(
-    --font-jarvis-display,
-    "Fraunces",
-    Georgia,
-    serif
-  );
-  --jarvis-font-body: var(
-    --font-jarvis-display,
-    "Fraunces",
-    Georgia,
-    serif
-  );
+  --jarvis-font-display: var(--font-jarvis-display, "Fraunces", Georgia, serif);
+  --jarvis-font-body: var(--font-jarvis-display, "Fraunces", Georgia, serif);
   --jarvis-font-mono: var(
     --font-jarvis-mono,
     "JetBrains Mono",
@@ -219,5 +214,91 @@
     --jarvis-pulse-duration-normal: 0ms;
     --jarvis-pulse-duration-long: 0ms;
     --jarvis-pulse-duration-dwell: 0ms;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Capstone (Program U, E-029) — Deep Blue. ADDITIVE. Nothing above is
+ * renamed or removed; legacy surfaces keep resolving through --jarvis-*.
+ * Capstone surfaces mount under [data-capstone-theme="night" | "day"].
+ * Authority: docs/capstone/UI_CAPSTONE_BRIEF.md §2 (palette, type, motion).
+ * Amber law carries over: --jarvis-cc-gate is the Gate's colour and nothing
+ * else's; a read-only surface never uses it.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  /* Fonts — additive roles (U.1 §5.2). Geist is bundled by the `geist`
+     package through next/font/local; Fraunces roles above are untouched. */
+  --jarvis-font-sans: var(--font-geist-sans, "Geist", system-ui, sans-serif);
+  --jarvis-font-wordmark: var(
+    --font-geist-sans,
+    "Geist",
+    system-ui,
+    sans-serif
+  );
+
+  /* Night palette (default) */
+  --jarvis-cc-field: #06122b;
+  --jarvis-cc-surface: #0b1b3a;
+  --jarvis-cc-hairline: #1e2f55;
+  --jarvis-cc-ink: #e8eef9;
+  --jarvis-cc-ink-muted: #8fa3c8;
+  --jarvis-cc-accent: #3b82f6;
+  --jarvis-cc-accent-glow: rgba(59, 130, 246, 0.35);
+  --jarvis-cc-gate: #f5a524; /* GATE ONLY */
+  --jarvis-cc-gate-glow: rgba(245, 165, 36, 0.4); /* GATE ONLY */
+  --jarvis-cc-ok: #34d399;
+  --jarvis-cc-fail: #f87171;
+  --jarvis-cc-rail: #0b1b3a;
+  --jarvis-cc-wordmark-opacity: 0.06;
+
+  /* Type scale — steep by design */
+  --jarvis-cc-text-wordmark-size: clamp(96px, 18vw, 320px);
+  --jarvis-cc-text-wordmark-weight: 900;
+  --jarvis-cc-text-wordmark-tracking: -0.04em;
+  --jarvis-cc-text-h1-size: 48px;
+  --jarvis-cc-text-h1-line-height: 1.05;
+  --jarvis-cc-text-h2-size: 28px;
+  --jarvis-cc-text-h2-line-height: 1.15;
+  --jarvis-cc-text-body-size: 15px;
+  --jarvis-cc-text-body-line-height: 1.5;
+  --jarvis-cc-text-data-size: 13px;
+  --jarvis-cc-text-ticker-size: 12px;
+
+  /* Motion grammar (brief §2) */
+  --jarvis-cc-motion-hover: 100ms;
+  --jarvis-cc-motion-hover-lift: 2px;
+  --jarvis-cc-motion-stagger: 60ms;
+  --jarvis-cc-motion-collapse: 180ms;
+  --jarvis-cc-motion-theme: 240ms;
+  --jarvis-cc-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --jarvis-cc-motion-core-breath: 4000ms;
+  --jarvis-cc-motion-gate-pulse: 1200ms;
+
+  /* Layout */
+  --jarvis-cc-rail-left: 64px;
+  --jarvis-cc-rail-right: 240px;
+  --jarvis-cc-core-size: 42vh;
+}
+
+[data-capstone-theme="day"] {
+  --jarvis-cc-field: #f6f3ee;
+  --jarvis-cc-surface: #ffffff;
+  --jarvis-cc-hairline: #e3ddd2;
+  --jarvis-cc-ink: #0b1b3a;
+  --jarvis-cc-ink-muted: #5b6785;
+  --jarvis-cc-rail: #0b1b3a;
+  --jarvis-cc-wordmark-opacity: 0.05;
+  /* accent and gate are identical in both themes — the ring never changes meaning */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --jarvis-cc-motion-hover: 0ms;
+    --jarvis-cc-motion-hover-lift: 0px;
+    --jarvis-cc-motion-stagger: 0ms;
+    --jarvis-cc-motion-collapse: 0ms;
+    --jarvis-cc-motion-theme: 0ms;
+    --jarvis-cc-motion-core-breath: 0ms;
+    --jarvis-cc-motion-gate-pulse: 0ms;
   }
 }
