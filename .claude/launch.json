@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "jarvis-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
       "name": "gauntlet-static",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8123", "--bind", "127.0.0.1"],
