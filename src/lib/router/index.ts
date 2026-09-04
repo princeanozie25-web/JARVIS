@@ -28,7 +28,7 @@ export { matchCapability } from "./capability";
 export { enforceRouterSafety } from "./enforcement";
 export { classifyIntent } from "./intent";
 export { classifySafety } from "./safety";
-export { selectModel } from "./selection";
+export { resolveDefaultChatProvider, selectModel } from "./selection";
 export {
   DEFAULT_AUX_ROUTING_CONFIG_PATH,
   evaluateAuxOutputQuality,

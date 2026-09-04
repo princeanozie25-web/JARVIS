@@ -3,7 +3,8 @@ import { z } from "zod";
 export const MAX_CHAT_MESSAGES = 50;
 export const MAX_CHAT_MESSAGE_CHARS = 4000;
 
-export const SUPPORTED_PROVIDERS = ["openai", "anthropic"] as const;
+// E-037: the local brain is an explicitly requestable provider too.
+export const SUPPORTED_PROVIDERS = ["openai", "anthropic", "ollama"] as const;
 export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
 export const MessageSchema = z.object({

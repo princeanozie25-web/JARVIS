@@ -5,12 +5,12 @@ import { vectorStoreConfigFromEnv } from "../memory/vector-config";
 import { sessionSummaryConfigFromEnv } from "../session-summary/config";
 import { workingMemoryConfigFromEnv } from "../working-memory/config";
 
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required server environment variable: ${name}`);
-  }
-  return value;
+// E-037 (Phase 25B-1): cloud keys are OPTIONAL. JARVIS is local-first; a
+// missing key must not throw at import (it used to kill /api/chat on a
+// machine with no cloud account). A provider whose key is empty is simply
+// not registered (src/lib/providers/registry.ts) — fail closed, no fallback.
+function optionalEnv(name: string): string {
+  return process.env[name]?.trim() ?? "";
 }
 
 function booleanEnv(name: string, fallback: boolean): boolean {
@@ -21,15 +21,20 @@ function booleanEnv(name: string, fallback: boolean): boolean {
 
 export const config = {
   openai: {
-    apiKey: requiredEnv("OPENAI_API_KEY"),
+    apiKey: optionalEnv("OPENAI_API_KEY"),
   },
 
   anthropic: {
-    apiKey: requiredEnv("ANTHROPIC_API_KEY"),
+    apiKey: optionalEnv("ANTHROPIC_API_KEY"),
   },
 
   app: {
     name: "JARVIS",
+  },
+
+  ollama: {
+    baseUrl:
+      process.env.JARVIS_OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434",
   },
 
   tools: {

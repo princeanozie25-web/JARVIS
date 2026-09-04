@@ -1,4 +1,6 @@
+import { config } from "../runtime/config";
 import { AnthropicProvider } from "./anthropic";
+import { OllamaProvider } from "./ollama";
 import { OpenAIProvider } from "./openai";
 import type { ChatProvider, ProviderId } from "./types";
 
@@ -28,5 +30,10 @@ class ProviderRegistry {
 
 export const registry = new ProviderRegistry();
 
-registry.register(new OpenAIProvider());
-registry.register(new AnthropicProvider());
+// E-037 (Phase 25B-1): the local brain is always registered; cloud providers
+// only when their key exists (an unset key means "not configured", and
+// `registry.get()` then throws "Provider not registered" — the honest
+// answer, never a silent cloud fallback).
+registry.register(new OllamaProvider());
+if (config.openai.apiKey) registry.register(new OpenAIProvider());
+if (config.anthropic.apiKey) registry.register(new AnthropicProvider());
