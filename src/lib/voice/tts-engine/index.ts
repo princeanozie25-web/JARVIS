@@ -21,3 +21,18 @@ export type { CanonicalTtsEngineId } from "./registry";
 
 export { snapshotVoiceEngineHealth } from "./health-snapshot";
 export type { VoiceEngineHealthSnapshot } from "./health-snapshot";
+
+export {
+  MLX_AUDIO_DEFAULT_TIMEOUT_MS,
+  MLX_AUDIO_DEFAULT_URL,
+  MLX_AUDIO_ENGINE_MODELS,
+  MlxAudioEngineError,
+  createMlxAudioSynthesisEngine,
+  wavDurationMs,
+} from "./mlx-audio-engine";
+export type {
+  MlxAudioCue,
+  MlxAudioEngineKey,
+  MlxAudioEngineOptions,
+  MlxAudioLine,
+} from "./mlx-audio-engine";

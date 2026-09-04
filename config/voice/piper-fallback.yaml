@@ -10,9 +10,13 @@ metadata_only: true
 #   voice_id   -> JARVIS_TTS_VOICE_ID
 # The terminal narration fallback reports unavailable (fail-closed) whenever the
 # resolved executable / model / config paths do not exist on disk.
+# POSIX defaults (E-040, Phase 25D on the M1 Max). The terminal Piper fallback
+# reports unavailable (fail-closed) whenever these paths do not exist on disk;
+# 25C installs the Piper binary + voice under ~/.jarvis. Windows users override
+# via the JARVIS_PIPER_* env vars (env wins per field).
 piper:
-  executable: 'C:\Users\princ\.jarvis\runtimes\piper\piper\piper.exe'
-  model: 'C:\Users\princ\.jarvis\runtimes\piper\voices\en_US-lessac-medium.onnx'
-  config: 'C:\Users\princ\.jarvis\runtimes\piper\voices\en_US-lessac-medium.onnx.json'
-  output_dir: 'C:\Users\princ\.jarvis\runtimes\piper\output'
+  executable: '~/.jarvis/runtimes/piper/piper'
+  model: '~/.jarvis/runtimes/piper/voices/en_US-lessac-medium.onnx'
+  config: '~/.jarvis/runtimes/piper/voices/en_US-lessac-medium.onnx.json'
+  output_dir: '~/.jarvis/runtimes/piper/output'
   voice_id: en_US-lessac-medium

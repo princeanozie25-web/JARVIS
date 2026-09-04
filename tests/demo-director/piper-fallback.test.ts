@@ -250,7 +250,9 @@ describe("Phase 23G-2 fallback config resolution", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config.voiceId).toBe("en_US-lessac-medium");
-      expect(result.config.executable).toContain("piper.exe");
+      expect(result.config.executable).toContain(
+        ".jarvis/runtimes/piper/piper",
+      ); // E-040: POSIX default
       expect(result.config.model).toContain("en_US-lessac-medium.onnx");
     }
   });
