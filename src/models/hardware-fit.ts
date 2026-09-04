@@ -308,6 +308,7 @@ function bytesPerParamForQuant(quant: string): number {
   if (
     normalized.includes("q4") ||
     normalized.includes("4_") ||
+    normalized.includes("fp4") || // E-035: Ollama MLX artifacts ship nvfp4
     normalized.includes("awq") ||
     normalized.includes("gptq")
   ) {

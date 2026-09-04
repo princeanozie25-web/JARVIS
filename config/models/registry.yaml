@@ -240,6 +240,77 @@ models:
       approximate_memory_mb: null
       cost_class: cloud_metered
       governance_notes: Disabled catalog entry for 21A doctor awareness; registry loading must not call OpenAI APIs.
+  - id: qwen3.5:9b-mlx
+    provider: ollama
+    tier: T2
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - tool_reasoning
+      - vision
+    context_window: 32768
+    visibility: enabled
+    priority: 5
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    params_b: 9.4
+    quant: nvfp4
+    metadata:
+      display_name: Qwen 3.5 9B (MLX)
+      description: "E-035 workhorse on the M1 Max 32GB, fit-gated 2026-09-04: 8.9 GB on disk, 8.4 GB resident, load 2.5 s, decode 45.0 tok/s, first token 5.5 s at a 2,036-token prompt, tool call OK, JSON mode unavailable on the MLX runner (Ollama 0.33.2 answers 501). Model max context 262,144; 32,768 is the loaded default."
+      approximate_memory_mb: 8600
+      cost_class: local_free
+      governance_notes: Default local chat/tools/vision route (priority 5). Ollama MLX artifact; no cloud path. Measured on the primary machine under partial system load; 28A re-benchmarks.
+  - id: qwen3.5:27b-mlx
+    provider: ollama
+    tier: T3
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - tool_reasoning
+      - vision
+    context_window: 32768
+    visibility: enabled
+    priority: 15
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true
+    params_b: 27.4
+    quant: nvfp4
+    metadata:
+      display_name: Qwen 3.5 27B (MLX)
+      description: "E-035 heavy model for council/code, fit-gated 2026-09-04: 19 GB on disk, 18.7 GB resident, load 18.6 s, decode 16.4 tok/s, first token 20.2 s at a 2,036-token prompt, tool call OK, JSON mode unavailable on the MLX runner. Fits the 24 GB unified budget but not beside another model."
+      approximate_memory_mb: 19200
+      cost_class: local_free
+      governance_notes: Council and code route (T3). Never co-resident with the 9B on 32 GB; the runtime unloads before loading. Measured under partial system load; 28A re-benchmarks.
+  - id: gemma4:12b-mlx
+    provider: ollama
+    tier: T2
+    runtime_class: local
+    capabilities:
+      - chat
+      - summarize
+      - classify
+      - tool_reasoning
+    context_window: 32768
+    visibility: enabled
+    priority: 25
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+    params_b: 12.4
+    quant: nvfp4
+    metadata:
+      display_name: Gemma 4 12B (MLX)
+      description: "E-035 secondary local model, fit-gated 2026-09-04: 7.7 GB on disk, 7.1 GB resident, load 2.7 s, decode 35.1 tok/s, first token 9.3 s at a 2,036-token prompt, tool call OK, JSON mode unavailable on the MLX runner. NOTE: this Ollama MLX artifact declares completion/tools/thinking but NOT vision, so it is not the vision route; vision routes to qwen3.5 (which declares vision)."
+      approximate_memory_mb: 7300
+      cost_class: local_free
+      governance_notes: Non-default alternate (priority 25). supports_vision is false because the pulled artifact does not declare it; re-check when a gemma4 vision MLX tag exists.
   - id: mock-local-model
     provider: mock
     tier: T1

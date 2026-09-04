@@ -124,6 +124,11 @@ describe("Phase 21B hardware-fit scorer", () => {
     expect(seventyB.bucket).toBe("wont_fit");
   });
 
+  it("E-035: nvfp4 (Ollama MLX artifacts) is budgeted as a 4-bit quant", () => {
+    expect(estimateFootprintGb(9.4, "nvfp4", 32768)).toBeLessThan(11);
+    expect(estimateFootprintGb(27.4, "nvfp4", 32768)).toBeLessThan(22);
+  });
+
   it("E-034: a non-unified Windows profile still budgets from the free-RAM sample", () => {
     const rog = profile({
       totalRamGb: 16,
