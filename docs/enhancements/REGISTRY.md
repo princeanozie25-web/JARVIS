@@ -85,7 +85,22 @@ E-027 | Load-induced ORDERING flake in a frozen Phase 5 test: project.index snap
 
 ## Verification deferrals
 
-23F-CAMERA-PROOF — **PENDING-HARDWARE.** The real camera path landed in `ca19217`
+23F-CAMERA-PROOF — **VERIFIED 2026-09-04** (runway R.2, primary MacBook Pro M1 Max,
+operator at the keyboard). `scripts/camera-capture-smoke.ts` gained an additive
+`-f avfoundation` branch selected by `process.platform` (the `-f dshow` branch is
+untouched); run from Terminal.app with brew ffmpeg 9.0.1: enumerated
+`[0] FaceTime HD Camera` (+ `Capture screen 0`, unused), consent override on, INDICATOR
+ACK logged before the runner, one real frame `frame-0001.png` (10149 bytes on disk),
+descriptor hash `sha256:51b575d0b7f011dc87281d0a57bc46615cb8835e845910208810b392ef488e52`,
+descriptor accepted, events `vision_session_requested:requested → indicator_on →
+indicator_off → capture_completed → vision_session_completed:completed`, 3 gated
+events emitted, **I-23F-7 sentinel PASS** (no paths/device names in events),
+**I-23F-6 PASS** (committed vision configs byte-identical), `PHASE 23F CAMERA SMOKE: OK`.
+The TCC camera prompt is raised only for a real app (Terminal.app); no process spawned
+from the remote/desktop-app session could trigger it — recorded in the runbook. The last
+Phase 23 residual is closed. Original record follows.
+
+23F-CAMERA-PROOF (historical) — **PENDING-HARDWARE.** The real camera path landed in `ca19217`
 (spec §23F) and is unit-verified: tests/video-extraction/camera.test.ts (13 tests)
 exercises the consent gate, structural indicator gate, additive `real_local` router
 mode, duration cap, and a fixture round-trip (indicator_on → indicator_off →

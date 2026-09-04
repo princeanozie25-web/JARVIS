@@ -19,6 +19,15 @@ import { captureCameraFrame } from "../src/lib/video-extraction";
 const ENUMERATE_TIMEOUT_MS = 30_000;
 const CAPTURE_TIMEOUT_MS = 60_000;
 
+// R.2 (2026-09-04, runway on the M1 Max): additive macOS branch. ffmpeg's
+// camera input on macOS is `-f avfoundation`; the Windows `-f dshow` branch
+// below is untouched. Selected by process.platform only. The first real
+// capture on macOS raises a TCC camera-permission dialog, which no remote
+// session can accept — so on the Mac this smoke stays PENDING-HARDWARE until
+// an operator runs it at the keyboard (never bypass TCC).
+const CAMERA_INPUT_FORMAT: "dshow" | "avfoundation" =
+  process.platform === "darwin" ? "avfoundation" : "dshow";
+
 function runCommand(
   command: string,
   args: readonly string[],
@@ -64,6 +73,9 @@ interface DshowListing {
 // listing itself arrives on stderr. Both dshow output formats are handled:
 // the inline `"Name" (video)` format and the older sectioned format.
 async function enumerateDshowDevices(): Promise<DshowListing> {
+  if (CAMERA_INPUT_FORMAT === "avfoundation") {
+    return enumerateAvfoundationDevices();
+  }
   const result = await runCommand(
     "ffmpeg",
     ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"],
@@ -99,6 +111,61 @@ async function enumerateDshowDevices(): Promise<DshowListing> {
     if (sectioned && section === "audio") audioDevices.push(sectioned[1]);
   }
   return { lines, videoDevices, audioDevices };
+}
+
+// macOS: `-f avfoundation -list_devices true -i ""` prints, on stderr:
+//   [AVFoundation indev @ ...] AVFoundation video devices:
+//   [AVFoundation indev @ ...] [0] FaceTime HD Camera
+//   [AVFoundation indev @ ...] AVFoundation audio devices:
+//   [AVFoundation indev @ ...] [0] MacBook Pro Microphone
+// Device names are kept verbatim; the capture branch addresses the camera by
+// its listed index (avfoundation's `-i "<video>:"` form).
+async function enumerateAvfoundationDevices(): Promise<DshowListing> {
+  const result = await runCommand(
+    "ffmpeg",
+    ["-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+    ENUMERATE_TIMEOUT_MS,
+  );
+  const lines = result.stderr
+    .split(/\r?\n/)
+    .filter((line) => /^\[AVFoundation/.test(line));
+  const videoDevices: string[] = [];
+  const audioDevices: string[] = [];
+  let section: "video" | "audio" | null = null;
+  for (const line of lines) {
+    if (line.includes("AVFoundation video devices")) {
+      section = "video";
+      continue;
+    }
+    if (line.includes("AVFoundation audio devices")) {
+      section = "audio";
+      continue;
+    }
+    const entry = line.match(/\]\s+\[(\d+)\]\s+(.+?)\s*$/);
+    if (!entry) continue;
+    const name = entry[2];
+    if (section === "video") videoDevices.push(name);
+    if (section === "audio") audioDevices.push(name);
+  }
+  return { lines, videoDevices, audioDevices };
+}
+
+function avfoundationCaptureArgs(
+  deviceIndex: number,
+  destination: string,
+): readonly string[] {
+  return [
+    "-y",
+    "-f",
+    "avfoundation",
+    "-framerate",
+    "30",
+    "-i",
+    `${deviceIndex}:`,
+    "-frames:v",
+    "1",
+    destination,
+  ];
 }
 
 function consentOverrideYaml(): string {
@@ -143,9 +210,11 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log("[smoke] enumerating dshow video devices (injected ffmpeg)...");
+  console.log(
+    `[smoke] enumerating ${CAMERA_INPUT_FORMAT} video devices (injected ffmpeg)...`,
+  );
   const listing = await enumerateDshowDevices();
-  console.log("[smoke] dshow device listing (verbatim):");
+  console.log(`[smoke] ${CAMERA_INPUT_FORMAT} device listing (verbatim):`);
   for (const line of listing.lines) {
     console.log(`[smoke]   ${line}`);
   }
@@ -164,7 +233,9 @@ async function main(): Promise<void> {
 
   if (listing.videoDevices.length === 0) {
     await assertConfigByteIdentity();
-    console.log("[smoke] HALT: no dshow video device exists on this machine.");
+    console.log(
+      `[smoke] HALT: no ${CAMERA_INPUT_FORMAT} video device exists on this machine.`,
+    );
     console.log(
       "[smoke] HALT: a real camera capture cannot run; nothing was mocked or",
     );
@@ -205,21 +276,26 @@ async function main(): Promise<void> {
           captureFrame: async (input) => {
             const capture = await runCommand(
               "ffmpeg",
-              [
-                "-y",
-                "-f",
-                "dshow",
-                "-i",
-                `video=${input.device_name}`,
-                "-frames:v",
-                "1",
-                input.destination_path,
-              ],
+              CAMERA_INPUT_FORMAT === "avfoundation"
+                ? avfoundationCaptureArgs(
+                    listing.videoDevices.indexOf(input.device_name),
+                    input.destination_path,
+                  )
+                : [
+                    "-y",
+                    "-f",
+                    "dshow",
+                    "-i",
+                    `video=${input.device_name}`,
+                    "-frames:v",
+                    "1",
+                    input.destination_path,
+                  ],
               CAPTURE_TIMEOUT_MS,
             );
             if (capture.code !== 0) {
               throw new Error(
-                `ffmpeg dshow capture failed: ${capture.stderr.slice(0, 300)}`,
+                `ffmpeg ${CAMERA_INPUT_FORMAT} capture failed: ${capture.stderr.slice(0, 300)}`,
               );
             }
           },

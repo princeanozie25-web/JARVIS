@@ -99,6 +99,10 @@ Until they exist, the vision lane's plan-time health check refuses ingest (fail-
 
 `afplay` ships with macOS and needs no permission; the local playback driver selects it on `darwin` (E-024). The Windows `powershell.exe` path is unchanged.
 
-### Camera (23F)
+### Camera (23F) — VERIFIED 2026-09-04
 
-`ffmpeg -f avfoundation -list_devices true -i ""` enumerates the built-in camera once ffmpeg exists; the first capture triggers a TCC permission dialog, which cannot be granted remotely. The 23F single-shot smoke therefore stays PENDING-HARDWARE until an operator is at the keyboard.
+`scripts/camera-capture-smoke.ts` uses `-f avfoundation` on macOS. **Run it from Terminal.app**: macOS raises the one-time camera permission popup ("Terminal would like to access the camera") only for a real app; a process spawned from the Claude desktop app blocks silently on the capture step with no dialog. If the popup never appears, enable Terminal under System Settings → Privacy & Security → Camera, or `tccutil reset Camera` and rerun.
+
+```
+npx tsx scripts/camera-capture-smoke.ts   # expects: PHASE 23F CAMERA SMOKE: OK
+```
