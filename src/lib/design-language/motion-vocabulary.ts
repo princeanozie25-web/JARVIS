@@ -32,6 +32,11 @@
 import { animate } from "framer-motion";
 import type { Transition, Variants } from "framer-motion";
 
+// Program U (E-031) — the capstone surfaces pull their motion PRIMITIVES from
+// this module too, so framer-motion keeps exactly one sanctioned entry point
+// (I-APJ1-2). Re-exported, not re-implemented.
+export { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+
 import { easingTuple, prefersReducedMotion } from "@/lib/motion";
 
 export { prefersReducedMotion } from "@/lib/motion";
@@ -174,3 +179,36 @@ export const MOTION_VOCABULARY = {
 } as const;
 
 export type MotionVocabularyName = keyof typeof MOTION_VOCABULARY;
+
+/* ------------------------------------------------------------------------ *
+ * Capstone grammar (Program U, brief §2) — JS mirror of the
+ * `--jarvis-cc-motion-*` tokens (seconds). Kept in lockstep by
+ * tests/capstone/foundation.test.ts. Separate from MOTION_VOCABULARY above so
+ * the AP-J1 vocabulary stays byte-stable.
+ * ------------------------------------------------------------------------ */
+
+export const capstoneMotion = {
+  /** the one easing — never a keyword */
+  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+  hover: 0.1,
+  stagger: 0.06,
+  collapse: 0.18,
+  theme: 0.24,
+  /** pill indicator glide + panel slide */
+  pillGlide: 0.24,
+  panelSlide: 0.18,
+  coreBreath: 4,
+  gatePulse: 1.2,
+} as const;
+
+export type CapstoneMotionBeat = Exclude<keyof typeof capstoneMotion, "ease">;
+
+/** A transition for one capstone beat; reduced motion collapses it to 0. */
+export function capstoneTransition(
+  beat: CapstoneMotionBeat,
+  reduced: boolean,
+): Transition {
+  return reduced
+    ? { duration: 0 }
+    : { duration: capstoneMotion[beat], ease: capstoneMotion.ease };
+}

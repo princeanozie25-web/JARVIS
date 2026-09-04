@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { capstoneMotion } from "@/lib/design-language/motion-vocabulary";
+
 // E-029 — Program U.2 foundation invariants.
 // The capstone is ADDITIVE: new tokens beside the old, scoped shadcn
 // variables, Geist beside Fraunces. These tests are the design read's
@@ -116,5 +118,29 @@ describe("U.2 foundation — additive, never a rename", () => {
     // grammar is transcribed into --jarvis-cc-motion-*; per-component CSS is
     // adopted with each component in U.5.
     expect(globals).not.toMatch(/beautifui|foundation\.css|shadow-plugin/);
+  });
+});
+
+describe("U.2/U.4 foundation — motion vocabulary lockstep", () => {
+  it("capstoneMotion mirrors the --jarvis-cc-motion-* tokens", () => {
+    const ms = (name: string) =>
+      Number(
+        tokens.match(
+          new RegExp(`--jarvis-cc-motion-${name}:\\s*(\\d+)ms;`),
+        )?.[1],
+      );
+    expect(ms("hover") / 1000).toBe(capstoneMotion.hover);
+    expect(ms("stagger") / 1000).toBe(capstoneMotion.stagger);
+    expect(ms("collapse") / 1000).toBe(capstoneMotion.collapse);
+    expect(ms("theme") / 1000).toBe(capstoneMotion.theme);
+    expect(ms("core-breath") / 1000).toBe(capstoneMotion.coreBreath);
+    expect(ms("gate-pulse") / 1000).toBe(capstoneMotion.gatePulse);
+    expect(tokens).toContain(`cubic-bezier(${capstoneMotion.ease.join(", ")})`);
+  });
+
+  it("framer-motion has exactly one entry point for the capstone: the vocabulary", () => {
+    const shell = read("src/components/shell/CommandCenterShell.tsx");
+    expect(shell).not.toContain('from "framer-motion"');
+    expect(shell).toContain('from "@/lib/design-language/motion-vocabulary"');
   });
 });
