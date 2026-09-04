@@ -9,7 +9,7 @@
     },
     {
       "name": "gauntlet-static",
-      "runtimeExecutable": "python",
+      "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8123", "--bind", "127.0.0.1"],
       "port": 8123
     }

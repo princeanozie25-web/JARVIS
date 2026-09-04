@@ -51,3 +51,6 @@ next-env.d.ts
 # python venv (R.2 Mac bootstrap; faster-whisper library only)
 .venv/
 .venv-mlx/
+
+# Claude Code per-machine local settings (E-041): machine-specific hooks/permits
+.claude/settings.local.json

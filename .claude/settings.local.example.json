@@ -1,0 +1,6 @@
+{
+  "//": "Per-machine Claude Code local settings (E-041). Copy to settings.local.json (gitignored) and adapt to your host. The machine-specific dual-graph hooks and permission allowlist that used to be committed here were Windows-only and did not apply on the Mac.",
+  "permissions": {
+    "allow": ["Bash(npm run *)", "Bash(npx vitest *)", "Bash(npx tsc *)"]
+  }
+}
