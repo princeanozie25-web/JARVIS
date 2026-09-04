@@ -152,8 +152,14 @@ export function scoreFit(
   footprintGb: number,
   profile: HardwareProfile,
 ): HardwareFitScore {
+  // E-034 (Phase 25D): on Apple unified memory the pool is the WHOLE
+  // unified budget — macOS reports os.freemem() ≈ 0 because it keeps memory
+  // in file cache/compressed pools, which made every model "wont_fit" on the
+  // M1 Max. The OS + app share is carried by reservedRamGb (config/
+  // hardware.yaml), not by a free-memory sample. Discrete-GPU profiles keep
+  // vramGb, and non-unified profiles keep the free-RAM sample as before.
   const memoryPoolGb = profile.unifiedMemory
-    ? profile.freeRamGb
+    ? profile.totalRamGb
     : (profile.vramGb ?? profile.freeRamGb);
   const budgetGb = roundGb(memoryPoolGb - profile.reservedRamGb);
   const ratio = budgetGb > 0 ? roundRatio(footprintGb / budgetGb) : 999.999;

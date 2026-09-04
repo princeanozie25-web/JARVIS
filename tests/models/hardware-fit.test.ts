@@ -77,7 +77,11 @@ describe("Phase 21B hardware-fit scorer", () => {
       profile({ totalRamGb: 16, freeRamGb: 14 }),
     );
 
-    expect(["risky", "wont_fit"]).toContain(score.bucket);
+    // E-034 widened this expectation: unified memory now budgets from the
+    // total pool (16 - 6 reserved = 10 GB), so a ~8.7 GB 13B lands "tight" —
+    // still not comfortable, which is the assertion's intent.
+    expect(["tight", "risky", "wont_fit"]).toContain(score.bucket);
+    expect(score.bucket).not.toBe("comfortable");
   });
 
   it("scores a 3B model on the same 16 GB profile as comfortable", () => {
@@ -101,6 +105,36 @@ describe("Phase 21B hardware-fit scorer", () => {
     );
 
     expect(bucketRank(m4Air32.bucket)).toBeLessThan(bucketRank(m4Air16.bucket));
+  });
+
+  it("E-034: budgets Apple unified memory from the TOTAL pool, not the near-zero free sample", () => {
+    // the M1 Max fixture: 32 GB total, macOS reports ~0.09 GB free
+    const m1Max = profile({
+      totalRamGb: 32,
+      freeRamGb: 0.09,
+      reservedRamGb: 8,
+    });
+    const workhorse = scoreFit(estimateFootprintGb(9, "q4_K_M", 8192), m1Max);
+    expect(workhorse.budgetGb).toBe(24);
+    expect(workhorse.bucket).toBe("comfortable");
+    const heavy = scoreFit(estimateFootprintGb(27, "q4_K_M", 8192), m1Max);
+    expect(["comfortable", "tight", "risky"]).toContain(heavy.bucket);
+    expect(heavy.bucket).not.toBe("wont_fit");
+    const seventyB = scoreFit(estimateFootprintGb(70, "q4_K_M", 8192), m1Max);
+    expect(seventyB.bucket).toBe("wont_fit");
+  });
+
+  it("E-034: a non-unified Windows profile still budgets from the free-RAM sample", () => {
+    const rog = profile({
+      totalRamGb: 16,
+      freeRamGb: 0.7,
+      platform: "win32",
+      arch: "x64",
+      reservedRamGb: 6,
+      vramGb: null,
+    });
+    expect(scoreFit(4, rog).budgetGb).toBeLessThan(0);
+    expect(scoreFit(4, rog).bucket).toBe("wont_fit");
   });
 
   it("honours manual vramGb and reservedRamGb overrides for non-unified profiles", () => {
