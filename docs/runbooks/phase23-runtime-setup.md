@@ -82,9 +82,18 @@ cp .env.example .env.local     # every value empty/loopback; fail-closed
 npm run doctor                 # must no longer report required-env-file-example
 ```
 
-### yt-dlp / ffmpeg / ffprobe — BLOCKED-REMOTE on this machine
+### yt-dlp / ffmpeg / ffprobe (Homebrew) — verified 2026-09-04
 
-Both are absent and the documented install path is Homebrew (`brew install ffmpeg yt-dlp`). Until an operator installs Homebrew at the keyboard, the vision lane's plan-time health check refuses ingest (fail-closed by design). **No test spawns a real ffmpeg or yt-dlp** — all runtime-tool tests use injected fakes — so the suite is green without them.
+Homebrew was installed by the operator at the keyboard (it needs an interactive `sudo`; no remote session may do it). Use the Homebrew binaries, not static builds; they live in `/opt/homebrew/bin`, which must be on `PATH`.
+
+```
+brew install ffmpeg yt-dlp
+ffmpeg -version | head -1    # ffmpeg 9.0.1  (>= MIN_FFMPEG_VERSION 8.1.1)
+ffprobe -version | head -1   # ffprobe 9.0.1 (ships with ffmpeg)
+yt-dlp --version             # 2026.08.19    (>= MIN_YTDLP_VERSION 2026.03.17)
+```
+
+Until they exist, the vision lane's plan-time health check refuses ingest (fail-closed by design). **No test spawns a real ffmpeg or yt-dlp** — all runtime-tool tests use injected fakes — so the suite is green either way.
 
 ### Audio playback
 
