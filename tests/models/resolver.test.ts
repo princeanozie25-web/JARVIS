@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
   buildFallbackPlan,
   createModelRegistryFromYaml,
-  loadDefaultModelRegistry,
+  loadModelRegistryFromFile,
   resolveModel,
 } from "../../src/models";
 import type { ModelFallbackPlan, ModelResolverResult } from "../../src/models";
@@ -26,9 +27,24 @@ function fallbackIds(plan: ModelFallbackPlan): string[] {
   return plan.fallback_chain.map((candidate) => candidate.entry.id);
 }
 
+// E-009 (fixture-ize, 2026-09-04): the resolver's behavioural tests run against
+// a FROZEN snapshot of the Phase 13 catalog (tests/models/fixtures/
+// phase13-registry.yaml), not the live config/models/registry.yaml — so the
+// live catalog can gain machines and models (E-035) without re-litigating
+// these assertions. The live registry keeps its own baseline-preservation
+// test (registry.test.ts, E-008).
+const FIXTURE_REGISTRY_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+  "phase13-registry.yaml",
+);
+function loadFixtureRegistry() {
+  return loadModelRegistryFromFile(FIXTURE_REGISTRY_PATH);
+}
+
 describe("Phase 13C.1 model resolver", () => {
   it("selects an enabled local chat model by default", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
     });
 
@@ -50,7 +66,7 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("excludes cloud models by default", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
     });
 
@@ -78,7 +94,7 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("allow_cloud includes cloud only if the registry entry is also enabled", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       allow_cloud: true,
     });
@@ -93,7 +109,7 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("allow_disabled does not implicitly allow cloud", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "vision",
       allow_disabled: true,
       required_vision: true,
@@ -108,12 +124,12 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("disabled cloud remains excluded unless allow_disabled and allow_cloud are both explicit", () => {
-    const denied = resolveModel(loadDefaultModelRegistry(), {
+    const denied = resolveModel(loadFixtureRegistry(), {
       capability: "vision",
       allow_cloud: true,
       required_vision: true,
     });
-    const allowed = resolveModel(loadDefaultModelRegistry(), {
+    const allowed = resolveModel(loadFixtureRegistry(), {
       capability: "vision",
       allow_cloud: true,
       allow_disabled: true,
@@ -131,7 +147,7 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("records capability mismatch rejections", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "embed",
     });
 
@@ -143,15 +159,15 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("filters by required streaming, tools, and vision support", () => {
-    const streaming = resolveModel(loadDefaultModelRegistry(), {
+    const streaming = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       required_streaming: true,
     });
-    const tools = resolveModel(loadDefaultModelRegistry(), {
+    const tools = resolveModel(loadFixtureRegistry(), {
       capability: "tool_reasoning",
       required_tools: true,
     });
-    const vision = resolveModel(loadDefaultModelRegistry(), {
+    const vision = resolveModel(loadFixtureRegistry(), {
       capability: "vision",
       allow_cloud: true,
       allow_disabled: true,
@@ -169,11 +185,11 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("uses preferred tier ordering without overriding governance constraints", () => {
-    const result = resolveModel(loadDefaultModelRegistry(), {
+    const result = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       preferred_tier: "T2",
     });
-    const cloudPreferred = resolveModel(loadDefaultModelRegistry(), {
+    const cloudPreferred = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       preferred_tier: "T3",
     });
@@ -191,11 +207,11 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("uses runtime_class preference ordering without treating it as a hard filter", () => {
-    const mockPreferred = resolveModel(loadDefaultModelRegistry(), {
+    const mockPreferred = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       runtime_class: "mock",
     });
-    const missingPreferred = resolveModel(loadDefaultModelRegistry(), {
+    const missingPreferred = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       runtime_class: "cloud",
     });
@@ -210,11 +226,11 @@ describe("Phase 13C.1 model resolver", () => {
   });
 
   it("honors excluded model ids and max_priority", () => {
-    const excluded = resolveModel(loadDefaultModelRegistry(), {
+    const excluded = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       excluded_model_ids: ["llama3.2:3b"],
     });
-    const maxPriority = resolveModel(loadDefaultModelRegistry(), {
+    const maxPriority = resolveModel(loadFixtureRegistry(), {
       capability: "chat",
       max_priority: 15,
     });
@@ -292,7 +308,7 @@ models:
   });
 
   it("returns defensive-copy safe outputs", () => {
-    const registry = loadDefaultModelRegistry();
+    const registry = loadFixtureRegistry();
     const first = resolveModel(registry, { capability: "chat" });
     if (!first.selected) throw new Error("Expected selected model.");
 
@@ -306,7 +322,7 @@ models:
 
   it("fails closed on malformed input", () => {
     expect(
-      resolveModel(loadDefaultModelRegistry(), {
+      resolveModel(loadFixtureRegistry(), {
         capability: "bogus",
       }),
     ).toEqual({
@@ -321,7 +337,7 @@ models:
     });
 
     expect(
-      resolveModel(loadDefaultModelRegistry(), {
+      resolveModel(loadFixtureRegistry(), {
         capability: "chat",
         surprise: true,
       }),
@@ -373,7 +389,7 @@ models:
 
 describe("Phase 13C.2 resolver fallback planning", () => {
   it("builds a deterministic local-only fallback chain", () => {
-    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const plan = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       runtime_class: "local",
       excluded_model_ids: ["mock-local-model"],
@@ -391,7 +407,7 @@ describe("Phase 13C.2 resolver fallback planning", () => {
   });
 
   it("excludes cloud models by default and does not implicitly escalate local to cloud", () => {
-    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const plan = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       runtime_class: "local",
       excluded_model_ids: ["mock-local-model"],
@@ -415,15 +431,15 @@ describe("Phase 13C.2 resolver fallback planning", () => {
   });
 
   it("explicit cloud opt-in preserves disabled governance until allow_disabled is also explicit", () => {
-    const cloudOnly = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const cloudOnly = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       allow_cloud: true,
     });
-    const disabledOnly = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const disabledOnly = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       allow_disabled: true,
     });
-    const fullyOptedIn = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const fullyOptedIn = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       allow_cloud: true,
       allow_disabled: true,
@@ -549,7 +565,7 @@ models:
   });
 
   it("reports capability exhaustion with typed governance flags", () => {
-    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const plan = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "embed",
     });
 
@@ -637,7 +653,7 @@ models:
   });
 
   it("removes excluded model ids from the primary and fallback chain while preserving rejection metadata", () => {
-    const plan = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const plan = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
       runtime_class: "local",
       excluded_model_ids: ["llama3.2:3b", "qwen2.5:7b"],
@@ -653,7 +669,7 @@ models:
   });
 
   it("returns defensive-copy safe fallback plan outputs", () => {
-    const registry = loadDefaultModelRegistry();
+    const registry = loadFixtureRegistry();
     const first = buildFallbackPlan(registry, {
       capability: "chat",
       runtime_class: "local",
@@ -676,11 +692,11 @@ models:
   });
 
   it("supports deterministic injected planning timestamps only when provided", () => {
-    const withoutTimestamp = buildFallbackPlan(loadDefaultModelRegistry(), {
+    const withoutTimestamp = buildFallbackPlan(loadFixtureRegistry(), {
       capability: "chat",
     });
     const withTimestamp = buildFallbackPlan(
-      loadDefaultModelRegistry(),
+      loadFixtureRegistry(),
       { capability: "chat" },
       { now: () => 12345 },
     );
@@ -691,7 +707,7 @@ models:
 
   it("fails closed on malformed fallback inputs", () => {
     expect(
-      buildFallbackPlan(loadDefaultModelRegistry(), {
+      buildFallbackPlan(loadFixtureRegistry(), {
         capability: "bogus",
       }),
     ).toEqual({
