@@ -4,8 +4,9 @@ import type { CorePresence } from "@/lib/core";
 
 import { CoreRing } from "./CoreRing";
 
-// Program U.3 (E-030) — THE CORE. One hero object: the ring is the Human
-// Gate's face, the wordmark is set huge behind it, one status line under it.
+// Program U.3 (E-030) + v3.2 amendment (E-032) — THE CORE. One hero object:
+// the reactor is the Human Gate's face on a TRUE BLACK field, one status line
+// under it. No wordmark behind it (operator amendment, 2026-09-04).
 // The DOM here is the truth layer (state, count, provenance as data
 // attributes; the status line as text); the ring only paints it.
 // Amber reaches this component only through a CorePresence resolved by
@@ -17,14 +18,9 @@ import { CoreRing } from "./CoreRing";
 export interface CoreProps {
   readonly presence: CorePresence;
   readonly theme?: "night" | "day";
-  readonly wordmark?: string;
 }
 
-export function Core({
-  presence,
-  theme = "night",
-  wordmark = "JARVIS",
-}: CoreProps) {
+export function Core({ presence, theme = "night" }: CoreProps) {
   return (
     <section
       aria-label={`JARVIS core — ${presence.statusLine}`}
@@ -38,22 +34,6 @@ export function Core({
       data-metadata-only="true"
       className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-cc-field text-cc-ink"
     >
-      <span
-        aria-hidden="true"
-        data-core-wordmark="true"
-        className="pointer-events-none absolute select-none whitespace-nowrap font-cc-wordmark"
-        style={{
-          fontSize: "var(--jarvis-cc-text-wordmark-size)",
-          fontWeight:
-            "var(--jarvis-cc-text-wordmark-weight)" as unknown as number,
-          letterSpacing: "var(--jarvis-cc-text-wordmark-tracking)",
-          opacity: "var(--jarvis-cc-wordmark-opacity)",
-          lineHeight: 1,
-        }}
-      >
-        {wordmark}
-      </span>
-
       <div
         className="relative flex flex-col items-center"
         style={{

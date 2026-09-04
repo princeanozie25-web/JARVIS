@@ -131,6 +131,18 @@ export function CommandCenterShell({
       data-shell-authority="none"
       className="relative min-h-dvh w-full overflow-hidden bg-cc-field text-cc-ink"
     >
+      {/* brand mark — small, top-left; the name never sits behind the Core */}
+      <span
+        data-shell-brand="true"
+        className="absolute left-20 top-7 z-30 font-cc-sans text-cc-ink-muted"
+        style={{
+          fontSize: "var(--jarvis-cc-text-data-size)",
+          letterSpacing: "0.28em",
+        }}
+      >
+        JARVIS
+      </span>
+
       {/* ── pill nav (brief A2) ── */}
       <nav
         aria-label="Command center"

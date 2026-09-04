@@ -6,6 +6,18 @@
 > component sourcing. CC reads A before B; a surface built without its place
 > in A is rejected at the design read.
 
+> **v3.2 — operator amendment (2026-09-04, after seeing U.3/U.4 live).**
+> Three changes to Part B §2, decided by the operator against a reference
+> image of a physical arc reactor: (1) the Night field is **TRUE BLACK
+> `#000000`** (not `#06122B`); surfaces sit barely above it (`#04091a`,
+> hairline `#101c3a`); (2) the accent and the Core's heart are **deeper,
+> wide-gamut blues** — sRGB `#2f7bff` / `#9fdcff` lifted into `display-p3`
+> where the panel supports it; amber stays sRGB so the Gate reads the same
+> everywhere; (3) **no wordmark behind the Core** — the name appears once,
+> small, in the nav. The Core reads as a layered reactor (housing rings,
+> segmented blades, inner ring, cyan-white heart, bloom), not a line drawing.
+> Everything else in §2 stands. Recorded as registry row E-032.
+
 > **Banked 2026-09-04 (runway, post-R.2).** This is the Program U input the
 > Roadmap v5.1 §9 cites as `UI_CAPSTONE_BRIEF.md`. Runway inputs for U.1:
 > `docs/audits/V5_REAL_VS_SYNTHETIC_CHECK.md` is the capstone's may-render

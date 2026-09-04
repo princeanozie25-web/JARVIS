@@ -158,14 +158,15 @@ describe("I-U3-2 six states", () => {
 });
 
 describe("I-U3-3 zero affordances, zero authority", () => {
-  it("renders the wordmark, the ring, the status line and no controls", () => {
+  it("renders the reactor, the status line and no controls — and no wordmark", () => {
     const html = renderToStaticMarkup(
       <Core
         presence={resolveCoreState({ pendingCount: 1, provenance: "live" })}
       />,
     );
     expect(html).toContain('data-capstone-theme="night"');
-    expect(html).toContain('data-core-wordmark="true"');
+    // v3.2 amendment: no wordmark behind the Core
+    expect(html).not.toContain("data-core-wordmark");
     expect(html).toContain('data-core-status-line="true"');
     expect(html).toContain('data-core-count-badge="true"');
     expect(html).toContain('data-core-authority="none"');

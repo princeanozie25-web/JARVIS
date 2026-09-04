@@ -17,14 +17,15 @@ const layout = read("app/layout.tsx");
 const components = read("components.json");
 
 describe("U.2 foundation — Deep Blue tokens", () => {
-  it("declares the brief §2 Night palette as --jarvis-cc-* tokens", () => {
+  it("declares the v3.2 Night palette (true black, deep electric blue) as --jarvis-cc-* tokens", () => {
     for (const [name, hex] of [
-      ["field", "#06122b"],
-      ["surface", "#0b1b3a"],
-      ["hairline", "#1e2f55"],
+      ["field", "#000000"],
+      ["surface", "#04091a"],
+      ["hairline", "#101c3a"],
       ["ink", "#e8eef9"],
-      ["ink-muted", "#8fa3c8"],
-      ["accent", "#3b82f6"],
+      ["ink-muted", "#7f93b8"],
+      ["accent", "#2f7bff"],
+      ["core", "#9fdcff"],
       ["gate", "#f5a524"],
     ]) {
       expect(tokens).toMatch(new RegExp(`--jarvis-cc-${name}:\\s*${hex};`));
@@ -36,6 +37,16 @@ describe("U.2 foundation — Deep Blue tokens", () => {
     expect(day).toContain("--jarvis-cc-field: #f6f3ee;");
     expect(day).not.toContain("--jarvis-cc-accent:");
     expect(day).not.toContain("--jarvis-cc-gate:");
+  });
+
+  it("lifts the blues into display-P3 on wide-gamut panels; amber stays sRGB", () => {
+    const p3 = tokens.slice(
+      tokens.indexOf("@supports (color: color(display-p3"),
+    );
+    expect(p3).toMatch(/--jarvis-cc-accent:\s*color\(display-p3/);
+    expect(p3).toMatch(/--jarvis-cc-core:\s*color\(display-p3/);
+    expect(p3).not.toContain("--jarvis-cc-gate:");
+    expect(tokens).toContain("--jarvis-cc-field: #000000;");
   });
 
   it("reserves amber for the Gate: no other cc token carries the gate hex", () => {

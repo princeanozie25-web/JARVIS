@@ -5,12 +5,13 @@
 // document exists). This is the ONLY place a capstone colour literal lives
 // outside tokens.css.
 export const capstonePalette = Object.freeze({
-  field: "#06122b",
-  surface: "#0b1b3a",
-  hairline: "#1e2f55",
+  field: "#000000",
+  surface: "#04091a",
+  hairline: "#101c3a",
   ink: "#e8eef9",
-  inkMuted: "#8fa3c8",
-  accent: "#3b82f6",
+  inkMuted: "#7f93b8",
+  accent: "#2f7bff",
+  core: "#9fdcff",
   gate: "#f5a524",
   ok: "#34d399",
   fail: "#f87171",
@@ -29,6 +30,7 @@ export const CAPSTONE_TOKEN_NAMES: Readonly<
   ink: "--jarvis-cc-ink",
   inkMuted: "--jarvis-cc-ink-muted",
   accent: "--jarvis-cc-accent",
+  core: "--jarvis-cc-core",
   gate: "--jarvis-cc-gate",
   ok: "--jarvis-cc-ok",
   fail: "--jarvis-cc-fail",

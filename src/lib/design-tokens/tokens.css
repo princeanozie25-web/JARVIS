@@ -236,20 +236,23 @@
     sans-serif
   );
 
-  /* Night palette (default) */
-  --jarvis-cc-field: #06122b;
-  --jarvis-cc-surface: #0b1b3a;
-  --jarvis-cc-hairline: #1e2f55;
+  /* Night palette (default) — v3.2 operator amendment (2026-09-04): TRUE
+     black field, deep electric blue. sRGB values here; the @supports block
+     below lifts accent/glow/core into display-P3 on wide-gamut panels. */
+  --jarvis-cc-field: #000000;
+  --jarvis-cc-surface: #04091a;
+  --jarvis-cc-hairline: #101c3a;
   --jarvis-cc-ink: #e8eef9;
-  --jarvis-cc-ink-muted: #8fa3c8;
-  --jarvis-cc-accent: #3b82f6;
-  --jarvis-cc-accent-glow: rgba(59, 130, 246, 0.35);
+  --jarvis-cc-ink-muted: #7f93b8;
+  --jarvis-cc-accent: #2f7bff;
+  --jarvis-cc-accent-glow: rgba(47, 123, 255, 0.45);
+  --jarvis-cc-core: #9fdcff; /* the reactor's cyan-white heart */
   --jarvis-cc-gate: #f5a524; /* GATE ONLY */
   --jarvis-cc-gate-glow: rgba(245, 165, 36, 0.4); /* GATE ONLY */
   --jarvis-cc-ok: #34d399;
   --jarvis-cc-fail: #f87171;
-  --jarvis-cc-rail: #0b1b3a;
-  --jarvis-cc-wordmark-opacity: 0.06;
+  --jarvis-cc-rail: #04091a;
+  --jarvis-cc-wordmark-opacity: 0; /* v3.2: no wordmark behind the Core */
 
   /* Type scale — steep by design */
   --jarvis-cc-text-wordmark-size: clamp(96px, 18vw, 320px);
@@ -277,7 +280,18 @@
   /* Layout */
   --jarvis-cc-rail-left: 64px;
   --jarvis-cc-rail-right: 240px;
-  --jarvis-cc-core-size: 42vh;
+  --jarvis-cc-core-size: 56vh;
+}
+
+/* Wide-gamut panels (the M1 Max is P3): push the blues past sRGB. Amber is
+   deliberately left in sRGB — the Gate's colour must read identically
+   everywhere. */
+@supports (color: color(display-p3 1 1 1)) {
+  :root {
+    --jarvis-cc-accent: color(display-p3 0.12 0.47 1);
+    --jarvis-cc-accent-glow: color(display-p3 0.12 0.47 1 / 0.45);
+    --jarvis-cc-core: color(display-p3 0.6 0.88 1);
+  }
 }
 
 [data-capstone-theme="day"] {
