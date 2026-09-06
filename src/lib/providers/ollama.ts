@@ -159,6 +159,11 @@ export class OllamaProvider implements ChatProvider {
       let outputTokens: number | undefined;
       let timeToFirstTokenMs: number | undefined;
       let toolIndex = 0;
+      const completedToolCalls: {
+        id: string;
+        name: string;
+        argsJson: string;
+      }[] = [];
 
       try {
         let response: Response;
@@ -250,6 +255,11 @@ export class OllamaProvider implements ChatProvider {
                 name: call.function.name,
                 argsJson,
               };
+              completedToolCalls.push({
+                id,
+                name: call.function.name,
+                argsJson,
+              });
             }
             if (chunk.done) {
               inputTokens = chunk.prompt_eval_count;
@@ -271,6 +281,7 @@ export class OllamaProvider implements ChatProvider {
             costUsd: calculateCostUsd(opts.model, inputTokens, outputTokens),
             latencyMs: Date.now() - startedAt,
             timeToFirstTokenMs,
+            toolCalls: completedToolCalls,
           },
         };
       } catch (error) {

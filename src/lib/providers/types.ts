@@ -59,6 +59,9 @@ export interface GenerateResult {
   costUsd: number;
   latencyMs: number;
   timeToFirstTokenMs?: number;
+  // Additive (voice live): tool calls the model asked for during this
+  // generation. Surfaced, never executed here — the Gate decides.
+  toolCalls?: CompletedProviderToolCall[];
 }
 
 export type StreamEvent =
