@@ -1,5 +1,6 @@
 import {
   synthesizeOverEngineChain,
+  type VoiceEngineTelemetrySink,
   type VoiceSynthesisEngine,
 } from "@/lib/voice/tts-engine";
 
@@ -131,6 +132,13 @@ export interface VoiceRuntimeBridgeOptions {
   readonly playback_queue: PlaybackQueue;
   readonly runtime_adapter?: VoiceRuntimeAdapter;
   readonly now_ms?: () => number;
+  /** E-012: fallback engines for the LIVE chain, in priority order after the
+   * primary `tts_provider` (e.g. the Piper terminal). Absent => the single
+   * injected provider, exactly as before. */
+  readonly fallback_tts_providers?: readonly TtsProvider[];
+  /** E-012: the injected failover-audit sink (server contexts wire it to
+   * recordEvent -> telemetry_events). Absent => no audit, as before. */
+  readonly failover_telemetry?: VoiceEngineTelemetrySink;
 }
 
 export interface VoiceRuntimeBridge {
@@ -337,12 +345,35 @@ export function createVoiceRuntimeBridge(
         options.tts_provider,
         ttsOptions ?? { metadata_only: true },
       );
+      // E-012: the live chain = primary + injected fallbacks (priority order),
+      // walked by the SAME failover brain, with the SAME audit sink shape the
+      // demo chain uses — a silent live failover is no longer possible.
+      const engines = [
+        engine,
+        ...(options.fallback_tts_providers ?? []).map((provider, index) => {
+          const adapted = ttsProviderAsSynthesisEngine(
+            provider,
+            ttsOptions ?? { metadata_only: true },
+          );
+          return {
+            ...adapted,
+            priority: index + 1,
+            // A fallback speaks in ITS OWN voice: the primary's requested voice
+            // id does not exist on another provider (it would refuse).
+            synthesize: (request: TtsSynthesisRequest) =>
+              adapted.synthesize!({
+                ...request,
+                requested_voice_id: provider.config.voice_id,
+              }),
+          };
+        }),
+      ];
       const outcome = await synthesizeOverEngineChain<
         TtsSynthesisRequest,
         TtsSynthesisResult,
         VoiceSynthesisEngine<TtsSynthesisRequest, TtsSynthesisResult>
       >(
-        [engine],
+        engines,
         [
           {
             request_id: input.request_id,
@@ -356,7 +387,7 @@ export function createVoiceRuntimeBridge(
             metadata_only: true,
           } satisfies TtsSynthesisRequest,
         ],
-        { now: nowMs },
+        { now: nowMs, telemetry: options.failover_telemetry },
       );
 
       if (outcome.exhausted) {

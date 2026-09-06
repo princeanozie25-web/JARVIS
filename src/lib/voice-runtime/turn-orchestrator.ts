@@ -12,6 +12,7 @@ import type {
   VoiceRuntimeAdapterResponse,
 } from "./runtime-adapter";
 import type { SttProvider } from "./stt";
+import type { VoiceEngineTelemetrySink } from "@/lib/voice/tts-engine";
 import type { TtsContentClass, TtsProvider } from "./tts";
 import type { VoiceCancellationReason } from "./types";
 
@@ -145,6 +146,9 @@ export interface VoiceTurnOrchestratorOptions {
   readonly runtime_adapter: VoiceRuntimeAdapter;
   readonly tts_provider: TtsProvider;
   readonly playback_queue: PlaybackQueue;
+  /** E-012: live failover chain + audit sink, threaded to the bridge. */
+  readonly fallback_tts_providers?: readonly TtsProvider[];
+  readonly failover_telemetry?: VoiceEngineTelemetrySink;
   readonly cancellation_supervisor?: VoiceCancellationSupervisor;
   readonly now_ms?: () => number;
   readonly interruption_id_factory?: () => string;
@@ -203,6 +207,8 @@ export function createVoiceTurnOrchestrator(
       runtime_adapter: options.runtime_adapter,
       tts_provider: options.tts_provider,
       playback_queue: guardedPlaybackQueue,
+      fallback_tts_providers: options.fallback_tts_providers,
+      failover_telemetry: options.failover_telemetry,
     });
   let bridge = createBridge();
 

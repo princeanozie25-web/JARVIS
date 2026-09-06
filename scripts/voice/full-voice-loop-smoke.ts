@@ -3,6 +3,11 @@ import { stat } from "node:fs/promises";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { getDb } from "../../src/lib/db/client-node";
+import { insertTelemetryEvent } from "../../src/lib/db/telemetry";
+import type { TelemetryEvent } from "../../src/lib/telemetry/types";
+import { createVoiceEngineFailoverTelemetrySink } from "../../src/lib/voice/tts-engine";
+
 import {
   createFasterWhisperSttProvider,
   createLocalPlaybackAdapter,
@@ -78,6 +83,11 @@ export interface FullVoiceLoopSmokeDependencies {
   ) => PlaybackSupervisor;
   readonly writeLine?: (line: string) => void;
   readonly now?: () => number;
+  /** E-012: fallback providers for the LIVE chain after the primary (priority
+   * order); the audit sink's recordEvent (defaults to the app DB's
+   * telemetry_events via insertTelemetryEvent — the non-server-only client). */
+  readonly fallbackTtsProviders?: readonly TtsProvider[];
+  readonly recordEvent?: (event: TelemetryEvent) => void;
 }
 
 export interface FullVoiceLoopSmokeReport {
@@ -173,6 +183,14 @@ export async function runFullVoiceLoopSmoke(
     playback_queue: playbackQueue,
     now_ms: dependencies.now ?? Date.now,
     interruption_id_factory: () => "full-voice-loop-smoke-interruption",
+    // E-012: the live chain + persisted failover audit (metadata only).
+    fallback_tts_providers: dependencies.fallbackTtsProviders ?? [],
+    failover_telemetry: createVoiceEngineFailoverTelemetrySink({
+      sessionId: "full-voice-loop-smoke-session",
+      recordEvent:
+        dependencies.recordEvent ??
+        ((event) => insertTelemetryEvent(getDb(), event)),
+    }),
   });
 
   const sessionId = "full-voice-loop-smoke-session";

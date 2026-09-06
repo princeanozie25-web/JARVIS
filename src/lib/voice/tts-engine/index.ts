@@ -36,3 +36,11 @@ export type {
   MlxAudioEngineOptions,
   MlxAudioLine,
 } from "./mlx-audio-engine";
+
+// E-012: the shared failover-audit sink (mechanism only; recordEvent injected).
+export {
+  VOICE_ENGINE_AUDIT_FORBIDDEN_FIELDS,
+  createVoiceEngineFailoverTelemetrySink,
+  findForbiddenAuditField,
+} from "./failover-telemetry-sink";
+export type { VoiceEngineFailoverTelemetrySinkDeps } from "./failover-telemetry-sink";
