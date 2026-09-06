@@ -43,6 +43,14 @@ export type {
 } from "./authority";
 
 export {
+  CANONICAL_VOICE_ACTION_TIERS,
+  canonicalTierForAction,
+  decideVoiceAuthorityForAction,
+  isCanonicalVoiceTier,
+} from "./authority-enforcement";
+export type { VoiceAuthorityActionRequest } from "./authority-enforcement";
+
+export {
   hasStandingConsent,
   parseStandingConsentConfig,
   revokeStandingConsent,
