@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  E-048 — the mlx-audio TTS/STT server (127.0.0.1:8004) as a per-user launchd
+  service, like Ollama's Homebrew plist. Loopback only; no public exposure.
+    sed "s|__REPO__|$PWD|g" config/launchd/com.jarvis.mlx-audio.plist.example \
+      > ~/Library/LaunchAgents/com.jarvis.mlx-audio.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jarvis.mlx-audio.plist
+    curl -s http://127.0.0.1:8004/v1/models | head -c 200
+  Stop:  launchctl bootout gui/$(id -u)/com.jarvis.mlx-audio
+  TCC: LaunchAgents cannot read ~/Desktop, ~/Documents or ~/Downloads — if the repo
+  lives there this service exits 126 "Operation not permitted" (verified 2026-09-06).
+  Clone to ~/JARVIS (or any non-protected folder), or start the server from a terminal.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jarvis.mlx-audio</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/voice/mlx-audio-server.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>JARVIS_MLX_AUDIO_PORT</key>
+    <string>8004</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/jarvis-mlx-audio.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/jarvis-mlx-audio.err</string>
+</dict>
+</plist>

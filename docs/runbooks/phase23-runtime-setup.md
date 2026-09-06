@@ -47,6 +47,12 @@ python -c "from faster_whisper import WhisperModel; print('ok')"
 
 ## macOS (Apple Silicon) — added 2026-09-04 (runway R.2, E-023)
 
+> **Superseded 2026-09-06 (E-048, Phase 25D).** The current, complete second-person
+> bring-up — Homebrew, both Python venvs with pinned requirements, Ollama + MLX models,
+> the mlx-audio voice server as a launchd service, the wake word, the gateway host and
+> the verification smokes — is **`docs/runbooks/macos-bringup.md`**. The steps below are
+> the R.2 minimum bootstrap exactly as it was first run, kept as history.
+
 First bootstrap on the primary machine (MacBook Pro M1 Max, 32 GB unified memory, macOS 26.6). Minimum bootstrap only: the sidecars (Ollama, Piper, faster-whisper _serving_, Chatterbox) are Phase 25D and are **not** installed here.
 
 ### Toolchain (no password required)

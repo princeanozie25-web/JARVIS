@@ -181,6 +181,15 @@ drilled. → [`docs/enhancements/REGISTRY.md`](docs/enhancements/REGISTRY.md)
 
 ---
 
+## Bringing it up on an Apple Silicon Mac
+
+JARVIS runs local-first on an M1 Max 32 GB (verified 2026-09-06). The complete,
+second-person bring-up — toolchain, both Python runtimes with pinned requirements,
+Ollama + MLX models, the voice server as a launchd service, the local wake word, the
+MCP gateway host and the verification smokes — is
+[`docs/runbooks/macos-bringup.md`](docs/runbooks/macos-bringup.md). No cloud key is
+required for any step; `npm run doctor` must say `Verdict: ready`.
+
 ## Broader portfolio (context)
 
 - **Enterprise Brain** — permission-aware organizational intelligence where
