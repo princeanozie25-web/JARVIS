@@ -17,6 +17,7 @@ import { persistToolOutput } from "../tools/persist-output";
 import type { ToolCallStatus } from "../db/tool-calls";
 import type { ToolRuntime } from "../tools/types";
 import { revalidateGatewayProposal } from "./approval-revalidation";
+import { rememberOperatorToken } from "../approvals/operator-token-store";
 import type { CurrentGrantLookup } from "@/lib/canonical-policy";
 
 export const PENDING_APPROVAL_TTL_MS = 5 * 60 * 1000;
@@ -228,6 +229,10 @@ export function ensurePendingToolApproval(input: {
     created_at: now,
     ttl_ms: input.ttlMs ?? PENDING_APPROVAL_TTL_MS,
   });
+  // E-046: the operator surface may decide this row too (process-local memory,
+  // bound to the same expiry; never persisted). Additive — the stream payload
+  // below is unchanged.
+  rememberOperatorToken(input.executionId, pending.token, pending.expiresAt);
 
   return {
     executionId: input.executionId,
