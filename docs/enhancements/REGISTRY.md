@@ -3,6 +3,27 @@
 All post-Phase-20 changes to frozen surfaces enter here before code.
 Format: ID | Title | Frozen surface touched | Justification | Status
 
+**Phase 25 OPENER: COMPLETE 2026-09-06.** Roadmap v5.1 §10, executed on the M1 Max as
+branch `phase-25/opener` (13 commits, E-034 → E-044, every one in-hook green, no trailers,
+pushed to origin 2026-09-06). Step 7 exit met: last three commits (b360448, 24c3d2e, 1e26e02)
+were consecutive clean in-hook runs; final full suite 669 files / 6045 tests. Slice status
+against §10: **25A** COMPLETE (E-036). **25B** LI #1–#7 realized with drills (E-034 fit, E-035
+catalog + Ollama, E-037 chat/council on Ollama, E-038 observability/spend, E-039 STT,
+E-040 TTS); #11–#13 are roadmap-deferred Gate-adjacent items for their own brief (untouched by
+design). **25C** wake word LISTENS (E-044: openWakeWord `hey_jarvis`, one governed capture →
+text pipeline, no cloud audio before wake, no standby audio stored, fail-closed unless
+`JARVIS_WAKE_WORD_ENABLED=true`), T0–T3 enforced on the live path with anti-smuggling (E-043),
+failover chains drilled (E-040 TTS chain; E-044 cloud→local); RESIDUALS: real-mic wake /
+false-wake / permission runs with the operator at the keyboard (proven unattended on synthetic
+audio only), and **E-012 still PROPOSED** (live PTT Piper-terminal failover AUDIT not yet
+persisted through recordEvent). **25D** bootstrapped (E-023 + Ollama/MLX sidecars; MLX voice
+chosen by measurement over the Piper/faster-whisper default, Piper kept as fail-closed terminal);
+residuals: cloud keys (optional, local-first), Obsidian vault path, README second-person
+bring-up not re-verified. **25E** VERIFIED (R.2). **25F/25G/25H** OPEN — 25F waits on Program U
+(parked at U.4; v3.2 reactor amendment pending). Beyond the roadmap: the voice bake-off
+(E-044) selected the final voice architecture by on-machine evidence; OpenAI Realtime live
+trials halt at the operator's credential.
+
 **Runway R.2 (Stabilize on the primary machine): COMPLETE 2026-09-04.** Roadmap v5.1 §8.
 First bootstrap of JARVIS on the MacBook Pro M1 Max 32 GB (macOS 26.6.2, Node 24 via
 nvm, brew ffmpeg 9.0.1 / yt-dlp 2026.08.19, faster-whisper 1.2.1 in .venv). Landed on
