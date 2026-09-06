@@ -2,6 +2,10 @@ import { WorkingCockpit } from "@/components/working/WorkingCockpit";
 import type { WorkflowMapActions } from "@/components/working/WorkflowMap";
 import { buildWorkingCommandCenterModel } from "@/lib/command-center/liquid-command-center-data";
 
+import {
+  decideOperatorGateAction,
+  readOperatorGateAction,
+} from "./gate-actions";
 import { readVoiceHealthAction } from "./voice-health-action";
 import {
   addSubItemAction,
@@ -47,6 +51,8 @@ export default function WorkingPage() {
             : undefined
         }
         voiceHealthReader={readVoiceHealthAction}
+        gateReader={readOperatorGateAction}
+        gateDecider={decideOperatorGateAction}
       />
     </main>
   );

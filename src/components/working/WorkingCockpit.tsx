@@ -25,6 +25,15 @@ import {
   syntheticCockpitVoiceView,
   type CockpitVoiceView,
 } from "@/components/working/voice-view";
+import {
+  describeGateOutcome,
+  formatGateExpiry,
+  sampleCockpitGateView,
+  type CockpitGateDecider,
+  type CockpitGateDecision,
+  type CockpitGateReader,
+  type CockpitGateView,
+} from "@/components/working/gate-view";
 import type {
   WorkingActivity,
   WorkingCommandCenterModel,
@@ -53,6 +62,15 @@ export interface WorkingCockpitProps {
    * once after mount to upgrade the pill to the REAL probed engine status.
    * Strictly display: it returns data and can trigger no synthesis. */
   voiceHealthReader?: () => Promise<CockpitVoiceView>;
+  /** E-047: initial Human Gate view (tests/SSR). Defaults to the honest
+   * labelled sample fixture until the operator transport reports real rows. */
+  gateView?: CockpitGateView;
+  /** E-047: read-only reader of the operator's LIVE pending rows (a server
+   * action from the route). Display only; it can trigger nothing. */
+  gateReader?: CockpitGateReader;
+  /** E-047: the ONE decision transport (a server action -> the frozen approval
+   * path). Omitted => the gate is display-only for live rows. */
+  gateDecider?: CockpitGateDecider;
 }
 
 const FALLBACK_WORKING_MODEL: WorkingCommandCenterModel = {
@@ -141,6 +159,9 @@ export function WorkingCockpit({
   laneActions,
   voiceView,
   voiceHealthReader,
+  gateView,
+  gateReader,
+  gateDecider,
 }: WorkingCockpitProps) {
   const clock = useClock();
   const depthRef = useRef<HTMLDivElement>(null);
@@ -170,6 +191,29 @@ export function WorkingCockpit({
       alive = false;
     };
   }, [voiceHealthReader]);
+
+  // E-047: the Gate starts on the honest sample fixture and upgrades to the
+  // REAL operator rows when the read-only reader reports (same shape as the
+  // voice pill above). One row is shown at a time — the queue's head.
+  const [gate, setGate] = useState<CockpitGateView>(
+    gateView ?? sampleCockpitGateView(),
+  );
+  useEffect(() => {
+    if (!gateReader) return;
+    let alive = true;
+    gateReader()
+      .then((view) => {
+        if (alive && view) setGate(view);
+      })
+      .catch(() => {
+        // fail-closed: keep the labelled sample
+      });
+    return () => {
+      alive = false;
+    };
+  }, [gateReader]);
+  const liveRow = gate.provenance === "live" ? (gate.rows[0] ?? null) : null;
+  const gateProvenance = liveRow ? "live" : "sample";
 
   useBackgroundParallax(depthRef);
 
@@ -213,6 +257,36 @@ export function WorkingCockpit({
         ts: now,
         tag: "INFO",
         text: `${model.proposal.id} denied in the demo gate - not persisted`,
+      },
+      ...current,
+    ]);
+  }
+
+  // E-047: a LIVE decision goes through the injected transport ONLY (the
+  // frozen approval path behind it). The verdict is derived from the real
+  // outcome — system-fact register, no demo wording, no claimed audit.
+  async function resolveLiveGate(approved: boolean) {
+    if (resolved || !liveRow || !gateDecider) return;
+    const decision: CockpitGateDecision = approved ? "APPROVED_ONCE" : "DENIED";
+    const now = clock === "00:00" ? "now" : clock;
+    let outcome;
+    try {
+      outcome = await gateDecider({
+        executionId: liveRow.executionId,
+        decision,
+        decisionToken: liveRow.decisionToken,
+        boundHash: liveRow.boundHash,
+      });
+    } catch {
+      outcome = { ok: false, message: "decision transport unavailable" };
+    }
+    setPending(0);
+    setResolved(describeGateOutcome(decision, outcome));
+    setEvents((current) => [
+      {
+        ts: now,
+        tag: "INFO",
+        text: `${liveRow.executionId} decided at the Human Gate: ${decision} -> ${outcome.status ?? outcome.reason ?? "rejected"}`,
       },
       ...current,
     ]);
@@ -321,6 +395,10 @@ export function WorkingCockpit({
               data-human-gate-panel="true"
               data-only-path-to-side-effects="true"
               data-mutator-entrypoint="human-gate-approval-lifecycle"
+              data-gate-provenance={gateProvenance}
+              data-gate-decidable={String(
+                liveRow ? liveRow.operatorTokenAvailable : true,
+              )}
               data-approval-service={model.proposal.approvalService}
               data-execution-available={String(
                 model.proposal.executionAvailable,
@@ -365,17 +443,26 @@ export function WorkingCockpit({
                           </span>
                         </div>
                         <div className="jcc-prop-meta">
-                          {model.proposal.id} - {model.proposal.kind} -{" "}
-                          {model.proposal.tier} - {model.proposal.trustClass}
+                          {liveRow
+                            ? `${liveRow.executionId} - ${liveRow.toolName} - ${liveRow.safetyTag} - LIVE`
+                            : `${model.proposal.id} - ${model.proposal.kind} - ${model.proposal.tier} - ${model.proposal.trustClass}`}
                         </div>
                         <div
                           className="jcc-diff"
                           data-text-register="system-fact"
                         >
-                          <div className="h">DRY-RUN DIFF</div>
+                          <div className="h">
+                            {liveRow ? "CANONICAL EFFECT" : "DRY-RUN DIFF"}
+                          </div>
                           <div className="d">
-                            {model.proposal.diffBefore} <b>-&gt;</b>{" "}
-                            {model.proposal.diffAfter}
+                            {liveRow ? (
+                              liveRow.canonicalEffect
+                            ) : (
+                              <>
+                                {model.proposal.diffBefore} <b>-&gt;</b>{" "}
+                                {model.proposal.diffAfter}
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -394,25 +481,40 @@ export function WorkingCockpit({
                           UNTRUSTED_CLIENT_INPUT
                         </div>
                         <div className="jcc-fence-text">
-                          {model.proposal.title}
+                          {liveRow
+                            ? liveRow.untrustedClientText
+                            : model.proposal.title}
                         </div>
                       </div>
                       <div className="jcc-gate-foot">
                         <div className="jcc-expiry">
-                          EXPIRES IN <span>{model.proposal.expiresIn}</span>
+                          EXPIRES IN{" "}
+                          <span>
+                            {liveRow
+                              ? formatGateExpiry(liveRow.expiresAt, gate.readAt)
+                              : model.proposal.expiresIn}
+                          </span>
                         </div>
                         <div className="jcc-buttons">
                           <button
                             type="button"
                             className="jcc-btn deny wc-gate-deny"
-                            onClick={() => resolveGate(false)}
+                            onClick={() =>
+                              liveRow
+                                ? void resolveLiveGate(false)
+                                : resolveGate(false)
+                            }
                           >
                             DENY
                           </button>
                           <button
                             type="button"
                             className="jcc-btn approve wc-gate-approve"
-                            onClick={() => resolveGate(true)}
+                            onClick={() =>
+                              liveRow
+                                ? void resolveLiveGate(true)
+                                : resolveGate(true)
+                            }
                           >
                             APPROVE
                           </button>
