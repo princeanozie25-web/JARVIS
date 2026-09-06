@@ -33,6 +33,10 @@ const MLX_PYTHON =
 const MLX_AUDIO_URL =
   process.env.JARVIS_MLX_AUDIO_URL ?? "http://127.0.0.1:8004";
 const OLLAMA_MODEL = process.env.JARVIS_VOICE_MODEL ?? "qwen3.5:9b-mlx";
+// JARVIS's voice. bm_lewis (British male) is the closest kokoro voice to the
+// warm, calm register we want; overridable with the same env var the real
+// voice runtime reads so the smoke and the system never drift apart.
+const VOICE_ID = process.env.JARVIS_TTS_VOICE_ID ?? "bm_lewis";
 const SYSTEM_PROMPT =
   "You are JARVIS, a voice assistant. Answer in ONE short spoken sentence, no lists, no code.";
 
@@ -117,7 +121,11 @@ async function main(): Promise<void> {
     ],
     { model: OLLAMA_MODEL, maxTokens: 120 },
   );
-  const reply = answer.content.trim() || "Sorry, I did not catch a response.";
+  // Kokoro's G2P spells out all-caps initialisms ("J-A-R-V-I-S"); title-case
+  // the name so it is spoken as the word.
+  const reply = (
+    answer.content.trim() || "Sorry, I did not catch a response."
+  ).replace(/\bJARVIS\b/g, "Jarvis");
   console.log(
     `[voice] JARVIS: "${reply}"  (brain ${Math.round(performance.now() - brainT)} ms, cost $${answer.costUsd})`,
   );
@@ -129,7 +137,7 @@ async function main(): Promise<void> {
     priority: 0,
     baseUrl: MLX_AUDIO_URL,
     model: MLX_AUDIO_ENGINE_MODELS.kokoro,
-    voiceId: "af_heart",
+    voiceId: VOICE_ID,
     outputDir: dir,
   });
   const cue = await kokoro.synthesize!({ id: "reply", text: reply });
