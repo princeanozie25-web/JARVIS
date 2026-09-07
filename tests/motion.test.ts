@@ -28,10 +28,6 @@ const tokensCss = readFileSync(
   resolve(ROOT, "src", "lib", "design-tokens", "tokens.css"),
   "utf8",
 );
-const orbStatesCss = readFileSync(
-  resolve(ROOT, "src", "components", "orb", "orb-states.css"),
-  "utf8",
-);
 
 const REQUIRED_DURATIONS = [
   "instant",
@@ -122,12 +118,6 @@ describe("UI.5 reduced-motion support", () => {
         new RegExp(`--jarvis-motion-duration-${name}:\\s*0ms`),
       );
     }
-  });
-
-  it("neutralizes orb animations in orb-states.css under reduced motion", () => {
-    expect(orbStatesCss).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
-    expect(orbStatesCss).toMatch(/animation:\s*none\s*!important/);
-    expect(orbStatesCss).toMatch(/transition:\s*none\s*!important/);
   });
 
   it("exposes a JS-side prefersReducedMotion helper that is SSR-safe", () => {

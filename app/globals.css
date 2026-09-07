@@ -2,11 +2,6 @@
 @import "tw-animate-css";
 @import "../src/lib/design-tokens/tokens.css";
 @import "../src/lib/accessibility.css";
-@import "../src/components/command-center/command-center.css";
-@import "../src/components/command-center/liquid-command-center.css";
-@import "../src/components/orb/orb-states.css";
-@import "../src/components/working/workflow-lane.css";
-@import "../src/components/working/workflow-map.css";
 @import "../src/lib/presence/presence.css";
 @import "../src/components/presence/presence-screen.css";
 

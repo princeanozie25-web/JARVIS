@@ -1,6 +1,6 @@
-import { listAuditPanels } from "@/components/audit/panel-registry";
-import { IDLE_ORB_STATE } from "@/components/orb/state-tokens";
-import { listWorkingPanels } from "@/components/working/panel-registry";
+import { listAuditPanels } from "@/lib/observability/panels/audit-panels";
+import { IDLE_ORB_STATE } from "@/lib/observability/panels/orb-state-tokens";
+import { listWorkingPanels } from "@/lib/observability/panels/working-panels";
 import { readRecentTracesProjection } from "@/store/projections/recent-traces";
 import { readRoomStateProjection } from "@/store/projections/room-state";
 import { readTelemetryRollupsProjection } from "@/store/projections/telemetry-rollups";

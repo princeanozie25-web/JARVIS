@@ -1,13 +1,5 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import TelemetryCockpitPage from "../../app/audit/telemetry-cockpit/page";
-import {
-  buildTelemetryCockpitViewerModel,
-  filterTelemetryCockpitViewerPanels,
-  selectTelemetryCockpitViewerPanel,
-} from "../../components/telemetry-cockpit/TelemetryCockpitViewer";
 import * as telemetryCockpit from "./index";
 import {
   PHASE_19B_CLOSEOUT_CHECK_IDS,
@@ -175,56 +167,6 @@ describe("Phase 19B.5 telemetry cockpit final feature closeout", () => {
       metadata_only: true,
       read_only: true,
     });
-  });
-
-  it("viewer route renders the final read-only cockpit feature", () => {
-    const html = renderToStaticMarkup(createElement(TelemetryCockpitPage));
-
-    expect(html).toContain('data-telemetry-cockpit-viewer="read-only"');
-    expect(html).toContain('data-projection-safety-checked="true"');
-    expect(html).toContain("Telemetry Cockpit");
-    expect(html).toContain("Panel Summaries");
-    expect(html).toContain("Panel Inspection");
-    expect(html).toContain("Search panels");
-    expect(html).toContain("Panel kind");
-    expect(html).toContain("Health band");
-    expect(html).toContain("Cockpit Warnings");
-    expect(html).toContain("Inspect panel");
-    expect(html).not.toMatch(
-      /\b(approve|retry|run|mutate|dispatch|execute|tool-call)\b/i,
-    );
-    expect(html).not.toMatch(
-      /raw_payload|tool_args|raw_prompt|model output|voice transcript|transcript|ocr text|frame bytes|secret|approval token/i,
-    );
-  });
-
-  it("viewer helpers prove Phase 19B is feature-complete, not foundation-only", () => {
-    const model = buildTelemetryCockpitViewerModel();
-    const filtered = filterTelemetryCockpitViewerPanels(model.panels, {
-      panelKind: "architecture_graph",
-      healthBand: "all",
-      showWarnings: true,
-      showAlerts: true,
-      search: "Architecture",
-    });
-    const selected = selectTelemetryCockpitViewerPanel(
-      model.panels,
-      "telemetry-panel:safety_governance",
-    );
-
-    expect(filtered.map((item) => item.panel.title)).toEqual([
-      "Architecture Graph",
-    ]);
-    expect(selected).toMatchObject({
-      panel: {
-        title: "Safety/Governance",
-        metadata_only: true,
-        read_only: true,
-      },
-    });
-    expect(selected?.alerts.map((alert) => alert.label)).toContain(
-      "Safety cockpit remains read-only",
-    );
   });
 
   it("closeout exports introduce no forbidden affordance names", () => {

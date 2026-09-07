@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AUDIT_DISABLED_AFFORDANCES } from "@/components/audit/panel-registry";
+import { AUDIT_DISABLED_AFFORDANCES } from "@/lib/observability/panels/audit-panels";
 import {
   createNarrationFailoverTelemetrySink,
   createPiperNarrationFallbackProvider,

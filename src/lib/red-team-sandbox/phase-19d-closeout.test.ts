@@ -1,14 +1,5 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import RedTeamSandboxPage from "../../app/audit/red-team-sandbox/page";
-import {
-  buildRedTeamSandboxViewerModel,
-  buildRedTeamSandboxViewerState,
-  filterRedTeamSandboxViewerProposals,
-  filterRedTeamSandboxViewerViolations,
-} from "../../components/red-team-sandbox/RedTeamSandboxViewer";
 import * as redTeamSandbox from "./index";
 import {
   PHASE_19D_CLOSEOUT_CHECK_IDS,
@@ -347,103 +338,6 @@ describe("Phase 19D.11 final CAI-governed red-team closeout", () => {
     }
     expect(JSON.stringify(report)).not.toMatch(
       /sk-[a-z0-9_-]{10,}|api[_-]?key|bearer\s+[a-z0-9._-]{12,}|password\s*[:=]/i,
-    );
-  });
-
-  it("viewer route renders the final read-only sandbox feature", () => {
-    const html = renderToStaticMarkup(createElement(RedTeamSandboxPage));
-
-    expect(html).toContain('data-red-team-sandbox-viewer="read-only"');
-    expect(html).toContain('data-projection-safety-checked="true"');
-    expect(html).toContain("Red-Team Sandbox");
-    expect(html).toContain("Sandbox status");
-    expect(html).toContain("Allowed Target Scopes");
-    expect(html).toContain("Forbidden Target Scopes");
-    expect(html).toContain("Allowed Action Classes");
-    expect(html).toContain("Forbidden Action Classes");
-    expect(html).toContain("Sandbox Profiles");
-    expect(html).toContain("Proposal Summaries");
-    expect(html).toContain("Safety Violations and Warnings");
-    expect(html).toContain("Profile Inspection");
-    expect(html).toContain("Proposal Inspection");
-    expect(html).toContain("Warning Inspection");
-    expect(html).toContain("Search sandbox");
-    expect(html).toContain("Inspect profile");
-    expect(html).toContain("Inspect proposal");
-    expect(html).toContain("Inspect warning");
-    expect(html).not.toMatch(
-      /\b(approve|retry|run|mutate|dispatch|execute|tool-call)\b/i,
-    );
-    expect(html).not.toMatch(
-      /raw_payload|tool_args|raw_prompt|model output|voice transcript|ocr text|frame bytes|secret|approval token|shell_command|executable_payload/i,
-    );
-    expect(html).not.toMatch(
-      /call cai|install cai|python sidecar|start sidecar|cai sidecar|cai execute|cai run/i,
-    );
-  });
-
-  it("viewer helpers prove Phase 19D is feature-complete, not CAI-executing", () => {
-    const model = buildRedTeamSandboxViewerModel();
-    const state = buildRedTeamSandboxViewerState(model, {
-      selectedProfileId: "red-team-profile:phase-19d-local-sandbox",
-      selectedProposalId: "red-team-proposal:denied-public-internet-scan",
-      targetScopeFilter: "public internet",
-      actionClassFilter: "all",
-      verdictFilter: "denied only",
-      severityFilter: "error",
-      showDeniedExamples: true,
-      showDisabledCapabilities: true,
-      searchQuery: "public",
-    });
-
-    expect(state).toMatchObject({
-      metadata_only: true,
-      read_only: true,
-      selected_profile_id: "red-team-profile:phase-19d-local-sandbox",
-      selected_proposal_id: "red-team-proposal:denied-public-internet-scan",
-      target_scope_filter: "public internet",
-      verdict_filter: "denied only",
-      severity_filter: "error",
-      search_query: "public",
-    });
-    expect(state.visible_proposals.map((proposal) => proposal.label)).toEqual([
-      "Denied public internet proposal",
-    ]);
-    expect(state.visible_violations.length).toBeGreaterThan(0);
-  });
-
-  it("filter helpers remain local, read-only, and deterministic", () => {
-    const model = buildRedTeamSandboxViewerModel();
-    const before = JSON.stringify(model);
-    const deniedProposals = filterRedTeamSandboxViewerProposals(model, {
-      targetScopeFilter: "all",
-      actionClassFilter: "all",
-      verdictFilter: "denied only",
-      showDeniedExamples: true,
-      searchQuery: "",
-    });
-    const actionViolations = filterRedTeamSandboxViewerViolations(model, {
-      severityFilter: "all",
-      showDeniedExamples: true,
-      searchQuery: "forbidden action",
-    });
-
-    expect(deniedProposals.map((proposal) => proposal.verdict_label)).toEqual([
-      "denied only",
-      "denied only",
-    ]);
-    expect(actionViolations.length).toBeGreaterThan(0);
-    expect(JSON.stringify(model)).toBe(before);
-    expect(JSON.stringify(deniedProposals)).toBe(
-      JSON.stringify(
-        filterRedTeamSandboxViewerProposals(model, {
-          targetScopeFilter: "all",
-          actionClassFilter: "all",
-          verdictFilter: "denied only",
-          showDeniedExamples: true,
-          searchQuery: "",
-        }),
-      ),
     );
   });
 

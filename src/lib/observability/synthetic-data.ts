@@ -1,8 +1,8 @@
-import { listAuditPanels } from "@/components/audit/panel-registry";
-import type { AuditPanelViewModel } from "@/components/audit/types";
-import type { RestOrbStateTokens } from "@/components/orb/types";
-import { listWorkingPanels } from "@/components/working/panel-registry";
-import type { WorkingPanelViewModel } from "@/components/working/types";
+import { listAuditPanels } from "@/lib/observability/panels/audit-panels";
+import type { AuditPanelViewModel } from "@/lib/observability/panels/audit-types";
+import type { RestOrbStateTokens } from "@/lib/observability/panels/orb-types";
+import { listWorkingPanels } from "@/lib/observability/panels/working-panels";
+import type { WorkingPanelViewModel } from "@/lib/observability/panels/working-types";
 import {
   REQUIRED_DEMO_MARKER,
   createDemoSafetyEnvelope,

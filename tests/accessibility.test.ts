@@ -23,8 +23,8 @@ const accessibilityCss = readFileSync(
   "utf8",
 );
 const globalsCss = readFileSync(resolve(ROOT, "app", "globals.css"), "utf8");
-const orbStatesCss = readFileSync(
-  resolve(ROOT, "src", "components", "orb", "orb-states.css"),
+const presenceCss = readFileSync(
+  resolve(ROOT, "src", "lib", "presence", "presence.css"),
   "utf8",
 );
 
@@ -141,21 +141,15 @@ describe("UI.9 reduced-motion compliance", () => {
     expect(tokensCss).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
   });
 
-  it("orb-states.css neutralizes animations under prefers-reduced-motion", () => {
-    expect(orbStatesCss).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
-    expect(orbStatesCss).toMatch(/animation:\s*none\s*!important/);
+  it("presence.css neutralizes arrivals under prefers-reduced-motion", () => {
+    expect(presenceCss).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
+    expect(presenceCss).toMatch(/animation:\s*none/);
+    expect(presenceCss).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
   });
 });
 
 describe("UI.9 semantic landmark + ARIA presence on shipped surfaces", () => {
-  const surfaces = [
-    { path: ["app", "page.tsx"], landmark: "<main" },
-    { path: ["src", "app", "working", "page.tsx"], landmark: "<main" },
-    {
-      path: ["src", "app", "audit", "pipeline", "page.tsx"],
-      landmark: "<main",
-    },
-  ] as const;
+  const surfaces = [{ path: ["app", "page.tsx"], landmark: "<main" }] as const;
 
   for (const surface of surfaces) {
     const file = resolve(ROOT, ...surface.path);

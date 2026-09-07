@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 /**
  * UI.4 static guard. Fails if the root route reintroduces any of the
  * AI-slop / chatbot composition tells the UI Polish Plan was opened to
- * eliminate. Scoped to `app/page.tsx` only — `app/converse/page.tsx`
+ * eliminate. Scoped to `app/page.tsx` only — the presence screen
  * retains the conversational lane and must not be checked here.
  */
 
@@ -54,11 +54,5 @@ describe("UI.4 no-chatbot-tells guard for app/page.tsx", () => {
 
   it("declares the presence surface marker as a positive signal", () => {
     expect(rootPageSource).toContain('data-surface="presence"');
-  });
-
-  it("scopes guarding to the root route — the chat composition lives at /converse", () => {
-    const conversePagePath = resolve(ROOT, "app", "converse", "page.tsx");
-    const converseSource = readFileSync(conversePagePath, "utf8");
-    expect(converseSource).toContain('"use client"');
   });
 });

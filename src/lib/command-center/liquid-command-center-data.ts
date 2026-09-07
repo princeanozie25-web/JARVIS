@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
-import { createOrbProjectionTokens } from "@/components/orb/projection-adapter";
-import type { RestOrbStateTokens } from "@/components/orb/types";
+import { createOrbProjectionTokens } from "@/lib/observability/panels/orb-projection-adapter";
+import type { RestOrbStateTokens } from "@/lib/observability/panels/orb-types";
 import { createObservabilityApi } from "@/lib/observability/api";
 import type {
   ObservabilityApi,

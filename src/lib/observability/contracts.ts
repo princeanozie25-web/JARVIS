@@ -1,6 +1,6 @@
-import type { OrbVisualState } from "@/components/orb/types";
-import type { AuditPanelViewModel } from "@/components/audit/types";
-import type { WorkingPanelViewModel } from "@/components/working/types";
+import type { OrbVisualState } from "@/lib/observability/panels/orb-types";
+import type { AuditPanelViewModel } from "@/lib/observability/panels/audit-types";
+import type { WorkingPanelViewModel } from "@/lib/observability/panels/working-types";
 import type { RecentTracesProjection } from "@/store/projections/recent-traces";
 import type { RoomStateProjection } from "@/store/projections/room-state";
 import type { TelemetryRollupsProjection } from "@/store/projections/telemetry-rollups";

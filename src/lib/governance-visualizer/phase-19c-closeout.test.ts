@@ -1,14 +1,5 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import GovernanceBoundariesPage from "../../app/audit/governance-boundaries/page";
-import {
-  buildGovernanceBoundaryViewerModel,
-  buildGovernanceBoundaryViewerState,
-  filterGovernanceBoundaryViewerEdges,
-  filterGovernanceBoundaryViewerNodes,
-} from "../../components/governance-visualizer/GovernanceBoundaryViewer";
 import * as governanceVisualizer from "./index";
 import {
   PHASE_19C_CLOSEOUT_CHECK_IDS,
@@ -180,94 +171,6 @@ describe("Phase 19C.5 governance boundary final feature closeout", () => {
       metadata_only: true,
       read_only: true,
     });
-  });
-
-  it("viewer route renders the final read-only governance feature", () => {
-    const html = renderToStaticMarkup(createElement(GovernanceBoundariesPage));
-
-    expect(html).toContain('data-governance-boundary-viewer="read-only"');
-    expect(html).toContain('data-projection-safety-checked="true"');
-    expect(html).toContain("Governance Boundaries");
-    expect(html).toContain("Subsystem Nodes");
-    expect(html).toContain("Boundary Edges");
-    expect(html).toContain("Trust Classes");
-    expect(html).toContain("Gate Types");
-    expect(html).toContain("Tripwire Warnings");
-    expect(html).toContain("Boundary Warnings");
-    expect(html).toContain("Node Inspection");
-    expect(html).toContain("Edge Inspection");
-    expect(html).toContain("Find boundary");
-    expect(html).toContain("Show Tripwires");
-    expect(html).toContain("Inspect node");
-    expect(html).toContain("Inspect path");
-    expect(html).not.toMatch(
-      /\b(approve|retry|run|mutate|dispatch|execute|tool-call)\b/i,
-    );
-    expect(html).not.toMatch(
-      /raw_payload|tool_args|raw_prompt|model output|voice transcript|transcript|ocr text|frame bytes|secret|approval token/i,
-    );
-  });
-
-  it("viewer helpers prove Phase 19C is feature-complete, not foundation-only", () => {
-    const model = buildGovernanceBoundaryViewerModel();
-    const state = buildGovernanceBoundaryViewerState(model, {
-      selectedNodeId: "governance-node:scheduler",
-      selectedEdgeId: "governance-edge:voice-tool-execution-forbidden",
-      policyFilter: "forbidden",
-      gateFilter: "disabled_feature",
-      trustFilter: "all",
-      showTripwires: true,
-      showWarnings: true,
-      searchQuery: "scheduler",
-    });
-
-    expect(state).toMatchObject({
-      metadata_only: true,
-      read_only: true,
-      selected_node_id: "governance-node:scheduler",
-      policy_filter: "forbidden",
-      gate_filter: "disabled_feature",
-      trust_filter: "all",
-      search_query: "scheduler",
-    });
-    expect(state.selected_node_detail.node.label).toBe("Scheduler");
-    expect(state.selected_node_detail.forbidden_paths).toHaveLength(2);
-    expect(state.selected_node_detail.tripwires).toHaveLength(2);
-    expect(state.visible_edges.map((edge) => edge.policy)).toEqual([
-      "forbidden",
-      "forbidden",
-    ]);
-  });
-
-  it("filter helpers remain local, read-only, and deterministic", () => {
-    const model = buildGovernanceBoundaryViewerModel();
-    const before = JSON.stringify(model);
-    const forbiddenEdges = filterGovernanceBoundaryViewerEdges(model, {
-      policyFilter: "forbidden",
-      gateFilter: "all",
-      trustFilter: "all",
-      showTripwires: true,
-      searchQuery: "",
-    });
-    const observeOnlyNodes = filterGovernanceBoundaryViewerNodes(model, {
-      trustFilter: "observe_only",
-      searchQuery: "",
-    });
-
-    expect(forbiddenEdges).toHaveLength(8);
-    expect(observeOnlyNodes).toHaveLength(8);
-    expect(JSON.stringify(model)).toBe(before);
-    expect(JSON.stringify(forbiddenEdges)).toBe(
-      JSON.stringify(
-        filterGovernanceBoundaryViewerEdges(model, {
-          policyFilter: "forbidden",
-          gateFilter: "all",
-          trustFilter: "all",
-          showTripwires: true,
-          searchQuery: "",
-        }),
-      ),
-    );
   });
 
   it("governance visualizer suite remains aligned with Phase 19C.1 through 19C.5", () => {

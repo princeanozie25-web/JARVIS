@@ -6,7 +6,13 @@
 
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -350,7 +356,9 @@ describe("I-WBv1b-8 (no self-execution preserved)", () => {
     const files = readdirSync(dir)
       .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
       .map((name) => resolve(dir, name));
-    files.push(laneComponent);
+    // E-058: the lane component was retired with the cockpit; scan it only
+    // while it exists so the workflowbox/ guard itself stays in force.
+    if (existsSync(laneComponent)) files.push(laneComponent);
 
     const stripComments = (s: string): string =>
       s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\n)\s*\/\/[^\n]*/g, "");
@@ -372,7 +380,9 @@ describe("I-WBv1b-8 (no self-execution preserved)", () => {
 
     // the lane component is props-driven: it reaches no store / no sqlite at all
     // (the read path + mutations are injected; it only renders + calls callbacks).
-    const laneCode = stripComments(readFileSync(laneComponent, "utf8"));
+    const laneCode = existsSync(laneComponent)
+      ? stripComments(readFileSync(laneComponent, "utf8"))
+      : "";
     const laneImports = [
       ...laneCode.matchAll(/\bfrom\s*["']([^"']+)["']/g),
     ].map((m) => m[1]);

@@ -1,12 +1,5 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import ArchitectureGraphPage from "../../app/audit/architecture-graph/page";
-import {
-  buildArchitectureGraphViewerModel,
-  buildArchitectureGraphViewerState,
-} from "../../components/architecture-graph/ArchitectureGraphViewer";
 import * as architectureGraph from "./index";
 import {
   PHASE_19A_CLOSEOUT_CHECK_IDS,
@@ -202,53 +195,6 @@ describe("Phase 19A.9 final architecture graph feature closeout guard", () => {
       metadata_only: true,
       read_only: true,
     });
-  });
-
-  it("viewer route renders the final read-only feature surface", () => {
-    const html = renderToStaticMarkup(createElement(ArchitectureGraphPage));
-
-    expect(html).toContain('data-architecture-graph-viewer="read-only"');
-    expect(html).toContain('data-projection-safety-checked="true"');
-    expect(html).toContain('data-architecture-graph-controls="safe-read-only"');
-    expect(html).toContain("Architecture Graph");
-    expect(html).toContain("Tripwire Warnings");
-    expect(html).toContain("Selected node");
-    expect(html).toContain("Find node");
-    expect(html).toContain("Edge path");
-    expect(html).toContain("Show tripwires");
-    expect(html).not.toMatch(
-      /\b(approve|retry|run|mutate|dispatch|execute|tool-call)\b/i,
-    );
-    expect(html).not.toMatch(
-      /raw_payload|tool_args|raw_prompt|model output|voice transcript|ocr text|frame bytes|secret|approval token/i,
-    );
-  });
-
-  it("navigation state proves Phase 19A is feature-complete, not foundation-only", () => {
-    const model = buildArchitectureGraphViewerModel();
-    const state = buildArchitectureGraphViewerState(model, {
-      selectedNodeId: "arch-node:command-center",
-      searchQuery: "command",
-      groupFilter: "surfaces",
-      edgeFilter: "read",
-      showTripwires: true,
-    });
-
-    expect(state).toMatchObject({
-      metadata_only: true,
-      read_only: true,
-      selected_node_id: "arch-node:command-center",
-      group_filter: "surfaces",
-      edge_filter: "read",
-      search_query: "command",
-    });
-    expect(state.selected_detail.dependencies).toContain("Observability API");
-    expect(state.visible_nodes.map((node) => node.label)).toContain(
-      "Command Center",
-    );
-    expect(
-      state.visible_edges.every((edge) => edge.kind === "reads_from"),
-    ).toBe(true);
   });
 
   it("architecture graph suite remains aligned with Phase 19A.1 through 19A.9", () => {
