@@ -4,80 +4,66 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-const ROOT_PAGE_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "page.tsx",
+const HERE = dirname(fileURLToPath(import.meta.url));
+const rootPageSource = readFileSync(resolve(HERE, "page.tsx"), "utf8");
+const screenSource = readFileSync(
+  resolve(HERE, "..", "src", "components", "presence", "PresenceScreen.tsx"),
+  "utf8",
 );
-const rootPageSource = readFileSync(ROOT_PAGE_PATH, "utf8");
+const thesis = readFileSync(
+  resolve(HERE, "..", "docs", "design", "PRESENCE_THESIS.md"),
+  "utf8",
+);
 
-describe("UI.4 root surface — command center identity", () => {
-  it("is a server component with no client directive", () => {
+describe("root surface — the presence", () => {
+  it("is a server component that renders the presence screen", () => {
     expect(rootPageSource.startsWith('"use client"')).toBe(false);
-    expect(rootPageSource).not.toContain("'use client'");
-  });
-
-  it("declares the command-center surface marker", () => {
-    expect(rootPageSource).toMatch(/RestCommandCenter/);
-  });
-
-  it("renders the shared pipeline rest surface as the system presence", () => {
     expect(rootPageSource).toMatch(
-      /from "@\/components\/command-center\/RestCommandCenter"/,
+      /from "@\/components\/presence\/PresenceScreen"/,
     );
-    expect(rootPageSource).toContain('activeRoute="home"');
-    expect(rootPageSource).not.toContain("SYNTHETIC_REST_ORB_TOKENS");
+    expect(rootPageSource).toMatch(/<PresenceScreen \/>/);
+    expect(rootPageSource).toMatch(
+      /<main aria-label="JARVIS" data-surface="presence">/,
+    );
   });
 
-  it("delegates route navigation and suggestion inbox to the shared shell", () => {
-    expect(rootPageSource).toContain("buildRestCommandCenterModel");
-    expect(rootPageSource).not.toMatch(/<button\b|<form\b|<input\b/i);
+  it("keeps the cockpit out", () => {
+    expect(rootPageSource).not.toMatch(/RestCommandCenter|command-center/);
+    expect(screenSource).not.toMatch(/command-center|cockpit|orb\//i);
   });
 
-  it("keeps /converse out of the command-center spine for this pass", () => {
-    expect(rootPageSource).not.toContain("/converse");
-  });
-
-  it("surfaces a governance-posture region with metadata-only rules", () => {
-    expect(rootPageSource).toContain("buildRestCommandCenterModel");
-    expect(rootPageSource).not.toContain("SYNTHETIC_REST_ORB_TOKENS");
-  });
-
-  it("uses JARVIS semantic tokens, not raw chat-bubble palette", () => {
-    expect(rootPageSource).toContain("RestCommandCenter");
-    expect(rootPageSource).not.toContain("bg-blue-600");
-    expect(rootPageSource).not.toContain("bg-gray-900");
-    expect(rootPageSource).not.toContain("bg-gray-950");
-  });
-});
-
-describe("UI.4 root surface — no chatbot composition", () => {
-  it("does not render a chat input or chat placeholder", () => {
-    expect(rootPageSource).not.toMatch(/Message JARVIS/i);
-    expect(rootPageSource).not.toMatch(/<textarea\b/i);
-    expect(rootPageSource).not.toMatch(/placeholder=/i);
-  });
-
-  it("does not render a provider selector", () => {
-    expect(rootPageSource).not.toMatch(/<select\b/i);
-    expect(rootPageSource).not.toContain("SUPPORTED_PROVIDERS");
-    expect(rootPageSource).not.toContain("SupportedProvider");
-  });
-
-  it("does not call /api/chat or stream SSE events", () => {
-    expect(rootPageSource).not.toContain("/api/chat");
-    expect(rootPageSource).not.toContain("parseSseEvents");
-  });
-
-  it("does not import any of the chat-only panels", () => {
-    for (const panel of [
-      "ApprovalCard",
-      "RuntimeCommandPanel",
-      "VoiceControlPanel",
-      "ConversationCuratorPanel",
-      "MemoryCandidateReviewPanel",
-      "HumanReviewQueuePanel",
+  it("puts no governance vocabulary on screen", () => {
+    // Strings a person would read. Identifiers that talk to the backend
+    // (route paths, decision enums) are allowed; copy is not.
+    const copy = screenSource
+      .split("\n")
+      .filter((l) => /(>[^<]*<|"[^"]*[a-z] [a-z][^"]*")/.test(l))
+      .join("\n");
+    for (const word of thesis.match(/Never ([a-z, ]+)/)?.[1]?.split(/,\s*/) ?? [
+      "gate",
+      "pipeline",
+      "mandate",
+      "approval",
+      "execution",
+      "tier",
+      "mutation",
     ]) {
-      expect(rootPageSource).not.toContain(`@/components/${panel}`);
+      expect(copy.toLowerCase()).not.toMatch(
+        new RegExp(`\\b${word.trim()}\\b`),
+      );
     }
+  });
+
+  it("is not a chatbot: no bubbles, no placeholder, no typing indicator", () => {
+    expect(screenSource).not.toMatch(/placeholder=/i);
+    const code = screenSource.replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toMatch(/bubble|typing…|is typing/i);
+    expect(screenSource).not.toMatch(/<select\b/i);
+  });
+
+  it("has exactly one interruption, the needs-you sheet, with two answers", () => {
+    expect(screenSource.match(/role="dialog"/g)).toHaveLength(1);
+    expect(screenSource).toMatch(/Yes, go ahead/);
+    expect(screenSource).toMatch(/>\s*No\s*</);
   });
 });

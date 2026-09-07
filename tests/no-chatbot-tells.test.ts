@@ -52,8 +52,8 @@ describe("UI.4 no-chatbot-tells guard for app/page.tsx", () => {
     });
   }
 
-  it("declares the command-center surface marker as a positive signal", () => {
-    expect(rootPageSource).toContain('data-surface="command-center"');
+  it("declares the presence surface marker as a positive signal", () => {
+    expect(rootPageSource).toContain('data-surface="presence"');
   });
 
   it("scopes guarding to the root route — the chat composition lives at /converse", () => {

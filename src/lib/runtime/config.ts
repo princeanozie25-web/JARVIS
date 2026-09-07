@@ -40,7 +40,8 @@ export const config = {
   tools: {
     enabled: booleanEnv("JARVIS_TOOLS_ENABLED", false),
     workspaceRoot:
-      process.env.JARVIS_WORKSPACE_ROOT ?? join(homedir(), "jarvis-workspace"),
+      process.env.JARVIS_WORKSPACE_ROOT?.trim() ||
+      join(homedir(), "jarvis-workspace"),
     bindHost:
       process.env.JARVIS_BIND_HOST ??
       process.env.HOST ??

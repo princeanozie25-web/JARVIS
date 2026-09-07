@@ -55,7 +55,11 @@ export class SafePathError extends Error {
 export function workspaceRootFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return env.JARVIS_WORKSPACE_ROOT ?? join(homedir(), "jarvis-workspace");
+  // An empty or blank value means "unset" (E-057: the committed .env template
+  // ships the key blank, which used to resolve to realpath("") and fail).
+  return (
+    env.JARVIS_WORKSPACE_ROOT?.trim() || join(homedir(), "jarvis-workspace")
+  );
 }
 
 function isInside(root: string, candidate: string): boolean {

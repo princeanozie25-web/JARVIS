@@ -1,12 +1,18 @@
-import { RestCommandCenter } from "@/components/command-center/RestCommandCenter";
-import { buildRestCommandCenterModel } from "@/lib/command-center/liquid-command-center-data";
+// JARVIS · the presence. Server component; the screen itself is a client
+// component. docs/design/PRESENCE_THESIS.md is the design authority.
+import type { Metadata } from "next";
 
-export default function Home() {
-  const model = buildRestCommandCenterModel();
+import { PresenceScreen } from "@/components/presence/PresenceScreen";
 
+export const metadata: Metadata = {
+  title: "JARVIS",
+  description: "Personal AI operating environment for Prince Anozie.",
+};
+
+export default function Page() {
   return (
-    <main aria-label="JARVIS command center" data-surface="command-center">
-      <RestCommandCenter activeRoute="home" model={model} />
+    <main aria-label="JARVIS" data-surface="presence">
+      <PresenceScreen />
     </main>
   );
 }

@@ -7,6 +7,8 @@
 @import "../src/components/orb/orb-states.css";
 @import "../src/components/working/workflow-lane.css";
 @import "../src/components/working/workflow-map.css";
+@import "../src/lib/presence/presence.css";
+@import "../src/components/presence/presence-screen.css";
 
 :root {
   --background: var(--jarvis-color-void);

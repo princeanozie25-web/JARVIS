@@ -9,28 +9,36 @@ import { projectMutationTools, projectReadTools } from "./projects";
 import { tools } from "./registry";
 import { selfModelTools } from "../self-model/tools";
 
-tools.register(statusTool);
+// Dev-only guard: under Next hot reload this module can be evaluated again
+// while the registry singleton survives; a second register() would throw
+// "Tool already registered" on every request (seen live, E-057). Registering
+// once is the same outcome in production.
+function registerOnce(tool: Parameters<typeof tools.register>[0]): void {
+  if (!tools.has(tool.id)) tools.register(tool);
+}
+
+registerOnce(statusTool);
 for (const tool of readOnlyFsTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
 for (const tool of documentReaderTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
 for (const tool of writeFsTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
-tools.register(memoryNoteTool);
-tools.register(memoryRecallTool);
+registerOnce(memoryNoteTool);
+registerOnce(memoryRecallTool);
 for (const tool of projectReadTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
 for (const tool of projectMutationTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
-tools.register(fsUndoTool);
+registerOnce(fsUndoTool);
 // E-050: read-only introspection (self.*). PURE_READ/ALLOW; no writer tool exists.
 for (const tool of selfModelTools) {
-  tools.register(tool);
+  registerOnce(tool);
 }
 
 export {

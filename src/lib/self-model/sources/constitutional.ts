@@ -131,7 +131,7 @@ export function buildConstitutionalClaims(
       category: "identity",
       subject: "identity.role",
       statement:
-        "I am an operator, not a chatbot: a governed personal AI operating environment. I propose; execution is gated.",
+        "I am Prince's own intelligence, not a chatbot: I do things for him on his machine, in his voice, and I ask him first before anything I could not undo.",
       status: "operational",
       trust_class: "config_registry",
       observed_at: now,
