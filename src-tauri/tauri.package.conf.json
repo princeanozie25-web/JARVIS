@@ -1,0 +1,28 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "build": {
+    "beforeBuildCommand": "",
+    "frontendDist": "http://127.0.0.1:3117",
+    "devUrl": "http://127.0.0.1:3117"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self' http://127.0.0.1:3117; connect-src 'self' http://127.0.0.1:3117 ws://127.0.0.1:3117; img-src 'self' data: blob: http://127.0.0.1:3117; media-src 'self' blob: http://127.0.0.1:3117; style-src 'self' 'unsafe-inline' http://127.0.0.1:3117; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://127.0.0.1:3117"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "targets": ["app"],
+    "externalBin": ["binaries/node"],
+    "resources": {
+      "../dist/mac/standalone": "standalone"
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-",
+      "entitlements": "entitlements.plist"
+    }
+  }
+}

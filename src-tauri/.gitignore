@@ -1,2 +1,4 @@
 target/
 gen/schemas/
+# E-054: the Node sidecar binary is copied in by scripts/package/build-mac.ts (122 MB)
+binaries/

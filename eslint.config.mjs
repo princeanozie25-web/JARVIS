@@ -18,6 +18,10 @@ const eslintConfig = defineConfig([
     // packages (torch, sklearn) ship vendored .js/.mjs; never lint them.
     ".venv/**",
     ".venv-mlx/**",
+    // E-054 (25G): packaging stage and Rust build output are generated.
+    "dist/**",
+    "src-tauri/target/**",
+    "src-tauri/binaries/**",
   ]),
 ]);
 

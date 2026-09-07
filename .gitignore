@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Claude Code per-machine local settings (E-041): machine-specific hooks/permits
 .claude/settings.local.json
+
+# E-054: macOS packaging stage (scripts/package/build-mac.ts)
+/dist/
