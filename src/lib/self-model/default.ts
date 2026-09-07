@@ -20,6 +20,8 @@ import type { Tool } from "../tools/types";
 import { loadVoiceLiveConfig } from "../voice/live/config";
 import { createDefaultVoiceRuntimeFeatureFlags } from "../voice-runtime/feature-flags";
 import { buildHardwareProfile } from "../../models/hardware-fit";
+import { isPackaged } from "../packaging/install-root";
+import { getPackagedRuntime } from "../packaging/node";
 import {
   getAppEventStore,
   resolveEventStorePath,
@@ -42,7 +44,10 @@ import { createSelfModelWriter } from "./writers";
 export interface SelfRuntimeProbes {
   ollama(): Promise<RuntimeOllamaObservation | null>;
   mlxAudio(): Promise<RuntimeMlxAudioObservation | null>;
-  doctor(): RuntimeDoctorObservation | null;
+  doctor():
+    | RuntimeDoctorObservation
+    | null
+    | Promise<RuntimeDoctorObservation | null>;
 }
 
 export interface DefaultSelfModelOptions {
@@ -123,6 +128,12 @@ export function createNodeSelfRuntimeProbes(options: {
       return { reachable: r.ok, latency_ms: r.ms };
     },
     doctor() {
+      // Phase 25G (G4): inside the packaged app the repository doctor has
+      // nothing to inspect (no src/, tests/ …); the packaged doctor checks
+      // what a launch actually needs. Same claim, honest verdict.
+      if (isPackaged(options.env)) {
+        return getPackagedRuntime(options.env).doctorObservation();
+      }
       try {
         const hardware = buildHardwareProfile({
           totalRamBytes: totalmem(),
@@ -330,7 +341,7 @@ export function createDefaultSelfModel(
           enabled: storePath !== null,
           reachable: storePath !== null && getAppEventStore(env) !== null,
         },
-        doctor: probes.doctor(),
+        doctor: await probes.doctor(),
         registry_ollama_models: modelRegistry
           .list((m) => m.provider === "ollama" && m.enabled)
           .map((m) => ({ id: m.id, modelName: m.modelName })),

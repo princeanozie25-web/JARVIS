@@ -25,11 +25,21 @@ export async function GET(req: Request): Promise<Response> {
   if (!isLoopbackHost(req.headers.get("host"))) {
     return new Response("Loopback only", { status: 403 });
   }
-  const [{ createDefaultSelfModel }, { getDb }, { tools }] = await Promise.all([
+  const [
+    { createDefaultSelfModel },
+    { getDb },
+    { tools },
+    { getPackagedRuntime },
+  ] = await Promise.all([
     import("@/lib/self-model/default"),
     import("@/lib/db/client-node"),
     import("@/lib/tools"),
+    import("@/lib/packaging/node"),
   ]);
+  // Phase 25G (G4): in the packaged app the first health call also asks the
+  // supervisor to bring up the managed voice sidecar (idempotent, bounded).
+  const packagedRuntime = getPackagedRuntime();
+  if (packagedRuntime.packaged) void packagedRuntime.supervisor.ensure();
   const model = createDefaultSelfModel({
     db: getDb(),
     tools: tools.list(),
@@ -48,6 +58,7 @@ export async function GET(req: Request): Promise<Response> {
       statement: c.statement,
     })),
     warnings: status.warnings,
+    bootstrap: await packagedRuntime.bootstrap(),
   };
   return NextResponse.json(body, {
     status: body.ok ? 200 : 503,

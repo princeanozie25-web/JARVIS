@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 "use strict";
 
+process.env.JARVIS_PACKAGED = "1";
 process.env.HOSTNAME = "127.0.0.1";
 process.env.JARVIS_BIND_HOST = "127.0.0.1";
 process.env.JARVIS_REMOTE_DASHBOARD_ENABLED = "false";
@@ -24,3 +25,10 @@ for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
 }
 
 require("./server.js");
+
+// Kick the packaged runtime once the server listens: /api/health runs the
+// packaged doctor and asks the supervisor to bring up the voice sidecar.
+setTimeout(() => {
+  const port = process.env.PORT || "3117";
+  fetch(`http://127.0.0.1:${port}/api/health`, { headers: { host: `127.0.0.1:${port}` } }).catch(() => {});
+}, 3000).unref();
