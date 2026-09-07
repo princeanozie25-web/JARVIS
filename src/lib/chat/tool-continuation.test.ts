@@ -283,6 +283,13 @@ describe("read-only provider tool continuation", () => {
       "project.list",
       "project.get",
       "project.summarize",
+      "self.describe",
+      "self.capabilities",
+      "self.limits",
+      "self.status",
+      "self.explain",
+      "self.context",
+      "self.projection",
     ]);
   });
 });
@@ -374,6 +381,13 @@ describe("approval-gated provider tool continuation", () => {
       "project.index",
       "project.promote_task",
       "project.set_status",
+      "self.describe",
+      "self.capabilities",
+      "self.limits",
+      "self.status",
+      "self.explain",
+      "self.context",
+      "self.projection",
     ]);
   });
 

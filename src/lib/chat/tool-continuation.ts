@@ -29,6 +29,14 @@ export const READ_ONLY_PROVIDER_TOOL_IDS = new Set([
   "project.list",
   "project.get",
   "project.summarize",
+  // E-051: read-only introspection (E-050). PURE_READ / ALLOW; no writer exists.
+  "self.describe",
+  "self.capabilities",
+  "self.limits",
+  "self.status",
+  "self.explain",
+  "self.context",
+  "self.projection",
 ]);
 
 export const WRITE_PROVIDER_TOOL_IDS = new Set([
