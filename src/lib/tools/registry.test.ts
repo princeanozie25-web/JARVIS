@@ -104,6 +104,14 @@ describe("ToolRegistry", () => {
       "project.promote_task",
       "project.set_status",
       "fs.undo",
+      // E-050 read-only introspection
+      "self.describe",
+      "self.capabilities",
+      "self.limits",
+      "self.status",
+      "self.explain",
+      "self.context",
+      "self.projection",
     ]);
   });
 
@@ -141,6 +149,13 @@ describe("ToolRegistry", () => {
       ["project.promote_task", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["project.set_status", "REVERSIBLE_WRITE", "CONFIRM_ALWAYS"],
       ["fs.undo", "REVERSIBLE_WRITE", "ALLOW"],
+      ["self.describe", "PURE_READ", "ALLOW"],
+      ["self.capabilities", "PURE_READ", "ALLOW"],
+      ["self.limits", "PURE_READ", "ALLOW"],
+      ["self.status", "PURE_READ", "ALLOW"],
+      ["self.explain", "PURE_READ", "ALLOW"],
+      ["self.context", "PURE_READ", "ALLOW"],
+      ["self.projection", "PURE_READ", "ALLOW"],
     ]);
   });
 

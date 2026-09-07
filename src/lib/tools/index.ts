@@ -7,6 +7,7 @@ import { memoryRecallTool } from "./memory-recall";
 import { statusTool } from "./mock";
 import { projectMutationTools, projectReadTools } from "./projects";
 import { tools } from "./registry";
+import { selfModelTools } from "../self-model/tools";
 
 tools.register(statusTool);
 for (const tool of readOnlyFsTools) {
@@ -27,6 +28,10 @@ for (const tool of projectMutationTools) {
   tools.register(tool);
 }
 tools.register(fsUndoTool);
+// E-050: read-only introspection (self.*). PURE_READ/ALLOW; no writer tool exists.
+for (const tool of selfModelTools) {
+  tools.register(tool);
+}
 
 export {
   fsListDirTool,
