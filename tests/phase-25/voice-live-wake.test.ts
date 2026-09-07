@@ -346,6 +346,93 @@ describe("wake activation loop — §20 flow with the frozen seam, fail-closed",
     expect(mic.stopped).toBe(true);
   });
 
+  it("re-arming after a session flushes the detector with silence before listening again (phantom-wake fix)", async () => {
+    const config = loadVoiceLiveConfig({ JARVIS_WAKE_WORD_ENABLED: "true" });
+    const local = localProvider();
+    const orchestrator = new VoiceLiveOrchestrator({
+      config,
+      providers: [local],
+      budgetPath: null,
+    });
+    // Fires on the 3rd frame, then never again — a second wake would be a phantom.
+    const det = new FakeDetector(3);
+    const wake = createOpenWakeWordProvider({ spawnDetector: () => det });
+    const mic = fakeMic();
+    const events: WakeLoopEvent[] = [];
+    let framesAtSessionEnd = -1;
+    let framesAtStandby = -1;
+    const loop = new WakeActivationLoop({
+      config,
+      wake,
+      orchestrator,
+      mic,
+      audio_sink: sink,
+      once: false,
+      onEvent: (e) => {
+        events.push(e);
+        if (e.type === "session_ended") framesAtSessionEnd = det.frames;
+        if (
+          e.type === "standby" &&
+          framesAtSessionEnd >= 0 &&
+          framesAtStandby < 0
+        )
+          framesAtStandby = det.frames;
+      },
+      endOfTurn: {
+        rmsThreshold: 600,
+        minSpeechMs: 250,
+        silenceMs: 800,
+        maxTurnMs: 12_000,
+      },
+      followUpWindowMs: 150,
+    });
+    const run = loop.start();
+    // wait for the second standby (post-session re-arm), then stop
+    for (let i = 0; i < 200 && framesAtStandby < 0; i += 1) await tick(10);
+    await loop.stop();
+    await run;
+    expect(framesAtStandby).toBeGreaterThanOrEqual(framesAtSessionEnd + 25); // ≥ 2 s of silence fed
+    expect(events.filter((e) => e.type === "wake")).toHaveLength(1);
+  });
+
+  it("stops itself when the microphone source ends", async () => {
+    const config = loadVoiceLiveConfig({ JARVIS_WAKE_WORD_ENABLED: "true" });
+    const local = localProvider();
+    const orchestrator = new VoiceLiveOrchestrator({
+      config,
+      providers: [local],
+      budgetPath: null,
+    });
+    const finite: WakeMicSource = {
+      frames: async function* () {
+        for (let i = 0; i < 3; i += 1) {
+          yield frame(0);
+          await tick(2);
+        }
+      },
+      stop: () => {},
+    };
+    const events: WakeLoopEvent[] = [];
+    const loop = new WakeActivationLoop({
+      config,
+      wake: createOpenWakeWordProvider({
+        spawnDetector: () => new FakeDetector(),
+      }),
+      orchestrator,
+      mic: finite,
+      audio_sink: sink,
+      onEvent: (e) => events.push(e),
+    });
+    await loop.start();
+    expect(
+      events.some(
+        (e) =>
+          e.type === "error" && e.message.includes("microphone source ended"),
+      ),
+    ).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: "stopped" });
+  });
+
   it("emergency stop ends the session, closes the mic, and disarms", async () => {
     const config = loadVoiceLiveConfig({ JARVIS_WAKE_WORD_ENABLED: "true" });
     const local = localProvider();

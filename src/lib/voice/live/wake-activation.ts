@@ -29,9 +29,14 @@ import type {
   VoiceLiveOrchestrator,
 } from "./orchestrator";
 import {
+  OPENWAKEWORD_FRAME_SAMPLES,
   OPENWAKEWORD_SAMPLE_RATE_HZ,
   type OpenWakeWordProvider,
 } from "./wake-word-openwakeword";
+
+// 2 s of silence (25 x 80 ms frames) clears openWakeWord's rolling window.
+export const DETECTOR_FLUSH_FRAMES = 25;
+export const DETECTOR_FLUSH_SETTLE_MS = 150;
 
 export interface WakeMicSource {
   frames(): AsyncIterable<Uint8Array>; // s16le mono @16 kHz, any chunking
@@ -148,7 +153,7 @@ export interface EndOfTurnConfig {
 export const DEFAULT_END_OF_TURN: EndOfTurnConfig = {
   rmsThreshold: 600,
   minSpeechMs: 250,
-  silenceMs: 800,
+  silenceMs: 1000,
   maxTurnMs: 12_000,
 };
 
@@ -246,6 +251,13 @@ export class WakeActivationLoop {
         if (this.o.once) break;
         if (this.running) {
           await this.o.wake.arm();
+          // The detector heard nothing during the session, so its rolling
+          // window still holds the wake phrase and would re-fire on the first
+          // new frame (observed live: phantom wakes ~100 ms after every
+          // re-arm). Push the phrase out with silence BEFORE listening again;
+          // anything it emits meanwhile has no pending detect() and is dropped.
+          this.flushDetector();
+          await new Promise((r) => setTimeout(r, DETECTOR_FLUSH_SETTLE_MS));
           this.phase = "standby";
           this.emit({ type: "standby" });
         }
@@ -274,6 +286,17 @@ export class WakeActivationLoop {
       if (!this.running) break;
       this.route(frame);
     }
+    // The source ended (file finished, ffmpeg died): nothing can wake us now.
+    if (this.running) {
+      this.emit({ type: "error", message: "microphone source ended" });
+      await this.stop();
+    }
+  }
+
+  private flushDetector(): void {
+    const silence = new Uint8Array(OPENWAKEWORD_FRAME_SAMPLES * 2);
+    for (let i = 0; i < DETECTOR_FLUSH_FRAMES; i += 1)
+      this.o.wake.feed(silence);
   }
 
   private route(frame: Uint8Array): void {

@@ -105,7 +105,10 @@ async function main(): Promise<void> {
     orchestrator,
     mic,
     audio_sink: new FfplaySink(),
-    once: has("--once") || Boolean(wav),
+    // --wav no longer implies --once: the loop stops itself when the file
+    // ends, so a clip with trailing silence exercises the re-arm path (the
+    // phantom-wake regression) exactly like a live mic would.
+    once: has("--once"),
     tools: [
       {
         name: "check_build",
@@ -140,7 +143,15 @@ async function main(): Promise<void> {
   });
   if (!wav)
     log("wake", 'say "Hey Jarvis", pause briefly, then speak your request');
-  process.on("SIGINT", () => void loop.stop());
+  // ⌃C once = graceful stop (session, mic, detector). Twice = force exit, so a
+  // hung teardown can never trap the operator in the loop.
+  let interrupts = 0;
+  process.on("SIGINT", () => {
+    interrupts += 1;
+    if (interrupts >= 2) process.exit(130);
+    log("wake", "stopping (press ⌃C again to force)");
+    void loop.stop().then(() => process.exit(0));
+  });
   await loop.start();
   log("result", {
     ...loop.snapshot(),
