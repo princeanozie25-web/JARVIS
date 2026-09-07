@@ -54,4 +54,4 @@ then the registry entry. Nothing in it is built yet.
 
 ## 6. Status
 
-OPEN — waiting on prerequisite §2.1 (Rust). G1 can start immediately.
+OPEN. §2.1 closed 2026-09-07 (rustup, user-space, `~/.cargo`). **G1 APPLIED (E-053)**: standalone build proven on loopback with a packaged data dir and the health route; shell crate builds. G2 next: trim the trace (the artifact currently sweeps the whole repo, 1.2 GB, including `data/`), stage the sidecar, bundle stanza. §2.2 decided: ad-hoc signing, no notarisation. §2.3 decided: `~/Library/Application Support/JARVIS` via `JARVIS_DATA_DIR`.

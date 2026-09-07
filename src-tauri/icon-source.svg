@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Phase 25G — app icon source: the Core on true black (cyan rails, copper gyro, white heart).
+       Regenerate the platform icon set with: npx tauri icon src-tauri/icon-source.svg -->
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="35%" stop-color="#7ff3ff" stop-opacity="0.9"/>
+      <stop offset="70%" stop-color="#19b8d8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="#000000"/>
+  <circle cx="512" cy="512" r="430" fill="none" stroke="#1f2a33" stroke-width="44"/>
+  <circle cx="512" cy="512" r="392" fill="none" stroke="#19c6ea" stroke-width="16"/>
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#0b3a48" stroke-width="70"/>
+  <g stroke="#19c6ea" stroke-width="18" stroke-linecap="round">
+    <line x1="512" y1="110" x2="512" y2="170"/>
+    <line x1="512" y1="854" x2="512" y2="914"/>
+    <line x1="110" y1="512" x2="170" y2="512"/>
+    <line x1="854" y1="512" x2="914" y2="512"/>
+  </g>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="#b8763a" stroke-width="22"/>
+  <circle cx="512" cy="512" r="226" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.9"/>
+  <g fill="#19c6ea" opacity="0.85">
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(0 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(30 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(60 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(90 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(120 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(150 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(180 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(210 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(240 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(270 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(300 512 512)"/>
+    <rect x="502" y="300" width="20" height="120" rx="6" transform="rotate(330 512 512)"/>
+  </g>
+  <circle cx="512" cy="512" r="190" fill="url(#halo)"/>
+  <circle cx="512" cy="512" r="78" fill="#ffffff"/>
+</svg>

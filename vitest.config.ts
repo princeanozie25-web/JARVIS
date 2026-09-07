@@ -43,5 +43,14 @@ export default defineConfig({
     // + concurrency only; assertions unchanged. (Vitest 4: maxWorkers is the
     // top-level option; poolOptions.forks was removed.)
     maxWorkers: 1,
+    // E-053 (25G G1): `next build` with output:"standalone" copies traced
+    // source (tests included) under .next/standalone; without this exclude the
+    // pre-commit suite ran every test twice (1360 files) and failed on the copies.
+    exclude: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/dist/**",
+      "**/src-tauri/target/**",
+    ],
   },
 });

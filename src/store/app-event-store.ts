@@ -19,7 +19,11 @@ export function resolveEventStorePath(
   const enabled = env.JARVIS_EVENT_STORE_ENABLED?.trim().toLowerCase();
   if (enabled === "false" || enabled === "0" || enabled === "no") return null;
   const configured = env.JARVIS_EVENT_DB_PATH?.trim();
-  return resolve(configured || DEFAULT_EVENT_STORE_PATH);
+  if (configured) return resolve(configured);
+  // Phase 25G (G1): follow the packaged data dir when one is set.
+  const dataDir = env.JARVIS_DATA_DIR?.trim();
+  if (dataDir) return resolve(dataDir, "event-store.db");
+  return resolve(DEFAULT_EVENT_STORE_PATH);
 }
 
 let singleton: { path: string; store: EventStore } | null = null;
