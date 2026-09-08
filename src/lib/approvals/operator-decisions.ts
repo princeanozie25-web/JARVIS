@@ -41,7 +41,16 @@ interface IssuedDecisionToken {
   consumed: boolean;
 }
 
-const issued = new Map<string, IssuedDecisionToken>();
+// Process-wide, like the operator token store: the token is issued by the
+// pending route and verified by a server action, which Next builds in
+// separate bundle layers with separate module instances.
+const ISSUED_KEY = Symbol.for("jarvis.approvals.issued-decision-tokens");
+const issued: Map<string, IssuedDecisionToken> = ((
+  globalThis as unknown as Record<
+    symbol,
+    Map<string, IssuedDecisionToken> | undefined
+  >
+)[ISSUED_KEY] ??= new Map<string, IssuedDecisionToken>());
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");

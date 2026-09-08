@@ -79,17 +79,36 @@ export function useChatStream(
   options: {
     onReply?: (text: string) => void;
     onStatus?: (s: PresenceStatus) => void;
+    /** A tool is waiting on the person: ask the server what needs them now. */
+    onNeeds?: () => void;
+    /** The turn ended (with or without a reply): the thread list may have changed. */
+    onTurnEnd?: () => void;
   } = {},
 ) {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [busy, setBusy] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const sessionRef = useRef<string | null>(null);
   const historyRef = useRef<
     Array<{ role: "user" | "assistant"; content: string }>
   >([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const session = () => (sessionRef.current ??= loadSession());
+  const session = () => {
+    if (!sessionRef.current) {
+      sessionRef.current = loadSession();
+      setThreadId(sessionRef.current);
+    }
+    return sessionRef.current;
+  };
+
+  /** Add a line of activity to the transcript (an outcome, a note). */
+  const note = useCallback((text: string) => {
+    setEntries((e) => [
+      ...e,
+      { id: newId(), role: "aside", text, at: Date.now() },
+    ]);
+  }, []);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -184,11 +203,12 @@ export function useChatStream(
                 aside(
                   `couldn't ${asideFor(tool, "start").replace(/^working: /, "")}${typeof ev.message === "string" && ev.message ? `: ${ev.message.slice(0, 120)}` : ""}`,
                 );
-            } else if (ev.type === "tool_pending")
+            } else if (ev.type === "tool_pending") {
               aside(
                 asideFor(String(ev.toolId ?? ev.toolName ?? "tool"), "needs"),
               );
-            else if (ev.type === "error")
+              options.onNeeds?.();
+            } else if (ev.type === "error")
               aside("something went wrong on my side");
           }
         }
@@ -203,23 +223,53 @@ export function useChatStream(
         if (abortRef.current === controller) abortRef.current = null;
         setBusy(false);
         if (!reply.trim()) options.onStatus?.("quiet");
+        options.onTurnEnd?.();
       }
     },
     [busy, options],
   );
 
+  const adoptSession = (id: string) => {
+    sessionRef.current = id;
+    setThreadId(id);
+    try {
+      window.localStorage.setItem(SESSION_KEY, id);
+    } catch {
+      /* per-viewer convenience only */
+    }
+  };
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    setBusy(false);
     setEntries([]);
     historyRef.current = [];
-    try {
-      const id = newId();
-      window.localStorage.setItem(SESSION_KEY, id);
-      sessionRef.current = id;
-    } catch {
-      sessionRef.current = newId();
-    }
+    adoptSession(newId());
   }, []);
 
-  return { entries, busy, send, stop, reset, sessionId: () => session() };
+  /** Continue an earlier thread: its turns become the transcript and history. */
+  const load = useCallback((id: string, turns: TranscriptEntry[]) => {
+    abortRef.current?.abort();
+    setBusy(false);
+    setEntries(turns);
+    historyRef.current = turns
+      .filter((t) => t.role !== "aside")
+      .map((t) => ({
+        role: t.role === "you" ? ("user" as const) : ("assistant" as const),
+        content: t.text,
+      }));
+    adoptSession(id);
+  }, []);
+
+  return {
+    entries,
+    busy,
+    threadId,
+    send,
+    stop,
+    reset,
+    load,
+    note,
+    sessionId: () => session(),
+  };
 }

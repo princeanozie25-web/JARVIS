@@ -16,7 +16,15 @@ interface Remembered {
   readonly expiresAt: number;
 }
 
-const remembered = new Map<string, Remembered>();
+// One map per PROCESS, not per module instance: Next compiles route handlers
+// and server actions in different bundle layers, each with its own copy of
+// this module. The presence's "needs you" card is answered through a server
+// action while the token was remembered by the chat route — they must see
+// the same memory (E-059, found live: every answer came back rejected).
+const REMEMBERED_KEY = Symbol.for("jarvis.approvals.operator-token-store");
+const remembered: Map<string, Remembered> = ((
+  globalThis as unknown as Record<symbol, Map<string, Remembered> | undefined>
+)[REMEMBERED_KEY] ??= new Map<string, Remembered>());
 
 export function rememberOperatorToken(
   executionId: string,

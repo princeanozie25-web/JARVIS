@@ -10,6 +10,10 @@ const screenSource = readFileSync(
   resolve(HERE, "..", "src", "components", "presence", "PresenceScreen.tsx"),
   "utf8",
 );
+const tokensCss = readFileSync(
+  resolve(HERE, "..", "src", "lib", "presence", "presence.css"),
+  "utf8",
+);
 const thesis = readFileSync(
   resolve(HERE, "..", "docs", "design", "PRESENCE_THESIS.md"),
   "utf8",
@@ -54,15 +58,49 @@ describe("root surface — the presence", () => {
     }
   });
 
-  it("is not a chatbot: no bubbles, no placeholder, no typing indicator", () => {
-    expect(screenSource).not.toMatch(/placeholder=/i);
-    const code = screenSource.replace(/^\s*\/\/.*$/gm, "");
-    expect(code).not.toMatch(/bubble|typing…|is typing/i);
-    expect(screenSource).not.toMatch(/<select\b/i);
+  it("is iMessage-shaped: sidebar with JARVIS and the threads, the thread, an activity panel", () => {
+    expect(screenSource).toMatch(
+      /<nav className="p-side" aria-label="Threads">/,
+    );
+    expect(screenSource).toMatch(/aria-label="Conversation"/);
+    expect(screenSource).toMatch(
+      /<aside className="p-panel" aria-label="Activity"/,
+    );
+    // JARVIS is the one roster entry: a status light and a line, no mascot.
+    expect(screenSource).toMatch(/className="p-me-name">JARVIS</);
+    expect(screenSource).not.toMatch(/<img\b|\/presence\/mark/);
   });
 
-  it("has exactly one interruption, the needs-you sheet, with two answers", () => {
-    expect(screenSource.match(/role="dialog"/g)).toHaveLength(1);
+  it("rests on the standing brief JARVIS posts, not on a splash or a greeting box", () => {
+    expect(screenSource).toMatch(/\/api\/presence\/brief/);
+    expect(screenSource).toMatch(/className="p-jarvis p-brief"/);
+    expect(screenSource).not.toMatch(/p-empty|What can I help|How can I help/);
+    expect(
+      readFileSync(
+        resolve(HERE, "api", "presence", "brief", "route.ts"),
+        "utf8",
+      ),
+    ).toMatch(/Nothing needs you\./);
+  });
+
+  it("is Apple-simple: system font, system light/dark, no brand serif", () => {
+    expect(tokensCss).toMatch(/color-scheme:\s*light dark/);
+    expect(tokensCss).toMatch(/-apple-system/);
+    expect(tokensCss).not.toMatch(/Fraunces|--font-jarvis-display/);
+  });
+
+  it("is not a chatbot: no typing indicator, no provider menu, no generic prompt copy", () => {
+    const code = screenSource.replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toMatch(/typing…|is typing/i);
+    expect(screenSource).not.toMatch(/<select\b/i);
+    expect(screenSource).not.toMatch(
+      /Message JARVIS|Ask anything|How can I help|Ask me anything/i,
+    );
+  });
+
+  it("has exactly one interruption, the inline needs-you card, with two answers", () => {
+    expect(screenSource.match(/data-needs-you/g)).toHaveLength(1);
+    expect(screenSource).not.toMatch(/aria-modal|role="dialog"/);
     expect(screenSource).toMatch(/Yes, go ahead/);
     expect(screenSource).toMatch(/>\s*No\s*</);
   });

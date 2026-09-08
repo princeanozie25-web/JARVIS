@@ -1,24 +1,44 @@
 /* JARVIS · Presence — tokens and primitives.
    Source of truth: docs/design/PRESENCE_THESIS.md §4.
-   Dark, warm. One accent (brass) with meaning. Fraunces for the voice,
-   Geist for the quiet, JetBrains Mono for the mechanical facts.
-   Motion personality: Physical. Three curves, nothing else. */
+   Apple's material, Grok Bot's shape. System font, system light/dark,
+   monochrome ink with three small semantic lights (working, listening,
+   needs you). Motion personality: Physical. Three curves, nothing else. */
 
 :root {
-  --p-ground: #0b0b0a;
-  --p-surface: #141311;
-  --p-surface-2: #1b1a17;
-  --p-ink: #f2efe9;
-  --p-ink-2: rgba(242, 239, 233, 0.62);
-  --p-ink-3: rgba(242, 239, 233, 0.36);
-  --p-line: rgba(242, 239, 233, 0.08);
-  --p-line-2: rgba(242, 239, 233, 0.14);
-  --p-brass: #c9a46b;
-  --p-brass-soft: rgba(201, 164, 107, 0.18);
+  color-scheme: light dark;
 
-  --p-font-display: var(--font-jarvis-display), "Fraunces", Georgia, serif;
-  --p-font-body: var(--font-geist-sans), "Geist", system-ui, sans-serif;
-  --p-font-mono: var(--font-jarvis-mono), "JetBrains Mono", ui-monospace, monospace;
+  --p-ground: light-dark(#f2f2f4, #161618);
+  --p-surface: light-dark(#ffffff, #1e1e20);
+  --p-bar: light-dark(rgba(255, 255, 255, 0.72), rgba(30, 30, 32, 0.72));
+  --p-ink: light-dark(#1d1d1f, #f5f5f7);
+  --p-ink-2: light-dark(rgba(60, 60, 67, 0.62), rgba(235, 235, 245, 0.62));
+  --p-ink-3: light-dark(rgba(60, 60, 67, 0.32), rgba(235, 235, 245, 0.32));
+  --p-line: light-dark(rgba(60, 60, 67, 0.14), rgba(255, 255, 255, 0.1));
+  --p-fill: light-dark(rgba(120, 120, 128, 0.12), rgba(120, 120, 128, 0.2));
+  --p-fill-2: light-dark(rgba(120, 120, 128, 0.18), rgba(120, 120, 128, 0.3));
+
+  /* You, in the transcript: ink on ground, inverted. Monochrome, like the mark. */
+  --p-you: light-dark(#1d1d1f, #f5f5f7);
+  --p-you-ink: light-dark(#ffffff, #1d1d1f);
+
+  /* The three lights. Apple's semantic colours, used only as small dots. */
+  --p-working: light-dark(#34c759, #30d158);
+  --p-listening: light-dark(#ff3b30, #ff453a);
+  --p-needs: light-dark(#ff9500, #ff9f0a);
+  --p-focus: light-dark(#0071e3, #2997ff);
+
+  --p-font:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", var(--font-geist-sans), system-ui, sans-serif;
+  --p-font-mono:
+    ui-monospace, "SF Mono", Menlo, var(--font-jarvis-mono), monospace;
+
+  /* Apple's scale: caption 11 · footnote 13 · body 15 · headline 17 · title 22 */
+  --p-t-caption: 11px;
+  --p-t-foot: 13px;
+  --p-t-body: 15px;
+  --p-t-head: 17px;
+  --p-t-title: 22px;
 
   /* Physical personality (VibeCurb motion palette, tier 1 + one utility curve) */
   --p-spring-snappy: linear(
@@ -33,78 +53,57 @@
   );
   --p-ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
 
-  --p-radius: 14px;
-  --p-radius-sheet: 22px;
+  --p-radius: 10px;
+  --p-radius-card: 14px;
+  --p-radius-pill: 22px;
 }
 
 .p-root {
-  min-height: 100dvh;
-  background:
-    radial-gradient(ellipse 70% 55% at 30% 12%, rgba(242, 239, 233, 0.035) 0%, transparent 60%),
-    var(--p-ground);
+  height: 100dvh;
+  background: var(--p-ground);
   color: var(--p-ink);
-  font-family: var(--p-font-body);
-  font-size: 15px;
-  line-height: 1.6;
+  font-family: var(--p-font);
+  font-size: var(--p-t-body);
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  position: relative;
-  /* clip, not hidden: hidden would make the root a scroll container and
-     detach the fixed header/composer from the viewport once the transcript grows */
-  overflow-x: clip;
+  overflow: hidden;
 }
 
-/* Grain: felt, not seen. Fixed so it never repaints on scroll. */
-.p-root::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 40;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+.p-root button {
+  font: inherit;
+  color: inherit;
 }
 
-.p-display {
-  font-family: var(--p-font-display);
-  font-weight: 300;
-  letter-spacing: -0.02em;
-  line-height: 1.06;
-  text-wrap: balance;
-}
-.p-display em {
-  font-style: italic;
-  font-weight: 300;
+.p-caption {
+  font-size: var(--p-t-caption);
+  color: var(--p-ink-3);
 }
 .p-mono {
   font-family: var(--p-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--p-t-caption);
   color: var(--p-ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Arrivals only. The transcript, composer and desk list never use these. */
+/* Arrivals only. The transcript, composer and thread list never use these. */
 @keyframes p-arrive {
   from {
     opacity: 0;
-    transform: translateY(14px);
-    filter: blur(4px);
+    transform: translateY(10px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    transform: translateY(0) scale(1);
   }
 }
 .p-arrive {
-  animation: p-arrive 0.55s var(--p-spring-snappy) both;
-  animation-delay: var(--p-stagger, 0ms);
+  animation: p-arrive 0.5s var(--p-spring-snappy) both;
 }
 
 @keyframes p-breathe {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.45;
   }
   50% {
     opacity: 1;
@@ -116,7 +115,6 @@
     animation: none;
     opacity: 1;
     transform: none;
-    filter: none;
   }
   .p-root * {
     animation-duration: 0.01ms !important;
@@ -124,11 +122,10 @@
   }
 }
 
-/* Focus is the only place brass appears by default. */
 .p-root :focus-visible {
-  outline: 1px solid var(--p-brass);
-  outline-offset: 3px;
+  outline: 2px solid var(--p-focus);
+  outline-offset: 2px;
 }
 .p-root ::selection {
-  background: var(--p-brass-soft);
+  background: light-dark(rgba(0, 113, 227, 0.2), rgba(41, 151, 255, 0.3));
 }
